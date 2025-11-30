@@ -51,19 +51,6 @@ A modern Flutter mobile application designed for semi-truck drivers and trucking
 - Notification preferences
 - App customization
 
-## 📱 Screenshots
-
-<table>
-  <tr>
-    <td><img src="screenshots/login.png" width="200" alt="Login Screen"/></td>
-    <td><img src="screenshots/dashboard.png" width="200" alt="Dashboard"/></td>
-    <td><img src="screenshots/explore.png" width="200" alt="Explore"/></td>
-    <td><img src="screenshots/records.png" width="200" alt="Records"/></td>
-  </tr>
-</table>
-
-> Note: Add your screenshots to a `screenshots/` folder
-
 ## 🛠️ Tech Stack
 
 - **Framework**: Flutter 3.10+
@@ -198,7 +185,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Maninder**
 
-- GitHub: [@yourusername](https://github.com/yourusername)
+- GitHub: [@maninder-mike](https://github.com/maninder-mike)
 
 ## 🙏 Acknowledgments
 
