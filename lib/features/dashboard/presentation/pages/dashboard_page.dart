@@ -8,6 +8,7 @@ import 'package:milow/core/widgets/news_card.dart';
 import 'package:milow/features/dashboard/presentation/pages/news_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/core/services/weather_service.dart';
+import 'package:milow/core/services/preferences_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -20,15 +21,32 @@ class _DashboardPageState extends State<DashboardPage> {
   final WeatherService _weatherService = WeatherService();
   Map<String, dynamic>? _weatherData;
   bool _isLoadingWeather = true;
+  bool _showWeather = true; // User preference
   String _temperatureUnit = 'C'; // C or F
 
   @override
   void initState() {
     super.initState();
+    _loadPreferences();
     _loadWeather();
   }
 
+  Future<void> _loadPreferences() async {
+    final showWeather = await PreferencesService.getShowWeather();
+    setState(() {
+      _showWeather = showWeather;
+    });
+  }
+
   Future<void> _loadWeather() async {
+    final showWeather = await PreferencesService.getShowWeather();
+    if (!showWeather) {
+      setState(() {
+        _isLoadingWeather = false;
+      });
+      return;
+    }
+
     final weather = await _weatherService.getCurrentWeather();
     setState(() {
       _weatherData = weather;
@@ -253,7 +271,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   const SizedBox(width: 8),
                   // Weather widget
-                  if (_weatherData != null)
+                  if (_showWeather && _weatherData != null)
                     GestureDetector(
                       onTap: _toggleTemperatureUnit,
                       child: Container(
@@ -283,7 +301,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                       ),
                     ),
-                  if (_isLoadingWeather && _weatherData == null)
+                  if (_showWeather && _isLoadingWeather && _weatherData == null)
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SignupScreen extends StatelessWidget {
-  const SignupScreen({Key? key}) : super(key: key);
+  const SignupScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -109,8 +109,7 @@ class SignupScreen extends StatelessWidget {
 class _SocialButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-  const _SocialButton({required this.icon, required this.onTap, Key? key})
-    : super(key: key);
+  const _SocialButton({required this.icon, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

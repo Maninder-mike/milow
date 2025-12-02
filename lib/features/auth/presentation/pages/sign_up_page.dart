@@ -16,6 +16,24 @@ class _SignUpPageState extends State<SignUpPage> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  double _passwordStrength = 0.0;
+
+  void _calculatePasswordStrength(String password) {
+    if (password.isEmpty) {
+      setState(() => _passwordStrength = 0.0);
+      return;
+    }
+    double strength = 0.0;
+    if (password.length >= 8) strength += 0.25;
+    if (password.length >= 12) strength += 0.25;
+    if (RegExp(r'[a-z]').hasMatch(password)) strength += 0.15;
+    if (RegExp(r'[A-Z]').hasMatch(password)) strength += 0.15;
+    if (RegExp(r'[0-9]').hasMatch(password)) strength += 0.2;
+    if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) strength += 0.2;
+    setState(() => _passwordStrength = strength.clamp(0.0, 1.0));
+  }
 
   Future<void> _signUp() async {
     if (_passwordController.text != _confirmPasswordController.text) {
@@ -35,13 +53,16 @@ class _SignUpPageState extends State<SignUpPage> {
       await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
-        data: {
-          'full_name': _nameController.text.trim(),
-        },
+        emailRedirectTo: 'milow://email-verified', // Deep link / custom scheme
+        data: {'full_name': _nameController.text.trim()},
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Sign up successful! Please check your email.')),
+          const SnackBar(
+            content: Text(
+              'Sign up successful! Please check your email to verify.',
+            ),
+          ),
         );
         context.go('/login');
       }
@@ -131,19 +152,85 @@ class _SignUpPageState extends State<SignUpPage> {
               _buildLabel('Password'),
               TextField(
                 controller: _passwordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: _obscurePassword,
+                onChanged: _calculatePasswordStrength,
+                decoration: InputDecoration(
                   hintText: 'Create a password',
-                  suffixIcon: Icon(Icons.visibility_off_outlined, color: Color(0xFF98A2B3)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: const Color(0xFF98A2B3),
+                    ),
+                    onPressed: () {
+                      setState(() => _obscurePassword = !_obscurePassword);
+                    },
+                  ),
                 ),
               ),
+              // Password strength indicator
+              if (_passwordController.text.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(2),
+                        child: LinearProgressIndicator(
+                          value: _passwordStrength,
+                          backgroundColor: Colors.grey[300],
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            _passwordStrength < 0.3
+                                ? Colors.red
+                                : _passwordStrength < 0.6
+                                ? Colors.orange
+                                : Colors.green,
+                          ),
+                          minHeight: 4,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      _passwordStrength < 0.3
+                          ? 'Weak'
+                          : _passwordStrength < 0.6
+                          ? 'Fair'
+                          : 'Strong',
+                      style: GoogleFonts.roboto(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: _passwordStrength < 0.3
+                            ? Colors.red
+                            : _passwordStrength < 0.6
+                            ? Colors.orange
+                            : Colors.green,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
               const SizedBox(height: 20),
               TextField(
                 controller: _confirmPasswordController,
-                obscureText: true,
-                decoration: const InputDecoration(
+                obscureText: _obscureConfirmPassword,
+                decoration: InputDecoration(
                   hintText: 'Confirm password',
-                  suffixIcon: Icon(Icons.visibility_off_outlined, color: Color(0xFF98A2B3)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureConfirmPassword
+                          ? Icons.visibility_off_outlined
+                          : Icons.visibility_outlined,
+                      color: const Color(0xFF98A2B3),
+                    ),
+                    onPressed: () {
+                      setState(
+                        () =>
+                            _obscureConfirmPassword = !_obscureConfirmPassword,
+                      );
+                    },
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
@@ -155,14 +242,18 @@ class _SignUpPageState extends State<SignUpPage> {
                     child: Checkbox(
                       value: false, // TODO: Implement state
                       onChanged: (value) {},
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(4),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
                     child: RichText(
                       text: TextSpan(
-                        style: GoogleFonts.inter(color: const Color(0xFF667085)),
+                        style: GoogleFonts.inter(
+                          color: const Color(0xFF667085),
+                        ),
                         children: [
                           const TextSpan(text: "I've read and agree with the "),
                           TextSpan(

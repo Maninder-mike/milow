@@ -20,6 +20,18 @@ subprojects {
 }
 subprojects {
     project.evaluationDependsOn(":app")
+    
+    // Configure Java version for all subprojects
+    tasks.withType<JavaCompile> {
+        sourceCompatibility = JavaVersion.VERSION_17.toString()
+        targetCompatibility = JavaVersion.VERSION_17.toString()
+    }
+    
+    tasks.withType<KotlinCompile> {
+        kotlinOptions {
+            jvmTarget = "17"
+        }
+    }
 }
 
 tasks.register<Delete>("clean") {

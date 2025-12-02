@@ -14,6 +14,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
   String _pin = '';
   String? _errorMessage;
   bool _canUseBiometric = false;
+  bool _hasFaceRecognition = false;
 
   @override
   void initState() {
@@ -24,9 +25,11 @@ class _PinEntryPageState extends State<PinEntryPage> {
   Future<void> _checkBiometric() async {
     final isBiometricEnabled = await _authService.isBiometricEnabled();
     final canCheckBiometrics = await _authService.canCheckBiometrics();
+    final hasFace = await _authService.hasFaceRecognition();
 
     setState(() {
       _canUseBiometric = isBiometricEnabled && canCheckBiometrics;
+      _hasFaceRecognition = hasFace;
     });
 
     // Auto-trigger biometric if enabled
@@ -164,13 +167,13 @@ class _PinEntryPageState extends State<PinEntryPage> {
                 padding: const EdgeInsets.only(bottom: 24),
                 child: TextButton.icon(
                   onPressed: _authenticateWithBiometric,
-                  icon: const Icon(
-                    Icons.fingerprint,
-                    color: Color(0xFF007AFF),
+                  icon: Icon(
+                    _hasFaceRecognition ? Icons.face : Icons.fingerprint,
+                    color: const Color(0xFF007AFF),
                     size: 28,
                   ),
                   label: Text(
-                    'Use Biometric',
+                    _hasFaceRecognition ? 'Use Face ID' : 'Use Fingerprint',
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

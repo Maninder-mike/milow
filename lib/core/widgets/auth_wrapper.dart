@@ -8,6 +8,11 @@ class AuthWrapper extends StatefulWidget {
 
   const AuthWrapper({super.key, required this.child});
 
+  // Static method to reset authentication state (call on sign out)
+  static void resetAuthenticationState() {
+    _AuthWrapperState._hasAuthenticatedThisSession = false;
+  }
+
   @override
   State<AuthWrapper> createState() => _AuthWrapperState();
 }
@@ -16,6 +21,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
   final LocalAuthService _authService = LocalAuthService();
   bool _isChecking = true;
   bool _isAuthenticated = false;
+  static bool _hasAuthenticatedThisSession = false;
+  static bool _emailVerificationSnackbarShown = false;
 
   @override
   void initState() {
@@ -24,6 +31,16 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _checkAuthentication() async {
+    // If already authenticated this session, skip check
+    if (_hasAuthenticatedThisSession) {
+      setState(() {
+        _isAuthenticated = true;
+        _isChecking = false;
+      });
+      _maybeShowEmailVerifiedSnackbar();
+      return;
+    }
+
     // Check if user is logged in to Supabase
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
@@ -32,6 +49,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
         _isAuthenticated = true;
         _isChecking = false;
       });
+      _maybeShowEmailVerifiedSnackbar();
       return;
     }
 
@@ -44,6 +62,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
         _isAuthenticated = true;
         _isChecking = false;
       });
+      _hasAuthenticatedThisSession = true;
+      _maybeShowEmailVerifiedSnackbar();
       return;
     }
 
@@ -68,9 +88,40 @@ class _AuthWrapperState extends State<AuthWrapper> {
       _isAuthenticated = authenticated ?? false;
     });
 
-    if (!_isAuthenticated) {
+    if (_isAuthenticated) {
+      // Mark as authenticated for this session
+      _hasAuthenticatedThisSession = true;
+      _maybeShowEmailVerifiedSnackbar();
+    } else {
       // If not authenticated, try again
       _showPinEntry();
+    }
+  }
+
+  void _maybeShowEmailVerifiedSnackbar() {
+    if (_emailVerificationSnackbarShown) return;
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return;
+    final emailConfirmedAt = user.emailConfirmedAt; // nullable
+    if (emailConfirmedAt == null) return;
+    // Show only if verified recently (within last 10 minutes) to avoid noise
+    try {
+      final confirmedTime = DateTime.parse(emailConfirmedAt).toUtc();
+      final now = DateTime.now().toUtc();
+      final diff = now.difference(confirmedTime);
+      if (diff.inMinutes <= 10) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Your email has been successfully verified.'),
+            ),
+          );
+          _emailVerificationSnackbarShown = true;
+        });
+      }
+    } catch (_) {
+      // Ignore parse errors silently
     }
   }
 

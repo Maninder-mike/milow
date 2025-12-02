@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'signup_screen.dart';
 
 class LoginScreen extends StatelessWidget {
-  const LoginScreen({Key? key}) : super(key: key);
+  const LoginScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -176,8 +176,7 @@ class LoginScreen extends StatelessWidget {
 class _SocialIconButton extends StatelessWidget {
   final String asset;
   final VoidCallback onTap;
-  const _SocialIconButton({required this.asset, required this.onTap, Key? key})
-    : super(key: key);
+  const _SocialIconButton({required this.asset, required this.onTap});
 
   @override
   Widget build(BuildContext context) {

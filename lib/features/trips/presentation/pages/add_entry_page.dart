@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:milow/core/services/preferences_service.dart';
 
 class AddEntryPage extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -15,6 +16,10 @@ class AddEntryPage extends StatefulWidget {
 class _AddEntryPageState extends State<AddEntryPage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+
+  // Unit system
+  String _distanceUnit = 'mi';
+  String _fuelUnit = 'gal';
 
   // Trip fields
   final _tripNumberController = TextEditingController();
@@ -39,6 +44,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+    _loadUnitPreferences();
 
     if (widget.initialData != null) {
       _tripNumberController.text = widget.initialData!['tripNumber'] ?? '';
@@ -100,6 +106,15 @@ class _AddEntryPageState extends State<AddEntryPage>
       _tripDateController.text = _formatDateTime(DateTime.now());
     }
     _fuelDateController.text = _formatDateTime(DateTime.now());
+  }
+
+  Future<void> _loadUnitPreferences() async {
+    final distanceUnit = await PreferencesService.getDistanceUnit();
+    final fuelUnit = await PreferencesService.getVolumeUnit();
+    setState(() {
+      _distanceUnit = distanceUnit;
+      _fuelUnit = fuelUnit;
+    });
   }
 
   @override
@@ -452,7 +467,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                             controller: _tripStartOdometerController,
                             keyboardType: TextInputType.number,
                             decoration: _inputDecoration(
-                              hint: 'Miles',
+                              hint: _distanceUnit,
                               prefixIcon: Icons.speed,
                             ),
                           ),
@@ -470,7 +485,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                             controller: _tripEndOdometerController,
                             keyboardType: TextInputType.number,
                             decoration: _inputDecoration(
-                              hint: 'Miles',
+                              hint: _distanceUnit,
                               prefixIcon: Icons.speed,
                             ),
                           ),
@@ -615,7 +630,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                   controller: _odometerController,
                   keyboardType: TextInputType.number,
                   decoration: _inputDecoration(
-                    hint: 'Current miles',
+                    hint: 'Current $_distanceUnit',
                     prefixIcon: Icons.speed,
                   ),
                 ),
@@ -626,7 +641,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Fuel Quantity (Gallons)'),
+                          _buildLabel('Fuel Quantity ($_fuelUnit)'),
                           const SizedBox(height: 8),
                           TextField(
                             controller: _fuelQuantityController,
@@ -646,7 +661,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Price per Gallon'),
+                          _buildLabel('Price per $_fuelUnit'),
                           const SizedBox(height: 8),
                           TextField(
                             controller: _fuelPriceController,

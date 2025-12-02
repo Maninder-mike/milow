@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/auth_service.dart';
-import 'package:milow/core/services/profile_service.dart';
+import 'package:milow/core/services/profile_repository.dart';
+import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/widgets/auth_wrapper.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -16,21 +18,45 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _email;
   String? _avatarUrl;
   bool _loading = true;
+  bool _showWeather = true;
+  UnitSystem _unitSystem = UnitSystem.metric;
 
   @override
   void initState() {
     super.initState();
     _loadProfile();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final showWeather = await PreferencesService.getShowWeather();
+    final unitSystem = await PreferencesService.getUnitSystem();
+    setState(() {
+      _showWeather = showWeather;
+      _unitSystem = unitSystem;
+    });
   }
 
   Future<void> _loadProfile() async {
-    final profile = await ProfileService.getProfile();
+    // Show cached instantly
+    final cached = await ProfileRepository.getCachedFirst(refresh: false);
     setState(() {
-      _fullName = profile?['full_name'] as String?;
-      _email = profile?['email'] as String?;
-      _avatarUrl = profile?['avatar_url'] as String?;
+      _fullName = cached?['full_name'] as String?;
+      _email = cached?['email'] as String?;
+      _avatarUrl = cached?['avatar_url'] as String?;
       _loading = false;
     });
+
+    // Refresh from Supabase and update UI when done
+    final fresh = await ProfileRepository.refresh();
+    if (!mounted) return;
+    if (fresh != null) {
+      setState(() {
+        _fullName = fresh['full_name'] as String?;
+        _email = fresh['email'] as String?;
+        _avatarUrl = fresh['avatar_url'] as String?;
+      });
+    }
   }
 
   @override
@@ -184,7 +210,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   child: Column(
                     children: [
                       const SizedBox(height: 8),
-                      // Menu Items
+                      // Profile Menu Items
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16),
                         decoration: BoxDecoration(
@@ -238,6 +264,51 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      // Settings Section
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(16),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.05),
+                              blurRadius: 10,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          children: [
+                            _buildUnitSystemMenuItem(
+                              context,
+                              Icons.straighten_outlined,
+                              'Unit System',
+                              _unitSystem,
+                              (value) async {
+                                await PreferencesService.setUnitSystem(value);
+                                setState(() {
+                                  _unitSystem = value;
+                                });
+                              },
+                            ),
+                            _buildDivider(),
+                            _buildSwitchMenuItem(
+                              context,
+                              Icons.cloud_outlined,
+                              'Show Weather on Dashboard',
+                              _showWeather,
+                              (value) async {
+                                await PreferencesService.setShowWeather(value);
+                                setState(() {
+                                  _showWeather = value;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
                       // Sign Out
                       Container(
                         margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -257,6 +328,8 @@ class _SettingsPageState extends State<SettingsPage> {
                           Icons.logout,
                           'Sign out',
                           () async {
+                            // Reset authentication state
+                            AuthWrapper.resetAuthenticationState();
                             await AuthService.signOut();
                             if (context.mounted) {
                               context.go('/login');
@@ -360,6 +433,140 @@ class _SettingsPageState extends State<SettingsPage> {
       color: Color(0xFFEAECF0),
       indent: 16,
       endIndent: 16,
+    );
+  }
+
+  Widget _buildUnitSystemMenuItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    UnitSystem currentSystem,
+    Function(UnitSystem) onChanged,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: const Color(0xFF3B82F6)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.roboto(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF3F4F6),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildUnitButton(
+                  'Metric',
+                  currentSystem == UnitSystem.metric,
+                  () => onChanged(UnitSystem.metric),
+                  isDark,
+                ),
+                _buildUnitButton(
+                  'Imperial',
+                  currentSystem == UnitSystem.imperial,
+                  () => onChanged(UnitSystem.imperial),
+                  isDark,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUnitButton(
+    String label,
+    bool isSelected,
+    VoidCallback onTap,
+    bool isDark,
+  ) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFF3B82F6) : Colors.transparent,
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.roboto(
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+            color: isSelected
+                ? Colors.white
+                : isDark
+                ? const Color(0xFF9CA3AF)
+                : const Color(0xFF6B7280),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSwitchMenuItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    bool value,
+    Function(bool) onChanged,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, size: 20, color: const Color(0xFF3B82F6)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: const Color(0xFF3B82F6),
+          ),
+        ],
+      ),
     );
   }
 }

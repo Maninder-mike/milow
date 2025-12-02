@@ -25,7 +25,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
   bool _obscurePassword = true;
   String? _emailError;
   String? _passwordError;
-  double _passwordStrength = 0.0;
   int _failedAttempts = 0;
   DateTime? _lockoutUntil;
   String? _loginError;
@@ -92,7 +91,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     late bool canCheckBiometrics;
     try {
       canCheckBiometrics = await auth.canCheckBiometrics;
-    } on PlatformException catch (_) {
+    } catch (_) {
       canCheckBiometrics = false;
     }
     if (!mounted) return;
@@ -110,20 +109,6 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         _emailError = null;
       }
     });
-  }
-
-  void _calculatePasswordStrength(String password) {
-    if (password.isEmpty) {
-      setState(() => _passwordStrength = 0.0);
-      return;
-    }
-    double strength = 0.0;
-    if (password.length >= 8) strength += 0.25;
-    if (password.length >= 12) strength += 0.25;
-    if (RegExp(r'[a-z]').hasMatch(password)) strength += 0.15;
-    if (RegExp(r'[A-Z]').hasMatch(password)) strength += 0.15;
-    if (RegExp(r'[0-9]').hasMatch(password)) strength += 0.2;
-    setState(() => _passwordStrength = strength.clamp(0.0, 1.0));
   }
 
   bool _isLockedOut() {
@@ -191,6 +176,26 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
       );
+      // After successful sign in, if email was just verified recently, show snackbar immediately.
+      final user = Supabase.instance.client.auth.currentUser;
+      final emailConfirmedAt = user?.emailConfirmedAt;
+      if (emailConfirmedAt != null) {
+        try {
+          final confirmedTime = DateTime.parse(emailConfirmedAt).toUtc();
+          final now = DateTime.now().toUtc();
+          if (now.difference(confirmedTime).inMinutes <= 10) {
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Email verified successfully. Welcome!'),
+                ),
+              );
+            }
+          }
+        } catch (_) {
+          // Ignore parse issues
+        }
+      }
       await _authService.storeUserEmail(_emailController.text.trim());
       setState(() => _failedAttempts = 0);
       if (mounted) context.go('/dashboard');
@@ -460,53 +465,7 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                           ),
                         ),
                         autofillHints: const [AutofillHints.password],
-                        onChanged: _calculatePasswordStrength,
                       ),
-
-                      // Password strength meter
-                      if (_passwordController.text.isNotEmpty) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: ClipRRect(
-                                borderRadius: BorderRadius.circular(2),
-                                child: LinearProgressIndicator(
-                                  value: _passwordStrength,
-                                  backgroundColor: isDark
-                                      ? Colors.white.withOpacity(0.1)
-                                      : Colors.grey[300],
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    _passwordStrength < 0.3
-                                        ? Colors.red
-                                        : _passwordStrength < 0.6
-                                        ? Colors.orange
-                                        : Colors.green,
-                                  ),
-                                  minHeight: 4,
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              _passwordStrength < 0.3
-                                  ? 'Weak'
-                                  : _passwordStrength < 0.6
-                                  ? 'Fair'
-                                  : 'Strong',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w500,
-                                color: _passwordStrength < 0.3
-                                    ? Colors.red
-                                    : _passwordStrength < 0.6
-                                    ? Colors.orange
-                                    : Colors.green,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
 
                       // Forgot password link - easy to find
                       const SizedBox(height: 12),

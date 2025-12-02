@@ -28,12 +28,27 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
     final pinEnabled = await _authService.isPinEnabled();
     final canCheckBiometrics = await _authService.canCheckBiometrics();
     final hasFace = await _authService.hasFaceRecognition();
+    final availableBiometrics = await _authService.getAvailableBiometrics();
+
+    // Determine biometric type based on available biometrics
+    String biometricType = 'Biometric';
+    if (availableBiometrics.isNotEmpty) {
+      if (hasFace) {
+        biometricType = 'Face Recognition';
+      } else if (availableBiometrics.toString().contains('fingerprint')) {
+        biometricType = 'Fingerprint';
+      } else if (availableBiometrics.toString().contains('strong') ||
+          availableBiometrics.toString().contains('weak')) {
+        // Android biometric might be face or other
+        biometricType = 'Biometric Authentication';
+      }
+    }
 
     setState(() {
       _biometricEnabled = biometricEnabled;
       _pinEnabled = pinEnabled;
       _biometricAvailable = canCheckBiometrics;
-      _biometricType = hasFace ? 'Face ID' : 'Fingerprint';
+      _biometricType = biometricType;
     });
   }
 
@@ -274,7 +289,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                         Switch(
                           value: _pinEnabled,
                           onChanged: _togglePin,
-                          activeColor: const Color(0xFF007AFF),
+                          activeThumbColor: const Color(0xFF007AFF),
                         ),
                       ],
                     ),
@@ -384,7 +399,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                           onChanged: _biometricAvailable
                               ? _toggleBiometric
                               : null,
-                          activeColor: const Color(0xFF007AFF),
+                          activeThumbColor: const Color(0xFF007AFF),
                         ),
                       ],
                     ),

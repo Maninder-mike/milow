@@ -5,6 +5,30 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:milow/core/services/profile_service.dart';
+import 'package:milow/core/services/profile_repository.dart';
+import 'package:milow/core/models/country_code.dart';
+import 'package:milow/core/widgets/country_code_selector.dart';
+
+// Expected local (national) number lengths for common dial codes (excluding country code).
+// If a dial code is not listed, generic validation 4-15 digits applies.
+const Map<String, List<int>> _countryLocalLengths = {
+  '+1': [10], // US/CA
+  '+44': [10], // UK (simplified)
+  '+91': [10], // India
+  '+61': [9], // Australia
+  '+81': [10], // Japan
+  '+49': [10, 11], // Germany
+  '+33': [9], // France
+  '+34': [9], // Spain
+  '+52': [10], // Mexico
+  '+31': [9], // Netherlands
+  '+32': [9], // Belgium
+  '+39': [10], // Italy (common mobile length)
+  '+86': [11], // China
+  '+7': [10], // Russia
+  '+27': [9], // South Africa
+  '+55': [10, 11], // Brazil varying
+};
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -27,6 +51,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   XFile? _pickedImage;
   bool _loading = true;
   bool _saving = false;
+  CountryCode _selectedCountryCode = countryCodes[0]; // Default to US
 
   @override
   void initState() {
@@ -35,19 +60,63 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Future<void> _loadProfile() async {
-    final profile = await ProfileService.getProfile();
-    setState(() {
-      _nameController.text = profile?['full_name'] ?? '';
-      _addressController.text = profile?['address'] ?? '';
-      _countryController.text = profile?['country'] ?? '';
-      _phoneController.text = profile?['phone'] ?? '';
-      _emailController.text = profile?['email'] ?? '';
-      _companyNameController.text = profile?['company_name'] ?? '';
-      _companyCodeController.text = profile?['company_code'] ?? '';
-      _companyCodeController.text = profile?['company_code'] ?? '';
-      _avatarUrl = profile?['avatar_url'] as String?;
-      _loading = false;
-    });
+    // Load cached first for instant form fill
+    final profile = await ProfileRepository.getCachedFirst(refresh: false);
+    if (profile != null) {
+      final phoneNumber = profile['phone'] as String? ?? '';
+      CountryCode? parsedCountry;
+      String localNumber = '';
+
+      if (phoneNumber.isNotEmpty) {
+        parsedCountry = parsePhoneNumber(phoneNumber);
+        if (parsedCountry != null) {
+          localNumber = extractPhoneNumber(phoneNumber, parsedCountry) ?? '';
+        }
+      }
+
+      setState(() {
+        _nameController.text = profile['full_name'] ?? '';
+        _addressController.text = profile['address'] ?? '';
+        _countryController.text = profile['country'] ?? '';
+        _phoneController.text = localNumber;
+        _selectedCountryCode = parsedCountry ?? countryCodes[0];
+        _emailController.text = profile['email'] ?? '';
+        _companyNameController.text = profile['company_name'] ?? '';
+        _companyCodeController.text = profile['company_code'] ?? '';
+        _avatarUrl = profile['avatar_url'] as String?;
+        _loading = false;
+      });
+    } else {
+      setState(() => _loading = false);
+    }
+
+    // Refresh from Supabase to ensure latest
+    final fresh = await ProfileRepository.refresh();
+    if (!mounted) return;
+    if (fresh != null) {
+      final phoneNumber = fresh['phone'] as String? ?? '';
+      CountryCode? parsedCountry;
+      String localNumber = '';
+
+      if (phoneNumber.isNotEmpty) {
+        parsedCountry = parsePhoneNumber(phoneNumber);
+        if (parsedCountry != null) {
+          localNumber = extractPhoneNumber(phoneNumber, parsedCountry) ?? '';
+        }
+      }
+
+      setState(() {
+        _nameController.text = fresh['full_name'] ?? '';
+        _addressController.text = fresh['address'] ?? '';
+        _countryController.text = fresh['country'] ?? '';
+        _phoneController.text = localNumber;
+        _selectedCountryCode = parsedCountry ?? countryCodes[0];
+        _emailController.text = fresh['email'] ?? '';
+        _companyNameController.text = fresh['company_name'] ?? '';
+        _companyCodeController.text = fresh['company_code'] ?? '';
+        _avatarUrl = fresh['avatar_url'] as String?;
+      });
+    }
   }
 
   Future<void> _pickImage() async {
@@ -77,12 +146,44 @@ class _EditProfilePageState extends State<EditProfilePage> {
           filename: filename,
         );
       }
-      await ProfileService.upsertProfile({
+
+      // Combine country code + phone number into E.164 format
+      String fullPhone = '';
+      final localPhone = _phoneController.text.trim();
+      if (localPhone.isNotEmpty) {
+        fullPhone = '${_selectedCountryCode.dialCode}$localPhone';
+        // Save-time validation for full international number length (E.164: up to 15 digits)
+        final e164Pattern = RegExp(
+          r'^\+[1-9]\d{7,14}$',
+        ); // 8-15 digits total excluding '+'
+        if (!e164Pattern.hasMatch(fullPhone)) {
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Invalid international phone length')),
+          );
+          return;
+        }
+        // Country-specific local length double-check (already done in field but repeated for safety)
+        final lengths = _countryLocalLengths[_selectedCountryCode.dialCode];
+        if (lengths != null && !lengths.contains(localPhone.length)) {
+          setState(() => _saving = false);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Local number must be ${lengths.join(' or ')} digits',
+              ),
+            ),
+          );
+          return;
+        }
+      }
+
+      await ProfileRepository.updateOptimistic({
         'full_name': _nameController.text.trim(),
         // username removed from schema
         'address': _addressController.text.trim(),
         'country': _countryController.text.trim(),
-        'phone': _phoneController.text.trim(),
+        'phone': fullPhone,
         'email': _emailController.text.trim(),
         'company_name': _companyNameController.text.trim(),
         'company_code': _companyCodeController.text.trim(),
@@ -290,24 +391,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                               },
                             ),
                             const SizedBox(height: 16),
-                            _buildTextField(
-                              controller: _phoneController,
-                              label: 'Contact Number',
-                              icon: Icons.phone_outlined,
-                              keyboardType: TextInputType.phone,
-                              hintText: '+14155552671',
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return null; // optional
-                                }
-                                final s = v.trim();
-                                final e164 = RegExp(r'^\+[1-9]\d{6,14}$');
-                                if (!e164.hasMatch(s)) {
-                                  return 'Use E.164 format, e.g. +14155552671';
-                                }
-                                return null;
-                              },
-                            ),
+                            _buildPhoneField(),
                           ],
                         ),
                       ),
@@ -478,6 +562,119 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 ),
               ),
             ),
+    );
+  }
+
+  Widget _buildPhoneField() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.phone_outlined,
+              size: 18,
+              color: Color(0xFF007AFF),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Contact Number',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            CountryCodeSelector(
+              selectedCountry: _selectedCountryCode,
+              onCountryChanged: (country) {
+                setState(() {
+                  _selectedCountryCode = country;
+                });
+              },
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: _phoneController,
+                keyboardType: TextInputType.phone,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) {
+                    return null; // optional
+                  }
+                  final s = v.trim();
+                  // Basic validation - just check if it's numeric and reasonable length
+                  if (!RegExp(r'^\d{4,15}$').hasMatch(s)) {
+                    return 'Enter digits only (4-15)';
+                  }
+                  final lengths =
+                      _countryLocalLengths[_selectedCountryCode.dialCode];
+                  if (lengths != null && !lengths.contains(s.length)) {
+                    return 'Expect ${lengths.join(' or ')} digits';
+                  }
+                  return null;
+                },
+                style: GoogleFonts.inter(fontSize: 15, color: textColor),
+                decoration: InputDecoration(
+                  hintText: 'Phone number',
+                  hintStyle: GoogleFonts.inter(
+                    fontSize: 15,
+                    color: const Color(0xFF98A2B3),
+                  ),
+                  filled: true,
+                  fillColor: isDark
+                      ? const Color(0xFF2A2A2A)
+                      : const Color(0xFFF9FAFB),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF3A3A3A)
+                          : const Color(0xFFE5E7EB),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(
+                      color: Color(0xFF007AFF),
+                      width: 2,
+                    ),
+                  ),
+                  errorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.red),
+                  ),
+                  focusedErrorBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Colors.red, width: 2),
+                  ),
+                  errorStyle: GoogleFonts.inter(
+                    fontSize: 12,
+                    color: Colors.red,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
     );
   }
 

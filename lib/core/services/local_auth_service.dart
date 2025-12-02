@@ -1,4 +1,3 @@
-import 'package:flutter/services.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:crypto/crypto.dart';
@@ -26,8 +25,15 @@ class LocalAuthService {
   // Get available biometric types (fingerprint, face, etc.)
   Future<List<BiometricType>> getAvailableBiometrics() async {
     try {
-      return await _localAuth.getAvailableBiometrics();
+      final biometrics = await _localAuth.getAvailableBiometrics();
+      if (kDebugMode) {
+        debugPrint('Available biometrics: $biometrics');
+      }
+      return biometrics;
     } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error getting available biometrics: $e');
+      }
       return [];
     }
   }
@@ -35,14 +41,41 @@ class LocalAuthService {
   // Check if device supports Face ID/Face Recognition
   Future<bool> hasFaceRecognition() async {
     final biometrics = await getAvailableBiometrics();
-    return biometrics.contains(BiometricType.face);
+    // Check for face recognition (iOS Face ID or Android Face Unlock)
+    final hasFace = biometrics.contains(BiometricType.face);
+    // On some Android devices, face unlock might be reported as 'weak' or 'strong'
+    final hasStrong = biometrics.contains(BiometricType.strong);
+    final hasWeak = biometrics.contains(BiometricType.weak);
+
+    if (kDebugMode) {
+      debugPrint('Face: $hasFace, Strong: $hasStrong, Weak: $hasWeak');
+    }
+
+    // If device has face biometric, return true
+    // Otherwise, if it has strong/weak but no fingerprint, it might be face
+    if (hasFace) return true;
+
+    // Check if strong/weak biometric is available and no fingerprint
+    // This could indicate face unlock on Android
+    final hasFingerprint = biometrics.contains(BiometricType.fingerprint);
+    if ((hasStrong || hasWeak) && !hasFingerprint) {
+      return true; // Likely face unlock
+    }
+
+    return false;
   }
 
   // Authenticate with biometrics
   Future<bool> authenticateWithBiometrics() async {
     try {
+      // Check if it's Face ID or fingerprint for the message
+      final hasFace = await hasFaceRecognition();
+      final localizedReason = hasFace
+          ? 'Please authenticate with Face ID to access the app'
+          : 'Please authenticate with fingerprint to access the app';
+
       final isAuthenticated = await _localAuth.authenticate(
-        localizedReason: 'Please authenticate to access the app',
+        localizedReason: localizedReason,
       );
 
       if (isAuthenticated) {
@@ -50,7 +83,7 @@ class LocalAuthService {
       }
 
       return isAuthenticated;
-    } on PlatformException catch (e) {
+    } catch (e) {
       if (kDebugMode) {
         debugPrint('Biometric authentication error: $e');
       }

@@ -1,5 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow/core/services/local_profile_store.dart';
+import 'package:milow/core/services/profile_service.dart';
 
 class AuthService {
   static const String _biometricEnabledKey = 'biometric_enabled';
@@ -20,6 +22,11 @@ class AuthService {
   }
 
   static Future<void> signOut() async {
+    // Clear local cached profile for current user
+    final uid = ProfileService.currentUserId;
+    if (uid != null) {
+      await LocalProfileStore.delete(uid);
+    }
     await Supabase.instance.client.auth.signOut();
   }
 

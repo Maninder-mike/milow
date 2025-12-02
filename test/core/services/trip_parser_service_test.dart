@@ -33,7 +33,7 @@ Notes PO#: 000604-5; Reference#: SO205583
       expect(result['endLocation'], contains('20 INNOVATION WAY'));
       expect(result['endLocation'], contains('CHARLOTTETOWN PE C1E 0K4'));
       expect(result['date'], '11/12/2025 8:00 AM');
-      print('Extracted date: ${result['date']}');
+      printOnFailure('Extracted date: ${result['date']}');
       expect(result['notes'], contains('PO#: 000604-5'));
     });
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 /// DesignTokens encapsulates spacing, radii, elevations and shared colors.
-/// Added as a ThemeExtension so we can access via Theme.of(context).extension<DesignTokens>()
+/// Added as a ThemeExtension so we can access via `Theme.of(context).extension<DesignTokens>()`
 class DesignTokens extends ThemeExtension<DesignTokens> {
   final double spacingXS;
   final double spacingS;

@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
+import 'package:milow/core/services/preferences_service.dart';
 
 class RecordsListPage extends StatefulWidget {
   const RecordsListPage({super.key});
@@ -19,6 +20,23 @@ class _RecordsListPageState extends State<RecordsListPage> {
   String _selectedFilter = 'All';
   String _searchQuery = '';
   DateTimeRange? _selectedDateRange;
+  String _distanceUnit = 'mi';
+  String _fuelUnit = 'gal';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUnitPreferences();
+  }
+
+  Future<void> _loadUnitPreferences() async {
+    final distanceUnit = await PreferencesService.getDistanceUnit();
+    final fuelUnit = await PreferencesService.getVolumeUnit();
+    setState(() {
+      _distanceUnit = distanceUnit;
+      _fuelUnit = fuelUnit;
+    });
+  }
 
   // Dummy data for records (trips and fuel)
   final List<Map<String, String>> _allRecords = const [
@@ -722,7 +740,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
               ),
               const SizedBox(height: 16),
               Text(
-                isTrip ? 'Miles' : 'Gallons',
+                isTrip ? _distanceUnit : _fuelUnit,
                 style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
@@ -735,7 +753,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                 keyboardType: TextInputType.number,
                 style: GoogleFonts.inter(color: textColor),
                 decoration: InputDecoration(
-                  suffixText: isTrip ? 'mi' : 'gal',
+                  suffixText: isTrip ? _distanceUnit : _fuelUnit,
                   filled: true,
                   fillColor: cardColor,
                   border: OutlineInputBorder(

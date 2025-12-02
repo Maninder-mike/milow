@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:milow/core/theme/app_theme.dart';
 import 'package:milow/core/constants/supabase_constants.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:milow/core/services/theme_service.dart';
+import 'package:milow/core/services/profile_provider.dart';
 import 'package:flutter/services.dart';
 import 'package:milow/core/services/trip_parser_service.dart';
+import 'package:milow/core/services/local_profile_store.dart';
 
 // Placeholder imports - will be replaced with actual pages
 import 'package:milow/features/auth/presentation/pages/login_page.dart';
@@ -22,18 +25,35 @@ import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/features/explore/presentation/pages/explore_page.dart';
 import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
 import 'package:milow/core/widgets/auth_wrapper.dart';
+import 'package:milow/features/auth/presentation/pages/email_verified_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
-  await Supabase.initialize(
-    url: SupabaseConstants.supabaseUrl,
-    anonKey: SupabaseConstants.supabaseAnonKey,
-  );
+  // Initialize Hive for local caching
+  await Hive.initFlutter();
+  await LocalProfileStore.init();
+
+  // Validate Supabase environment quickly to avoid silent issues
+  final supabaseUrl = SupabaseConstants.supabaseUrl;
+  final supabaseAnon = SupabaseConstants.supabaseAnonKey;
+  if (supabaseUrl.isEmpty || supabaseAnon.isEmpty) {
+    debugPrint(
+      '[Milow] WARNING: Supabase env not set. Check .env for NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY',
+    );
+  }
+
+  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnon);
 
   runApp(
-    ChangeNotifierProvider(create: (_) => ThemeService(), child: const MyApp()),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => ThemeService()),
+        ChangeNotifierProvider(create: (_) => ProfileProvider()),
+      ],
+      child: const MyApp(),
+    ),
   );
 }
 
@@ -100,6 +120,11 @@ final _router = GoRouter(
     GoRoute(
       path: '/inbox',
       builder: (context, state) => const AuthWrapper(child: InboxPage()),
+    ),
+    GoRoute(
+      path: '/email-verified',
+      builder: (context, state) =>
+          const AuthWrapper(child: EmailVerifiedPage()),
     ),
   ],
 );

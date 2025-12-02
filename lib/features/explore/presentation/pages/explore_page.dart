@@ -9,6 +9,7 @@ class DummyRouteCard extends StatelessWidget {
   final String subtitle;
   final IconData icon;
   const DummyRouteCard({
+    super.key,
     required this.title,
     required this.subtitle,
     required this.icon,
@@ -35,6 +36,7 @@ class DummyDestinationCard extends StatelessWidget {
   final String description;
   final IconData icon;
   const DummyDestinationCard({
+    super.key,
     required this.city,
     required this.description,
     required this.icon,
@@ -61,6 +63,7 @@ class DummyActivityCard extends StatelessWidget {
   final String time;
   final IconData icon;
   const DummyActivityCard({
+    super.key,
     required this.activity,
     required this.time,
     required this.icon,
@@ -96,7 +99,7 @@ class _ExplorePageState extends State<ExplorePage> {
     final backgroundColor = isDark
         ? const Color(0xFF121212)
         : const Color(0xFFF9FAFB);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    // final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
 
     return AppScaffold(
@@ -271,54 +274,7 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  Widget _buildPlaceholderCard(
-    Color cardColor,
-    Color textColor,
-    String message,
-    IconData icon,
-  ) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(32),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 32, color: const Color(0xFF007AFF)),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            message,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: const Color(0xFF667085),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Coming soon',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF007AFF),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+  // Removed unused _buildPlaceholderCard to reduce analyzer warnings
 }
 
 class _SectionLabel extends StatelessWidget {
