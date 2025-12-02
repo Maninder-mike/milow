@@ -8,6 +8,7 @@ import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/models/country_code.dart';
 import 'package:milow/core/widgets/country_code_selector.dart';
+import 'package:milow/core/utils/error_handler.dart';
 
 // Expected local (national) number lengths for common dial codes (excluding country code).
 // If a dial code is not listed, generic validation 4-15 digits applies.
@@ -136,6 +137,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     String? newAvatarUrl = _avatarUrl;
+    final messenger = ScaffoldMessenger.of(context);
     try {
       if (_pickedImage != null) {
         final bytes = await _pickedImage!.readAsBytes();
@@ -158,7 +160,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         ); // 8-15 digits total excluding '+'
         if (!e164Pattern.hasMatch(fullPhone)) {
           setState(() => _saving = false);
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             const SnackBar(content: Text('Invalid international phone length')),
           );
           return;
@@ -167,7 +169,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         final lengths = _countryLocalLengths[_selectedCountryCode.dialCode];
         if (lengths != null && !lengths.contains(localPhone.length)) {
           setState(() => _saving = false);
-          ScaffoldMessenger.of(context).showSnackBar(
+          messenger.showSnackBar(
             SnackBar(
               content: Text(
                 'Local number must be ${lengths.join(' or ')} digits',
@@ -190,16 +192,25 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'avatar_url': newAvatarUrl,
       });
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('Profile updated')));
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Profile updated')),
+        );
         context.pop();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        messenger.showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.white, size: 20),
+                const SizedBox(width: 12),
+                Expanded(child: Text(ErrorHandler.getErrorMessage(e))),
+              ],
+            ),
+            backgroundColor: Theme.of(context).colorScheme.error,
+          ),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);

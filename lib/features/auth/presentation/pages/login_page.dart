@@ -64,12 +64,12 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     _entranceController.forward();
   }
 
-  Future<void> _checkExistingSession() async {
+  void _checkExistingSession() {
     // Check if user has a valid Supabase session
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null && mounted) {
       // Valid session exists, redirect to dashboard
-      Future.microtask(() => context.go('/dashboard'));
+      context.go('/dashboard');
     }
   }
 
@@ -368,18 +368,20 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     color: isDark
-                        ? Colors.white.withOpacity(0.08)
-                        : Colors.white.withOpacity(0.25),
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.white.withValues(alpha: 0.25),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: isDark
-                          ? Colors.white.withOpacity(0.15)
-                          : Colors.white.withOpacity(0.4),
+                          ? Colors.white.withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.4),
                       width: 1.5,
                     ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(isDark ? 0.3 : 0.1),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.3 : 0.1,
+                        ),
                         blurRadius: 32,
                         offset: const Offset(0, 12),
                       ),
@@ -495,10 +497,10 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.1),
+                            color: Colors.red.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                             border: Border.all(
-                              color: Colors.red.withOpacity(0.3),
+                              color: Colors.red.withValues(alpha: 0.3),
                             ),
                           ),
                           child: Row(
@@ -645,11 +647,14 @@ class _BlobPainter extends CustomPainter {
     final r2 = size.width * 0.22;
     final paint1 = Paint()
       ..shader = RadialGradient(
-        colors: [baseColor.withOpacity(0.35), baseColor.withOpacity(0.0)],
+        colors: [
+          baseColor.withValues(alpha: 0.35),
+          baseColor.withValues(alpha: 0.0),
+        ],
       ).createShader(Rect.fromCircle(center: p1, radius: r1));
     final paint2 = Paint()
       ..shader = RadialGradient(
-        colors: [accent.withOpacity(0.32), accent.withOpacity(0.0)],
+        colors: [accent.withValues(alpha: 0.32), accent.withValues(alpha: 0.0)],
       ).createShader(Rect.fromCircle(center: p2, radius: r2));
     canvas.drawCircle(p1, r1, paint1);
     canvas.drawCircle(p2, r2, paint2);

@@ -383,7 +383,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         color: const Color(0xFF007AFF),
                       ),
                     ),
-                    backgroundColor: const Color(0xFF007AFF).withOpacity(0.1),
+                    backgroundColor: const Color(
+                      0xFF007AFF,
+                    ).withValues(alpha: 0.1),
                     deleteIcon: const Icon(
                       Icons.close,
                       size: 16,
@@ -445,7 +447,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _filteredRecords.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
                     itemBuilder: (context, index) {
                       final record = _filteredRecords[index];
                       return Dismissible(
@@ -572,7 +574,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                       (record['type'] == 'trip'
                                               ? const Color(0xFF3B82F6)
                                               : const Color(0xFFF59E0B))
-                                          .withOpacity(0.1),
+                                          .withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(10),
                                 ),
                                 child: Icon(
@@ -1000,7 +1002,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF007AFF).withOpacity(0.1),
+                      color: const Color(0xFF007AFF).withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -1372,7 +1374,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -1405,7 +1407,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF007AFF).withOpacity(0.1),
+                  color: const Color(0xFF007AFF).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -1437,9 +1439,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         Navigator.pop(context);
-                        await Share.shareXFiles([
-                          XFile(filePath),
-                        ], text: 'Milow Records Report');
+                        await SharePlus.instance.share(
+                          ShareParams(
+                            files: [XFile(filePath)],
+                            text: 'Milow Records Report',
+                          ),
+                        );
                       },
                       icon: const Icon(Icons.share, color: Color(0xFF007AFF)),
                       label: Text(

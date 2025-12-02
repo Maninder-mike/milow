@@ -5,6 +5,7 @@ import 'package:milow/core/services/auth_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/widgets/auth_wrapper.dart';
+import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -305,6 +306,21 @@ class _SettingsPageState extends State<SettingsPage> {
                                 });
                               },
                             ),
+                            _buildDivider(),
+                            _buildMenuItem(
+                              context,
+                              Icons.traffic_outlined,
+                              'Border Wait Times',
+                              () async {
+                                await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const BorderCrossingSelector(),
+                                  ),
+                                );
+                              },
+                            ),
                           ],
                         ),
                       ),
@@ -563,7 +579,7 @@ class _SettingsPageState extends State<SettingsPage> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeColor: const Color(0xFF3B82F6),
+            activeTrackColor: const Color(0xFF3B82F6),
           ),
         ],
       ),

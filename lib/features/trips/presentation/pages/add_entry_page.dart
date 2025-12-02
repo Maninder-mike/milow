@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/utils/error_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:milow/core/services/preferences_service.dart';
@@ -14,8 +15,16 @@ class AddEntryPage extends StatefulWidget {
 }
 
 class _AddEntryPageState extends State<AddEntryPage>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late TabController _tabController;
+  late AnimationController _headerAnimationController;
+  late Animation<double> _headerAnimation;
+
+  // Scroll-to-hide header
+  final ScrollController _tripScrollController = ScrollController();
+  final ScrollController _fuelScrollController = ScrollController();
+  bool _isHeaderVisible = true;
+  double _lastScrollOffset = 0;
 
   // Unit system
   String _distanceUnit = 'mi';
@@ -26,8 +35,15 @@ class _AddEntryPageState extends State<AddEntryPage>
   final _tripTruckNumberController = TextEditingController();
   final _tripTrailerNumberController = TextEditingController();
   final _tripDateController = TextEditingController();
-  final _tripStartLocationController = TextEditingController();
-  final _tripEndLocationController = TextEditingController();
+
+  // Multiple pickup locations (start locations)
+  final List<TextEditingController> _pickupControllers = [];
+
+  // Multiple delivery locations (end locations)
+  final List<TextEditingController> _deliveryControllers = [];
+
+  static const int _maxLocations = 20;
+
   final _tripStartOdometerController = TextEditingController();
   final _tripEndOdometerController = TextEditingController();
   final _tripNotesController = TextEditingController();
@@ -44,7 +60,26 @@ class _AddEntryPageState extends State<AddEntryPage>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+
+    // Initialize header animation
+    _headerAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 250),
+    );
+    _headerAnimation = CurvedAnimation(
+      parent: _headerAnimationController,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _headerAnimationController.value = 1.0; // Start visible
+
+    _tripScrollController.addListener(_onTripScroll);
+    _fuelScrollController.addListener(_onFuelScroll);
     _loadUnitPreferences();
+
+    // Initialize with one pickup and one delivery location
+    _addPickupLocation();
+    _addDeliveryLocation();
 
     if (widget.initialData != null) {
       _tripNumberController.text = widget.initialData!['tripNumber'] ?? '';
@@ -52,10 +87,16 @@ class _AddEntryPageState extends State<AddEntryPage>
           widget.initialData!['truckNumber'] ?? '';
       _tripTrailerNumberController.text =
           widget.initialData!['trailerNumber'] ?? '';
-      _tripStartLocationController.text =
-          widget.initialData!['startLocation'] ?? '';
-      _tripEndLocationController.text =
-          widget.initialData!['endLocation'] ?? '';
+      // Set first pickup location from initialData
+      if (widget.initialData!['startLocation'] != null &&
+          _pickupControllers.isNotEmpty) {
+        _pickupControllers[0].text = widget.initialData!['startLocation'] ?? '';
+      }
+      // Set first delivery location from initialData
+      if (widget.initialData!['endLocation'] != null &&
+          _deliveryControllers.isNotEmpty) {
+        _deliveryControllers[0].text = widget.initialData!['endLocation'] ?? '';
+      }
       _tripNotesController.text = widget.initialData!['notes'] ?? '';
 
       // Handle date if present
@@ -119,11 +160,22 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   @override
   void dispose() {
+    _headerAnimationController.dispose();
+    _tripScrollController.removeListener(_onTripScroll);
+    _fuelScrollController.removeListener(_onFuelScroll);
+    _tripScrollController.dispose();
+    _fuelScrollController.dispose();
     _tabController.dispose();
     _tripNumberController.dispose();
     _tripDateController.dispose();
-    _tripStartLocationController.dispose();
-    _tripEndLocationController.dispose();
+    // Dispose pickup controllers
+    for (final controller in _pickupControllers) {
+      controller.dispose();
+    }
+    // Dispose delivery controllers
+    for (final controller in _deliveryControllers) {
+      controller.dispose();
+    }
     _tripStartOdometerController.dispose();
     _tripEndOdometerController.dispose();
     _tripNotesController.dispose();
@@ -134,6 +186,236 @@ class _AddEntryPageState extends State<AddEntryPage>
     _fuelQuantityController.dispose();
     _fuelPriceController.dispose();
     super.dispose();
+  }
+
+  // Methods to manage pickup locations
+  void _addPickupLocation() {
+    if (_pickupControllers.length < _maxLocations) {
+      setState(() {
+        _pickupControllers.add(TextEditingController());
+      });
+    }
+  }
+
+  void _removePickupLocation(int index) {
+    if (_pickupControllers.length > 1) {
+      setState(() {
+        _pickupControllers[index].dispose();
+        _pickupControllers.removeAt(index);
+      });
+    }
+  }
+
+  // Methods to manage delivery locations
+  void _addDeliveryLocation() {
+    if (_deliveryControllers.length < _maxLocations) {
+      setState(() {
+        _deliveryControllers.add(TextEditingController());
+      });
+    }
+  }
+
+  void _removeDeliveryLocation(int index) {
+    if (_deliveryControllers.length > 1) {
+      setState(() {
+        _deliveryControllers[index].dispose();
+        _deliveryControllers.removeAt(index);
+      });
+    }
+  }
+
+  // Build pickup location fields with add/remove buttons
+  List<Widget> _buildPickupLocationFields() {
+    final fields = <Widget>[];
+    for (int i = 0; i < _pickupControllers.length; i++) {
+      final isLast = i == _pickupControllers.length - 1;
+      final canAdd = _pickupControllers.length < _maxLocations;
+      final canRemove = _pickupControllers.length > 1;
+
+      fields.add(
+        Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _pickupControllers[i],
+                  textCapitalization: TextCapitalization.words,
+                  keyboardType: TextInputType.streetAddress,
+                  decoration: _inputDecoration(
+                    hint: i == 0 ? 'City, State' : 'Additional pickup ${i + 1}',
+                    prefixIcon: Icons.location_on,
+                    suffixIcon: Icons.my_location,
+                    onSuffixTap: () => _getLocationFor(_pickupControllers[i]),
+                  ),
+                ),
+              ),
+              if (canRemove) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: () => _removePickupLocation(i),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        size: 20,
+                        color: Colors.red.shade600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (isLast && canAdd) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: _addPickupLocation,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF81C784)),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        size: 20,
+                        color: Color(0xFF43A047),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    return fields;
+  }
+
+  // Build delivery location fields with add/remove buttons
+  List<Widget> _buildDeliveryLocationFields() {
+    final fields = <Widget>[];
+    for (int i = 0; i < _deliveryControllers.length; i++) {
+      final isLast = i == _deliveryControllers.length - 1;
+      final canAdd = _deliveryControllers.length < _maxLocations;
+      final canRemove = _deliveryControllers.length > 1;
+
+      fields.add(
+        Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _deliveryControllers[i],
+                  textCapitalization: TextCapitalization.words,
+                  keyboardType: TextInputType.streetAddress,
+                  decoration: _inputDecoration(
+                    hint: i == 0
+                        ? 'City, State'
+                        : 'Additional delivery ${i + 1}',
+                    prefixIcon: Icons.location_on,
+                    suffixIcon: Icons.my_location,
+                    onSuffixTap: () => _getLocationFor(_deliveryControllers[i]),
+                  ),
+                ),
+              ),
+              if (canRemove) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: () => _removeDeliveryLocation(i),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        size: 20,
+                        color: Colors.red.shade600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (isLast && canAdd) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: _addDeliveryLocation,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF81C784)),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        size: 20,
+                        color: Color(0xFF43A047),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    return fields;
+  }
+
+  void _onTripScroll() {
+    _handleScroll(_tripScrollController);
+  }
+
+  void _onFuelScroll() {
+    _handleScroll(_fuelScrollController);
+  }
+
+  void _handleScroll(ScrollController controller) {
+    final currentOffset = controller.offset;
+    final scrollDelta = currentOffset - _lastScrollOffset;
+
+    // Only trigger hide/show after scrolling a threshold amount
+    if (scrollDelta > 3 && currentOffset > 50 && _isHeaderVisible) {
+      // Scrolling down - hide header
+      _isHeaderVisible = false;
+      _headerAnimationController.reverse();
+    } else if (scrollDelta < -3 && !_isHeaderVisible) {
+      // Scrolling up - show header
+      _isHeaderVisible = true;
+      _headerAnimationController.forward();
+    } else if (currentOffset <= 0 && !_isHeaderVisible) {
+      // Always show header when at top
+      _isHeaderVisible = true;
+      _headerAnimationController.forward();
+    }
+
+    _lastScrollOffset = currentOffset;
   }
 
   String _formatDateTime(DateTime dateTime) {
@@ -227,9 +509,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ErrorHandler.showError(context, e);
       }
     }
   }
@@ -247,76 +527,89 @@ class _AddEntryPageState extends State<AddEntryPage>
       body: SafeArea(
         child: Column(
           children: [
-            // Header
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.arrow_back, color: textColor),
-                        onPressed: () => Navigator.pop(context),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+            // Animated Header and Tabs with smooth slide + fade
+            SizeTransition(
+              sizeFactor: _headerAnimation,
+              axisAlignment: -1.0,
+              child: FadeTransition(
+                opacity: _headerAnimation,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Header
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Text(
-                            'Add Entry',
-                            style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
-                            ),
-                          ),
-                          Text(
-                            'Track your trips and fuel',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: const Color(0xFF667085),
-                            ),
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: Icon(Icons.arrow_back, color: textColor),
+                                onPressed: () => Navigator.pop(context),
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints(),
+                              ),
+                              const SizedBox(width: 12),
+                              Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Add Entry',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 28,
+                                      fontWeight: FontWeight.w700,
+                                      color: textColor,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Track your trips and fuel',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: const Color(0xFF667085),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
-                  ),
-                ],
+                    ),
+                    // Tabs
+                    Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 16),
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF2A2A2A)
+                            : const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: TabBar(
+                        controller: _tabController,
+                        indicator: BoxDecoration(
+                          color: const Color(0xFF007AFF),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        labelColor: Colors.white,
+                        unselectedLabelColor: const Color(0xFF667085),
+                        labelStyle: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        tabs: const [
+                          Tab(text: 'Add Trip'),
+                          Tab(text: 'Add Fuel'),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                  ],
+                ),
               ),
             ),
-            // Tabs
-            Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF2A2A2A)
-                    : const Color(0xFFF3F4F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: TabBar(
-                controller: _tabController,
-                indicator: BoxDecoration(
-                  color: const Color(0xFF007AFF),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                indicatorSize: TabBarIndicatorSize.tab,
-                dividerColor: Colors.transparent,
-                labelColor: Colors.white,
-                unselectedLabelColor: const Color(0xFF667085),
-                labelStyle: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-                tabs: const [
-                  Tab(text: 'Add Trip'),
-                  Tab(text: 'Add Fuel'),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
             // Tab Views
             Expanded(
               child: TabBarView(
@@ -335,6 +628,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       children: [
         Expanded(
           child: SingleChildScrollView(
+            controller: _tripScrollController,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -415,35 +709,19 @@ class _AddEntryPageState extends State<AddEntryPage>
                   ),
                 ),
                 const SizedBox(height: 12),
-                _buildLabel('Start Location'),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _tripStartLocationController,
-                  textCapitalization: TextCapitalization.words,
-                  keyboardType: TextInputType.streetAddress,
-                  decoration: _inputDecoration(
-                    hint: 'City, State',
-                    prefixIcon: Icons.location_on,
-                    suffixIcon: Icons.my_location,
-                    onSuffixTap: () =>
-                        _getLocationFor(_tripStartLocationController),
-                  ),
+                // Pickup Locations Section
+                _buildLabel(
+                  'Pickup Location${_pickupControllers.length > 1 ? 's' : ''}',
                 ),
+                const SizedBox(height: 8),
+                ..._buildPickupLocationFields(),
                 const SizedBox(height: 16),
-                _buildLabel('End Location'),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _tripEndLocationController,
-                  textCapitalization: TextCapitalization.words,
-                  keyboardType: TextInputType.streetAddress,
-                  decoration: _inputDecoration(
-                    hint: 'City, State',
-                    prefixIcon: Icons.location_on,
-                    suffixIcon: Icons.my_location,
-                    onSuffixTap: () =>
-                        _getLocationFor(_tripEndLocationController),
-                  ),
+                // Delivery Locations Section
+                _buildLabel(
+                  'Delivery Location${_deliveryControllers.length > 1 ? 's' : ''}',
                 ),
+                const SizedBox(height: 8),
+                ..._buildDeliveryLocationFields(),
                 const SizedBox(height: 20),
                 Text(
                   'ODOMETER',
@@ -549,9 +827,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: _validateAndSaveTrip,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       backgroundColor: const Color(0xFF007AFF),
@@ -577,11 +853,84 @@ class _AddEntryPageState extends State<AddEntryPage>
     );
   }
 
+  void _validateAndSaveTrip() {
+    // Check trip number
+    if (_tripNumberController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter trip number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check truck number
+    if (_tripTruckNumberController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter truck number'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check start odometer
+    if (_tripStartOdometerController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter start odometer'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check if all pickup locations are filled
+    for (int i = 0; i < _pickupControllers.length; i++) {
+      if (_pickupControllers[i].text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _pickupControllers.length > 1
+                  ? 'Please fill pickup location ${i + 1} or remove it'
+                  : 'Please enter pickup location',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    // Check if all delivery locations are filled
+    for (int i = 0; i < _deliveryControllers.length; i++) {
+      if (_deliveryControllers[i].text.trim().isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _deliveryControllers.length > 1
+                  ? 'Please fill delivery location ${i + 1} or remove it'
+                  : 'Please enter delivery location',
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    // All validations passed - save the trip
+    Navigator.pop(context);
+  }
+
   Widget _buildAddFuelTab() {
     return Column(
       children: [
         Expanded(
           child: SingleChildScrollView(
+            controller: _fuelScrollController,
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,

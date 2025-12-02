@@ -31,7 +31,7 @@ class EmailVerifiedPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(28),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.07),
+                      color: Colors.black.withValues(alpha: 0.07),
                       blurRadius: 22,
                       offset: const Offset(0, 8),
                     ),
@@ -46,8 +46,8 @@ class EmailVerifiedPage extends StatelessWidget {
                         shape: BoxShape.circle,
                         gradient: LinearGradient(
                           colors: [
-                            primary.withOpacity(0.15),
-                            primary.withOpacity(0.05),
+                            primary.withValues(alpha: 0.15),
+                            primary.withValues(alpha: 0.05),
                           ],
                           begin: Alignment.topLeft,
                           end: Alignment.bottomRight,
@@ -88,7 +88,7 @@ class EmailVerifiedPage extends StatelessWidget {
                       ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        color: primary.withOpacity(0.06),
+                        color: primary.withValues(alpha: 0.06),
                       ),
                       child: Row(
                         mainAxisSize: MainAxisSize.min,

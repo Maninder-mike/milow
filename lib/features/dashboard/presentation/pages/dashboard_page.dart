@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,10 +6,14 @@ import 'package:milow/core/widgets/app_scaffold.dart';
 import 'package:milow/core/widgets/dashboard_card.dart';
 import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/news_card.dart';
+import 'package:milow/core/widgets/border_wait_time_card.dart';
+import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow/features/dashboard/presentation/pages/news_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/core/services/weather_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/services/border_wait_time_service.dart';
+import 'package:milow/core/utils/responsive_layout.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -23,12 +28,31 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isLoadingWeather = true;
   bool _showWeather = true; // User preference
   String _temperatureUnit = 'C'; // C or F
+  String? _weatherError;
+
+  // Border wait times
+  List<BorderWaitTime> _borderWaitTimes = [];
+  bool _isLoadingBorders = true;
+  String? _borderError;
+  Timer? _borderRefreshTimer;
 
   @override
   void initState() {
     super.initState();
     _loadPreferences();
     _loadWeather();
+    _loadBorderWaitTimes(forceRefresh: true); // Force refresh on first load
+    // Refresh border wait times every 5 minutes
+    _borderRefreshTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => _loadBorderWaitTimes(forceRefresh: true),
+    );
+  }
+
+  @override
+  void dispose() {
+    _borderRefreshTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPreferences() async {
@@ -36,6 +60,36 @@ class _DashboardPageState extends State<DashboardPage> {
     setState(() {
       _showWeather = showWeather;
     });
+  }
+
+  Future<void> _loadBorderWaitTimes({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      setState(() {
+        _isLoadingBorders = true;
+        _borderError = null;
+      });
+    }
+    try {
+      // Force refresh the API data first if requested
+      if (forceRefresh) {
+        await BorderWaitTimeService.fetchAllWaitTimes(forceRefresh: true);
+      }
+      final waitTimes = await BorderWaitTimeService.getSavedBorderWaitTimes();
+      if (mounted) {
+        setState(() {
+          _borderWaitTimes = waitTimes;
+          _isLoadingBorders = false;
+          _borderError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingBorders = false;
+          _borderError = _getErrorMessage(e);
+        });
+      }
+    }
   }
 
   Future<void> _loadWeather() async {
@@ -47,11 +101,41 @@ class _DashboardPageState extends State<DashboardPage> {
       return;
     }
 
-    final weather = await _weatherService.getCurrentWeather();
-    setState(() {
-      _weatherData = weather;
-      _isLoadingWeather = false;
-    });
+    try {
+      final weather = await _weatherService.getCurrentWeather();
+      if (mounted) {
+        setState(() {
+          _weatherData = weather;
+          _isLoadingWeather = false;
+          _weatherError = weather == null ? 'Unable to get weather data' : null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+          _weatherError = _getErrorMessage(e);
+        });
+      }
+    }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+    if (errorStr.contains('socketexception') ||
+        errorStr.contains('connection') ||
+        errorStr.contains('network')) {
+      return 'No internet connection';
+    } else if (errorStr.contains('timeout')) {
+      return 'Request timed out. Please try again.';
+    } else if (errorStr.contains('permission') || errorStr.contains('denied')) {
+      return 'Permission denied';
+    } else if (errorStr.contains('404')) {
+      return 'Data not available';
+    } else if (errorStr.contains('500') || errorStr.contains('server')) {
+      return 'Server error. Please try again later.';
+    }
+    return 'Something went wrong. Please try again.';
   }
 
   void _toggleTemperatureUnit() {
@@ -83,169 +167,122 @@ class _DashboardPageState extends State<DashboardPage> {
         ? const Color(0xFF3A3A3A)
         : const Color(0xFFD0D5DD);
 
-    Widget statsGrid() => Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
-        children: const [
-          Row(
-            children: [
-              Expanded(
-                child: DashboardCard(
-                  value: '127',
-                  title: 'Total Loads',
-                  icon: Icons.local_shipping,
-                  color: Color(0xFF3B82F6),
-                  trend: '+12%',
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: DashboardCard(
-                  value: '45.2K',
-                  title: 'Miles Driven',
-                  icon: Icons.route,
-                  color: Color(0xFF10B981),
-                  trend: '+8%',
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DashboardCard(
-                  value: '\$32.5K',
-                  title: 'Revenue',
-                  icon: Icons.attach_money,
-                  color: Color(0xFF8B5CF6),
-                  trend: '+15%',
-                ),
-              ),
-              SizedBox(width: 12),
-              Expanded(
-                child: DashboardCard(
-                  value: '2.4h',
-                  title: 'Avg Load Time',
-                  icon: Icons.timer,
-                  color: Color(0xFFF59E0B),
-                  trend: '-5%',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
+    final margin = ResponsiveLayout.getMargin(context);
+    final gutter = ResponsiveLayout.getGutter(context);
+    final isTabletOrLarger = !ResponsiveLayout.isMobile(context);
 
-    Widget performanceChart() => Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [const Color(0xFF1E3A8A), const Color(0xFF3B82F6)]
-              : [const Color(0xFF3B82F6), const Color(0xFF60A5FA)],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
-            blurRadius: 20,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Weekly Performance',
-                    style: GoogleFonts.inter(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
+    Widget statsGrid() => Padding(
+      padding: EdgeInsets.symmetric(horizontal: margin),
+      child: isTabletOrLarger
+          ? Row(
+              children: [
+                Expanded(
+                  child: DashboardCard(
+                    value: '127',
+                    title: 'Total Loads',
+                    icon: Icons.local_shipping,
+                    color: const Color(0xFF3B82F6),
+                    trend: '+12%',
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Nov 23 - Nov 29',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.8),
-                    ),
+                ),
+                SizedBox(width: gutter),
+                Expanded(
+                  child: DashboardCard(
+                    value: '45.2K',
+                    title: 'Miles Driven',
+                    icon: Icons.route,
+                    color: const Color(0xFF10B981),
+                    trend: '+8%',
                   ),
-                ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
                 ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(20),
+                SizedBox(width: gutter),
+                Expanded(
+                  child: DashboardCard(
+                    value: '\$32.5K',
+                    title: 'Revenue',
+                    icon: Icons.attach_money,
+                    color: const Color(0xFF8B5CF6),
+                    trend: '+15%',
+                  ),
                 ),
-                child: Row(
+                SizedBox(width: gutter),
+                Expanded(
+                  child: DashboardCard(
+                    value: '2.4h',
+                    title: 'Avg Load Time',
+                    icon: Icons.timer,
+                    color: const Color(0xFFF59E0B),
+                    trend: '-5%',
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              children: [
+                Row(
                   children: [
-                    const Icon(
-                      Icons.trending_up,
-                      size: 16,
-                      color: Colors.white,
+                    const Expanded(
+                      child: DashboardCard(
+                        value: '127',
+                        title: 'Total Loads',
+                        icon: Icons.local_shipping,
+                        color: Color(0xFF3B82F6),
+                        trend: '+12%',
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '+23%',
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                    SizedBox(width: gutter),
+                    const Expanded(
+                      child: DashboardCard(
+                        value: '45.2K',
+                        title: 'Miles Driven',
+                        icon: Icons.route,
+                        color: Color(0xFF10B981),
+                        trend: '+8%',
                       ),
                     ),
                   ],
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              _buildBarChart('Mon', 0.6, Colors.white),
-              _buildBarChart('Tue', 0.8, Colors.white),
-              _buildBarChart('Wed', 0.7, Colors.white),
-              _buildBarChart('Thu', 0.9, Colors.white),
-              _buildBarChart('Fri', 0.85, Colors.white),
-              _buildBarChart('Sat', 0.5, Colors.white.withValues(alpha: 0.6)),
-              _buildBarChart('Sun', 0.3, Colors.white.withValues(alpha: 0.6)),
-            ],
-          ),
-        ],
-      ),
+                SizedBox(height: gutter),
+                Row(
+                  children: [
+                    const Expanded(
+                      child: DashboardCard(
+                        value: '\$32.5K',
+                        title: 'Revenue',
+                        icon: Icons.attach_money,
+                        color: Color(0xFF8B5CF6),
+                        trend: '+15%',
+                      ),
+                    ),
+                    SizedBox(width: gutter),
+                    const Expanded(
+                      child: DashboardCard(
+                        value: '2.4h',
+                        title: 'Avg Load Time',
+                        icon: Icons.timer,
+                        color: Color(0xFFF59E0B),
+                        trend: '-5%',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
     );
 
     Widget newsStrip(List<Map<String, String>> items) => SizedBox(
       height: 180,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding: EdgeInsets.symmetric(horizontal: margin),
         itemBuilder: (c, i) => SizedBox(
-          width: 180,
+          width: context.responsive(xs: 180.0, sm: 200.0, md: 220.0),
           child: NewsCard(
             title: items[i]['title']!,
             source: items[i]['source']!,
           ),
         ),
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        separatorBuilder: (_, _) => SizedBox(width: gutter),
         itemCount: items.length,
       ),
     );
@@ -259,7 +296,7 @@ class _DashboardPageState extends State<DashboardPage> {
             // Reduced top spacing after removing title
             const SizedBox(height: 8),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: EdgeInsets.symmetric(horizontal: margin),
               child: Row(
                 children: [
                   _quickAction(
@@ -313,6 +350,37 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       ),
                     ),
+                  if (_showWeather &&
+                      !_isLoadingWeather &&
+                      _weatherData == null &&
+                      _weatherError != null)
+                    GestureDetector(
+                      onTap: _loadWeather,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.cloud_off,
+                              size: 20,
+                              color: secondaryTextColor,
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Tap to retry',
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: secondaryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   const Spacer(),
                   _quickAction(
                     const Color(0xFF007AFF),
@@ -327,11 +395,141 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(height: 16),
             statsGrid(),
             const SizedBox(height: 16),
-            performanceChart(),
-            const SizedBox(height: 16),
+            // Border Wait Times Section
+            if (_isLoadingBorders) ...[
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                child: Container(
+                  height: 80,
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Color(0xFF007AFF),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ] else if (_borderError != null && _borderWaitTimes.isEmpty) ...[
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: cardColor,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: borderColor),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFEE2E2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Icon(
+                          Icons.error_outline,
+                          color: Color(0xFFDC2626),
+                          size: 20,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Border Wait Times Unavailable',
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: textColor,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _borderError!,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: secondaryTextColor,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () =>
+                            _loadBorderWaitTimes(forceRefresh: true),
+                        child: Text(
+                          'Retry',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF007AFF),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ] else if (_borderWaitTimes.isNotEmpty) ...[
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      'Border Wait Times',
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () => _loadBorderWaitTimes(forceRefresh: true),
+                      icon: Icon(
+                        Icons.refresh,
+                        size: 16,
+                        color: const Color(0xFF007AFF),
+                      ),
+                      label: Text(
+                        'Refresh',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: const Color(0xFF007AFF),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: EdgeInsets.symmetric(horizontal: margin),
+                child: Column(
+                  children: _borderWaitTimes
+                      .map((bwt) => BorderWaitTimeCard(waitTime: bwt))
+                      .toList(),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Last Record Entries
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: EdgeInsets.symmetric(horizontal: margin),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -546,31 +744,6 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildBarChart(String label, double height, Color color) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 32,
-          height: 80 * height,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 10,
-            color: Colors.white.withValues(alpha: 0.8),
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-      ],
-    );
-  }
-
   Widget _buildRecordEntry(
     Color textColor,
     Color secondaryTextColor,
@@ -594,7 +767,7 @@ class _DashboardPageState extends State<DashboardPage> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: iconColor, size: 20),
@@ -648,6 +821,4 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
-
-  // _buildBarChart retained; other card/news logic migrated to reusable widgets.
 }
