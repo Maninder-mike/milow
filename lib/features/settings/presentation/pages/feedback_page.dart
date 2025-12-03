@@ -104,10 +104,7 @@ Contact (optional): $contact
                 const SizedBox(height: 8),
                 Text(
                   'Your feedback helps us improve Milow for everyone.',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    color: subtext,
-                  ),
+                  style: GoogleFonts.inter(fontSize: 15, color: subtext),
                 ),
                 const SizedBox(height: 32),
                 Container(
@@ -131,8 +128,9 @@ Contact (optional): $contact
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6)
-                                  .withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF3B82F6,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -183,8 +181,9 @@ Contact (optional): $contact
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6)
-                                  .withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF3B82F6,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -248,8 +247,9 @@ Contact (optional): $contact
                           Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6)
-                                  .withValues(alpha: 0.1),
+                              color: const Color(
+                                0xFF3B82F6,
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -336,8 +336,7 @@ Contact (optional): $contact
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
                       BoxShadow(
-                        color:
-                            const Color(0xFF3B82F6).withValues(alpha: 0.3),
+                        color: const Color(0xFF3B82F6).withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
