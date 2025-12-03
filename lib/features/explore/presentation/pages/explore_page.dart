@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/widgets/app_scaffold.dart';
 import 'package:milow/core/constants/design_tokens.dart';
@@ -112,7 +113,7 @@ class _ExplorePageState extends State<ExplorePage> {
             floating: true,
             snap: true,
             title: Text(
-              'Explore',
+              AppLocalizations.of(context)?.explore ?? 'Explore',
               style: GoogleFonts.inter(
                 fontSize: 28,
                 fontWeight: FontWeight.w700,

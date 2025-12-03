@@ -68,14 +68,35 @@ class LocalAuthService {
   // Authenticate with biometrics
   Future<bool> authenticateWithBiometrics() async {
     try {
-      // Check if it's Face ID or fingerprint for the message
-      final hasFace = await hasFaceRecognition();
-      final localizedReason = hasFace
-          ? 'Please authenticate with Face ID to access the app'
-          : 'Please authenticate with fingerprint to access the app';
+      // Get available biometrics to determine the right message
+      final biometrics = await getAvailableBiometrics();
+      final hasFace = biometrics.contains(BiometricType.face);
+      final hasFingerprint = biometrics.contains(BiometricType.fingerprint);
+
+      // Determine the appropriate message
+      String localizedReason;
+      if (hasFace && !hasFingerprint) {
+        localizedReason = 'Please authenticate with Face ID to access the app';
+      } else if (hasFingerprint && !hasFace) {
+        localizedReason =
+            'Please authenticate with fingerprint to access the app';
+      } else if (hasFace && hasFingerprint) {
+        // Device has both - let system decide, use generic message
+        localizedReason = 'Please authenticate to access the app';
+      } else {
+        // Strong/weak biometric (could be face or other)
+        localizedReason = 'Please authenticate to access the app';
+      }
+
+      if (kDebugMode) {
+        debugPrint('Available biometrics: $biometrics');
+        debugPrint('Has Face: $hasFace, Has Fingerprint: $hasFingerprint');
+      }
 
       final isAuthenticated = await _localAuth.authenticate(
         localizedReason: localizedReason,
+        biometricOnly: true,
+        persistAcrossBackgrounding: true,
       );
 
       if (isAuthenticated) {

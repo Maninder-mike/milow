@@ -33,8 +33,10 @@ class _AddEntryPageState extends State<AddEntryPage>
   // Trip fields
   final _tripNumberController = TextEditingController();
   final _tripTruckNumberController = TextEditingController();
-  final _tripTrailerNumberController = TextEditingController();
   final _tripDateController = TextEditingController();
+
+  // Multiple trailers
+  final List<TextEditingController> _trailerControllers = [];
 
   // Multiple pickup locations (start locations)
   final List<TextEditingController> _pickupControllers = [];
@@ -55,6 +57,9 @@ class _AddEntryPageState extends State<AddEntryPage>
   final _odometerController = TextEditingController();
   final _fuelQuantityController = TextEditingController();
   final _fuelPriceController = TextEditingController();
+
+  // Fuel type: false = Truck Fuel, true = Reefer Fuel
+  bool _isReeferFuel = false;
 
   @override
   void initState() {
@@ -80,13 +85,18 @@ class _AddEntryPageState extends State<AddEntryPage>
     // Initialize with one pickup and one delivery location
     _addPickupLocation();
     _addDeliveryLocation();
+    _addTrailer();
 
     if (widget.initialData != null) {
       _tripNumberController.text = widget.initialData!['tripNumber'] ?? '';
       _tripTruckNumberController.text =
           widget.initialData!['truckNumber'] ?? '';
-      _tripTrailerNumberController.text =
-          widget.initialData!['trailerNumber'] ?? '';
+      // Set first trailer from initialData
+      if (widget.initialData!['trailerNumber'] != null &&
+          _trailerControllers.isNotEmpty) {
+        _trailerControllers[0].text =
+            widget.initialData!['trailerNumber'] ?? '';
+      }
       // Set first pickup location from initialData
       if (widget.initialData!['startLocation'] != null &&
           _pickupControllers.isNotEmpty) {
@@ -176,6 +186,10 @@ class _AddEntryPageState extends State<AddEntryPage>
     for (final controller in _deliveryControllers) {
       controller.dispose();
     }
+    // Dispose trailer controllers
+    for (final controller in _trailerControllers) {
+      controller.dispose();
+    }
     _tripStartOdometerController.dispose();
     _tripEndOdometerController.dispose();
     _tripNotesController.dispose();
@@ -222,6 +236,103 @@ class _AddEntryPageState extends State<AddEntryPage>
         _deliveryControllers.removeAt(index);
       });
     }
+  }
+
+  // Methods to manage trailers
+  void _addTrailer() {
+    if (_trailerControllers.length < _maxLocations) {
+      setState(() {
+        _trailerControllers.add(TextEditingController());
+      });
+    }
+  }
+
+  void _removeTrailer(int index) {
+    if (_trailerControllers.length > 1) {
+      setState(() {
+        _trailerControllers[index].dispose();
+        _trailerControllers.removeAt(index);
+      });
+    }
+  }
+
+  // Build trailer fields with add/remove buttons
+  List<Widget> _buildTrailerFields() {
+    final fields = <Widget>[];
+    for (int i = 0; i < _trailerControllers.length; i++) {
+      final isLast = i == _trailerControllers.length - 1;
+      final canAdd = _trailerControllers.length < _maxLocations;
+      final canRemove = _trailerControllers.length > 1;
+
+      fields.add(
+        Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _trailerControllers[i],
+                  textCapitalization: TextCapitalization.characters,
+                  keyboardType: TextInputType.text,
+                  decoration: _inputDecoration(
+                    hint: i == 0 ? 'e.g., TL-202' : 'Trailer ${i + 1}',
+                    prefixIcon: Icons.rv_hookup,
+                  ),
+                ),
+              ),
+              if (canRemove) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: () => _removeTrailer(i),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        size: 20,
+                        color: Colors.red.shade600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (isLast && canAdd) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: _addTrailer,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF81C784)),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        size: 20,
+                        color: Color(0xFF43A047),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    return fields;
   }
 
   // Build pickup location fields with add/remove buttons
@@ -633,20 +744,27 @@ class _AddEntryPageState extends State<AddEntryPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildLabel('Trip Number'),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _tripNumberController,
-                  textCapitalization: TextCapitalization.characters,
-                  keyboardType: TextInputType.text,
-                  decoration: _inputDecoration(
-                    hint: 'e.g., TR-12345',
-                    prefixIcon: Icons.tag,
-                  ),
-                ),
-                const SizedBox(height: 16),
                 Row(
                   children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Trip Number'),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _tripNumberController,
+                            textCapitalization: TextCapitalization.characters,
+                            keyboardType: TextInputType.text,
+                            decoration: _inputDecoration(
+                              hint: 'e.g., TR-12345',
+                              prefixIcon: Icons.tag,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -665,27 +783,14 @@ class _AddEntryPageState extends State<AddEntryPage>
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Trailer (Optional)'),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _tripTrailerNumberController,
-                            textCapitalization: TextCapitalization.characters,
-                            keyboardType: TextInputType.text,
-                            decoration: _inputDecoration(
-                              hint: 'e.g., TL-202',
-                              prefixIcon: Icons.rv_hookup,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                _buildLabel(
+                  'Trailer${_trailerControllers.length > 1 ? 's' : ''} (Optional)',
+                ),
+                const SizedBox(height: 8),
+                ..._buildTrailerFields(),
                 const SizedBox(height: 16),
                 _buildLabel('Date & Time'),
                 const SizedBox(height: 8),
@@ -947,40 +1052,166 @@ class _AddEntryPageState extends State<AddEntryPage>
                   onTap: () => _selectDateTime(_fuelDateController),
                 ),
                 const SizedBox(height: 16),
-                _buildLabel('Truck Number'),
+                _buildLabel(_isReeferFuel ? 'Reefer Number' : 'Truck Number'),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _truckNumberController,
                   textCapitalization: TextCapitalization.characters,
                   keyboardType: TextInputType.text,
                   decoration: _inputDecoration(
-                    hint: 'e.g., T-101',
-                    prefixIcon: Icons.local_shipping,
+                    hint: _isReeferFuel ? 'e.g., R-101' : 'e.g., T-101',
+                    prefixIcon: _isReeferFuel
+                        ? Icons.ac_unit
+                        : Icons.local_shipping,
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildLabel('Location'),
+                // Fuel Type Selector
+                _buildLabel('Fuel Type'),
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? const Color(0xFF334155)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isReeferFuel = false;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: !_isReeferFuel
+                                  ? const Color(0xFF007AFF)
+                                  : Colors.transparent,
+                              borderRadius: const BorderRadius.only(
+                                topLeft: Radius.circular(11),
+                                bottomLeft: Radius.circular(11),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.local_gas_station,
+                                  size: 20,
+                                  color: !_isReeferFuel
+                                      ? Colors.white
+                                      : Theme.of(context).brightness ==
+                                            Brightness.dark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Truck Fuel',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: !_isReeferFuel
+                                        ? Colors.white
+                                        : Theme.of(context).brightness ==
+                                              Brightness.dark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _isReeferFuel = true;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            decoration: BoxDecoration(
+                              color: _isReeferFuel
+                                  ? const Color(0xFF0EA5E9)
+                                  : Colors.transparent,
+                              borderRadius: const BorderRadius.only(
+                                topRight: Radius.circular(11),
+                                bottomRight: Radius.circular(11),
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.ac_unit,
+                                  size: 20,
+                                  color: _isReeferFuel
+                                      ? Colors.white
+                                      : Theme.of(context).brightness ==
+                                            Brightness.dark
+                                      ? Colors.white70
+                                      : Colors.black54,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Reefer Fuel',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: _isReeferFuel
+                                        ? Colors.white
+                                        : Theme.of(context).brightness ==
+                                              Brightness.dark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildLabel(_isReeferFuel ? 'Fuel Location' : 'Location'),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _locationController,
                   textCapitalization: TextCapitalization.words,
                   keyboardType: TextInputType.streetAddress,
                   decoration: _inputDecoration(
-                    hint: 'Gas station or city',
+                    hint: _isReeferFuel
+                        ? 'Reefer fuel station'
+                        : 'Gas station or city',
                     prefixIcon: Icons.location_on,
                     suffixIcon: Icons.my_location,
                     onSuffixTap: () => _getLocationFor(_locationController),
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildLabel('Odometer Reading'),
+                _buildLabel(
+                  _isReeferFuel ? 'Reefer Hours' : 'Odometer Reading',
+                ),
                 const SizedBox(height: 8),
                 TextField(
                   controller: _odometerController,
                   keyboardType: TextInputType.number,
                   decoration: _inputDecoration(
-                    hint: 'Current $_distanceUnit',
-                    prefixIcon: Icons.speed,
+                    hint: _isReeferFuel
+                        ? 'Current hours'
+                        : 'Current $_distanceUnit',
+                    prefixIcon: _isReeferFuel ? Icons.timer : Icons.speed,
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -990,7 +1221,11 @@ class _AddEntryPageState extends State<AddEntryPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Fuel Quantity ($_fuelUnit)'),
+                          _buildLabel(
+                            _isReeferFuel
+                                ? 'Reefer Qty ($_fuelUnit)'
+                                : 'Fuel Quantity ($_fuelUnit)',
+                          ),
                           const SizedBox(height: 8),
                           TextField(
                             controller: _fuelQuantityController,
@@ -999,7 +1234,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                             ),
                             decoration: _inputDecoration(
                               hint: '0.0',
-                              prefixIcon: Icons.local_gas_station,
+                              prefixIcon: _isReeferFuel
+                                  ? Icons.ac_unit
+                                  : Icons.local_gas_station,
                             ),
                           ),
                         ],

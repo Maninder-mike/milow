@@ -170,7 +170,16 @@ class BorderWaitTime {
       return 'Montana, USA';
     }
     // Default
-    return border == 'Canadian' ? 'Canada Border' : 'Mexico Border';
+    return borderType == 'Canadian' ? 'Canada Border' : 'Mexico Border';
+  }
+
+  /// Normalized border type from API string
+  /// Returns 'Canadian' for US-Canada crossings, 'Mexican' for US-Mexico.
+  String get borderType {
+    final b = (border ?? '').toLowerCase();
+    if (b.contains('canada')) return 'Canadian';
+    if (b.contains('mexico')) return 'Mexican';
+    return 'Unknown';
   }
 
   /// Unique identifier for saving

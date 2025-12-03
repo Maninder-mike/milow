@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../../l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/theme_service.dart';
 import 'package:provider/provider.dart';
@@ -24,7 +25,7 @@ class AppearancePage extends StatelessWidget {
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
-          'Appearance',
+          AppLocalizations.of(context)?.appearance ?? 'Appearance',
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,

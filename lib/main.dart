@@ -8,19 +8,25 @@ import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 import 'package:milow/core/services/theme_service.dart';
 import 'package:milow/core/services/profile_provider.dart';
+import 'package:milow/core/services/logging_service.dart';
+import 'package:milow/core/services/locale_service.dart';
 import 'package:flutter/services.dart';
 import 'package:milow/core/services/trip_parser_service.dart';
 import 'package:milow/core/services/local_profile_store.dart';
+import 'package:milow/l10n/app_localizations.dart';
 
 // Placeholder imports - will be replaced with actual pages
 import 'package:milow/features/auth/presentation/pages/login_page.dart';
 import 'package:milow/features/auth/presentation/pages/sign_up_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:milow/features/settings/presentation/pages/settings_page.dart';
+import 'package:milow/features/settings/presentation/pages/feedback_page.dart';
 import 'package:milow/features/settings/presentation/pages/privacy_security_page.dart';
 import 'package:milow/features/settings/presentation/pages/appearance_page.dart';
 import 'package:milow/features/settings/presentation/pages/edit_profile_page.dart';
 import 'package:milow/features/settings/presentation/pages/notifications_page.dart';
+import 'package:milow/features/settings/presentation/pages/log_viewer_page.dart';
+import 'package:milow/features/settings/presentation/pages/language_page.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/features/explore/presentation/pages/explore_page.dart';
 import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
@@ -31,9 +37,14 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
 
+  // Initialize logging service first to capture all activities
+  await logger.init();
+  await logger.logLifecycle('App starting');
+
   // Initialize Hive for local caching
   await Hive.initFlutter();
   await LocalProfileStore.init();
+  await logger.info('Init', 'Hive and LocalProfileStore initialized');
 
   // Validate Supabase environment quickly to avoid silent issues
   final supabaseUrl = SupabaseConstants.supabaseUrl;
@@ -42,15 +53,26 @@ Future<void> main() async {
     debugPrint(
       '[Milow] WARNING: Supabase env not set. Check .env for NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY',
     );
+    await logger.warning('Init', 'Supabase environment variables not set');
   }
 
   await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnon);
+  await logger.info('Init', 'Supabase initialized');
+
+  // Clean up old log files (older than 7 days)
+  await logger.cleanOldLogs();
+
+  // Initialize locale service
+  await localeService.loadLocale();
+
+  await logger.logLifecycle('App initialization complete');
 
   runApp(
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => ThemeService()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
+        ChangeNotifierProvider.value(value: localeService),
       ],
       child: const MyApp(),
     ),
@@ -107,6 +129,14 @@ final _router = GoRouter(
           const AuthWrapper(child: NotificationsPage()),
     ),
     GoRoute(
+      path: '/language',
+      builder: (context, state) => const AuthWrapper(child: LanguagePage()),
+    ),
+    GoRoute(
+      path: '/logs',
+      builder: (context, state) => const AuthWrapper(child: LogViewerPage()),
+    ),
+    GoRoute(
       path: '/add-entry',
       builder: (context, state) {
         final initialData = state.extra as Map<String, dynamic>?;
@@ -125,6 +155,10 @@ final _router = GoRouter(
       path: '/email-verified',
       builder: (context, state) =>
           const AuthWrapper(child: EmailVerifiedPage()),
+    ),
+    GoRoute(
+      path: '/feedback',
+      builder: (context, state) => const AuthWrapper(child: FeedbackPage()),
     ),
   ],
 );
@@ -172,12 +206,16 @@ class _MyAppState extends State<MyApp> {
   @override
   Widget build(BuildContext context) {
     final themeService = Provider.of<ThemeService>(context);
+    final localeService = Provider.of<LocaleService>(context);
 
     return MaterialApp.router(
       title: 'Milow',
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: themeService.themeMode,
+      locale: localeService.locale,
+      supportedLocales: AppLocalizations.supportedLocales,
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
       routerConfig: _router,
       debugShowCheckedModeBanner: false,
     );

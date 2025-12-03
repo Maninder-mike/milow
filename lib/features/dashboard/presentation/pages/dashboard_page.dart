@@ -195,26 +195,6 @@ class _DashboardPageState extends State<DashboardPage> {
                     trend: '+8%',
                   ),
                 ),
-                SizedBox(width: gutter),
-                Expanded(
-                  child: DashboardCard(
-                    value: '\$32.5K',
-                    title: 'Revenue',
-                    icon: Icons.attach_money,
-                    color: const Color(0xFF8B5CF6),
-                    trend: '+15%',
-                  ),
-                ),
-                SizedBox(width: gutter),
-                Expanded(
-                  child: DashboardCard(
-                    value: '2.4h',
-                    title: 'Avg Load Time',
-                    icon: Icons.timer,
-                    color: const Color(0xFFF59E0B),
-                    trend: '-5%',
-                  ),
-                ),
               ],
             )
           : Column(
@@ -238,30 +218,6 @@ class _DashboardPageState extends State<DashboardPage> {
                         icon: Icons.route,
                         color: Color(0xFF10B981),
                         trend: '+8%',
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: gutter),
-                Row(
-                  children: [
-                    const Expanded(
-                      child: DashboardCard(
-                        value: '\$32.5K',
-                        title: 'Revenue',
-                        icon: Icons.attach_money,
-                        color: Color(0xFF8B5CF6),
-                        trend: '+15%',
-                      ),
-                    ),
-                    SizedBox(width: gutter),
-                    const Expanded(
-                      child: DashboardCard(
-                        value: '2.4h',
-                        title: 'Avg Load Time',
-                        icon: Icons.timer,
-                        color: Color(0xFFF59E0B),
-                        trend: '-5%',
                       ),
                     ),
                   ],

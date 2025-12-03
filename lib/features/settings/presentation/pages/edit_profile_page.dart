@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import '../../../../l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -230,7 +231,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       backgroundColor: backgroundColor,
       appBar: AppBar(
         title: Text(
-          'Edit Profile',
+          AppLocalizations.of(context)?.editProfile ?? 'Edit Profile',
           style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w600,

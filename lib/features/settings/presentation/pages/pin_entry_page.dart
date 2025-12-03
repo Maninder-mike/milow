@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:milow/core/services/local_auth_service.dart';
 
 class PinEntryPage extends StatefulWidget {
@@ -15,6 +16,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
   String? _errorMessage;
   bool _canUseBiometric = false;
   bool _hasFaceRecognition = false;
+  bool _hasMultipleBiometrics = false;
 
   @override
   void initState() {
@@ -25,11 +27,50 @@ class _PinEntryPageState extends State<PinEntryPage> {
   Future<void> _checkBiometric() async {
     final isBiometricEnabled = await _authService.isBiometricEnabled();
     final canCheckBiometrics = await _authService.canCheckBiometrics();
-    final hasFace = await _authService.hasFaceRecognition();
+    final availableBiometrics = await _authService.getAvailableBiometrics();
+
+    // Check biometric types
+    final hasFace = availableBiometrics.contains(BiometricType.face);
+    final hasFingerprint = availableBiometrics.contains(
+      BiometricType.fingerprint,
+    );
+    final hasStrong = availableBiometrics.contains(BiometricType.strong);
+    final hasWeak = availableBiometrics.contains(BiometricType.weak);
+
+    // On Android (like OnePlus 11R), when device has both face and fingerprint,
+    // it reports BiometricType.strong but system chooses which one to use.
+    //
+    // BiometricType.face = iOS Face ID
+    // BiometricType.fingerprint = fingerprint sensor
+    // BiometricType.strong/weak = Android biometric (could be face, fingerprint, or both)
+
+    bool isFaceRecognition = false;
+    bool hasMultiple = false;
+
+    if (hasFace && !hasFingerprint) {
+      // iOS Face ID or Android with only face
+      isFaceRecognition = true;
+    } else if (!hasFingerprint && !hasFace && (hasStrong || hasWeak)) {
+      // Android device with only face unlock (no fingerprint sensor)
+      isFaceRecognition = true;
+    } else if (hasFingerprint && (hasStrong || hasWeak)) {
+      // Android device with both fingerprint and possibly face (like OnePlus 11R)
+      // Show generic "Biometric" since system decides which to use
+      hasMultiple = true;
+    }
+
+    debugPrint('Biometrics: $availableBiometrics');
+    debugPrint(
+      'hasFace: $hasFace, hasFingerprint: $hasFingerprint, hasStrong: $hasStrong, hasWeak: $hasWeak',
+    );
+    debugPrint(
+      'isFaceRecognition: $isFaceRecognition, hasMultiple: $hasMultiple',
+    );
 
     setState(() {
       _canUseBiometric = isBiometricEnabled && canCheckBiometrics;
-      _hasFaceRecognition = hasFace;
+      _hasFaceRecognition = isFaceRecognition;
+      _hasMultipleBiometrics = hasMultiple;
     });
 
     // Auto-trigger biometric if enabled
@@ -168,12 +209,20 @@ class _PinEntryPageState extends State<PinEntryPage> {
                 child: TextButton.icon(
                   onPressed: _authenticateWithBiometric,
                   icon: Icon(
-                    _hasFaceRecognition ? Icons.face : Icons.fingerprint,
+                    _hasMultipleBiometrics
+                        ? Icons.security
+                        : (_hasFaceRecognition
+                              ? Icons.face
+                              : Icons.fingerprint),
                     color: const Color(0xFF007AFF),
                     size: 28,
                   ),
                   label: Text(
-                    _hasFaceRecognition ? 'Use Face ID' : 'Use Fingerprint',
+                    _hasMultipleBiometrics
+                        ? 'Use Biometric'
+                        : (_hasFaceRecognition
+                              ? 'Use Face ID'
+                              : 'Use Fingerprint'),
                     style: GoogleFonts.inter(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,

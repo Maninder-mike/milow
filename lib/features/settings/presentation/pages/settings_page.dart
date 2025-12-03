@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/auth_service.dart';
@@ -6,6 +7,7 @@ import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
+import 'package:flutter/services.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -93,7 +95,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       const SizedBox(height: 20),
                       Text(
-                        'Profile',
+                        AppLocalizations.of(context)?.settings ?? 'Settings',
                         style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.w700,
@@ -230,35 +232,40 @@ class _SettingsPageState extends State<SettingsPage> {
                             _buildMenuItem(
                               context,
                               Icons.person_outline,
-                              'Edit Profile',
+                              AppLocalizations.of(context)?.editProfile ??
+                                  'Edit Profile',
                               () => context.push('/edit-profile'),
                             ),
                             _buildDivider(),
                             _buildMenuItem(
                               context,
                               Icons.notifications_outlined,
-                              'Notifications',
+                              AppLocalizations.of(context)?.notifications ??
+                                  'Notifications',
                               () => context.push('/notifications'),
                             ),
                             _buildDivider(),
                             _buildMenuItem(
                               context,
                               Icons.palette_outlined,
-                              'Appearance',
+                              AppLocalizations.of(context)?.appearance ??
+                                  'Appearance',
                               () => context.push('/appearance'),
                             ),
                             _buildDivider(),
                             _buildMenuItem(
                               context,
                               Icons.language_outlined,
-                              'Language',
-                              () {},
+                              AppLocalizations.of(context)?.language ??
+                                  'Language',
+                              () => context.push('/language'),
                             ),
                             _buildDivider(),
                             _buildMenuItem(
                               context,
                               Icons.security_outlined,
-                              'Privacy & Security',
+                              AppLocalizations.of(context)?.privacySecurity ??
+                                  'Privacy & Security',
                               () => context.push('/privacy-security'),
                             ),
                           ],
@@ -284,7 +291,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             _buildUnitSystemMenuItem(
                               context,
                               Icons.straighten_outlined,
-                              'Unit System',
+                              AppLocalizations.of(context)?.unitSystem ??
+                                  'Unit System',
                               _unitSystem,
                               (value) async {
                                 await PreferencesService.setUnitSystem(value);
@@ -297,7 +305,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             _buildSwitchMenuItem(
                               context,
                               Icons.cloud_outlined,
-                              'Show Weather on Dashboard',
+                              AppLocalizations.of(context)?.showWeather ??
+                                  'Show Weather on Dashboard',
                               _showWeather,
                               (value) async {
                                 await PreferencesService.setShowWeather(value);
@@ -310,7 +319,8 @@ class _SettingsPageState extends State<SettingsPage> {
                             _buildMenuItem(
                               context,
                               Icons.traffic_outlined,
-                              'Border Wait Times',
+                              AppLocalizations.of(context)?.borderWaitTimes ??
+                                  'Border Wait Times',
                               () async {
                                 await Navigator.push(
                                   context,
@@ -339,19 +349,31 @@ class _SettingsPageState extends State<SettingsPage> {
                             ),
                           ],
                         ),
-                        child: _buildMenuItem(
-                          context,
-                          Icons.logout,
-                          'Sign out',
-                          () async {
-                            // Reset authentication state
-                            AuthWrapper.resetAuthenticationState();
-                            await AuthService.signOut();
-                            if (context.mounted) {
-                              context.go('/login');
-                            }
-                          },
-                          isDestructive: true,
+                        child: Column(
+                          children: [
+                            _buildMenuItem(
+                              context,
+                              Icons.feedback_outlined,
+                              'Send Feedback',
+                              () => context.push('/feedback'),
+                            ),
+                            _buildDivider(),
+                            _buildMenuItem(
+                              context,
+                              Icons.logout,
+                              AppLocalizations.of(context)?.signOut ??
+                                  'Sign out',
+                              () async {
+                                // Reset authentication state
+                                AuthWrapper.resetAuthenticationState();
+                                await AuthService.signOut();
+                                if (context.mounted) {
+                                  context.go('/login');
+                                }
+                              },
+                              isDestructive: true,
+                            ),
+                          ],
                         ),
                       ),
                       const SizedBox(height: 24),
@@ -369,20 +391,23 @@ class _SettingsPageState extends State<SettingsPage> {
         selectedItemColor: const Color(0xFF007AFF),
         unselectedItemColor: const Color(0xFF98A2B3),
         showUnselectedLabels: true,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            label: 'Explore',
+            icon: const Icon(Icons.explore_outlined),
+            label: AppLocalizations.of(context)?.explore ?? 'Explore',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
-            label: 'Dashboard',
+            icon: const Icon(Icons.home_outlined),
+            label: AppLocalizations.of(context)?.dashboard ?? 'Dashboard',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.mail_outline),
-            label: 'Inbox',
+            icon: const Icon(Icons.mail_outline),
+            label: AppLocalizations.of(context)?.inbox ?? 'Inbox',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.settings),
+            label: AppLocalizations.of(context)?.settings ?? 'Settings',
+          ),
         ],
         onTap: (index) {
           if (index == 0) context.go('/explore');
@@ -579,7 +604,8 @@ class _SettingsPageState extends State<SettingsPage> {
           Switch(
             value: value,
             onChanged: onChanged,
-            activeTrackColor: const Color(0xFF3B82F6),
+            activeColor: const Color(0xFF007AFF),
+            activeTrackColor: const Color(0xFF007AFF).withValues(alpha: 0.3),
           ),
         ],
       ),

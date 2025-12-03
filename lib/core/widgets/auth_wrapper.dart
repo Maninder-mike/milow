@@ -67,12 +67,39 @@ class _AuthWrapperState extends State<AuthWrapper> {
       return;
     }
 
-    setState(() {
-      _isChecking = false;
-    });
+    // Check if only biometric is enabled (no PIN)
+    final isPinEnabled = await _authService.isPinEnabled();
+    final isBiometricEnabled = await _authService.isBiometricEnabled();
+    final canCheckBiometrics = await _authService.canCheckBiometrics();
 
-    // Show PIN entry screen
-    _showPinEntry();
+    if (isBiometricEnabled && canCheckBiometrics && !isPinEnabled) {
+      // Only biometric enabled - authenticate directly without showing PIN page
+      setState(() {
+        _isChecking = false;
+      });
+      await _authenticateWithBiometricOnly();
+    } else {
+      // PIN is enabled (with or without biometric) - show PIN entry page
+      setState(() {
+        _isChecking = false;
+      });
+      _showPinEntry();
+    }
+  }
+
+  Future<void> _authenticateWithBiometricOnly() async {
+    final authenticated = await _authService.authenticateWithBiometrics();
+
+    if (authenticated && mounted) {
+      setState(() {
+        _isAuthenticated = true;
+      });
+      _hasAuthenticatedThisSession = true;
+      _maybeShowEmailVerifiedSnackbar();
+    } else if (mounted) {
+      // Biometric failed - try again
+      _authenticateWithBiometricOnly();
+    }
   }
 
   Future<void> _showPinEntry() async {

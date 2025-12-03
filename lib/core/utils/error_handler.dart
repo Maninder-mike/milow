@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow/core/services/logging_service.dart';
 
 /// Utility class for handling errors and displaying user-friendly messages
 class ErrorHandler {
@@ -151,10 +152,19 @@ class ErrorHandler {
   }
 
   /// Show a SnackBar with an error message
-  static void showError(BuildContext context, dynamic error) {
+  static void showError(BuildContext context, dynamic error, {String? tag}) {
     if (!context.mounted) return;
 
     final message = getErrorMessage(error);
+
+    // Log the error
+    logger.error(
+      tag ?? 'ErrorHandler',
+      message,
+      error: error,
+      stackTrace: error is Error ? error.stackTrace : null,
+    );
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(

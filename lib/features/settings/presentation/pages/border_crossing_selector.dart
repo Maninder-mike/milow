@@ -43,7 +43,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
 
     // Filter by border type
     if (_filterBorder != 'All') {
-      filtered = filtered.where((p) => p.border == _filterBorder).toList();
+      filtered = filtered.where((p) => p.borderType == _filterBorder).toList();
     }
 
     // Filter by search query
@@ -267,20 +267,26 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
-                                    color: port.border == 'Canadian'
+                                    color: port.borderType == 'Canadian'
                                         ? const Color(
                                             0xFFDC2626,
                                           ).withValues(alpha: 0.1)
-                                        : const Color(
+                                        : port.borderType == 'Mexican'
+                                        ? const Color(
                                             0xFF16A34A,
-                                          ).withValues(alpha: 0.1),
+                                          ).withValues(alpha: 0.1)
+                                        : const Color(
+                                            0xFF94A3B8,
+                                          ).withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Center(
                                     child: Text(
-                                      port.border == 'Canadian'
+                                      port.borderType == 'Canadian'
                                           ? '🇨🇦'
-                                          : '🇲🇽',
+                                          : port.borderType == 'Mexican'
+                                          ? '🇲🇽'
+                                          : '🇺🇸',
                                       style: const TextStyle(fontSize: 20),
                                     ),
                                   ),

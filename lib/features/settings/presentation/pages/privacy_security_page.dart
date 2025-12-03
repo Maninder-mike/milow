@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:local_auth/local_auth.dart';
 import 'package:milow/core/services/local_auth_service.dart';
 import 'package:milow/features/settings/presentation/pages/pin_setup_page.dart';
 
@@ -27,20 +28,34 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
     final biometricEnabled = await _authService.isBiometricEnabled();
     final pinEnabled = await _authService.isPinEnabled();
     final canCheckBiometrics = await _authService.canCheckBiometrics();
-    final hasFace = await _authService.hasFaceRecognition();
     final availableBiometrics = await _authService.getAvailableBiometrics();
 
     // Determine biometric type based on available biometrics
     String biometricType = 'Biometric';
     if (availableBiometrics.isNotEmpty) {
-      if (hasFace) {
-        biometricType = 'Face Recognition';
-      } else if (availableBiometrics.toString().contains('fingerprint')) {
+      // Check for biometric types
+      final hasFace = availableBiometrics.contains(BiometricType.face);
+      final hasFingerprint = availableBiometrics.contains(
+        BiometricType.fingerprint,
+      );
+      final hasStrong = availableBiometrics.contains(BiometricType.strong);
+      final hasWeak = availableBiometrics.contains(BiometricType.weak);
+
+      debugPrint('Biometrics: $availableBiometrics');
+      debugPrint(
+        'hasFace: $hasFace, hasFingerprint: $hasFingerprint, hasStrong: $hasStrong, hasWeak: $hasWeak',
+      );
+
+      if (hasFace && !hasFingerprint) {
+        // iOS Face ID or Android with only face
+        biometricType = 'Face ID';
+      } else if (hasFingerprint && !hasFace) {
+        // Device has only fingerprint
         biometricType = 'Fingerprint';
-      } else if (availableBiometrics.toString().contains('strong') ||
-          availableBiometrics.toString().contains('weak')) {
-        // Android biometric might be face or other
-        biometricType = 'Biometric Authentication';
+      } else if (hasFingerprint || (hasStrong || hasWeak)) {
+        // Device has fingerprint (Android shows fingerprint prompt first)
+        // Or has strong/weak biometric - show generic "Biometric"
+        biometricType = 'Biometric';
       }
     }
 

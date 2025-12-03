@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:milow/l10n/app_localizations.dart';
 
 /// AppScaffold provides a unified layout with consistent background and bottom navigation.
 class AppScaffold extends StatelessWidget {
@@ -37,19 +38,22 @@ class AppScaffold extends StatelessWidget {
         selectedItemColor: const Color(0xFF007AFF),
         unselectedItemColor: const Color(0xFF98A2B3),
         showUnselectedLabels: true,
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.explore_outlined),
-            label: 'Explore',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Dashboard'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.mail_outline),
-            label: 'Inbox',
+            icon: const Icon(Icons.explore_outlined),
+            label: AppLocalizations.of(context)?.explore ?? 'Explore',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person_outline),
-            label: 'Profile',
+            icon: const Icon(Icons.home),
+            label: AppLocalizations.of(context)?.dashboard ?? 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.mail_outline),
+            label: AppLocalizations.of(context)?.inbox ?? 'Inbox',
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.settings_outlined),
+            label: AppLocalizations.of(context)?.settings ?? 'Settings',
           ),
         ],
         onTap: (index) {

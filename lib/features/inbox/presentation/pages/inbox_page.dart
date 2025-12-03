@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/widgets/app_scaffold.dart';
 
@@ -50,7 +51,7 @@ class _InboxPageState extends State<InboxPage>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Inbox',
+                      AppLocalizations.of(context)?.inbox ?? 'Inbox',
                       style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
