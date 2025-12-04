@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash screen background matching Flutter's loading screen (night mode) -->
+    <color name="splash_background_light">#121212</color>
+    <color name="splash_background_dark">#121212</color>
+</resources>

@@ -147,131 +147,126 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => PopScope(
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop) {
-            resetEmailController.dispose();
-          }
-        },
-        child: StatefulBuilder(
-          builder: (dialogContext, setDialogState) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Reset Password',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
             ),
-            title: Text(
-              'Reset Password',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Enter your email address and we\'ll send you a link to reset your password.',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: const Color(0xFF667085),
+                ),
               ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+              const SizedBox(height: 20),
+              TextField(
+                controller: resetEmailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Email address',
+                  prefixIcon: const Icon(
+                    Icons.alternate_email,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF3F4F6),
+                ),
+              ),
+              if (resetError != null) ...[
+                const SizedBox(height: 12),
                 Text(
-                  'Enter your email address and we\'ll send you a link to reset your password.',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: const Color(0xFF667085),
-                  ),
+                  resetError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 13),
                 ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: resetEmailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: 'Email address',
-                    prefixIcon: const Icon(
-                      Icons.alternate_email,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF3F4F6),
-                  ),
-                ),
-                if (resetError != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    resetError!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
-                  ),
-                ],
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.poppins(color: const Color(0xFF667085)),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: isResetting
-                    ? null
-                    : () async {
-                        final email = resetEmailController.text.trim();
-                        if (email.isEmpty ||
-                            !RegExp(
-                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                            ).hasMatch(email)) {
-                          setDialogState(
-                            () => resetError = 'Please enter a valid email',
-                          );
-                          return;
-                        }
-                        setDialogState(() {
-                          isResetting = true;
-                          resetError = null;
-                        });
-                        try {
-                          await Supabase.instance.client.auth
-                              .resetPasswordForEmail(email);
-                          Navigator.pop(dialogContext);
-                          scaffoldMessenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Password reset link sent to $email',
-                              ),
-                              backgroundColor: const Color(0xFF8B5CF6),
-                            ),
-                          );
-                        } catch (e) {
-                          if (dialogContext.mounted) {
-                            setDialogState(() {
-                              isResetting = false;
-                              resetError = 'Failed to send reset email';
-                            });
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF8B5CF6),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: isResetting
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Send Link'),
-              ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: const Color(0xFF667085)),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: isResetting
+                  ? null
+                  : () async {
+                      final email = resetEmailController.text.trim();
+                      if (email.isEmpty ||
+                          !RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(email)) {
+                        setDialogState(
+                          () => resetError = 'Please enter a valid email',
+                        );
+                        return;
+                      }
+                      setDialogState(() {
+                        isResetting = true;
+                        resetError = null;
+                      });
+                      try {
+                        await Supabase.instance.client.auth
+                            .resetPasswordForEmail(
+                              email,
+                              redirectTo: 'milow://reset-password',
+                            );
+                        Navigator.pop(dialogContext);
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Password reset link sent to $email'),
+                            backgroundColor: const Color(0xFF8B5CF6),
+                          ),
+                        );
+                      } catch (e) {
+                        if (dialogContext.mounted) {
+                          setDialogState(() {
+                            isResetting = false;
+                            resetError = 'Failed to send reset email';
+                          });
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF8B5CF6),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: isResetting
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Send Link'),
+            ),
+          ],
         ),
       ),
     );
+    resetEmailController.dispose();
   }
 
   Future<void> _showResendVerificationDialog() async {
@@ -285,134 +280,126 @@ class _LoginPageState extends State<LoginPage> with TickerProviderStateMixin {
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (dialogContext) => PopScope(
-        onPopInvokedWithResult: (didPop, result) {
-          if (didPop) {
-            verifyEmailController.dispose();
-          }
-        },
-        child: StatefulBuilder(
-          builder: (dialogContext, setDialogState) => AlertDialog(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (dialogContext, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+          ),
+          title: Text(
+            'Resend Verification',
+            style: GoogleFonts.poppins(
+              fontSize: 20,
+              fontWeight: FontWeight.w600,
             ),
-            title: Text(
-              'Resend Verification',
-              style: GoogleFonts.poppins(
-                fontSize: 20,
-                fontWeight: FontWeight.w600,
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'Enter your email address and we\'ll resend the verification link.',
+                style: GoogleFonts.poppins(
+                  fontSize: 14,
+                  color: const Color(0xFF667085),
+                ),
               ),
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
+              const SizedBox(height: 20),
+              TextField(
+                controller: verifyEmailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  hintText: 'Email address',
+                  prefixIcon: const Icon(
+                    Icons.alternate_email,
+                    color: Color(0xFF9CA3AF),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF3F4F6),
+                ),
+              ),
+              if (verifyError != null) ...[
+                const SizedBox(height: 12),
                 Text(
-                  'Enter your email address and we\'ll resend the verification link.',
-                  style: GoogleFonts.poppins(
-                    fontSize: 14,
-                    color: const Color(0xFF667085),
-                  ),
+                  verifyError!,
+                  style: const TextStyle(color: Colors.red, fontSize: 13),
                 ),
-                const SizedBox(height: 20),
-                TextField(
-                  controller: verifyEmailController,
-                  keyboardType: TextInputType.emailAddress,
-                  decoration: InputDecoration(
-                    hintText: 'Email address',
-                    prefixIcon: const Icon(
-                      Icons.alternate_email,
-                      color: Color(0xFF9CA3AF),
-                    ),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: const Color(0xFFF3F4F6),
-                  ),
-                ),
-                if (verifyError != null) ...[
-                  const SizedBox(height: 12),
-                  Text(
-                    verifyError!,
-                    style: const TextStyle(color: Colors.red, fontSize: 13),
-                  ),
-                ],
               ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(dialogContext),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.poppins(color: const Color(0xFF667085)),
-                ),
-              ),
-              ElevatedButton(
-                onPressed: isSending
-                    ? null
-                    : () async {
-                        final email = verifyEmailController.text.trim();
-                        if (email.isEmpty ||
-                            !RegExp(
-                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                            ).hasMatch(email)) {
-                          setDialogState(
-                            () => verifyError = 'Please enter a valid email',
-                          );
-                          return;
-                        }
-                        setDialogState(() {
-                          isSending = true;
-                          verifyError = null;
-                        });
-                        try {
-                          await Supabase.instance.client.auth.resend(
-                            type: OtpType.signup,
-                            email: email,
-                            emailRedirectTo: 'milow://email-verified',
-                          );
-                          Navigator.pop(dialogContext);
-                          scaffoldMessenger.showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                'Verification email sent to $email',
-                              ),
-                              backgroundColor: const Color(0xFF10B981),
-                            ),
-                          );
-                        } catch (e) {
-                          if (dialogContext.mounted) {
-                            setDialogState(() {
-                              isSending = false;
-                              verifyError = 'Failed to send verification email';
-                            });
-                          }
-                        }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF10B981),
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Resend'),
-              ),
             ],
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.poppins(color: const Color(0xFF667085)),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: isSending
+                  ? null
+                  : () async {
+                      final email = verifyEmailController.text.trim();
+                      if (email.isEmpty ||
+                          !RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(email)) {
+                        setDialogState(
+                          () => verifyError = 'Please enter a valid email',
+                        );
+                        return;
+                      }
+                      setDialogState(() {
+                        isSending = true;
+                        verifyError = null;
+                      });
+                      try {
+                        await Supabase.instance.client.auth.resend(
+                          type: OtpType.signup,
+                          email: email,
+                          emailRedirectTo: 'milow://email-verified',
+                        );
+                        Navigator.pop(dialogContext);
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(
+                            content: Text('Verification email sent to $email'),
+                            backgroundColor: const Color(0xFF10B981),
+                          ),
+                        );
+                      } catch (e) {
+                        if (dialogContext.mounted) {
+                          setDialogState(() {
+                            isSending = false;
+                            verifyError = 'Failed to send verification email';
+                          });
+                        }
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+              child: isSending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Resend'),
+            ),
+          ],
         ),
       ),
     );
+    verifyEmailController.dispose();
   }
 
   @override

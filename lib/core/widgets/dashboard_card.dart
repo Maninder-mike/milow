@@ -6,7 +6,7 @@ class DashboardCard extends StatelessWidget {
   final String title;
   final IconData icon;
   final Color color;
-  final String trend;
+  final String? trend;
 
   const DashboardCard({
     super.key,
@@ -14,7 +14,7 @@ class DashboardCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.color,
-    required this.trend,
+    this.trend,
   });
 
   @override
@@ -90,43 +90,45 @@ class DashboardCard extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
-          const SizedBox(height: 6),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-            decoration: BoxDecoration(
-              color:
-                  (trend.startsWith('+')
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFEF4444))
-                      .withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  trend.startsWith('+')
-                      ? Icons.arrow_upward
-                      : Icons.arrow_downward,
-                  size: 12,
-                  color: trend.startsWith('+')
-                      ? const Color(0xFF10B981)
-                      : const Color(0xFFEF4444),
-                ),
-                const SizedBox(width: 3),
-                Text(
-                  trend,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: trend.startsWith('+')
+          if (trend != null) ...[
+            const SizedBox(height: 6),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color:
+                    (trend!.startsWith('+')
+                            ? const Color(0xFF10B981)
+                            : const Color(0xFFEF4444))
+                        .withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    trend!.startsWith('+')
+                        ? Icons.arrow_upward
+                        : Icons.arrow_downward,
+                    size: 12,
+                    color: trend!.startsWith('+')
                         ? const Color(0xFF10B981)
                         : const Color(0xFFEF4444),
-                    fontWeight: FontWeight.w700,
                   ),
-                ),
-              ],
+                  const SizedBox(width: 3),
+                  Text(
+                    trend!,
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: trend!.startsWith('+')
+                          ? const Color(0xFF10B981)
+                          : const Color(0xFFEF4444),
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
         ],
       ),
     );

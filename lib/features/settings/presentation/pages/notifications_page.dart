@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:milow/core/services/notification_service.dart';
 import 'dart:convert';
 
 class NotificationsPage extends StatefulWidget {
@@ -16,6 +17,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
       _notifications.removeWhere((n) => n.id == id);
     });
     await _saveNotifications();
+    // Update notification service count
+    await NotificationService.instance.refreshUnreadCount();
   }
 
   String _selectedFilter = 'All';
@@ -161,19 +164,25 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
-  void _markAsRead(String id) {
+  void _markAsRead(String id) async {
     setState(() {
       final notification = _notifications.firstWhere((n) => n.id == id);
       notification.isRead = true;
     });
+    await _saveNotifications();
+    // Update notification service count
+    await NotificationService.instance.refreshUnreadCount();
   }
 
-  void _markAllAsRead() {
+  void _markAllAsRead() async {
     setState(() {
       for (var notification in _notifications) {
         notification.isRead = true;
       }
     });
+    await _saveNotifications();
+    // Update notification service count
+    await NotificationService.instance.refreshUnreadCount();
   }
 
   @override

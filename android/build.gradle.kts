@@ -6,6 +6,15 @@ allprojects {
         google()
         mavenCentral()
     }
+    
+    // Force Java 17 for all projects including plugins
+    afterEvaluate {
+        tasks.withType<JavaCompile>().configureEach {
+            sourceCompatibility = JavaVersion.VERSION_17.toString()
+            targetCompatibility = JavaVersion.VERSION_17.toString()
+            options.compilerArgs.add("-Xlint:-options")
+        }
+    }
 }
 
 val newBuildDir: Directory =
@@ -25,6 +34,7 @@ subprojects {
     tasks.withType<JavaCompile> {
         sourceCompatibility = JavaVersion.VERSION_17.toString()
         targetCompatibility = JavaVersion.VERSION_17.toString()
+        options.compilerArgs.add("-Xlint:-options")
     }
     
     tasks.withType<KotlinCompile> {

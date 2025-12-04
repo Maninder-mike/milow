@@ -32,6 +32,7 @@ import 'package:milow/features/explore/presentation/pages/explore_page.dart';
 import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/features/auth/presentation/pages/email_verified_page.dart';
+import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -84,16 +85,20 @@ final _router = GoRouter(
   redirect: (context, state) {
     final session = Supabase.instance.client.auth.currentSession;
     final isLoggedIn = session != null;
-    final isLoggingIn =
-        state.matchedLocation == '/login' || state.matchedLocation == '/signup';
+    final isAuthPage =
+        state.matchedLocation == '/login' ||
+        state.matchedLocation == '/signup' ||
+        state.matchedLocation == '/reset-password';
 
-    // If logged in and trying to access login/signup, redirect to dashboard
-    if (isLoggedIn && isLoggingIn) {
+    // If logged in and trying to access login/signup (but not reset-password), redirect to dashboard
+    if (isLoggedIn &&
+        (state.matchedLocation == '/login' ||
+            state.matchedLocation == '/signup')) {
       return '/dashboard';
     }
 
     // If not logged in and trying to access protected routes, redirect to login
-    if (!isLoggedIn && !isLoggingIn) {
+    if (!isLoggedIn && !isAuthPage) {
       return '/login';
     }
 
@@ -102,6 +107,10 @@ final _router = GoRouter(
   routes: [
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
+    GoRoute(
+      path: '/reset-password',
+      builder: (context, state) => const ResetPasswordPage(),
+    ),
     GoRoute(
       path: '/dashboard',
       builder: (context, state) => const AuthWrapper(child: DashboardPage()),
@@ -177,6 +186,19 @@ class _MyAppState extends State<MyApp> {
   void initState() {
     super.initState();
     _checkForSharedText();
+    _setupDeepLinkListener();
+  }
+
+  void _setupDeepLinkListener() {
+    // Listen for auth state changes (handles deep link redirects)
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+
+      if (event == AuthChangeEvent.passwordRecovery) {
+        // User clicked on password reset link in email
+        _router.go('/reset-password');
+      }
+    });
   }
 
   Future<void> _checkForSharedText() async {

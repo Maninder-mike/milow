@@ -15,7 +15,7 @@ class WeatherService {
 
       // Fetch weather data
       final url = Uri.parse(
-        '$_baseUrl?latitude=${position.latitude}&longitude=${position.longitude}&current=temperature_2m,weather_code&temperature_unit=celsius',
+        '$_baseUrl?latitude=${position.latitude}&longitude=${position.longitude}&current=temperature_2m,weather_code,is_day&temperature_unit=celsius',
       );
 
       final response = await http.get(url);
@@ -25,6 +25,7 @@ class WeatherService {
         return {
           'temperature': data['current']['temperature_2m'],
           'weatherCode': data['current']['weather_code'],
+          'isDay': data['current']['is_day'] == 1,
         };
       }
     } catch (e) {
@@ -53,14 +54,14 @@ class WeatherService {
     }
   }
 
-  String getWeatherIcon(int code) {
+  String getWeatherIcon(int code, {bool isDay = true}) {
     // WMO Weather interpretation codes
-    if (code == 0) return '☀️'; // Clear
-    if (code >= 1 && code <= 3) return '⛅'; // Partly cloudy
+    if (code == 0) return isDay ? '☀️' : '🌙'; // Clear
+    if (code >= 1 && code <= 3) return isDay ? '⛅' : '☁️'; // Partly cloudy
     if (code >= 45 && code <= 48) return '🌫️'; // Fog
     if (code >= 51 && code <= 67) return '🌧️'; // Rain
     if (code >= 71 && code <= 77) return '❄️'; // Snow
     if (code >= 80 && code <= 99) return '⛈️'; // Thunderstorm
-    return '🌤️'; // Default
+    return isDay ? '🌤️' : '🌙'; // Default
   }
 }

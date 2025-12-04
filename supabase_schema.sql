@@ -71,3 +71,83 @@ create policy "Users can delete their avatars"
   using (
     bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1]
   );
+
+-- ============================================
+-- TRIPS TABLE
+-- ============================================
+create table trips (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  trip_number text not null,
+  truck_number text not null,
+  trailers text[] default '{}',
+  trip_date timestamptz not null,
+  pickup_locations text[] not null,
+  delivery_locations text[] not null,
+  start_odometer numeric,
+  end_odometer numeric,
+  distance_unit text not null default 'mi',  -- 'mi' or 'km'
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Trips RLS
+alter table trips enable row level security;
+
+create policy "Users can view own trips" on trips
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own trips" on trips
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own trips" on trips
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own trips" on trips
+  for delete using (auth.uid() = user_id);
+
+-- Index for faster queries
+create index trips_user_id_idx on trips(user_id);
+create index trips_trip_date_idx on trips(trip_date desc);
+
+-- ============================================
+-- FUEL ENTRIES TABLE
+-- ============================================
+create table fuel_entries (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  fuel_date timestamptz not null,
+  fuel_type text not null check (fuel_type in ('truck', 'reefer')),
+  truck_number text,
+  reefer_number text,
+  location text,
+  odometer_reading numeric,
+  reefer_hours numeric,
+  fuel_quantity numeric not null,
+  price_per_unit numeric not null,
+  fuel_unit text not null default 'gal',     -- 'gal' or 'L'
+  distance_unit text not null default 'mi',  -- 'mi' or 'km'
+  currency text not null default 'USD',      -- 'USD' or 'CAD'
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Fuel entries RLS
+alter table fuel_entries enable row level security;
+
+create policy "Users can view own fuel entries" on fuel_entries
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own fuel entries" on fuel_entries
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own fuel entries" on fuel_entries
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own fuel entries" on fuel_entries
+  for delete using (auth.uid() = user_id);
+
+-- Index for faster queries
+create index fuel_entries_user_id_idx on fuel_entries(user_id);
+create index fuel_entries_fuel_date_idx on fuel_entries(fuel_date desc);

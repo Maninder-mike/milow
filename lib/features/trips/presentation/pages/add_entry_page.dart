@@ -4,11 +4,26 @@ import 'package:milow/core/utils/error_handler.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/services/profile_service.dart';
+import 'package:milow/core/services/trip_service.dart';
+import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/models/trip.dart';
+import 'package:milow/core/models/fuel_entry.dart';
+import 'package:milow/core/utils/unit_utils.dart';
 
 class AddEntryPage extends StatefulWidget {
   final Map<String, dynamic>? initialData;
+  final Trip? editingTrip;
+  final FuelEntry? editingFuel;
+  final int initialTab;
 
-  const AddEntryPage({super.key, this.initialData});
+  const AddEntryPage({
+    super.key,
+    this.initialData,
+    this.editingTrip,
+    this.editingFuel,
+    this.initialTab = 0,
+  });
 
   @override
   State<AddEntryPage> createState() => _AddEntryPageState();
@@ -29,6 +44,8 @@ class _AddEntryPageState extends State<AddEntryPage>
   // Unit system
   String _distanceUnit = 'mi';
   String _fuelUnit = 'gal';
+  String _currency = 'USD';
+  bool _isSaving = false;
 
   // Trip fields
   final _tripNumberController = TextEditingController();
@@ -61,10 +78,18 @@ class _AddEntryPageState extends State<AddEntryPage>
   // Fuel type: false = Truck Fuel, true = Reefer Fuel
   bool _isReeferFuel = false;
 
+  // Edit mode flag
+  bool get _isEditMode =>
+      widget.editingTrip != null || widget.editingFuel != null;
+
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      initialIndex: widget.initialTab,
+    );
 
     // Initialize header animation
     _headerAnimationController = AnimationController(
@@ -82,12 +107,25 @@ class _AddEntryPageState extends State<AddEntryPage>
     _fuelScrollController.addListener(_onFuelScroll);
     _loadUnitPreferences();
 
+    // Add listeners for total cost preview
+    _fuelQuantityController.addListener(_onFuelFieldChanged);
+    _fuelPriceController.addListener(_onFuelFieldChanged);
+
     // Initialize with one pickup and one delivery location
     _addPickupLocation();
     _addDeliveryLocation();
     _addTrailer();
 
-    if (widget.initialData != null) {
+    // Handle edit mode for Trip
+    if (widget.editingTrip != null) {
+      _prefillTripData(widget.editingTrip!);
+    }
+    // Handle edit mode for FuelEntry
+    else if (widget.editingFuel != null) {
+      _prefillFuelData(widget.editingFuel!);
+    }
+    // Handle legacy initialData
+    else if (widget.initialData != null) {
       _tripNumberController.text = widget.initialData!['tripNumber'] ?? '';
       _tripTruckNumberController.text =
           widget.initialData!['truckNumber'] ?? '';
@@ -156,16 +194,114 @@ class _AddEntryPageState extends State<AddEntryPage>
     if (_tripDateController.text.isEmpty) {
       _tripDateController.text = _formatDateTime(DateTime.now());
     }
-    _fuelDateController.text = _formatDateTime(DateTime.now());
+    if (_fuelDateController.text.isEmpty) {
+      _fuelDateController.text = _formatDateTime(DateTime.now());
+    }
+  }
+
+  void _prefillTripData(Trip trip) {
+    _tripNumberController.text = trip.tripNumber;
+    _tripTruckNumberController.text = trip.truckNumber;
+    _tripDateController.text = _formatDateTime(trip.tripDate);
+
+    // Fill trailers
+    if (trip.trailers.isNotEmpty) {
+      _trailerControllers[0].text = trip.trailers[0];
+      for (int i = 1; i < trip.trailers.length; i++) {
+        _addTrailer();
+        _trailerControllers[i].text = trip.trailers[i];
+      }
+    }
+
+    // Fill pickup locations
+    if (trip.pickupLocations.isNotEmpty) {
+      _pickupControllers[0].text = trip.pickupLocations[0];
+      for (int i = 1; i < trip.pickupLocations.length; i++) {
+        _addPickupLocation();
+        _pickupControllers[i].text = trip.pickupLocations[i];
+      }
+    }
+
+    // Fill delivery locations
+    if (trip.deliveryLocations.isNotEmpty) {
+      _deliveryControllers[0].text = trip.deliveryLocations[0];
+      for (int i = 1; i < trip.deliveryLocations.length; i++) {
+        _addDeliveryLocation();
+        _deliveryControllers[i].text = trip.deliveryLocations[i];
+      }
+    }
+
+    // Fill odometer readings
+    if (trip.startOdometer != null) {
+      _tripStartOdometerController.text = trip.startOdometer!.toStringAsFixed(
+        0,
+      );
+    }
+    if (trip.endOdometer != null) {
+      _tripEndOdometerController.text = trip.endOdometer!.toStringAsFixed(0);
+    }
+
+    // Fill notes
+    if (trip.notes != null) {
+      _tripNotesController.text = trip.notes!;
+    }
+
+    // Set distance unit
+    _distanceUnit = trip.distanceUnit;
+  }
+
+  void _prefillFuelData(FuelEntry fuel) {
+    _fuelDateController.text = _formatDateTime(fuel.fuelDate);
+    _isReeferFuel = fuel.isReeferFuel;
+
+    // Fill truck/reefer number
+    if (fuel.isTruckFuel && fuel.truckNumber != null) {
+      _truckNumberController.text = fuel.truckNumber!;
+    } else if (fuel.isReeferFuel && fuel.reeferNumber != null) {
+      _truckNumberController.text = fuel.reeferNumber!;
+    }
+
+    // Fill location
+    if (fuel.location != null) {
+      _locationController.text = fuel.location!;
+    }
+
+    // Fill odometer/reefer hours
+    if (fuel.isTruckFuel && fuel.odometerReading != null) {
+      _odometerController.text = fuel.odometerReading!.toStringAsFixed(0);
+    } else if (fuel.isReeferFuel && fuel.reeferHours != null) {
+      _odometerController.text = fuel.reeferHours!.toStringAsFixed(1);
+    }
+
+    // Fill fuel quantity and price
+    _fuelQuantityController.text = fuel.fuelQuantity.toStringAsFixed(2);
+    _fuelPriceController.text = fuel.pricePerUnit.toStringAsFixed(3);
+
+    // Set units
+    _fuelUnit = fuel.fuelUnit;
+    _distanceUnit = fuel.distanceUnit;
+    _currency = fuel.currency;
   }
 
   Future<void> _loadUnitPreferences() async {
     final distanceUnit = await PreferencesService.getDistanceUnit();
     final fuelUnit = await PreferencesService.getVolumeUnit();
+
+    // Get currency from user profile country
+    final profile = await ProfileService.getProfile();
+    final country = profile?['country'] as String?;
+    final currency = UnitUtils.getCurrency(country);
+
     setState(() {
       _distanceUnit = distanceUnit;
       _fuelUnit = fuelUnit;
+      _currency = currency;
     });
+  }
+
+  void _onFuelFieldChanged() {
+    // Trigger rebuild to update total cost preview
+    setState(() {});
   }
 
   @override
@@ -173,6 +309,8 @@ class _AddEntryPageState extends State<AddEntryPage>
     _headerAnimationController.dispose();
     _tripScrollController.removeListener(_onTripScroll);
     _fuelScrollController.removeListener(_onFuelScroll);
+    _fuelQuantityController.removeListener(_onFuelFieldChanged);
+    _fuelPriceController.removeListener(_onFuelFieldChanged);
     _tripScrollController.dispose();
     _fuelScrollController.dispose();
     _tabController.dispose();
@@ -544,9 +682,11 @@ class _AddEntryPageState extends State<AddEntryPage>
       'Nov',
       'Dec',
     ];
-    final hour = dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour;
+    final hour = dateTime.hour == 0
+        ? 12
+        : (dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour);
     final period = dateTime.hour >= 12 ? 'PM' : 'AM';
-    return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year}    $hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
+    return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year}, $hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
   }
 
   Future<void> _getLocationFor(TextEditingController controller) async {
@@ -932,7 +1072,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: _validateAndSaveTrip,
+                    onPressed: _isSaving ? null : _validateAndSaveTrip,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       backgroundColor: const Color(0xFF007AFF),
@@ -940,14 +1080,23 @@ class _AddEntryPageState extends State<AddEntryPage>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      'Save',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isEditMode ? 'Update' : 'Save',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -1027,7 +1176,139 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
 
     // All validations passed - save the trip
-    Navigator.pop(context);
+    _saveTrip();
+  }
+
+  Future<void> _saveTrip() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Parse date from controller
+      DateTime tripDate;
+      try {
+        tripDate = _parseDateTime(_tripDateController.text);
+      } catch (e) {
+        tripDate = DateTime.now();
+      }
+
+      // Collect trailers (filter empty)
+      final trailers = _trailerControllers
+          .map((c) => c.text.trim().toUpperCase())
+          .where((t) => t.isNotEmpty)
+          .toList();
+
+      // Collect pickup locations
+      final pickupLocations = _pickupControllers
+          .map((c) => c.text.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+
+      // Collect delivery locations
+      final deliveryLocations = _deliveryControllers
+          .map((c) => c.text.trim())
+          .where((l) => l.isNotEmpty)
+          .toList();
+
+      // Parse odometer values
+      final startOdometer = double.tryParse(
+        _tripStartOdometerController.text.trim(),
+      );
+      final endOdometer = _tripEndOdometerController.text.trim().isNotEmpty
+          ? double.tryParse(_tripEndOdometerController.text.trim())
+          : null;
+
+      final trip = Trip(
+        id: widget.editingTrip?.id,
+        tripNumber: _tripNumberController.text.trim().toUpperCase(),
+        truckNumber: _tripTruckNumberController.text.trim().toUpperCase(),
+        trailers: trailers,
+        tripDate: tripDate,
+        pickupLocations: pickupLocations,
+        deliveryLocations: deliveryLocations,
+        startOdometer: startOdometer,
+        endOdometer: endOdometer,
+        distanceUnit: _distanceUnit,
+        notes: _tripNotesController.text.trim().isNotEmpty
+            ? _tripNotesController.text.trim()
+            : null,
+      );
+
+      if (_isEditMode && widget.editingTrip != null) {
+        await TripService.updateTrip(trip);
+      } else {
+        await TripService.createTrip(trip);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEditMode
+                  ? 'Trip updated successfully!'
+                  : 'Trip saved successfully!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate success
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save trip: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
+  }
+
+  DateTime _parseDateTime(String text) {
+    // Format: "Dec 3, 2025, 10:30 AM"
+    final parts = text.split(', ');
+    if (parts.length >= 3) {
+      final monthDay = parts[0].split(' ');
+      final month = _monthToInt(monthDay[0]);
+      final day = int.parse(monthDay[1]);
+      final year = int.parse(parts[1]);
+
+      final timeParts = parts[2].split(' ');
+      final hourMin = timeParts[0].split(':');
+      int hour = int.parse(hourMin[0]);
+      final minute = int.parse(hourMin[1]);
+      final isPm = timeParts[1].toUpperCase() == 'PM';
+
+      if (isPm && hour != 12) hour += 12;
+      if (!isPm && hour == 12) hour = 0;
+
+      return DateTime(year, month, day, hour, minute);
+    }
+    return DateTime.now();
+  }
+
+  int _monthToInt(String month) {
+    const months = {
+      'Jan': 1,
+      'Feb': 2,
+      'Mar': 3,
+      'Apr': 4,
+      'May': 5,
+      'Jun': 6,
+      'Jul': 7,
+      'Aug': 8,
+      'Sep': 9,
+      'Oct': 10,
+      'Nov': 11,
+      'Dec': 12,
+    };
+    return months[month] ?? 1;
   }
 
   Widget _buildAddFuelTab() {
@@ -1247,7 +1528,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Price per $_fuelUnit'),
+                          _buildLabel(
+                            'Price (${UnitUtils.getCurrencySymbol(_currency)}/$_fuelUnit)',
+                          ),
                           const SizedBox(height: 8),
                           TextField(
                             controller: _fuelPriceController,
@@ -1264,6 +1547,11 @@ class _AddEntryPageState extends State<AddEntryPage>
                     ),
                   ],
                 ),
+                const SizedBox(height: 16),
+                // Show total cost preview
+                if (_fuelQuantityController.text.isNotEmpty &&
+                    _fuelPriceController.text.isNotEmpty)
+                  _buildTotalCostPreview(),
               ],
             ),
           ),
@@ -1306,9 +1594,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                    },
+                    onPressed: _isSaving ? null : _validateAndSaveFuel,
                     style: ElevatedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       backgroundColor: const Color(0xFF007AFF),
@@ -1316,14 +1602,23 @@ class _AddEntryPageState extends State<AddEntryPage>
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(
-                      'Save',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
+                    child: _isSaving
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isEditMode ? 'Update' : 'Save',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                   ),
                 ),
               ],
@@ -1332,6 +1627,139 @@ class _AddEntryPageState extends State<AddEntryPage>
         ),
       ],
     );
+  }
+
+  void _validateAndSaveFuel() {
+    // Check date
+    if (_fuelDateController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select date and time'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check truck/reefer number
+    if (_truckNumberController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isReeferFuel
+                ? 'Please enter reefer number'
+                : 'Please enter truck number',
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check fuel quantity
+    if (_fuelQuantityController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter fuel quantity'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // Check fuel price
+    if (_fuelPriceController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please enter price per unit'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    // All validations passed - save the fuel entry
+    _saveFuel();
+  }
+
+  Future<void> _saveFuel() async {
+    if (_isSaving) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      // Parse date from controller
+      DateTime fuelDate;
+      try {
+        fuelDate = _parseDateTime(_fuelDateController.text);
+      } catch (e) {
+        fuelDate = DateTime.now();
+      }
+
+      // Parse values
+      final fuelQuantity =
+          double.tryParse(_fuelQuantityController.text.trim()) ?? 0;
+      final pricePerUnit =
+          double.tryParse(_fuelPriceController.text.trim()) ?? 0;
+      final odometerReading = _odometerController.text.trim().isNotEmpty
+          ? double.tryParse(_odometerController.text.trim())
+          : null;
+
+      final fuelEntry = FuelEntry(
+        id: widget.editingFuel?.id,
+        fuelDate: fuelDate,
+        fuelType: _isReeferFuel ? 'reefer' : 'truck',
+        truckNumber: !_isReeferFuel
+            ? _truckNumberController.text.trim().toUpperCase()
+            : null,
+        reeferNumber: _isReeferFuel
+            ? _truckNumberController.text.trim().toUpperCase()
+            : null,
+        location: _locationController.text.trim().isNotEmpty
+            ? _locationController.text.trim()
+            : null,
+        odometerReading: !_isReeferFuel ? odometerReading : null,
+        reeferHours: _isReeferFuel ? odometerReading : null,
+        fuelQuantity: fuelQuantity,
+        pricePerUnit: pricePerUnit,
+        fuelUnit: _fuelUnit,
+        distanceUnit: _distanceUnit,
+        currency: _currency,
+      );
+
+      if (_isEditMode && widget.editingFuel != null) {
+        await FuelService.updateFuelEntry(fuelEntry);
+      } else {
+        await FuelService.createFuelEntry(fuelEntry);
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isEditMode
+                  ? 'Fuel entry updated successfully!'
+                  : 'Fuel entry saved successfully!',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pop(context, true); // Return true to indicate success
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to save fuel entry: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+    }
   }
 
   Future<void> _selectDateTime(TextEditingController controller) async {
@@ -1424,6 +1852,69 @@ class _AddEntryPageState extends State<AddEntryPage>
         borderSide: const BorderSide(color: Color(0xFF007AFF), width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildTotalCostPreview() {
+    final quantity = double.tryParse(_fuelQuantityController.text.trim()) ?? 0;
+    final price = double.tryParse(_fuelPriceController.text.trim()) ?? 0;
+    final total = quantity * price;
+    final currencySymbol = UnitUtils.getCurrencySymbol(_currency);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF007AFF).withValues(alpha: 0.3),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Total Cost',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: const Color(0xFF667085),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$currencySymbol${total.toStringAsFixed(2)}',
+                style: GoogleFonts.inter(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: const Color(0xFF007AFF),
+                ),
+              ),
+            ],
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                '${quantity.toStringAsFixed(1)} $_fuelUnit',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: const Color(0xFF667085),
+                ),
+              ),
+              Text(
+                '@ $currencySymbol${price.toStringAsFixed(3)}/$_fuelUnit',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: const Color(0xFF667085),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

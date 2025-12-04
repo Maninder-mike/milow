@@ -8,12 +8,21 @@ import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/news_card.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/models/border_wait_time.dart';
+import 'package:milow/core/models/trip.dart';
+import 'package:milow/core/models/fuel_entry.dart';
 import 'package:milow/features/dashboard/presentation/pages/news_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
+import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
 import 'package:milow/core/services/weather_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
+import 'package:milow/core/services/trip_service.dart';
+import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/services/data_prefetch_service.dart';
+import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
+import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -36,12 +45,38 @@ class _DashboardPageState extends State<DashboardPage> {
   String? _borderError;
   Timer? _borderRefreshTimer;
 
+  // Recent entries (trips and fuel)
+  List<dynamic> _recentEntries = [];
+  bool _isLoadingEntries = true;
+
+  // Dashboard stats
+  int _totalTrips = 0;
+  double _totalMiles = 0;
+  String _distanceUnit = 'mi';
+  String _tripsTrend = '+0%';
+  String _milesTrend = '+0%';
+  String _timePeriod = 'weekly'; // weekly, biweekly, monthly, yearly
+
+  // Realtime subscriptions
+  RealtimeChannel? _tripsChannel;
+  RealtimeChannel? _fuelChannel;
+
+  // Notification state
+  int _unreadNotificationCount = 0;
+  StreamSubscription<int>? _notificationSubscription;
+
   @override
   void initState() {
     super.initState();
     _loadPreferences();
     _loadWeather();
-    _loadBorderWaitTimes(forceRefresh: true); // Force refresh on first load
+    _loadBorderWaitTimes(
+      forceRefresh: false,
+    ); // Use prefetched data if available
+    _loadRecentEntries();
+    _loadDashboardStats();
+    _setupRealtimeSubscriptions();
+    _loadNotificationCount();
     // Refresh border wait times every 5 minutes
     _borderRefreshTimer = Timer.periodic(
       const Duration(minutes: 5),
@@ -52,7 +87,270 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _borderRefreshTimer?.cancel();
+    _tripsChannel?.unsubscribe();
+    _fuelChannel?.unsubscribe();
+    _notificationSubscription?.cancel();
     super.dispose();
+  }
+
+  Future<void> _loadNotificationCount() async {
+    await NotificationService.instance.init();
+    _unreadNotificationCount = NotificationService.instance.unreadCount;
+    _notificationSubscription = NotificationService.instance.unreadCountStream
+        .listen((count) {
+          if (mounted) {
+            setState(() {
+              _unreadNotificationCount = count;
+            });
+          }
+        });
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _setupRealtimeSubscriptions() {
+    final supabase = Supabase.instance.client;
+
+    // Subscribe to trips table changes
+    _tripsChannel = supabase
+        .channel('dashboard_trips')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'trips',
+          callback: (payload) {
+            // Invalidate cache so next load fetches fresh data
+            DataPrefetchService.instance.invalidateCache();
+            _loadRecentEntries();
+            _loadDashboardStats();
+          },
+        )
+        .subscribe();
+
+    // Subscribe to fuel_entries table changes
+    _fuelChannel = supabase
+        .channel('dashboard_fuel')
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'fuel_entries',
+          callback: (payload) {
+            // Invalidate cache so next load fetches fresh data
+            DataPrefetchService.instance.invalidateCache();
+            _loadRecentEntries();
+          },
+        )
+        .subscribe();
+  }
+
+  Future<void> _loadDashboardStats() async {
+    try {
+      // Use prefetched data if available
+      final prefetch = DataPrefetchService.instance;
+      List<Trip> trips;
+      String distanceUnit;
+
+      if (prefetch.isPrefetchComplete && prefetch.cachedTrips != null) {
+        trips = prefetch.cachedTrips!;
+        distanceUnit = prefetch.cachedDistanceUnit;
+      } else {
+        trips = await TripService.getTrips();
+        distanceUnit = await PreferencesService.getDistanceUnit();
+      }
+
+      double totalMiles = 0;
+      for (final trip in trips) {
+        if (trip.totalDistance != null) {
+          totalMiles += trip.totalDistance!;
+        }
+      }
+
+      // Calculate trends based on time period
+      final trends = _calculateTrends(trips);
+
+      if (mounted) {
+        setState(() {
+          _totalTrips = trips.length;
+          _totalMiles = totalMiles;
+          _distanceUnit = distanceUnit;
+          _tripsTrend = trends['tripsTrend']!;
+          _milesTrend = trends['milesTrend']!;
+        });
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  /// Calculate trend percentages based on selected time period
+  Map<String, String> _calculateTrends(List<Trip> allTrips) {
+    final now = DateTime.now();
+    DateTime compareDate;
+
+    switch (_timePeriod) {
+      case 'weekly':
+        compareDate = now.subtract(const Duration(days: 7));
+        break;
+      case 'biweekly':
+        compareDate = now.subtract(const Duration(days: 14));
+        break;
+      case 'monthly':
+        compareDate = DateTime(now.year, now.month - 1, now.day);
+        break;
+      case 'yearly':
+        compareDate = DateTime(now.year - 1, now.month, now.day);
+        break;
+      default:
+        compareDate = now.subtract(const Duration(days: 7));
+    }
+
+    // Split trips into current period and previous period
+    final currentPeriodTrips = allTrips
+        .where((trip) => trip.tripDate.isAfter(compareDate))
+        .toList();
+    final previousPeriodStart = compareDate.subtract(
+      now.difference(compareDate),
+    );
+    final previousPeriodTrips = allTrips
+        .where(
+          (trip) =>
+              trip.tripDate.isAfter(previousPeriodStart) &&
+              trip.tripDate.isBefore(compareDate),
+        )
+        .toList();
+
+    // Calculate trip count trend
+    final currentTripsCount = currentPeriodTrips.length;
+    final previousTripsCount = previousPeriodTrips.length;
+    String tripsTrend;
+    if (previousTripsCount == 0) {
+      tripsTrend = currentTripsCount > 0 ? '+100%' : '0%';
+    } else {
+      final tripPercentChange =
+          ((currentTripsCount - previousTripsCount) / previousTripsCount * 100)
+              .round();
+      tripsTrend = tripPercentChange >= 0
+          ? '+$tripPercentChange%'
+          : '$tripPercentChange%';
+    }
+
+    // Calculate miles trend
+    double currentMiles = 0;
+    double previousMiles = 0;
+    for (final trip in currentPeriodTrips) {
+      if (trip.totalDistance != null) currentMiles += trip.totalDistance!;
+    }
+    for (final trip in previousPeriodTrips) {
+      if (trip.totalDistance != null) previousMiles += trip.totalDistance!;
+    }
+
+    String milesTrend;
+    if (previousMiles == 0) {
+      milesTrend = currentMiles > 0 ? '+100%' : '0%';
+    } else {
+      final milesPercentChange =
+          ((currentMiles - previousMiles) / previousMiles * 100).round();
+      milesTrend = milesPercentChange >= 0
+          ? '+$milesPercentChange%'
+          : '$milesPercentChange%';
+    }
+
+    return {'tripsTrend': tripsTrend, 'milesTrend': milesTrend};
+  }
+
+  /// Show dialog to change time period
+  Future<void> _showTimePeriodDialog() async {
+    final periods = {
+      'weekly': 'Weekly',
+      'biweekly': 'Bi-Weekly',
+      'monthly': 'Monthly',
+      'yearly': 'Yearly',
+    };
+
+    await showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Select Time Period',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: periods.entries.map((entry) {
+            return RadioListTile<String>(
+              title: Text(entry.value, style: GoogleFonts.inter()),
+              value: entry.key,
+              groupValue: _timePeriod,
+              activeColor: const Color(0xFF007AFF),
+              onChanged: (value) {
+                if (value != null) {
+                  Navigator.pop(context);
+                  setState(() {
+                    _timePeriod = value;
+                  });
+                  _loadDashboardStats();
+                }
+              },
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  /// Extract city and state from a full address using regex
+  /// Examples:
+  /// - "123 Main St, Los Angeles, CA 90001" -> "Los Angeles, CA"
+  /// - "Toronto, ON, Canada" -> "Toronto, ON"
+  /// - "New York" -> "New York"
+  String _extractCityState(String address) {
+    if (address.isEmpty) return address;
+
+    // Pattern to match "City, State/Province" or "City, State ZIP"
+    // Handles formats like:
+    // - "City, ST" or "City, ST 12345"
+    // - "City, Province" or "City, Province PostalCode"
+    final RegExp cityStatePattern = RegExp(
+      r'([A-Za-z\s]+),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
+      caseSensitive: false,
+    );
+
+    final match = cityStatePattern.firstMatch(address);
+    if (match != null) {
+      final city = match.group(1)?.trim() ?? '';
+      final state = match.group(2)?.toUpperCase() ?? '';
+      if (city.isNotEmpty && state.isNotEmpty) {
+        return '$city, $state';
+      }
+    }
+
+    // If no match, try to extract just the city (first part before comma)
+    final parts = address.split(',');
+    if (parts.length >= 2) {
+      // Take first significant part (skip if it looks like a street number)
+      for (final part in parts) {
+        final trimmed = part.trim();
+        // Skip parts that start with numbers (likely street addresses)
+        if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
+          // If next part looks like a state code, include it
+          final idx = parts.indexOf(part);
+          if (idx + 1 < parts.length) {
+            final nextPart = parts[idx + 1].trim();
+            final stateMatch = RegExp(
+              r'^([A-Z]{2})\b',
+            ).firstMatch(nextPart.toUpperCase());
+            if (stateMatch != null) {
+              return '$trimmed, ${stateMatch.group(1)}';
+            }
+          }
+          return trimmed;
+        }
+      }
+    }
+
+    // Return original if no pattern matched
+    return address.length > 25 ? '${address.substring(0, 22)}...' : address;
   }
 
   Future<void> _loadPreferences() async {
@@ -63,6 +361,22 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _loadBorderWaitTimes({bool forceRefresh = false}) async {
+    final prefetch = DataPrefetchService.instance;
+
+    // Try to use prefetched data first
+    if (!forceRefresh &&
+        prefetch.isPrefetchComplete &&
+        prefetch.cachedBorderWaitTimes != null) {
+      if (mounted) {
+        setState(() {
+          _borderWaitTimes = prefetch.cachedBorderWaitTimes!;
+          _isLoadingBorders = false;
+          _borderError = null;
+        });
+      }
+      return;
+    }
+
     if (forceRefresh) {
       setState(() {
         _isLoadingBorders = true;
@@ -120,6 +434,58 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _loadRecentEntries() async {
+    try {
+      final prefetch = DataPrefetchService.instance;
+      List<Trip> trips;
+      List<FuelEntry> fuelEntries;
+
+      // Use prefetched data if available, otherwise fetch
+      if (prefetch.isPrefetchComplete &&
+          prefetch.cachedTrips != null &&
+          prefetch.cachedFuelEntries != null) {
+        // Take first 5 from cached data
+        trips = prefetch.cachedTrips!.take(5).toList();
+        fuelEntries = prefetch.cachedFuelEntries!.take(5).toList();
+      } else {
+        trips = await TripService.getTrips(limit: 5);
+        fuelEntries = await FuelService.getFuelEntries(limit: 5);
+      }
+
+      // Combine and sort by date
+      final List<dynamic> combined = [];
+
+      for (final trip in trips) {
+        combined.add({'type': 'trip', 'data': trip, 'date': trip.tripDate});
+      }
+
+      for (final fuel in fuelEntries) {
+        combined.add({'type': 'fuel', 'data': fuel, 'date': fuel.fuelDate});
+      }
+
+      // Sort by date descending
+      combined.sort(
+        (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
+      );
+
+      // Take only first 5
+      final recent = combined.take(5).toList();
+
+      if (mounted) {
+        setState(() {
+          _recentEntries = recent;
+          _isLoadingEntries = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingEntries = false;
+        });
+      }
+    }
+  }
+
   String _getErrorMessage(dynamic error) {
     final errorStr = error.toString().toLowerCase();
     if (errorStr.contains('socketexception') ||
@@ -171,28 +537,43 @@ class _DashboardPageState extends State<DashboardPage> {
     final gutter = ResponsiveLayout.getGutter(context);
     final isTabletOrLarger = !ResponsiveLayout.isMobile(context);
 
+    // Format total miles for display
+    String formattedMiles;
+    if (_totalMiles >= 1000) {
+      formattedMiles = '${(_totalMiles / 1000).toStringAsFixed(1)}K';
+    } else {
+      formattedMiles = _totalMiles.toStringAsFixed(0);
+    }
+    final milesTitle = _distanceUnit == 'km' ? 'Km Driven' : 'Miles Driven';
+
     Widget statsGrid() => Padding(
       padding: EdgeInsets.symmetric(horizontal: margin),
       child: isTabletOrLarger
           ? Row(
               children: [
                 Expanded(
-                  child: DashboardCard(
-                    value: '127',
-                    title: 'Total Loads',
-                    icon: Icons.local_shipping,
-                    color: const Color(0xFF3B82F6),
-                    trend: '+12%',
+                  child: GestureDetector(
+                    onLongPress: _showTimePeriodDialog,
+                    child: DashboardCard(
+                      value: '$_totalTrips',
+                      title: 'Total Trips',
+                      icon: Icons.local_shipping,
+                      color: const Color(0xFF3B82F6),
+                      trend: _tripsTrend,
+                    ),
                   ),
                 ),
                 SizedBox(width: gutter),
                 Expanded(
-                  child: DashboardCard(
-                    value: '45.2K',
-                    title: 'Miles Driven',
-                    icon: Icons.route,
-                    color: const Color(0xFF10B981),
-                    trend: '+8%',
+                  child: GestureDetector(
+                    onLongPress: _showTimePeriodDialog,
+                    child: DashboardCard(
+                      value: formattedMiles,
+                      title: milesTitle,
+                      icon: Icons.route,
+                      color: const Color(0xFF10B981),
+                      trend: _milesTrend,
+                    ),
                   ),
                 ),
               ],
@@ -201,23 +582,29 @@ class _DashboardPageState extends State<DashboardPage> {
               children: [
                 Row(
                   children: [
-                    const Expanded(
-                      child: DashboardCard(
-                        value: '127',
-                        title: 'Total Loads',
-                        icon: Icons.local_shipping,
-                        color: Color(0xFF3B82F6),
-                        trend: '+12%',
+                    Expanded(
+                      child: GestureDetector(
+                        onLongPress: _showTimePeriodDialog,
+                        child: DashboardCard(
+                          value: '$_totalTrips',
+                          title: 'Total Trips',
+                          icon: Icons.local_shipping,
+                          color: const Color(0xFF3B82F6),
+                          trend: _tripsTrend,
+                        ),
                       ),
                     ),
                     SizedBox(width: gutter),
-                    const Expanded(
-                      child: DashboardCard(
-                        value: '45.2K',
-                        title: 'Miles Driven',
-                        icon: Icons.route,
-                        color: Color(0xFF10B981),
-                        trend: '+8%',
+                    Expanded(
+                      child: GestureDetector(
+                        onLongPress: _showTimePeriodDialog,
+                        child: DashboardCard(
+                          value: formattedMiles,
+                          title: milesTitle,
+                          icon: Icons.route,
+                          color: const Color(0xFF10B981),
+                          trend: _milesTrend,
+                        ),
                       ),
                     ),
                   ],
@@ -260,7 +647,14 @@ class _DashboardPageState extends State<DashboardPage> {
                     borderColor,
                     secondaryTextColor,
                     Icons.search,
-                    () {},
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GlobalSearchPage(),
+                        ),
+                      );
+                    },
                   ),
                   const SizedBox(width: 8),
                   // Weather widget
@@ -278,6 +672,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             Text(
                               _weatherService.getWeatherIcon(
                                 _weatherData!['weatherCode'],
+                                isDay: _weatherData!['isDay'] ?? true,
                               ),
                               style: const TextStyle(fontSize: 20),
                             ),
@@ -338,6 +733,13 @@ class _DashboardPageState extends State<DashboardPage> {
                       ),
                     ),
                   const Spacer(),
+                  // Notification bell icon with red dot indicator
+                  _buildNotificationBell(
+                    cardColor,
+                    borderColor,
+                    secondaryTextColor,
+                  ),
+                  const SizedBox(width: 8),
                   _quickAction(
                     const Color(0xFF007AFF),
                     const Color(0xFF007AFF),
@@ -504,84 +906,137 @@ class _DashboardPageState extends State<DashboardPage> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: borderColor),
                     ),
-                    child: Column(
-                      children: [
-                        _buildRecordEntry(
-                          textColor,
-                          secondaryTextColor,
-                          'trip',
-                          'Trip #1247',
-                          'Dallas → Houston',
-                          'Nov 29, 2025',
-                          '245 mi',
-                        ),
-                        Divider(height: 1, color: borderColor),
-                        _buildRecordEntry(
-                          textColor,
-                          secondaryTextColor,
-                          'fuel',
-                          'Fuel #F-892',
-                          'Shell Station, Austin',
-                          'Nov 28, 2025',
-                          '85 gal',
-                        ),
-                        Divider(height: 1, color: borderColor),
-                        _buildRecordEntry(
-                          textColor,
-                          secondaryTextColor,
-                          'trip',
-                          'Trip #1246',
-                          'Austin → San Antonio',
-                          'Nov 28, 2025',
-                          '80 mi',
-                        ),
-                        Divider(height: 1, color: borderColor),
-                        _buildRecordEntry(
-                          textColor,
-                          secondaryTextColor,
-                          'fuel',
-                          'Fuel #F-891',
-                          'Pilot, Phoenix',
-                          'Nov 27, 2025',
-                          '120 gal',
-                        ),
-                        Divider(height: 1, color: borderColor),
-                        _buildRecordEntry(
-                          textColor,
-                          secondaryTextColor,
-                          'trip',
-                          'Trip #1245',
-                          'Phoenix → Tucson',
-                          'Nov 27, 2025',
-                          '116 mi',
-                        ),
-                        Divider(height: 1, color: borderColor),
-                        // See more button
-                        InkWell(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => const RecordsListPage(),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                    child: _isLoadingEntries
+                        ? const Padding(
+                            padding: EdgeInsets.all(32),
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        : _recentEntries.isEmpty
+                        ? Padding(
+                            padding: const EdgeInsets.all(32),
                             child: Center(
-                              child: Text(
-                                'See more',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: const Color(0xFF007AFF),
-                                ),
+                              child: Column(
+                                children: [
+                                  Icon(
+                                    Icons.inbox_outlined,
+                                    size: 48,
+                                    color: secondaryTextColor,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'No entries yet',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: secondaryTextColor,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Add your first trip or fuel entry',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: secondaryTextColor,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                          )
+                        : Column(
+                            children: [
+                              ..._recentEntries.asMap().entries.map((entry) {
+                                final index = entry.key;
+                                final item = entry.value;
+                                final isTrip = item['type'] == 'trip';
+
+                                Widget entryWidget;
+                                if (isTrip) {
+                                  final trip = item['data'] as Trip;
+                                  final pickups = trip.pickupLocations;
+                                  final deliveries = trip.deliveryLocations;
+                                  final route =
+                                      pickups.isNotEmpty &&
+                                          deliveries.isNotEmpty
+                                      ? '${_extractCityState(pickups.first)} → ${_extractCityState(deliveries.last)}'
+                                      : 'No route';
+                                  final distance = trip.totalDistance;
+                                  final distanceStr = distance != null
+                                      ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
+                                      : '-';
+
+                                  entryWidget = _buildRecordEntry(
+                                    textColor,
+                                    secondaryTextColor,
+                                    'trip',
+                                    'Trip #${trip.tripNumber}',
+                                    route,
+                                    DateFormat(
+                                      'MMM d, yyyy',
+                                    ).format(trip.tripDate),
+                                    distanceStr,
+                                  );
+                                } else {
+                                  final fuel = item['data'] as FuelEntry;
+                                  final location = fuel.location != null
+                                      ? _extractCityState(fuel.location!)
+                                      : 'Unknown location';
+                                  final quantity =
+                                      '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
+                                  final identifier = fuel.isTruckFuel
+                                      ? fuel.truckNumber ?? 'Truck'
+                                      : fuel.reeferNumber ?? 'Reefer';
+
+                                  entryWidget = _buildRecordEntry(
+                                    textColor,
+                                    secondaryTextColor,
+                                    'fuel',
+                                    '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
+                                    location,
+                                    DateFormat(
+                                      'MMM d, yyyy',
+                                    ).format(fuel.fuelDate),
+                                    quantity,
+                                  );
+                                }
+
+                                return Column(
+                                  children: [
+                                    entryWidget,
+                                    if (index < _recentEntries.length - 1)
+                                      Divider(height: 1, color: borderColor),
+                                  ],
+                                );
+                              }),
+                              Divider(height: 1, color: borderColor),
+                              // See more button
+                              InkWell(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          const RecordsListPage(),
+                                    ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 14,
+                                  ),
+                                  child: Center(
+                                    child: Text(
+                                      'See more',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF007AFF),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ),
-                      ],
-                    ),
                   ),
                 ],
               ),
@@ -700,6 +1155,50 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Widget _buildNotificationBell(
+    Color cardColor,
+    Color borderColor,
+    Color iconColor,
+  ) {
+    return GestureDetector(
+      onTap: () async {
+        await context.push('/notifications');
+        // Refresh notification count after returning from notifications page
+        await NotificationService.instance.refreshUnreadCount();
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Icon(Icons.notifications_outlined, color: iconColor, size: 24),
+            // Red dot indicator for unread notifications
+            if (_unreadNotificationCount > 0)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: cardColor, width: 2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildRecordEntry(
     Color textColor,
     Color secondaryTextColor,
@@ -720,58 +1219,67 @@ class _DashboardPageState extends State<DashboardPage> {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(icon, color: iconColor, size: 20),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  entryId,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                // Top row: Entry ID left, Value right
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      entryId,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      value,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF3B82F6),
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  description,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: secondaryTextColor,
-                  ),
+                const SizedBox(height: 4),
+                // Bottom row: Description left, Date right
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        description,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: secondaryTextColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      date,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: iconColor,
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                date,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: secondaryTextColor,
-                ),
-              ),
-            ],
           ),
         ],
       ),
