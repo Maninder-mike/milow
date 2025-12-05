@@ -243,16 +243,6 @@ class _ExplorePageState extends State<ExplorePage> {
     }
   }
 
-  /// Get featured routes filtered by category
-  List<Trip> get _filteredFeaturedRoutes {
-    return _filteredTrips
-        .where(
-          (t) => t.pickupLocations.isNotEmpty && t.deliveryLocations.isNotEmpty,
-        )
-        .take(5)
-        .toList();
-  }
-
   /// Get popular destinations filtered by category
   List<Map<String, dynamic>> get _filteredDestinations {
     final trips = _filteredTrips;
@@ -313,7 +303,7 @@ class _ExplorePageState extends State<ExplorePage> {
         'type': 'trip',
         'title': 'Trip ${trip.tripNumber}',
         'subtitle': route,
-        'date': trip.tripDate,
+        'date': trip.createdAt ?? trip.tripDate,
         'icon': Icons.local_shipping,
         'trip': trip, // Include full trip object
       });
@@ -330,7 +320,7 @@ class _ExplorePageState extends State<ExplorePage> {
           'title': fuel.isTruckFuel ? 'Truck Fuel' : 'Reefer Fuel',
           'subtitle':
               '$location • ${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}',
-          'date': fuel.fuelDate,
+          'date': fuel.createdAt ?? fuel.fuelDate,
           'icon': Icons.local_gas_station,
           'fuel': fuel, // Include full fuel object
         });
@@ -459,37 +449,6 @@ class _ExplorePageState extends State<ExplorePage> {
                                 ],
                               ),
                             ),
-                            const SizedBox(height: 24),
-                            _SectionHeaderRow(
-                              title: _selectedCategory == 'All Routes'
-                                  ? 'Featured Routes'
-                                  : '$_selectedCategory Routes',
-                              onAction: _filteredFeaturedRoutes.isNotEmpty
-                                  ? () => _navigateToAllRoutes()
-                                  : null,
-                            ),
-                            const SizedBox(height: 12),
-                            if (_filteredFeaturedRoutes.isEmpty)
-                              _EmptyStateCard(
-                                message: _selectedCategory == 'All Routes'
-                                    ? 'No routes yet. Add your first trip!'
-                                    : 'No $_selectedCategory routes found.',
-                                icon: Icons.route,
-                              )
-                            else
-                              Column(
-                                children: _filteredFeaturedRoutes.take(5).map((
-                                  trip,
-                                ) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: _SimpleRouteCard(
-                                      trip: trip,
-                                      extractCityState: _extractCityState,
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
                             const SizedBox(height: 24),
                             _SectionHeaderRow(
                               title: 'Popular Destinations',
@@ -627,19 +586,6 @@ class _ExplorePageState extends State<ExplorePage> {
       context: context,
       builder: (context) =>
           _SearchDialog(trips: _allTrips, extractCityState: _extractCityState),
-    );
-  }
-
-  void _navigateToAllRoutes() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => _AllRoutesPage(
-          trips: _filteredFeaturedRoutes,
-          extractCityState: _extractCityState,
-          categoryLabel: _selectedCategory,
-        ),
-      ),
     );
   }
 
@@ -833,96 +779,6 @@ class _GlassyCard extends StatelessWidget {
             child: child,
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _SimpleRouteCard extends StatelessWidget {
-  final Trip trip;
-  final String Function(String) extractCityState;
-
-  const _SimpleRouteCard({required this.trip, required this.extractCityState});
-
-  Color _getDistanceColor(double? distance) {
-    if (distance == null) return const Color(0xFF9CA3AF);
-    if (distance > 500) return const Color(0xFF3B82F6);
-    if (distance >= 200) return const Color(0xFFF59E0B);
-    return const Color(0xFF10B981);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtitleColor = isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : const Color(0xFF667085);
-    final route =
-        trip.pickupLocations.isNotEmpty && trip.deliveryLocations.isNotEmpty
-        ? '${extractCityState(trip.pickupLocations.first)} → ${extractCityState(trip.deliveryLocations.last)}'
-        : 'No route';
-    final distance = trip.totalDistance;
-    final distanceStr = distance != null
-        ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
-        : '';
-
-    return _GlassyCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.local_shipping,
-              color: Color(0xFF6C5CE7),
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Trip ${trip.tripNumber}',
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  route,
-                  style: GoogleFonts.inter(fontSize: 13, color: subtitleColor),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          if (distanceStr.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getDistanceColor(distance).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Text(
-                distanceStr,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: _getDistanceColor(distance),
-                ),
-              ),
-            ),
-        ],
       ),
     );
   }
@@ -2648,217 +2504,6 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
 
 // ============== See All Pages ==============
 
-class _AllRoutesPage extends StatefulWidget {
-  final List<Trip> trips;
-  final String Function(String) extractCityState;
-  final String categoryLabel;
-
-  const _AllRoutesPage({
-    required this.trips,
-    required this.extractCityState,
-    required this.categoryLabel,
-  });
-
-  @override
-  State<_AllRoutesPage> createState() => _AllRoutesPageState();
-}
-
-class _AllRoutesPageState extends State<_AllRoutesPage> {
-  late List<Trip> _trips;
-
-  @override
-  void initState() {
-    super.initState();
-    _trips = List.from(widget.trips);
-  }
-
-  Future<void> _deleteTrip(Trip trip, int index) async {
-    final scaffoldMessenger = ScaffoldMessenger.of(context);
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(
-          'Delete Trip',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-        ),
-        content: Text(
-          'Are you sure you want to delete Trip ${trip.tripNumber}?',
-          style: GoogleFonts.inter(),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.inter(color: const Color(0xFF667085)),
-            ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(
-              'Delete',
-              style: GoogleFonts.inter(color: const Color(0xFFEF4444)),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    if (confirmed == true && trip.id != null) {
-      try {
-        await TripService.deleteTrip(trip.id!);
-        DataPrefetchService.instance.invalidateCache();
-
-        setState(() {
-          _trips.removeAt(index);
-        });
-
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Trip ${trip.tripNumber} deleted'),
-            backgroundColor: const Color(0xFF10B981),
-          ),
-        );
-      } catch (e) {
-        scaffoldMessenger.showSnackBar(
-          SnackBar(
-            content: Text('Failed to delete: $e'),
-            backgroundColor: const Color(0xFFEF4444),
-          ),
-        );
-      }
-    }
-  }
-
-  Future<void> _modifyTrip(Trip trip) async {
-    final result = await Navigator.push<bool>(
-      context,
-      MaterialPageRoute(
-        builder: (context) => AddEntryPage(editingTrip: trip, initialTab: 0),
-      ),
-    );
-
-    if (result == true) {
-      DataPrefetchService.instance.invalidateCache();
-      // Pop back to explore page to refresh data
-      if (mounted) {
-        Navigator.pop(context);
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        title: Text(
-          widget.categoryLabel == 'All Routes'
-              ? 'All Routes'
-              : '${widget.categoryLabel} Routes',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF101828),
-          ),
-        ),
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : const Color(0xFF101828),
-        ),
-      ),
-      body: _trips.isEmpty
-          ? Center(
-              child: Text(
-                widget.categoryLabel == 'All Routes'
-                    ? 'No routes found'
-                    : 'No ${widget.categoryLabel} routes found',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF9CA3AF),
-                ),
-              ),
-            )
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _trips.length,
-              itemBuilder: (context, index) {
-                final trip = _trips[index];
-
-                return Dismissible(
-                  key: Key('trip_${trip.id ?? index}'),
-                  background: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.only(left: 20),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.edit, color: Colors.white),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Modify',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  secondaryBackground: Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    alignment: Alignment.centerRight,
-                    padding: const EdgeInsets.only(right: 20),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.end,
-                      children: [
-                        Text(
-                          'Delete',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        const Icon(Icons.delete, color: Colors.white),
-                      ],
-                    ),
-                  ),
-                  confirmDismiss: (direction) async {
-                    if (direction == DismissDirection.endToStart) {
-                      await _deleteTrip(trip, index);
-                      return false;
-                    } else {
-                      await _modifyTrip(trip);
-                      return false;
-                    }
-                  },
-                  child: _ExpandableRouteCard(
-                    trip: trip,
-                    extractCityState: widget.extractCityState,
-                  ),
-                );
-              },
-            ),
-    );
-  }
-}
-
 class _AllDestinationsPage extends StatelessWidget {
   final List<Map<String, dynamic>> destinations;
   final String categoryLabel;
@@ -2961,7 +2606,7 @@ class _AllActivityPageState extends State<_AllActivityPage> {
         'type': 'trip',
         'title': 'Trip ${trip.tripNumber}',
         'subtitle': route,
-        'date': trip.tripDate,
+        'date': trip.createdAt ?? trip.tripDate,
         'icon': Icons.local_shipping,
         'trip': trip,
       });
@@ -2976,7 +2621,7 @@ class _AllActivityPageState extends State<_AllActivityPage> {
         'title': fuel.isTruckFuel ? 'Truck Fuel' : 'Reefer Fuel',
         'subtitle':
             '$location • ${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}',
-        'date': fuel.fuelDate,
+        'date': fuel.createdAt ?? fuel.fuelDate,
         'icon': Icons.local_gas_station,
         'fuel': fuel,
       });

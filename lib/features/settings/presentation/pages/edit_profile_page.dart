@@ -121,12 +121,61 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
-  Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 80,
+  void _showImageOptions(BuildContext context, bool isDark) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(
+                  Icons.camera_alt,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                title: Text(
+                  'Take Photo',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.camera);
+                },
+              ),
+              ListTile(
+                leading: Icon(
+                  Icons.photo_library,
+                  color: isDark ? Colors.white : Colors.black87,
+                ),
+                title: Text(
+                  'Choose from Gallery',
+                  style: TextStyle(
+                    color: isDark ? Colors.white : Colors.black87,
+                  ),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickImage(ImageSource.gallery);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
     );
+  }
+
+  Future<void> _pickImage(ImageSource source) async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: source, imageQuality: 80);
     if (image != null) {
       setState(() {
         _pickedImage = image;
@@ -264,75 +313,41 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       Center(
                         child: Column(
                           children: [
-                            Stack(
-                              clipBehavior: Clip.none,
-                              children: [
-                                Container(
-                                  decoration: BoxDecoration(
-                                    shape: BoxShape.circle,
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: const Color(
-                                          0xFF007AFF,
-                                        ).withValues(alpha: 0.2),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, 4),
-                                      ),
-                                    ],
-                                  ),
-                                  child: CircleAvatar(
-                                    radius: 60,
-                                    backgroundColor: const Color(0xFFBFDBFE),
-                                    backgroundImage: _pickedImage != null
-                                        ? FileImage(File(_pickedImage!.path))
-                                        : (_avatarUrl != null &&
-                                              _avatarUrl!.isNotEmpty)
-                                        ? NetworkImage(_avatarUrl!)
-                                        : null,
-                                    child:
-                                        (_avatarUrl == null &&
-                                            _pickedImage == null)
-                                        ? const Icon(
-                                            Icons.person,
-                                            size: 60,
-                                            color: Color(0xFF3B82F6),
-                                          )
-                                        : null,
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 0,
-                                  right: 0,
-                                  child: InkWell(
-                                    onTap: _pickImage,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        color: const Color(0xFF007AFF),
-                                        shape: BoxShape.circle,
-                                        border: Border.all(
-                                          color: backgroundColor,
-                                          width: 4,
-                                        ),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.1,
-                                            ),
-                                            blurRadius: 8,
-                                            offset: const Offset(0, 2),
-                                          ),
-                                        ],
-                                      ),
-                                      child: const Icon(
-                                        Icons.camera_alt,
-                                        size: 20,
-                                        color: Colors.white,
-                                      ),
+                            GestureDetector(
+                              onTap: () => _showImageOptions(context, isDark),
+                              child: Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF007AFF,
+                                      ).withValues(alpha: 0.2),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 4),
                                     ),
-                                  ),
+                                  ],
                                 ),
-                              ],
+                                child: CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: const Color(0xFFBFDBFE),
+                                  backgroundImage: _pickedImage != null
+                                      ? FileImage(File(_pickedImage!.path))
+                                      : (_avatarUrl != null &&
+                                            _avatarUrl!.isNotEmpty)
+                                      ? NetworkImage(_avatarUrl!)
+                                      : null,
+                                  child:
+                                      (_avatarUrl == null &&
+                                          _pickedImage == null)
+                                      ? const Icon(
+                                          Icons.person,
+                                          size: 60,
+                                          color: Color(0xFF3B82F6),
+                                        )
+                                      : null,
+                                ),
+                              ),
                             ),
                             const SizedBox(height: 12),
                             Text(

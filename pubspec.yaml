@@ -1,7 +1,7 @@
 name: milow
 description: "A Semi Trucking app for drivers and companies to manage trips, track fuel, and export reports"
 publish_to: "none"
-version: 1.0.0+1
+version: 0.0.1
 
 # Repository information
 # homepage: https://github.com/maninder-mike/milow
@@ -10,21 +10,12 @@ version: 1.0.0+1
 environment:
   sdk: ^3.10.1
 
-# Dependencies specify other packages that your package needs in order to work.
-# To automatically upgrade your package dependencies to the latest versions
-# consider running `flutter pub upgrade --major-versions`. Alternatively,
-# dependencies can be manually updated by changing the version numbers below to
-# the latest version available on pub.dev. To see which dependencies have newer
-# versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
   intl: any
-
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   supabase_flutter: ^2.10.3
   google_fonts: ^6.3.2
@@ -59,9 +50,6 @@ flutter_launcher_icons:
   image_path: "assets/images/milow_icon.png"
   adaptive_icon_background: "#ffffff"
   adaptive_icon_foreground: "assets/images/milow_icon.png"
-
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
 
 # The following section is specific to Flutter packages.
 flutter:
