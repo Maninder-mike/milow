@@ -1,7 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:milow/core/widgets/app_scaffold.dart';
+// Tab shell provides nav; this page returns content only
 
 class InboxPage extends StatefulWidget {
   const InboxPage({super.key});
@@ -29,17 +30,28 @@ class _InboxPageState extends State<InboxPage>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
 
-    return AppScaffold(
-      currentIndex: 2,
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {},
-        backgroundColor: const Color(0xFF007AFF),
-        child: const Icon(Icons.edit, color: Colors.white),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0xFF1a1a2e),
+                  const Color(0xFF16213e),
+                  const Color(0xFF0f0f1a),
+                ]
+              : [
+                  const Color(0xFFF0F4FF),
+                  const Color(0xFFFDF2F8),
+                  const Color(0xFFF0FDF4),
+                ],
+          stops: const [0.0, 0.5, 1.0],
+        ),
       ),
-      body: Column(
+      child: Column(
         children: [
           // Header
           Padding(
@@ -62,56 +74,67 @@ class _InboxPageState extends State<InboxPage>
                       'Messages and notifications',
                       style: GoogleFonts.inter(
                         fontSize: 14,
-                        color: const Color(0xFF667085),
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.6)
+                            : const Color(0xFF667085),
                       ),
                     ),
                   ],
                 ),
                 Row(
                   children: [
-                    IconButton(
-                      icon: Icon(Icons.search, color: textColor),
-                      onPressed: () {
-                        // TODO: Implement search
-                      },
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.more_vert, color: textColor),
-                      onPressed: () {
-                        // TODO: Implement menu
-                      },
-                    ),
+                    _buildGlassyIconButton(Icons.search, isDark, textColor),
+                    const SizedBox(width: 8),
+                    _buildGlassyIconButton(Icons.more_vert, isDark, textColor),
                   ],
                 ),
               ],
             ),
           ),
-          // Tabs
-          Container(
-            margin: const EdgeInsets.symmetric(horizontal: 16),
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              indicator: BoxDecoration(
-                color: const Color(0xFF007AFF),
-                borderRadius: BorderRadius.circular(10),
+          // Glassy Tabs
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(16),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.1)
+                        : Colors.white.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.5),
+                      width: 1,
+                    ),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: const Color(0xFF6C5CE7),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    dividerColor: Colors.transparent,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: isDark
+                        ? Colors.white.withValues(alpha: 0.6)
+                        : const Color(0xFF667085),
+                    labelStyle: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    tabs: const [
+                      Tab(text: 'All'),
+                      Tab(text: 'Unread'),
+                      Tab(text: 'Archived'),
+                    ],
+                  ),
+                ),
               ),
-              indicatorSize: TabBarIndicatorSize.tab,
-              dividerColor: Colors.transparent,
-              labelColor: Colors.white,
-              unselectedLabelColor: const Color(0xFF667085),
-              labelStyle: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-              ),
-              tabs: const [
-                Tab(text: 'All'),
-                Tab(text: 'Unread'),
-                Tab(text: 'Archived'),
-              ],
             ),
           ),
           const SizedBox(height: 16),
@@ -120,9 +143,9 @@ class _InboxPageState extends State<InboxPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildMessageList(cardColor, textColor, 'All messages'),
-                _buildMessageList(cardColor, textColor, 'Unread messages'),
-                _buildMessageList(cardColor, textColor, 'Archived messages'),
+                _buildMessageList(isDark, textColor, 'All messages'),
+                _buildMessageList(isDark, textColor, 'Unread messages'),
+                _buildMessageList(isDark, textColor, 'Archived messages'),
               ],
             ),
           ),
@@ -131,120 +154,205 @@ class _InboxPageState extends State<InboxPage>
     );
   }
 
-  Widget _buildMessageList(Color cardColor, Color textColor, String category) {
+  Widget _buildGlassyIconButton(IconData icon, bool isDark, Color textColor) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(12),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: Icon(icon, color: textColor),
+            onPressed: () {},
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMessageList(bool isDark, Color textColor, String category) {
     return ListView(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       children: [
         _buildPlaceholderCard(
-          cardColor,
+          isDark,
           textColor,
           '$category will appear here',
           Icons.mail_outline,
         ),
         const SizedBox(height: 16),
-        _buildInfoCard(cardColor),
+        _buildInfoCard(isDark),
       ],
     );
   }
 
   Widget _buildPlaceholderCard(
-    Color cardColor,
+    bool isDark,
     Color textColor,
     String message,
     IconData icon,
   ) {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(48),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFFE5E7EB).withValues(alpha: 0.3),
-        ),
-      ),
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 48, color: const Color(0xFF007AFF)),
-          ),
-          const SizedBox(height: 20),
-          Text(
-            'No messages yet',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            message,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: const Color(0xFF667085),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Coming soon',
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF007AFF),
-            ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildInfoCard(Color cardColor) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF007AFF).withValues(alpha: 0.2),
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Icon(Icons.info_outline, color: Color(0xFF007AFF), size: 20),
-          const SizedBox(width: 12),
-          Expanded(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(48),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        Colors.white.withValues(alpha: 0.15),
+                        Colors.white.withValues(alpha: 0.05),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.9),
+                        Colors.white.withValues(alpha: 0.7),
+                      ],
+              ),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
+            ),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(icon, size: 48, color: const Color(0xFF6C5CE7)),
+                ),
+                const SizedBox(height: 20),
                 Text(
-                  'About Inbox',
+                  'No messages yet',
                   style: GoogleFonts.inter(
-                    fontSize: 14,
+                    fontSize: 18,
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF007AFF),
+                    color: textColor,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 8),
                 Text(
-                  'This is where you\'ll receive messages from dispatchers, notifications about your trips, and important updates from your company.',
+                  message,
                   style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: const Color(0xFF007AFF),
-                    height: 1.5,
+                    fontSize: 14,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.6)
+                        : const Color(0xFF667085),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Coming soon',
+                  style: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF6C5CE7),
                   ),
                 ),
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInfoCard(bool isDark) {
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+            blurRadius: 20,
+            spreadRadius: 0,
+            offset: const Offset(0, 4),
+          ),
         ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
+                width: 1,
+              ),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Icon(
+                  Icons.info_outline,
+                  color: Color(0xFF6C5CE7),
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'About Inbox',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF6C5CE7),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'This is where you\'ll receive messages from dispatchers, notifications about your trips, and important updates from your company.',
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: const Color(0xFF6C5CE7),
+                          height: 1.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Extra padding for floating bottom nav bar
+                const SizedBox(height: 120),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }

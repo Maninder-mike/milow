@@ -11,6 +11,7 @@ class Trip {
   final double? startOdometer;
   final double? endOdometer;
   final String distanceUnit; // 'mi' or 'km'
+  final String? borderCrossing;
   final String? notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -27,6 +28,7 @@ class Trip {
     this.startOdometer,
     this.endOdometer,
     this.distanceUnit = 'mi',
+    this.borderCrossing,
     this.notes,
     this.createdAt,
     this.updatedAt,
@@ -69,6 +71,7 @@ class Trip {
           ? (json['end_odometer'] as num).toDouble()
           : null,
       distanceUnit: json['distance_unit'] as String? ?? 'mi',
+      borderCrossing: json['border_crossing'] as String?,
       notes: json['notes'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
@@ -93,6 +96,7 @@ class Trip {
       'start_odometer': startOdometer,
       'end_odometer': endOdometer,
       'distance_unit': distanceUnit,
+      'border_crossing': borderCrossing,
       'notes': notes,
     };
   }
@@ -110,6 +114,7 @@ class Trip {
     double? startOdometer,
     double? endOdometer,
     String? distanceUnit,
+    String? borderCrossing,
     String? notes,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -126,6 +131,7 @@ class Trip {
       startOdometer: startOdometer ?? this.startOdometer,
       endOdometer: endOdometer ?? this.endOdometer,
       distanceUnit: distanceUnit ?? this.distanceUnit,
+      borderCrossing: borderCrossing ?? this.borderCrossing,
       notes: notes ?? this.notes,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,

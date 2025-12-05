@@ -16,11 +16,10 @@ class ProfileProvider extends ChangeNotifier {
   bool get loading => _loading;
 
   late final StreamSubscription<AuthState> _authSub;
-  RealtimeChannel? _channel;
   ValueListenable<Box<String>>? _hiveListenable;
 
   ProfileProvider() {
-    // Listen to auth state changes to manage subscriptions and cache
+    // Listen to auth state changes to manage cache
     _authSub = Supabase.instance.client.auth.onAuthStateChange.listen((event) {
       _handleAuthChange();
     });
@@ -30,10 +29,6 @@ class ProfileProvider extends ChangeNotifier {
 
   Future<void> _handleAuthChange() async {
     final uid = ProfileService.currentUserId;
-
-    // Cancel realtime channel if user changed or signed out
-    await _channel?.unsubscribe();
-    _channel = null;
 
     // Remove Hive listener
     _hiveListenable?.removeListener(_onHiveChange);
@@ -55,32 +50,6 @@ class ProfileProvider extends ChangeNotifier {
     // Listen to Hive box to reflect local updates instantly
     _hiveListenable = LocalProfileStore.watchBox();
     _hiveListenable!.addListener(_onHiveChange);
-
-    // Subscribe to realtime updates for this user's profile (UPDATE/INSERT)
-    _channel = Supabase.instance.client.channel('public:profiles')
-      ..onPostgresChanges(
-        event: PostgresChangeEvent.insert,
-        schema: 'public',
-        table: 'profiles',
-        callback: (payload) {
-          final row = payload.newRecord;
-          if (row['id'] == uid) {
-            ProfileRepository.refresh();
-          }
-        },
-      )
-      ..onPostgresChanges(
-        event: PostgresChangeEvent.update,
-        schema: 'public',
-        table: 'profiles',
-        callback: (payload) {
-          final row = payload.newRecord;
-          if (row['id'] == uid) {
-            ProfileRepository.refresh();
-          }
-        },
-      )
-      ..subscribe();
 
     // Background refresh to ensure latest
     unawaited(ProfileRepository.refresh());
@@ -111,7 +80,6 @@ class ProfileProvider extends ChangeNotifier {
   @override
   void dispose() {
     _authSub.cancel();
-    _channel?.unsubscribe();
     _hiveListenable?.removeListener(_onHiveChange);
     super.dispose();
   }

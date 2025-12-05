@@ -1,7 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:milow/core/widgets/app_scaffold.dart';
+// Tab shell provides nav; this page returns content only
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/models/trip.dart';
 import 'package:milow/core/models/fuel_entry.dart';
@@ -9,7 +10,6 @@ import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
 
 class ExplorePage extends StatefulWidget {
@@ -25,95 +25,165 @@ class _ExplorePageState extends State<ExplorePage> {
   bool _isLoading = true;
   String _selectedCategory = 'All Routes';
 
-  // Realtime subscriptions
-  RealtimeChannel? _tripsChannel;
-  RealtimeChannel? _fuelChannel;
-
   @override
   void initState() {
     super.initState();
     _loadData();
-    _setupRealtimeSubscriptions();
   }
 
-  @override
-  void dispose() {
-    _tripsChannel?.unsubscribe();
-    _fuelChannel?.unsubscribe();
-    super.dispose();
+  /// Pull-to-refresh handler
+  Future<void> _onRefresh() async {
+    DataPrefetchService.instance.invalidateCache();
+    await _loadData();
   }
 
-  void _setupRealtimeSubscriptions() {
-    final supabase = Supabase.instance.client;
-
-    _tripsChannel = supabase
-        .channel('explore_trips')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'trips',
-          callback: (payload) {
-            DataPrefetchService.instance.invalidateCache();
-            _loadData();
-          },
-        )
-        .subscribe();
-
-    _fuelChannel = supabase
-        .channel('explore_fuel')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'fuel_entries',
-          callback: (payload) {
-            DataPrefetchService.instance.invalidateCache();
-            _loadData();
-          },
-        )
-        .subscribe();
-  }
-
-  /// Extract city and state from a full address using regex
+  /// Extract city and state/province from address
+  /// Returns format: "City ST" (e.g., "Vaughan ON" or "Irwindale CA")
   String _extractCityState(String address) {
     if (address.isEmpty) return address;
 
-    // Pattern to match "City, State/Province" or "City, State ZIP"
-    final RegExp cityStatePattern = RegExp(
-      r'([A-Za-z\s]+),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
+    // Normalize: replace newlines with commas for easier parsing
+    final normalized = address
+        .replaceAll('\n', ', ')
+        .replaceAll(RegExp(r',\s*,'), ',');
+
+    // Pattern 1: Match "CITY STATE ZIP" at end of segment
+    // e.g., "IRWINDALE CA 91702" or "CHARLOTTETOWN PE C1E 0K4"
+    final dispatchPattern = RegExp(
+      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s+[A-Z0-9]{3,7}(?:\s*[A-Z0-9]{0,4})?\s*$',
       caseSensitive: false,
     );
 
-    final match = cityStatePattern.firstMatch(address);
+    final segments = normalized.split(',');
+    for (final segment in segments) {
+      final trimmed = segment.trim();
+      final dispatchMatch = dispatchPattern.firstMatch(trimmed.toUpperCase());
+      if (dispatchMatch != null) {
+        // Get the last word(s) before state - extract city from end
+        final rawCity = dispatchMatch.group(1)!.trim();
+        final city = _extractLastCity(rawCity);
+        final state = dispatchMatch.group(2)!.toUpperCase();
+        return '$city $state';
+      }
+    }
+
+    // Pattern 2: Match "CITY STATE" followed by ( or end (e.g., "VAUGHAN ON (Yard)")
+    final cityStateParenPattern = RegExp(
+      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s*(?:\(|$)',
+      caseSensitive: false,
+    );
+    for (final segment in segments) {
+      final trimmed = segment.trim();
+      final match = cityStateParenPattern.firstMatch(trimmed.toUpperCase());
+      if (match != null) {
+        final rawCity = match.group(1)!.trim();
+        final city = _extractLastCity(rawCity);
+        final state = match.group(2)!.toUpperCase();
+        return '$city $state';
+      }
+    }
+
+    // Pattern 3: Standard format "City, ST" or "City, ST ZIP"
+    final cityStatePattern = RegExp(
+      r'([A-Za-z][A-Za-z\s]+?),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
+      caseSensitive: false,
+    );
+    final match = cityStatePattern.firstMatch(normalized);
     if (match != null) {
-      final city = match.group(1)?.trim() ?? '';
-      final state = match.group(2)?.toUpperCase() ?? '';
-      if (city.isNotEmpty && state.isNotEmpty) {
-        return '$city, $state';
+      final city = _toTitleCase(match.group(1)!.trim());
+      final state = match.group(2)!.toUpperCase();
+      return '$city $state';
+    }
+
+    // Fallback: just return first non-numeric part abbreviated
+    final parts = normalized.split(',');
+    for (final part in parts) {
+      final trimmed = part.trim();
+      if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
+        return trimmed.length > 20 ? '${trimmed.substring(0, 17)}...' : trimmed;
       }
     }
 
-    // If no match, try to extract just the city
-    final parts = address.split(',');
-    if (parts.length >= 2) {
-      for (final part in parts) {
-        final trimmed = part.trim();
-        if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
-          final idx = parts.indexOf(part);
-          if (idx + 1 < parts.length) {
-            final nextPart = parts[idx + 1].trim();
-            final stateMatch = RegExp(
-              r'^([A-Z]{2})\b',
-            ).firstMatch(nextPart.toUpperCase());
-            if (stateMatch != null) {
-              return '$trimmed, ${stateMatch.group(1)}';
-            }
-          }
-          return trimmed;
-        }
+    return address.length > 20 ? '${address.substring(0, 17)}...' : address;
+  }
+
+  /// Extract the actual city name from a string that might include street names
+  /// e.g., "COLD CREEK ROAD VAUGHAN" -> "Vaughan"
+  /// e.g., "QUEBEC CITY" -> "Quebec City"
+  String _extractLastCity(String raw) {
+    final words = raw.split(RegExp(r'\s+'));
+    if (words.isEmpty) return _toTitleCase(raw);
+
+    // Common street suffixes to skip
+    final streetSuffixes = {
+      'ROAD',
+      'RD',
+      'STREET',
+      'ST',
+      'AVENUE',
+      'AVE',
+      'BLVD',
+      'BOULEVARD',
+      'DRIVE',
+      'DR',
+      'LANE',
+      'LN',
+      'WAY',
+      'COURT',
+      'CT',
+      'PLACE',
+      'PL',
+      'CIRCLE',
+      'CIR',
+      'HIGHWAY',
+      'HWY',
+      'ROUTE',
+      'RTE',
+      'PARKWAY',
+      'PKWY',
+    };
+
+    // Find the last street suffix and take everything after it
+    int lastStreetIndex = -1;
+    for (int i = 0; i < words.length; i++) {
+      if (streetSuffixes.contains(words[i].toUpperCase())) {
+        lastStreetIndex = i;
       }
     }
 
-    return address.length > 25 ? '${address.substring(0, 22)}...' : address;
+    if (lastStreetIndex >= 0 && lastStreetIndex < words.length - 1) {
+      // Take everything after the last street suffix
+      final cityWords = words.sublist(lastStreetIndex + 1);
+      return _toTitleCase(cityWords.join(' '));
+    }
+
+    // If no street suffix found, check if first word looks like a number (street address)
+    if (words.length > 1 && RegExp(r'^\d').hasMatch(words.first)) {
+      // Skip the street number and take the last 1-2 words as city
+      final cityWords = words.length > 2
+          ? words.sublist(words.length - 2)
+          : [words.last];
+      // But if second-to-last is a street suffix, just take last word
+      if (cityWords.length > 1 &&
+          streetSuffixes.contains(cityWords.first.toUpperCase())) {
+        return _toTitleCase(cityWords.last);
+      }
+      return _toTitleCase(cityWords.join(' '));
+    }
+
+    // Return the whole thing as city (e.g., "QUEBEC CITY")
+    return _toTitleCase(raw);
+  }
+
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+    return text
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 
   Future<void> _loadData() async {
@@ -277,223 +347,276 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
-
-    return AppScaffold(
-      currentIndex: 0,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            backgroundColor: backgroundColor,
-            elevation: 0,
-            floating: true,
-            snap: true,
-            title: Text(
-              AppLocalizations.of(context)?.explore ?? 'Explore',
-              style: GoogleFonts.inter(
-                fontSize: 28,
-                fontWeight: FontWeight.w700,
-                color: textColor,
+    return Scaffold(
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF1a1a2e),
+                    const Color(0xFF16213e),
+                    const Color(0xFF0f0f1a),
+                  ]
+                : [
+                    const Color(0xFFF0F4FF),
+                    const Color(0xFFFDF2F8),
+                    const Color(0xFFF0FDF4),
+                  ],
+            stops: const [0.0, 0.5, 1.0],
+          ),
+        ),
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          displacement: 60,
+          strokeWidth: 3.0,
+          color: const Color(0xFF6C5CE7),
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          child: CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                floating: true,
+                snap: true,
+                flexibleSpace: ClipRRect(
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                    child: Container(color: Colors.transparent),
+                  ),
+                ),
+                title: Text(
+                  AppLocalizations.of(context)?.explore ?? 'Explore',
+                  style: GoogleFonts.inter(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w700,
+                    color: textColor,
+                  ),
+                ),
+                actions: [
+                  Container(
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: Icon(Icons.search, color: textColor),
+                      onPressed: () => _showSearchDialog(),
+                    ),
+                  ),
+                ],
               ),
-            ),
-            actions: [
-              IconButton(
-                icon: Icon(Icons.search, color: textColor),
-                onPressed: () => _showSearchDialog(),
-              ),
-              IconButton(
-                icon: Icon(Icons.refresh, color: textColor),
-                onPressed: () {
-                  setState(() => _isLoading = true);
-                  DataPrefetchService.instance.invalidateCache();
-                  _loadData();
-                },
+              SliverToBoxAdapter(
+                child: _isLoading
+                    ? const Padding(
+                        padding: EdgeInsets.all(32.0),
+                        child: Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3.0,
+                            color: Color(0xFF6C5CE7),
+                          ),
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _SectionLabel(label: 'CATEGORIES'),
+                            const SizedBox(height: 12),
+                            SingleChildScrollView(
+                              scrollDirection: Axis.horizontal,
+                              child: Row(
+                                children: [
+                                  _buildCategoryChip(
+                                    'All Routes',
+                                    Icons.route,
+                                    _selectedCategory == 'All Routes',
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildCategoryChip(
+                                    'Long Haul',
+                                    Icons.local_shipping,
+                                    _selectedCategory == 'Long Haul',
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildCategoryChip(
+                                    'Regional',
+                                    Icons.map_outlined,
+                                    _selectedCategory == 'Regional',
+                                  ),
+                                  const SizedBox(width: 8),
+                                  _buildCategoryChip(
+                                    'Local',
+                                    Icons.location_on_outlined,
+                                    _selectedCategory == 'Local',
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            _SectionHeaderRow(
+                              title: _selectedCategory == 'All Routes'
+                                  ? 'Featured Routes'
+                                  : '$_selectedCategory Routes',
+                              onAction: _filteredFeaturedRoutes.isNotEmpty
+                                  ? () => _navigateToAllRoutes()
+                                  : null,
+                            ),
+                            const SizedBox(height: 12),
+                            if (_filteredFeaturedRoutes.isEmpty)
+                              _EmptyStateCard(
+                                message: _selectedCategory == 'All Routes'
+                                    ? 'No routes yet. Add your first trip!'
+                                    : 'No $_selectedCategory routes found.',
+                                icon: Icons.route,
+                              )
+                            else
+                              Column(
+                                children: _filteredFeaturedRoutes.take(5).map((
+                                  trip,
+                                ) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _SimpleRouteCard(
+                                      trip: trip,
+                                      extractCityState: _extractCityState,
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            const SizedBox(height: 24),
+                            _SectionHeaderRow(
+                              title: 'Popular Destinations',
+                              onAction: _filteredDestinations.isNotEmpty
+                                  ? () => _navigateToAllDestinations()
+                                  : null,
+                            ),
+                            const SizedBox(height: 12),
+                            if (_filteredDestinations.isEmpty)
+                              _EmptyStateCard(
+                                message: _selectedCategory == 'All Routes'
+                                    ? 'No destinations yet.'
+                                    : 'No destinations for $_selectedCategory trips.',
+                                icon: Icons.location_city,
+                              )
+                            else
+                              Column(
+                                children: _filteredDestinations.take(5).map((
+                                  dest,
+                                ) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _SimpleDestinationCard(
+                                      destination: dest,
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            const SizedBox(height: 24),
+                            _SectionHeaderRow(
+                              title: 'Recent Activity',
+                              onAction: _filteredActivity.isNotEmpty
+                                  ? () => _navigateToAllActivity()
+                                  : null,
+                            ),
+                            const SizedBox(height: 12),
+                            if (_filteredActivity.isEmpty)
+                              _EmptyStateCard(
+                                message: _selectedCategory == 'All Routes'
+                                    ? 'No recent activity.'
+                                    : 'No recent $_selectedCategory activity.',
+                                icon: Icons.history,
+                              )
+                            else
+                              Column(
+                                children: _filteredActivity.take(5).map((
+                                  activity,
+                                ) {
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 10),
+                                    child: _SimpleActivityCard(
+                                      activity: activity,
+                                    ),
+                                  );
+                                }).toList(),
+                              ),
+                            // Extra padding for floating bottom nav bar
+                            const SizedBox(height: 120),
+                          ],
+                        ),
+                      ),
               ),
             ],
           ),
-          SliverToBoxAdapter(
-            child: _isLoading
-                ? const Padding(
-                    padding: EdgeInsets.all(32.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  )
-                : Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _SectionLabel(label: 'CATEGORIES'),
-                        const SizedBox(height: 12),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              _buildCategoryChip(
-                                'All Routes',
-                                Icons.route,
-                                _selectedCategory == 'All Routes',
-                              ),
-                              const SizedBox(width: 8),
-                              _buildCategoryChip(
-                                'Long Haul',
-                                Icons.local_shipping,
-                                _selectedCategory == 'Long Haul',
-                              ),
-                              const SizedBox(width: 8),
-                              _buildCategoryChip(
-                                'Regional',
-                                Icons.map_outlined,
-                                _selectedCategory == 'Regional',
-                              ),
-                              const SizedBox(width: 8),
-                              _buildCategoryChip(
-                                'Local',
-                                Icons.location_on_outlined,
-                                _selectedCategory == 'Local',
-                              ),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 24),
-                        _SectionHeaderRow(
-                          title: _selectedCategory == 'All Routes'
-                              ? 'Featured Routes'
-                              : '$_selectedCategory Routes',
-                          onAction: _filteredFeaturedRoutes.isNotEmpty
-                              ? () => _navigateToAllRoutes()
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        if (_filteredFeaturedRoutes.isEmpty)
-                          _EmptyStateCard(
-                            message: _selectedCategory == 'All Routes'
-                                ? 'No routes yet. Add your first trip!'
-                                : 'No $_selectedCategory routes found.',
-                            icon: Icons.route,
-                          )
-                        else
-                          Column(
-                            children: _filteredFeaturedRoutes.take(5).map((
-                              trip,
-                            ) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _SimpleRouteCard(
-                                  trip: trip,
-                                  extractCityState: _extractCityState,
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        const SizedBox(height: 24),
-                        _SectionHeaderRow(
-                          title: 'Popular Destinations',
-                          onAction: _filteredDestinations.isNotEmpty
-                              ? () => _navigateToAllDestinations()
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        if (_filteredDestinations.isEmpty)
-                          _EmptyStateCard(
-                            message: _selectedCategory == 'All Routes'
-                                ? 'No destinations yet.'
-                                : 'No destinations for $_selectedCategory trips.',
-                            icon: Icons.location_city,
-                          )
-                        else
-                          Column(
-                            children: _filteredDestinations.take(5).map((dest) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _SimpleDestinationCard(
-                                  destination: dest,
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        const SizedBox(height: 24),
-                        _SectionHeaderRow(
-                          title: 'Recent Activity',
-                          onAction: _filteredActivity.isNotEmpty
-                              ? () => _navigateToAllActivity()
-                              : null,
-                        ),
-                        const SizedBox(height: 12),
-                        if (_filteredActivity.isEmpty)
-                          _EmptyStateCard(
-                            message: _selectedCategory == 'All Routes'
-                                ? 'No recent activity.'
-                                : 'No recent $_selectedCategory activity.',
-                            icon: Icons.history,
-                          )
-                        else
-                          Column(
-                            children: _filteredActivity.take(5).map((activity) {
-                              return Padding(
-                                padding: const EdgeInsets.only(bottom: 10),
-                                child: _SimpleActivityCard(activity: activity),
-                              );
-                            }).toList(),
-                          ),
-                        const SizedBox(height: 24),
-                      ],
-                    ),
-                  ),
-          ),
-        ],
+        ),
       ),
     );
   }
 
   Widget _buildCategoryChip(String label, IconData icon, bool isSelected) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
       onTap: () {
         setState(() {
           _selectedCategory = label;
         });
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? const Color(0xFF007AFF)
-              : Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF2A2A2A)
-              : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF007AFF)
-                : Theme.of(context).brightness == Brightness.dark
-                ? const Color(0xFF3A3A3A)
-                : const Color(0xFFE5E7EB),
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected ? Colors.white : const Color(0xFF667085),
-            ),
-            const SizedBox(width: 6),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(20),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? const Color(0xFF6C5CE7)
+                  : isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white.withValues(alpha: 0.7),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
                 color: isSelected
-                    ? Colors.white
-                    : Theme.of(context).brightness == Brightness.dark
-                    ? Colors.white
-                    : const Color(0xFF101828),
+                    ? const Color(0xFF6C5CE7)
+                    : isDark
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : Colors.white.withValues(alpha: 0.5),
+                width: 0.5,
               ),
             ),
-          ],
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  size: 18,
+                  color: isSelected
+                      ? Colors.white
+                      : isDark
+                      ? Colors.white.withValues(alpha: 0.7)
+                      : const Color(0xFF667085),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? Colors.white
+                        : isDark
+                        ? Colors.white
+                        : const Color(0xFF101828),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -613,24 +736,41 @@ class _EmptyStateCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFF9CA3AF), size: 32),
-            const SizedBox(width: 16),
-            Text(
-              message,
-              style: GoogleFonts.inter(
-                color: const Color(0xFF9CA3AF),
-                fontSize: 14,
-              ),
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(20),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+        child: Container(
+          padding: const EdgeInsets.all(24.0),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.08)
+                : Colors.white.withValues(alpha: 0.7),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.1)
+                  : Colors.white.withValues(alpha: 0.5),
+              width: 0.5,
             ),
-          ],
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: const Color(0xFF9CA3AF), size: 32),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Text(
+                  message,
+                  style: GoogleFonts.inter(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.6)
+                        : const Color(0xFF9CA3AF),
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -638,6 +778,65 @@ class _EmptyStateCard extends StatelessWidget {
 }
 
 // ============== Simple Cards for Explore Page ==============
+
+class _GlassyCard extends StatelessWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? padding;
+
+  const _GlassyCard({required this.child, this.padding});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+          child: Container(
+            padding: padding,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        Colors.white.withValues(alpha: 0.15),
+                        Colors.white.withValues(alpha: 0.05),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.9),
+                        Colors.white.withValues(alpha: 0.7),
+                      ],
+              ),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
+            ),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _SimpleRouteCard extends StatelessWidget {
   final Trip trip;
@@ -655,6 +854,10 @@ class _SimpleRouteCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final subtitleColor = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : const Color(0xFF667085);
     final route =
         trip.pickupLocations.isNotEmpty && trip.deliveryLocations.isNotEmpty
         ? '${extractCityState(trip.pickupLocations.first)} → ${extractCityState(trip.deliveryLocations.last)}'
@@ -664,50 +867,62 @@ class _SimpleRouteCard extends StatelessWidget {
         ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
         : '';
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+    return _GlassyCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.local_shipping,
+              color: Color(0xFF6C5CE7),
+              size: 26,
+            ),
           ),
-          child: const Icon(
-            Icons.local_shipping,
-            color: Color(0xFF007AFF),
-            size: 28,
-          ),
-        ),
-        title: Text(
-          'Trip ${trip.tripNumber}',
-          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          route,
-          style: GoogleFonts.inter(fontSize: 13),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: distanceStr.isNotEmpty
-            ? Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getDistanceColor(distance).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  distanceStr,
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Trip ${trip.tripNumber}',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 15,
                     fontWeight: FontWeight.w600,
-                    color: _getDistanceColor(distance),
+                    color: textColor,
                   ),
                 ),
-              )
-            : null,
+                const SizedBox(height: 4),
+                Text(
+                  route,
+                  style: GoogleFonts.inter(fontSize: 13, color: subtitleColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          if (distanceStr.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _getDistanceColor(distance).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                distanceStr,
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: _getDistanceColor(distance),
+                ),
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -721,47 +936,67 @@ class _SimpleDestinationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final subtitleColor = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : const Color(0xFF667085);
     final city = destination['city'] as String;
     final count = destination['count'] as int;
     final description = destination['description'] as String;
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF59E0B).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(
-            Icons.location_city,
-            color: Color(0xFFF59E0B),
-            size: 28,
-          ),
-        ),
-        title: Text(
-          city,
-          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(description, style: GoogleFonts.inter(fontSize: 13)),
-        trailing: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-          decoration: BoxDecoration(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Text(
-            '$count',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF007AFF),
+    return _GlassyCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.location_city,
+              color: Color(0xFFF59E0B),
+              size: 26,
             ),
           ),
-        ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  city,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  description,
+                  style: GoogleFonts.inter(fontSize: 13, color: subtitleColor),
+                ),
+              ],
+            ),
+          ),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              '$count',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: const Color(0xFF6C5CE7),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -790,43 +1025,62 @@ class _SimpleActivityCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final subtitleColor = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : const Color(0xFF667085);
     final icon = activity['icon'] as IconData;
     final isTrip = icon == Icons.local_shipping;
     final iconColor = isTrip
-        ? const Color(0xFF3B82F6)
+        ? const Color(0xFF6C5CE7)
         : const Color(0xFF10B981);
     final date = activity['date'] as DateTime;
 
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      elevation: 2,
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: iconColor.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(12),
+    return _GlassyCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
           ),
-          child: Icon(icon, color: iconColor, size: 24),
-        ),
-        title: Text(
-          activity['title'] as String,
-          style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(
-          activity['subtitle'] as String,
-          style: GoogleFonts.inter(fontSize: 13),
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-        trailing: Text(
-          _formatTimeAgo(date),
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: const Color(0xFF9CA3AF),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  activity['title'] as String,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  activity['subtitle'] as String,
+                  style: GoogleFonts.inter(fontSize: 13, color: subtitleColor),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
           ),
-        ),
+          Text(
+            _formatTimeAgo(date),
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.5)
+                  : const Color(0xFF9CA3AF),
+            ),
+          ),
+        ],
       ),
     );
   }

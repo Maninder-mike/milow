@@ -40,24 +40,11 @@ class EmailVerifiedPage extends StatelessWidget {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [
-                            primary.withValues(alpha: 0.15),
-                            primary.withValues(alpha: 0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                      ),
-                      child: const Icon(
-                        Icons.mark_email_read_rounded,
-                        size: 48,
-                        color: Color(0xFF007AFF),
-                      ),
+                    Image.asset(
+                      'assets/images/milow_icon.png',
+                      width: 80,
+                      height: 80,
+                      fit: BoxFit.contain,
                     ),
                     const SizedBox(height: 28),
                     Text(
@@ -93,10 +80,10 @@ class EmailVerifiedPage extends StatelessWidget {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
-                            Icons.verified_user,
-                            color: Color(0xFF007AFF),
-                            size: 20,
+                          Image.asset(
+                            'assets/images/milow_icon.png',
+                            width: 20,
+                            height: 20,
                           ),
                           const SizedBox(width: 8),
                           Flexible(

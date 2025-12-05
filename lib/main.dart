@@ -18,8 +18,6 @@ import 'package:milow/l10n/app_localizations.dart';
 // Placeholder imports - will be replaced with actual pages
 import 'package:milow/features/auth/presentation/pages/login_page.dart';
 import 'package:milow/features/auth/presentation/pages/sign_up_page.dart';
-import 'package:milow/features/dashboard/presentation/pages/dashboard_page.dart';
-import 'package:milow/features/settings/presentation/pages/settings_page.dart';
 import 'package:milow/features/settings/presentation/pages/feedback_page.dart';
 import 'package:milow/features/settings/presentation/pages/privacy_security_page.dart';
 import 'package:milow/features/settings/presentation/pages/appearance_page.dart';
@@ -28,11 +26,13 @@ import 'package:milow/features/settings/presentation/pages/notifications_page.da
 import 'package:milow/features/settings/presentation/pages/log_viewer_page.dart';
 import 'package:milow/features/settings/presentation/pages/language_page.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
-import 'package:milow/features/explore/presentation/pages/explore_page.dart';
-import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
+// Note: tab pages are hosted via TabsShell
 import 'package:milow/core/widgets/auth_wrapper.dart';
+import 'package:milow/core/widgets/tabs_shell.dart';
+import 'package:milow/core/widgets/splash_screen.dart';
 import 'package:milow/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
+import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,17 +80,29 @@ Future<void> main() async {
   );
 }
 
-final _router = GoRouter(
-  initialLocation: '/login',
+// Navigation helper function
+void _navigateAfterSplash(BuildContext context) {
+  final session = Supabase.instance.client.auth.currentSession;
+  if (session != null) {
+    GoRouter.of(context).go('/dashboard');
+  } else {
+    GoRouter.of(context).go('/login');
+  }
+}
+
+final GoRouter _router = GoRouter(
+  initialLocation: '/splash',
   redirect: (context, state) {
     final session = Supabase.instance.client.auth.currentSession;
     final isLoggedIn = session != null;
     final isAuthPage =
+        state.matchedLocation == '/splash' ||
         state.matchedLocation == '/login' ||
         state.matchedLocation == '/signup' ||
+        state.matchedLocation == '/forgot-password' ||
         state.matchedLocation == '/reset-password';
 
-    // If logged in and trying to access login/signup (but not reset-password), redirect to dashboard
+    // If logged in and trying to access login/signup (but not reset-password or forgot-password), redirect to dashboard
     if (isLoggedIn &&
         (state.matchedLocation == '/login' ||
             state.matchedLocation == '/signup')) {
@@ -105,19 +117,30 @@ final _router = GoRouter(
     return null;
   },
   routes: [
+    GoRoute(
+      path: '/splash',
+      builder: (context, state) =>
+          SplashScreen(onComplete: () => _navigateAfterSplash(context)),
+    ),
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
+    GoRoute(
+      path: '/forgot-password',
+      builder: (context, state) => const ForgotPasswordPage(),
+    ),
     GoRoute(
       path: '/reset-password',
       builder: (context, state) => const ResetPasswordPage(),
     ),
     GoRoute(
       path: '/dashboard',
-      builder: (context, state) => const AuthWrapper(child: DashboardPage()),
+      builder: (context, state) =>
+          const AuthWrapper(child: TabsShell(initialIndex: 1)),
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) => const AuthWrapper(child: SettingsPage()),
+      builder: (context, state) =>
+          const AuthWrapper(child: TabsShell(initialIndex: 3)),
     ),
     GoRoute(
       path: '/edit-profile',
@@ -154,11 +177,13 @@ final _router = GoRouter(
     ),
     GoRoute(
       path: '/explore',
-      builder: (context, state) => const AuthWrapper(child: ExplorePage()),
+      builder: (context, state) =>
+          const AuthWrapper(child: TabsShell(initialIndex: 0)),
     ),
     GoRoute(
       path: '/inbox',
-      builder: (context, state) => const AuthWrapper(child: InboxPage()),
+      builder: (context, state) =>
+          const AuthWrapper(child: TabsShell(initialIndex: 2)),
     ),
     GoRoute(
       path: '/email-verified',
@@ -193,10 +218,44 @@ class _MyAppState extends State<MyApp> {
     // Listen for auth state changes (handles deep link redirects)
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
       final event = data.event;
+      final session = data.session;
+
+      debugPrint('🔗 Auth event: $event');
 
       if (event == AuthChangeEvent.passwordRecovery) {
         // User clicked on password reset link in email
         _router.go('/reset-password');
+      } else if (event == AuthChangeEvent.signedIn && session != null) {
+        final user = session.user;
+
+        // Check if this is an OAuth sign-in (Google, Apple, etc.)
+        // OAuth users have identities with a provider other than 'email'
+        final isOAuthSignIn =
+            user.appMetadata['provider'] != 'email' &&
+            user.appMetadata['provider'] != null;
+
+        if (isOAuthSignIn) {
+          // OAuth sign-in - go directly to dashboard
+          debugPrint('✅ OAuth sign-in detected, going to dashboard');
+          _router.go('/dashboard');
+        } else if (user.emailConfirmedAt != null) {
+          final confirmedTime = DateTime.parse(user.emailConfirmedAt!).toUtc();
+          final now = DateTime.now().toUtc();
+          // If verified within last 5 minutes, this is from email verification link
+          if (now.difference(confirmedTime).inMinutes <= 5) {
+            debugPrint('✅ Email verified, redirecting to login');
+            // Sign out the user so they can login properly with password
+            Supabase.instance.client.auth.signOut().then((_) {
+              _router.go('/login');
+            });
+          } else {
+            // Regular email/password sign in
+            _router.go('/dashboard');
+          }
+        } else {
+          // Regular sign in without email verification
+          _router.go('/dashboard');
+        }
       }
     });
   }

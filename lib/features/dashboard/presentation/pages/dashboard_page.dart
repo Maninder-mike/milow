@@ -1,12 +1,14 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:milow/core/widgets/app_scaffold.dart';
+// TabsShell provides navigation; this page returns content only
 import 'package:milow/core/widgets/dashboard_card.dart';
 import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/news_card.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
+import 'package:milow/core/widgets/shimmer_loading.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow/core/models/trip.dart';
 import 'package:milow/core/models/fuel_entry.dart';
@@ -22,7 +24,6 @@ import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -57,13 +58,10 @@ class _DashboardPageState extends State<DashboardPage> {
   String _milesTrend = '+0%';
   String _timePeriod = 'weekly'; // weekly, biweekly, monthly, yearly
 
-  // Realtime subscriptions
-  RealtimeChannel? _tripsChannel;
-  RealtimeChannel? _fuelChannel;
-
   // Notification state
   int _unreadNotificationCount = 0;
   StreamSubscription<int>? _notificationSubscription;
+  Timer? _webAutoRefreshTimer;
 
   @override
   void initState() {
@@ -75,8 +73,14 @@ class _DashboardPageState extends State<DashboardPage> {
     ); // Use prefetched data if available
     _loadRecentEntries();
     _loadDashboardStats();
-    _setupRealtimeSubscriptions();
     _loadNotificationCount();
+    // Web: auto-refresh periodically since pull-to-refresh isn't available
+    if (kIsWeb) {
+      _webAutoRefreshTimer = Timer.periodic(
+        const Duration(minutes: 2),
+        (_) => _onRefresh(),
+      );
+    }
     // Refresh border wait times every 5 minutes
     _borderRefreshTimer = Timer.periodic(
       const Duration(minutes: 5),
@@ -87,10 +91,23 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void dispose() {
     _borderRefreshTimer?.cancel();
-    _tripsChannel?.unsubscribe();
-    _fuelChannel?.unsubscribe();
     _notificationSubscription?.cancel();
+    _webAutoRefreshTimer?.cancel();
     super.dispose();
+  }
+
+  /// Pull-to-refresh handler - refreshes all dashboard data
+  Future<void> _onRefresh() async {
+    // Invalidate cache to force fresh data
+    DataPrefetchService.instance.invalidateCache();
+
+    // Refresh all data in parallel
+    await Future.wait([
+      _loadWeather(),
+      _loadBorderWaitTimes(forceRefresh: true),
+      _loadRecentEntries(),
+      _loadDashboardStats(),
+    ]);
   }
 
   Future<void> _loadNotificationCount() async {
@@ -107,41 +124,6 @@ class _DashboardPageState extends State<DashboardPage> {
     if (mounted) {
       setState(() {});
     }
-  }
-
-  void _setupRealtimeSubscriptions() {
-    final supabase = Supabase.instance.client;
-
-    // Subscribe to trips table changes
-    _tripsChannel = supabase
-        .channel('dashboard_trips')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'trips',
-          callback: (payload) {
-            // Invalidate cache so next load fetches fresh data
-            DataPrefetchService.instance.invalidateCache();
-            _loadRecentEntries();
-            _loadDashboardStats();
-          },
-        )
-        .subscribe();
-
-    // Subscribe to fuel_entries table changes
-    _fuelChannel = supabase
-        .channel('dashboard_fuel')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'fuel_entries',
-          callback: (payload) {
-            // Invalidate cache so next load fetches fresh data
-            DataPrefetchService.instance.invalidateCache();
-            _loadRecentEntries();
-          },
-        )
-        .subscribe();
   }
 
   Future<void> _loadDashboardStats() async {
@@ -270,87 +252,184 @@ class _DashboardPageState extends State<DashboardPage> {
 
     await showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text(
-          'Select Time Period',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: periods.entries.map((entry) {
-            return RadioListTile<String>(
-              title: Text(entry.value, style: GoogleFonts.inter()),
-              value: entry.key,
-              groupValue: _timePeriod,
-              activeColor: const Color(0xFF007AFF),
-              onChanged: (value) {
-                if (value != null) {
-                  Navigator.pop(context);
-                  setState(() {
-                    _timePeriod = value;
-                  });
-                  _loadDashboardStats();
-                }
-              },
-            );
-          }).toList(),
-        ),
-      ),
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Select Time Period',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: periods.entries.map((entry) {
+              return RadioListTile<String>(
+                title: Text(entry.value, style: GoogleFonts.inter()),
+                value: entry.key,
+                groupValue: _timePeriod,
+                activeColor: const Color(0xFF007AFF),
+                onChanged: (value) {
+                  if (value != null) {
+                    Navigator.pop(context);
+                    setState(() {
+                      _timePeriod = value;
+                    });
+                    _loadDashboardStats();
+                  }
+                },
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
-  /// Extract city and state from a full address using regex
-  /// Examples:
-  /// - "123 Main St, Los Angeles, CA 90001" -> "Los Angeles, CA"
-  /// - "Toronto, ON, Canada" -> "Toronto, ON"
-  /// - "New York" -> "New York"
+  /// Extract city and state/province from address
+  /// Returns format: "City ST" (e.g., "Vaughan ON" or "Irwindale CA")
   String _extractCityState(String address) {
     if (address.isEmpty) return address;
 
-    // Pattern to match "City, State/Province" or "City, State ZIP"
-    // Handles formats like:
-    // - "City, ST" or "City, ST 12345"
-    // - "City, Province" or "City, Province PostalCode"
-    final RegExp cityStatePattern = RegExp(
-      r'([A-Za-z\s]+),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
+    // Normalize: replace newlines with commas for easier parsing
+    final normalized = address
+        .replaceAll('\n', ', ')
+        .replaceAll(RegExp(r',\s*,'), ',');
+
+    // Pattern 1: Match "CITY STATE ZIP" at end of segment
+    // e.g., "IRWINDALE CA 91702" or "CHARLOTTETOWN PE C1E 0K4"
+    final dispatchPattern = RegExp(
+      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s+[A-Z0-9]{3,7}(?:\s*[A-Z0-9]{0,4})?\s*$',
       caseSensitive: false,
     );
 
-    final match = cityStatePattern.firstMatch(address);
+    final segments = normalized.split(',');
+    for (final segment in segments) {
+      final trimmed = segment.trim();
+      final dispatchMatch = dispatchPattern.firstMatch(trimmed.toUpperCase());
+      if (dispatchMatch != null) {
+        // Get the last word(s) before state - extract city from end
+        final rawCity = dispatchMatch.group(1)!.trim();
+        final city = _extractLastCity(rawCity);
+        final state = dispatchMatch.group(2)!.toUpperCase();
+        return '$city $state';
+      }
+    }
+
+    // Pattern 2: Match "CITY STATE" followed by ( or end (e.g., "VAUGHAN ON (Yard)")
+    final cityStateParenPattern = RegExp(
+      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s*(?:\(|$)',
+      caseSensitive: false,
+    );
+    for (final segment in segments) {
+      final trimmed = segment.trim();
+      final match = cityStateParenPattern.firstMatch(trimmed.toUpperCase());
+      if (match != null) {
+        final rawCity = match.group(1)!.trim();
+        final city = _extractLastCity(rawCity);
+        final state = match.group(2)!.toUpperCase();
+        return '$city $state';
+      }
+    }
+
+    // Pattern 3: Standard format "City, ST" or "City, ST ZIP"
+    final cityStatePattern = RegExp(
+      r'([A-Za-z][A-Za-z\s]+?),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
+      caseSensitive: false,
+    );
+    final match = cityStatePattern.firstMatch(normalized);
     if (match != null) {
-      final city = match.group(1)?.trim() ?? '';
-      final state = match.group(2)?.toUpperCase() ?? '';
-      if (city.isNotEmpty && state.isNotEmpty) {
-        return '$city, $state';
+      final city = _toTitleCase(match.group(1)!.trim());
+      final state = match.group(2)!.toUpperCase();
+      return '$city $state';
+    }
+
+    // Fallback: just return first non-numeric part abbreviated
+    final parts = normalized.split(',');
+    for (final part in parts) {
+      final trimmed = part.trim();
+      if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
+        return trimmed.length > 20 ? '${trimmed.substring(0, 17)}...' : trimmed;
       }
     }
 
-    // If no match, try to extract just the city (first part before comma)
-    final parts = address.split(',');
-    if (parts.length >= 2) {
-      // Take first significant part (skip if it looks like a street number)
-      for (final part in parts) {
-        final trimmed = part.trim();
-        // Skip parts that start with numbers (likely street addresses)
-        if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
-          // If next part looks like a state code, include it
-          final idx = parts.indexOf(part);
-          if (idx + 1 < parts.length) {
-            final nextPart = parts[idx + 1].trim();
-            final stateMatch = RegExp(
-              r'^([A-Z]{2})\b',
-            ).firstMatch(nextPart.toUpperCase());
-            if (stateMatch != null) {
-              return '$trimmed, ${stateMatch.group(1)}';
-            }
-          }
-          return trimmed;
-        }
+    return address.length > 20 ? '${address.substring(0, 17)}...' : address;
+  }
+
+  /// Extract the actual city name from a string that might include street names
+  /// e.g., "COLD CREEK ROAD VAUGHAN" -> "Vaughan"
+  /// e.g., "QUEBEC CITY" -> "Quebec City"
+  String _extractLastCity(String raw) {
+    final words = raw.split(RegExp(r'\s+'));
+    if (words.isEmpty) return _toTitleCase(raw);
+
+    // Common street suffixes to skip
+    final streetSuffixes = {
+      'ROAD',
+      'RD',
+      'STREET',
+      'ST',
+      'AVENUE',
+      'AVE',
+      'BLVD',
+      'BOULEVARD',
+      'DRIVE',
+      'DR',
+      'LANE',
+      'LN',
+      'WAY',
+      'COURT',
+      'CT',
+      'PLACE',
+      'PL',
+      'CIRCLE',
+      'CIR',
+      'HIGHWAY',
+      'HWY',
+      'ROUTE',
+      'RTE',
+      'PARKWAY',
+      'PKWY',
+    };
+
+    // Find the last street suffix and take everything after it
+    int lastStreetIndex = -1;
+    for (int i = 0; i < words.length; i++) {
+      if (streetSuffixes.contains(words[i].toUpperCase())) {
+        lastStreetIndex = i;
       }
     }
 
-    // Return original if no pattern matched
-    return address.length > 25 ? '${address.substring(0, 22)}...' : address;
+    if (lastStreetIndex >= 0 && lastStreetIndex < words.length - 1) {
+      // Take everything after the last street suffix
+      final cityWords = words.sublist(lastStreetIndex + 1);
+      return _toTitleCase(cityWords.join(' '));
+    }
+
+    // If no street suffix found, check if first word looks like a number (street address)
+    if (words.length > 1 && RegExp(r'^\d').hasMatch(words.first)) {
+      // Skip the street number and take the last 1-2 words as city
+      final cityWords = words.length > 2
+          ? words.sublist(words.length - 2)
+          : [words.last];
+      // But if second-to-last is a street suffix, just take last word
+      if (cityWords.length > 1 &&
+          streetSuffixes.contains(cityWords.first.toUpperCase())) {
+        return _toTitleCase(cityWords.last);
+      }
+      return _toTitleCase(cityWords.join(' '));
+    }
+
+    // Return the whole thing as city (e.g., "QUEBEC CITY")
+    return _toTitleCase(raw);
+  }
+
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+    return text
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 
   Future<void> _loadPreferences() async {
@@ -630,504 +709,528 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
 
-    return AppScaffold(
-      currentIndex: 1,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Reduced top spacing after removing title
-            const SizedBox(height: 8),
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: margin),
-              child: Row(
-                children: [
-                  _quickAction(
-                    cardColor,
-                    borderColor,
-                    secondaryTextColor,
-                    Icons.search,
-                    () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => const GlobalSearchPage(),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  // Weather widget
-                  if (_showWeather && _weatherData != null)
-                    GestureDetector(
-                      onTap: _toggleTemperatureUnit,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              _weatherService.getWeatherIcon(
-                                _weatherData!['weatherCode'],
-                                isDay: _weatherData!['isDay'] ?? true,
-                              ),
-                              style: const TextStyle(fontSize: 20),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              '${_getDisplayTemperature().round()}°$_temperatureUnit',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  if (_showWeather && _isLoadingWeather && _weatherData == null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      child: const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
-                    ),
-                  if (_showWeather &&
-                      !_isLoadingWeather &&
-                      _weatherData == null &&
-                      _weatherError != null)
-                    GestureDetector(
-                      onTap: _loadWeather,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 8,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.cloud_off,
-                              size: 20,
-                              color: secondaryTextColor,
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              'Tap to retry',
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  const Spacer(),
-                  // Notification bell icon with red dot indicator
-                  _buildNotificationBell(
-                    cardColor,
-                    borderColor,
-                    secondaryTextColor,
-                  ),
-                  const SizedBox(width: 8),
-                  _quickAction(
-                    const Color(0xFF007AFF),
-                    const Color(0xFF007AFF),
-                    Colors.white,
-                    Icons.add,
-                    () => context.push('/add-entry'),
-                  ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0xFF1a1a2e),
+                  const Color(0xFF16213e),
+                  const Color(0xFF0f0f23),
+                ]
+              : [
+                  const Color(0xFFe8f4f8),
+                  const Color(0xFFfce4ec),
+                  const Color(0xFFe8f5e9),
                 ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            statsGrid(),
-            const SizedBox(height: 16),
-            // Border Wait Times Section
-            if (_isLoadingBorders) ...[
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: margin),
-                child: Container(
-                  height: 80,
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Center(
-                    child: SizedBox(
-                      width: 24,
-                      height: 24,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Color(0xFF007AFF),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ] else if (_borderError != null && _borderWaitTimes.isEmpty) ...[
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: margin),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: cardColor,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: borderColor),
-                  ),
+        ),
+      ),
+      child: Shimmer(
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          displacement: 60,
+          strokeWidth: 3.0,
+          color: const Color(0xFF007AFF),
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Reduced top spacing after removing title
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: margin),
                   child: Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFFEE2E2),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: const Icon(
-                          Icons.error_outline,
-                          color: Color(0xFFDC2626),
-                          size: 20,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Border Wait Times Unavailable',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
-                              ),
+                      _quickAction(
+                        cardColor,
+                        borderColor,
+                        secondaryTextColor,
+                        Icons.search,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const GlobalSearchPage(),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _borderError!,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
+                          );
+                        },
                       ),
-                      TextButton(
-                        onPressed: () =>
-                            _loadBorderWaitTimes(forceRefresh: true),
-                        child: Text(
-                          'Retry',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF007AFF),
+                      const SizedBox(width: 8),
+                      // Weather widget
+                      if (_showWeather && _weatherData != null)
+                        GestureDetector(
+                          onTap: _toggleTemperatureUnit,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  _weatherService.getWeatherIcon(
+                                    _weatherData!['weatherCode'],
+                                    isDay: _weatherData!['isDay'] ?? true,
+                                  ),
+                                  style: const TextStyle(fontSize: 20),
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  '${_getDisplayTemperature().round()}°$_temperatureUnit',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
+                      // Weather loads silently in background, only show when ready
+                      if (_showWeather &&
+                          !_isLoadingWeather &&
+                          _weatherData == null &&
+                          _weatherError != null)
+                        GestureDetector(
+                          onTap: _loadWeather,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.cloud_off,
+                                  size: 20,
+                                  color: secondaryTextColor,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'Tap to retry',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      const Spacer(),
+                      // Notification bell icon with red dot indicator
+                      _buildNotificationBell(
+                        cardColor,
+                        borderColor,
+                        secondaryTextColor,
                       ),
+                      const SizedBox(width: 8),
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-            ] else if (_borderWaitTimes.isNotEmpty) ...[
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: margin),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Border Wait Times',
-                      style: GoogleFonts.inter(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
+                const SizedBox(height: 16),
+                statsGrid(),
+                const SizedBox(height: 16),
+                // Border Wait Times Section
+                if (_isLoadingBorders) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: ShimmerLoading(
+                      isLoading: true,
+                      child: Column(
+                        children: const [
+                          ShimmerBorderWaitCard(),
+                          ShimmerBorderWaitCard(),
+                        ],
                       ),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _loadBorderWaitTimes(forceRefresh: true),
-                      icon: Icon(
-                        Icons.refresh,
-                        size: 16,
-                        color: const Color(0xFF007AFF),
-                      ),
-                      label: Text(
-                        'Refresh',
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: const Color(0xFF007AFF),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: margin),
-                child: Column(
-                  children: _borderWaitTimes
-                      .map((bwt) => BorderWaitTimeCard(waitTime: bwt))
-                      .toList(),
-                ),
-              ),
-              const SizedBox(height: 16),
-            ],
-
-            // Last Record Entries
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: margin),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Last Record Entries',
-                    style: GoogleFonts.inter(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: _isLoadingEntries
-                        ? const Padding(
-                            padding: EdgeInsets.all(32),
-                            child: Center(child: CircularProgressIndicator()),
-                          )
-                        : _recentEntries.isEmpty
-                        ? Padding(
-                            padding: const EdgeInsets.all(32),
-                            child: Center(
-                              child: Column(
-                                children: [
-                                  Icon(
-                                    Icons.inbox_outlined,
-                                    size: 48,
+                  const SizedBox(height: 16),
+                ] else if (_borderError != null &&
+                    _borderWaitTimes.isEmpty) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEE2E2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.error_outline,
+                              color: Color(0xFFDC2626),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Border Wait Times Unavailable',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: textColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _borderError!,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
                                     color: secondaryTextColor,
                                   ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    'No entries yet',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      color: secondaryTextColor,
-                                    ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                _loadBorderWaitTimes(forceRefresh: true),
+                            child: Text(
+                              'Retry',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF007AFF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ] else if (_borderWaitTimes.isNotEmpty) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Border Wait Times',
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              _loadBorderWaitTimes(forceRefresh: true),
+                          icon: Icon(
+                            Icons.refresh,
+                            size: 16,
+                            color: const Color(0xFF007AFF),
+                          ),
+                          label: Text(
+                            'Refresh',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: const Color(0xFF007AFF),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: Column(
+                      children: _borderWaitTimes
+                          .map((bwt) => BorderWaitTimeCard(waitTime: bwt))
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Last Record Entries
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: margin),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Last Record Entries',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
+                        ),
+                        child: _isLoadingEntries
+                            ? ShimmerLoading(
+                                isLoading: true,
+                                child: Column(
+                                  children: const [
+                                    ShimmerEntryItem(),
+                                    ShimmerEntryItem(),
+                                    ShimmerEntryItem(),
+                                    ShimmerEntryItem(showDivider: false),
+                                  ],
+                                ),
+                              )
+                            : _recentEntries.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 48,
+                                        color: secondaryTextColor,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No entries yet',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: secondaryTextColor,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Add your first trip or fuel entry',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: secondaryTextColor,
+                                        ),
+                                      ),
+                                    ],
                                   ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    'Add your first trip or fuel entry',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: secondaryTextColor,
+                                ),
+                              )
+                            : Column(
+                                children: [
+                                  ..._recentEntries.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    final index = entry.key;
+                                    final item = entry.value;
+                                    final isTrip = item['type'] == 'trip';
+
+                                    Widget entryWidget;
+                                    if (isTrip) {
+                                      final trip = item['data'] as Trip;
+                                      final pickups = trip.pickupLocations;
+                                      final deliveries = trip.deliveryLocations;
+                                      final route =
+                                          pickups.isNotEmpty &&
+                                              deliveries.isNotEmpty
+                                          ? '${_extractCityState(pickups.first)} → ${_extractCityState(deliveries.last)}'
+                                          : 'No route';
+                                      final distance = trip.totalDistance;
+                                      final distanceStr = distance != null
+                                          ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
+                                          : '-';
+
+                                      entryWidget = _buildRecordEntry(
+                                        textColor,
+                                        secondaryTextColor,
+                                        'trip',
+                                        'Trip #${trip.tripNumber}',
+                                        route,
+                                        DateFormat(
+                                          'MMM d, yyyy',
+                                        ).format(trip.tripDate),
+                                        distanceStr,
+                                      );
+                                    } else {
+                                      final fuel = item['data'] as FuelEntry;
+                                      final location = fuel.location != null
+                                          ? _extractCityState(fuel.location!)
+                                          : 'Unknown location';
+                                      final quantity =
+                                          '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
+                                      final identifier = fuel.isTruckFuel
+                                          ? fuel.truckNumber ?? 'Truck'
+                                          : fuel.reeferNumber ?? 'Reefer';
+
+                                      entryWidget = _buildRecordEntry(
+                                        textColor,
+                                        secondaryTextColor,
+                                        'fuel',
+                                        '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
+                                        location,
+                                        DateFormat(
+                                          'MMM d, yyyy',
+                                        ).format(fuel.fuelDate),
+                                        quantity,
+                                      );
+                                    }
+
+                                    return Column(
+                                      children: [
+                                        entryWidget,
+                                        if (index < _recentEntries.length - 1)
+                                          Divider(
+                                            height: 1,
+                                            color: borderColor,
+                                          ),
+                                      ],
+                                    );
+                                  }),
+                                  Divider(height: 1, color: borderColor),
+                                  // See more button
+                                  InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const RecordsListPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'See more',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF007AFF),
+                                          ),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ],
                               ),
-                            ),
-                          )
-                        : Column(
-                            children: [
-                              ..._recentEntries.asMap().entries.map((entry) {
-                                final index = entry.key;
-                                final item = entry.value;
-                                final isTrip = item['type'] == 'trip';
-
-                                Widget entryWidget;
-                                if (isTrip) {
-                                  final trip = item['data'] as Trip;
-                                  final pickups = trip.pickupLocations;
-                                  final deliveries = trip.deliveryLocations;
-                                  final route =
-                                      pickups.isNotEmpty &&
-                                          deliveries.isNotEmpty
-                                      ? '${_extractCityState(pickups.first)} → ${_extractCityState(deliveries.last)}'
-                                      : 'No route';
-                                  final distance = trip.totalDistance;
-                                  final distanceStr = distance != null
-                                      ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
-                                      : '-';
-
-                                  entryWidget = _buildRecordEntry(
-                                    textColor,
-                                    secondaryTextColor,
-                                    'trip',
-                                    'Trip #${trip.tripNumber}',
-                                    route,
-                                    DateFormat(
-                                      'MMM d, yyyy',
-                                    ).format(trip.tripDate),
-                                    distanceStr,
-                                  );
-                                } else {
-                                  final fuel = item['data'] as FuelEntry;
-                                  final location = fuel.location != null
-                                      ? _extractCityState(fuel.location!)
-                                      : 'Unknown location';
-                                  final quantity =
-                                      '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
-                                  final identifier = fuel.isTruckFuel
-                                      ? fuel.truckNumber ?? 'Truck'
-                                      : fuel.reeferNumber ?? 'Reefer';
-
-                                  entryWidget = _buildRecordEntry(
-                                    textColor,
-                                    secondaryTextColor,
-                                    'fuel',
-                                    '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
-                                    location,
-                                    DateFormat(
-                                      'MMM d, yyyy',
-                                    ).format(fuel.fuelDate),
-                                    quantity,
-                                  );
-                                }
-
-                                return Column(
-                                  children: [
-                                    entryWidget,
-                                    if (index < _recentEntries.length - 1)
-                                      Divider(height: 1, color: borderColor),
-                                  ],
-                                );
-                              }),
-                              Divider(height: 1, color: borderColor),
-                              // See more button
-                              InkWell(
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (context) =>
-                                          const RecordsListPage(),
-                                    ),
-                                  );
-                                },
-                                child: Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 14,
-                                  ),
-                                  child: Center(
-                                    child: Text(
-                                      'See more',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                        color: const Color(0xFF007AFF),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-            SectionHeader(
-              title: 'Trucking News',
-              onAction: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NewsListPage(
-                    title: 'Trucking News',
-                    items: [
-                      {
-                        'title': 'Major Highway Accident on I-95',
-                        'source': 'Transport Weekly',
-                      },
-                      {
-                        'title': 'Toll Rates Increase Nationwide',
-                        'source': 'Trucking Today',
-                      },
-                      {
-                        'title': 'New ELD Mandate Updates',
-                        'source': 'DOT News',
-                      },
-                      {
-                        'title': 'Fuel Prices Drop 10%',
-                        'source': 'Industry Report',
-                      },
-                      {
-                        'title': 'Winter Weather Advisory',
-                        'source': 'Weather Channel',
-                      },
-                      {
-                        'title': 'Driver Shortage Solutions',
-                        'source': 'Fleet Management',
-                      },
+                      ),
                     ],
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            newsStrip(const [
-              {
-                'title': 'Major Highway Accident on I-95',
-                'source': 'Transport Weekly',
-              },
-              {
-                'title': 'Toll Rates Increase Nationwide',
-                'source': 'Trucking Today',
-              },
-              {'title': 'New ELD Mandate Updates', 'source': 'DOT News'},
-              {'title': 'Fuel Prices Drop 10%', 'source': 'Industry Report'},
-              {'title': 'Winter Weather Advisory', 'source': 'Weather Channel'},
-              {
-                'title': 'Driver Shortage Solutions',
-                'source': 'Fleet Management',
-              },
-            ]),
-            const SizedBox(height: 16),
-            SectionHeader(
-              title: 'Learning Pages',
-              onAction: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const NewsListPage(
-                    title: 'Learning Pages',
-                    items: [
-                      {'title': 'Safety Regulations 101', 'source': ''},
-                      {'title': 'Route Planning Tips', 'source': ''},
-                      {'title': 'Vehicle Maintenance Guide', 'source': ''},
-                      {'title': 'Fuel Efficiency Best Practices', 'source': ''},
-                      {'title': 'HOS Rules & Compliance', 'source': ''},
-                      {'title': 'Load Securing Techniques', 'source': ''},
-                    ],
+                const SizedBox(height: 16),
+                SectionHeader(
+                  title: 'Trucking News',
+                  onAction: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NewsListPage(
+                        title: 'Trucking News',
+                        items: [
+                          {
+                            'title': 'Major Highway Accident on I-95',
+                            'source': 'Transport Weekly',
+                          },
+                          {
+                            'title': 'Toll Rates Increase Nationwide',
+                            'source': 'Trucking Today',
+                          },
+                          {
+                            'title': 'New ELD Mandate Updates',
+                            'source': 'DOT News',
+                          },
+                          {
+                            'title': 'Fuel Prices Drop 10%',
+                            'source': 'Industry Report',
+                          },
+                          {
+                            'title': 'Winter Weather Advisory',
+                            'source': 'Weather Channel',
+                          },
+                          {
+                            'title': 'Driver Shortage Solutions',
+                            'source': 'Fleet Management',
+                          },
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(height: 12),
+                newsStrip(const [
+                  {
+                    'title': 'Major Highway Accident on I-95',
+                    'source': 'Transport Weekly',
+                  },
+                  {
+                    'title': 'Toll Rates Increase Nationwide',
+                    'source': 'Trucking Today',
+                  },
+                  {'title': 'New ELD Mandate Updates', 'source': 'DOT News'},
+                  {
+                    'title': 'Fuel Prices Drop 10%',
+                    'source': 'Industry Report',
+                  },
+                  {
+                    'title': 'Winter Weather Advisory',
+                    'source': 'Weather Channel',
+                  },
+                  {
+                    'title': 'Driver Shortage Solutions',
+                    'source': 'Fleet Management',
+                  },
+                ]),
+                const SizedBox(height: 16),
+                SectionHeader(
+                  title: 'Learning Pages',
+                  onAction: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const NewsListPage(
+                        title: 'Learning Pages',
+                        items: [
+                          {'title': 'Safety Regulations 101', 'source': ''},
+                          {'title': 'Route Planning Tips', 'source': ''},
+                          {'title': 'Vehicle Maintenance Guide', 'source': ''},
+                          {
+                            'title': 'Fuel Efficiency Best Practices',
+                            'source': '',
+                          },
+                          {'title': 'HOS Rules & Compliance', 'source': ''},
+                          {'title': 'Load Securing Techniques', 'source': ''},
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                newsStrip(const [
+                  {'title': 'Safety Regulations 101', 'source': ''},
+                  {'title': 'Route Planning Tips', 'source': ''},
+                  {'title': 'Vehicle Maintenance Guide', 'source': ''},
+                  {'title': 'Fuel Efficiency Best Practices', 'source': ''},
+                  {'title': 'HOS Rules & Compliance', 'source': ''},
+                  {'title': 'Load Securing Techniques', 'source': ''},
+                ]),
+                // Extra padding for floating bottom nav bar
+                const SizedBox(height: 120),
+              ],
             ),
-            const SizedBox(height: 12),
-            newsStrip(const [
-              {'title': 'Safety Regulations 101', 'source': ''},
-              {'title': 'Route Planning Tips', 'source': ''},
-              {'title': 'Vehicle Maintenance Guide', 'source': ''},
-              {'title': 'Fuel Efficiency Best Practices', 'source': ''},
-              {'title': 'HOS Rules & Compliance', 'source': ''},
-              {'title': 'Load Securing Techniques', 'source': ''},
-            ]),
-            const SizedBox(height: 24),
-          ],
+          ),
         ),
       ),
     );

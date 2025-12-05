@@ -1,12 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/utils/error_handler.dart';
+import 'package:milow/core/utils/app_dialogs.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/models/trip.dart';
 import 'package:milow/core/models/fuel_entry.dart';
 import 'package:milow/core/utils/unit_utils.dart';
@@ -50,7 +55,12 @@ class _AddEntryPageState extends State<AddEntryPage>
   // Trip fields
   final _tripNumberController = TextEditingController();
   final _tripTruckNumberController = TextEditingController();
+  final _borderCrossingController = TextEditingController();
   final _tripDateController = TextEditingController();
+
+  // Border crossing dropdown
+  List<String> _borderCrossings = [];
+  String? _selectedBorderCrossing;
 
   // Multiple trailers
   final List<TextEditingController> _trailerControllers = [];
@@ -106,6 +116,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     _tripScrollController.addListener(_onTripScroll);
     _fuelScrollController.addListener(_onFuelScroll);
     _loadUnitPreferences();
+    _prefillBorderCrossing();
 
     // Add listeners for total cost preview
     _fuelQuantityController.addListener(_onFuelFieldChanged);
@@ -202,6 +213,8 @@ class _AddEntryPageState extends State<AddEntryPage>
   void _prefillTripData(Trip trip) {
     _tripNumberController.text = trip.tripNumber;
     _tripTruckNumberController.text = trip.truckNumber;
+    _borderCrossingController.text = trip.borderCrossing ?? '';
+    _selectedBorderCrossing = trip.borderCrossing;
     _tripDateController.text = _formatDateTime(trip.tripDate);
 
     // Fill trailers
@@ -299,6 +312,140 @@ class _AddEntryPageState extends State<AddEntryPage>
     });
   }
 
+  /// Load border crossings and prefill with most frequently used
+  Future<void> _prefillBorderCrossing() async {
+    try {
+      final trips = await TripService.getTrips();
+      if (trips.isEmpty) return;
+
+      // Count frequency of each border crossing
+      final Map<String, int> borderFrequency = {};
+      for (final trip in trips) {
+        if (trip.borderCrossing != null && trip.borderCrossing!.isNotEmpty) {
+          borderFrequency[trip.borderCrossing!] =
+              (borderFrequency[trip.borderCrossing!] ?? 0) + 1;
+        }
+      }
+
+      if (borderFrequency.isEmpty) return;
+
+      // Sort by frequency (most used first)
+      final sortedBorders = borderFrequency.entries.toList()
+        ..sort((a, b) => b.value.compareTo(a.value));
+
+      final borders = sortedBorders.map((e) => e.key).toList();
+      final mostFrequent = borders.isNotEmpty ? borders.first : null;
+
+      if (mounted) {
+        setState(() {
+          _borderCrossings = borders;
+          // In edit mode, use the trip's border crossing
+          if (_isEditMode && widget.editingTrip != null) {
+            final tripBorder = widget.editingTrip!.borderCrossing;
+            if (tripBorder != null && tripBorder.isNotEmpty) {
+              // Add to list if not already present
+              if (!_borderCrossings.contains(tripBorder)) {
+                _borderCrossings.insert(0, tripBorder);
+              }
+              _selectedBorderCrossing = tripBorder;
+              _borderCrossingController.text = tripBorder;
+            }
+          } else if (mostFrequent != null) {
+            // For new trips, select most frequent
+            _selectedBorderCrossing = mostFrequent;
+            _borderCrossingController.text = mostFrequent;
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to prefill border crossing: $e');
+    }
+  }
+
+  /// Show dialog to add a new border crossing
+  Future<void> _showAddBorderCrossingDialog() async {
+    final controller = TextEditingController();
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Text(
+          'Add Border Crossing',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : const Color(0xFF101828),
+          ),
+        ),
+        content: TextField(
+          controller: controller,
+          textCapitalization: TextCapitalization.words,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'e.g., Windsor-Detroit',
+            filled: true,
+            fillColor: isDark
+                ? const Color(0xFF0F172A)
+                : const Color(0xFFF8FAFC),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFE2E8F0),
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark
+                    ? const Color(0xFF334155)
+                    : const Color(0xFFE2E8F0),
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: const BorderSide(color: Color(0xFF007AFF)),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+          ),
+          TextButton(
+            onPressed: () {
+              final value = controller.text.trim();
+              if (value.isNotEmpty) {
+                Navigator.pop(context, value);
+              }
+            },
+            child: Text(
+              'Add',
+              style: GoogleFonts.inter(
+                color: const Color(0xFF007AFF),
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (result != null && result.isNotEmpty) {
+      setState(() {
+        if (!_borderCrossings.contains(result)) {
+          _borderCrossings.insert(0, result);
+        }
+        _selectedBorderCrossing = result;
+        _borderCrossingController.text = result;
+      });
+    }
+  }
+
   void _onFuelFieldChanged() {
     // Trigger rebuild to update total cost preview
     setState(() {});
@@ -315,6 +462,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     _fuelScrollController.dispose();
     _tabController.dispose();
     _tripNumberController.dispose();
+    _borderCrossingController.dispose();
     _tripDateController.dispose();
     // Dispose pickup controllers
     for (final controller in _pickupControllers) {
@@ -392,6 +540,123 @@ class _AddEntryPageState extends State<AddEntryPage>
         _trailerControllers.removeAt(index);
       });
     }
+  }
+
+  /// Build border crossing dropdown with add/edit capability
+  Widget _buildBorderCrossingDropdown() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
+    final borderColor = isDark
+        ? const Color(0xFF334155)
+        : const Color(0xFFE2E8F0);
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final hintColor = isDark
+        ? const Color(0xFF64748B)
+        : const Color(0xFF94A3B8);
+
+    return Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          // Dropdown button
+          Expanded(
+            child: DropdownButtonHideUnderline(
+              child: ButtonTheme(
+                alignedDropdown: true,
+                child: DropdownButton<String>(
+                  value: _selectedBorderCrossing,
+                  isExpanded: true,
+                  icon: Icon(Icons.keyboard_arrow_down, color: hintColor),
+                  hint: Row(
+                    children: [
+                      Icon(Icons.flag_outlined, color: hintColor, size: 20),
+                      const SizedBox(width: 12),
+                      Text(
+                        'Select or add border',
+                        style: GoogleFonts.inter(
+                          color: hintColor,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  dropdownColor: bgColor,
+                  borderRadius: BorderRadius.circular(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  items: [
+                    // Existing border crossings
+                    ..._borderCrossings.map(
+                      (border) => DropdownMenuItem<String>(
+                        value: border,
+                        child: Row(
+                          children: [
+                            const Icon(
+                              Icons.flag,
+                              color: Color(0xFF007AFF),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                border,
+                                style: GoogleFonts.inter(
+                                  color: textColor,
+                                  fontSize: 14,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedBorderCrossing = value;
+                      _borderCrossingController.text = value ?? '';
+                    });
+                  },
+                ),
+              ),
+            ),
+          ),
+          // Add button
+          Container(
+            decoration: BoxDecoration(
+              border: Border(left: BorderSide(color: borderColor)),
+            ),
+            child: IconButton(
+              onPressed: _showAddBorderCrossingDialog,
+              icon: const Icon(Icons.add, color: Color(0xFF007AFF)),
+              tooltip: 'Add new border crossing',
+            ),
+          ),
+          // Clear button (only show if a value is selected)
+          if (_selectedBorderCrossing != null) ...[
+            Container(
+              decoration: BoxDecoration(
+                border: Border(left: BorderSide(color: borderColor)),
+              ),
+              child: IconButton(
+                onPressed: () {
+                  setState(() {
+                    _selectedBorderCrossing = null;
+                    _borderCrossingController.text = '';
+                  });
+                },
+                icon: Icon(Icons.clear, color: Colors.red.shade400, size: 20),
+                tooltip: 'Clear selection',
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
   }
 
   // Build trailer fields with add/remove buttons
@@ -691,49 +956,58 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   Future<void> _getLocationFor(TextEditingController controller) async {
     try {
+      double? latitude;
+      double? longitude;
+
+      // Try geolocation first
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Location services are disabled')),
-          );
-        }
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
         if (permission == LocationPermission.denied) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Location permissions denied')),
+          permission = await Geolocator.requestPermission();
+        }
+
+        if (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse) {
+          try {
+            Position position = await Geolocator.getCurrentPosition(
+              locationSettings: const LocationSettings(
+                accuracy: LocationAccuracy.high,
+              ),
             );
+            latitude = position.latitude;
+            longitude = position.longitude;
+          } catch (e) {
+            debugPrint('Geolocation failed: $e');
           }
-          return;
         }
       }
 
-      if (permission == LocationPermission.deniedForever) {
+      // Fallback to IP-based location on web or if geolocation failed
+      if (latitude == null || longitude == null) {
+        if (kIsWeb) {
+          final coords = await _getLocationFromIp();
+          if (coords != null) {
+            latitude = coords['lat'];
+            longitude = coords['lon'];
+          }
+        }
+      }
+
+      // Show error if all methods failed
+      if (latitude == null || longitude == null) {
         if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Location permissions permanently denied'),
-            ),
+          AppDialogs.showWarning(
+            context,
+            'Unable to get location. Please enter manually.',
           );
         }
         return;
       }
-
-      Position position = await Geolocator.getCurrentPosition(
-        locationSettings: const LocationSettings(
-          accuracy: LocationAccuracy.high,
-        ),
-      );
 
       List<Placemark> placemarks = await placemarkFromCoordinates(
-        position.latitude,
-        position.longitude,
+        latitude,
+        longitude,
       );
 
       if (placemarks.isNotEmpty && mounted) {
@@ -763,6 +1037,25 @@ class _AddEntryPageState extends State<AddEntryPage>
         ErrorHandler.showError(context, e);
       }
     }
+  }
+
+  Future<Map<String, double>?> _getLocationFromIp() async {
+    try {
+      final response = await http
+          .get(Uri.parse('https://ipapi.co/json/'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final lat = (data['latitude'] as num?)?.toDouble();
+        final lon = (data['longitude'] as num?)?.toDouble();
+        if (lat != null && lon != null) {
+          return {'lat': lat, 'lon': lon};
+        }
+      }
+    } catch (e) {
+      debugPrint('IP geolocation failed: $e');
+    }
+    return null;
   }
 
   @override
@@ -926,6 +1219,10 @@ class _AddEntryPageState extends State<AddEntryPage>
                   ],
                 ),
                 const SizedBox(height: 16),
+                _buildLabel('Border Crossing (Optional)'),
+                const SizedBox(height: 8),
+                _buildBorderCrossingDropdown(),
+                const SizedBox(height: 16),
                 _buildLabel(
                   'Trailer${_trailerControllers.length > 1 ? 's' : ''} (Optional)',
                 ),
@@ -1085,7 +1382,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                              strokeWidth: 3.0,
                               color: Colors.white,
                             ),
                           )
@@ -1110,49 +1407,30 @@ class _AddEntryPageState extends State<AddEntryPage>
   void _validateAndSaveTrip() {
     // Check trip number
     if (_tripNumberController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter trip number'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Please enter trip number');
       return;
     }
 
     // Check truck number
     if (_tripTruckNumberController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter truck number'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Please enter truck number');
       return;
     }
 
     // Check start odometer
     if (_tripStartOdometerController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter start odometer'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Please enter start odometer');
       return;
     }
 
     // Check if all pickup locations are filled
     for (int i = 0; i < _pickupControllers.length; i++) {
       if (_pickupControllers[i].text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _pickupControllers.length > 1
-                  ? 'Please fill pickup location ${i + 1} or remove it'
-                  : 'Please enter pickup location',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        AppDialogs.showWarning(
+          context,
+          _pickupControllers.length > 1
+              ? 'Please fill pickup location ${i + 1} or remove it'
+              : 'Please enter pickup location',
         );
         return;
       }
@@ -1161,15 +1439,11 @@ class _AddEntryPageState extends State<AddEntryPage>
     // Check if all delivery locations are filled
     for (int i = 0; i < _deliveryControllers.length; i++) {
       if (_deliveryControllers[i].text.trim().isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _deliveryControllers.length > 1
-                  ? 'Please fill delivery location ${i + 1} or remove it'
-                  : 'Please enter delivery location',
-            ),
-            backgroundColor: Colors.red,
-          ),
+        AppDialogs.showWarning(
+          context,
+          _deliveryControllers.length > 1
+              ? 'Please fill delivery location ${i + 1} or remove it'
+              : 'Please enter delivery location',
         );
         return;
       }
@@ -1223,6 +1497,9 @@ class _AddEntryPageState extends State<AddEntryPage>
         id: widget.editingTrip?.id,
         tripNumber: _tripNumberController.text.trim().toUpperCase(),
         truckNumber: _tripTruckNumberController.text.trim().toUpperCase(),
+        borderCrossing: _borderCrossingController.text.trim().isNotEmpty
+            ? _borderCrossingController.text.trim()
+            : null,
         trailers: trailers,
         tripDate: tripDate,
         pickupLocations: pickupLocations,
@@ -1238,30 +1515,46 @@ class _AddEntryPageState extends State<AddEntryPage>
       if (_isEditMode && widget.editingTrip != null) {
         await TripService.updateTrip(trip);
       } else {
+        // Get existing trips before creating new one
+        final existingTrips = await TripService.getTrips();
+
+        // Create the new trip
         await TripService.createTrip(trip);
+
+        // Check if previous trip (before this one) is missing end odometer
+        if (existingTrips.isNotEmpty) {
+          // Sort by date to get the most recent trip
+          existingTrips.sort((a, b) => b.tripDate.compareTo(a.tripDate));
+          final previousTrip = existingTrips.first;
+
+          debugPrint(
+            '🔔 Previous trip: ${previousTrip.tripNumber}, endOdo: ${previousTrip.endOdometer}',
+          );
+
+          if (previousTrip.endOdometer == null) {
+            debugPrint(
+              '🔔 Previous trip missing end odometer - creating notification',
+            );
+            await NotificationService.instance.addMissingOdometerReminder(
+              tripNumber: previousTrip.tripNumber,
+              truckNumber: previousTrip.truckNumber,
+            );
+          }
+        }
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEditMode
-                  ? 'Trip updated successfully!'
-                  : 'Trip saved successfully!',
-            ),
-            backgroundColor: Colors.green,
-          ),
+        AppDialogs.showSuccess(
+          context,
+          _isEditMode
+              ? 'Trip updated successfully!'
+              : 'Trip saved successfully!',
         );
         Navigator.pop(context, true); // Return true to indicate success
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save trip: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        AppDialogs.showError(context, 'Failed to save trip: ${e.toString()}');
       }
     } finally {
       if (mounted) {
@@ -1481,19 +1774,80 @@ class _AddEntryPageState extends State<AddEntryPage>
                   ),
                 ),
                 const SizedBox(height: 16),
-                _buildLabel(
-                  _isReeferFuel ? 'Reefer Hours' : 'Odometer Reading',
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _odometerController,
-                  keyboardType: TextInputType.number,
-                  decoration: _inputDecoration(
-                    hint: _isReeferFuel
-                        ? 'Current hours'
-                        : 'Current $_distanceUnit',
-                    prefixIcon: _isReeferFuel ? Icons.timer : Icons.speed,
-                  ),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel(
+                            _isReeferFuel ? 'Reefer Hours' : 'Odometer Reading',
+                          ),
+                          const SizedBox(height: 8),
+                          TextField(
+                            controller: _odometerController,
+                            keyboardType: TextInputType.number,
+                            decoration: _inputDecoration(
+                              hint: _isReeferFuel
+                                  ? 'Current hours'
+                                  : 'Current $_distanceUnit',
+                              prefixIcon: _isReeferFuel
+                                  ? Icons.timer
+                                  : Icons.speed,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildLabel('Currency'),
+                          const SizedBox(height: 8),
+                          DropdownButtonFormField<String>(
+                            value: _currency,
+                            decoration: _inputDecoration(
+                              hint: 'Select',
+                              prefixIcon: Icons.attach_money,
+                            ),
+                            dropdownColor:
+                                Theme.of(context).brightness == Brightness.dark
+                                ? const Color(0xFF2A2A2A)
+                                : Colors.white,
+                            items: [
+                              DropdownMenuItem(
+                                value: 'USD',
+                                child: Text(
+                                  'USD (\$)',
+                                  style: GoogleFonts.inter(fontSize: 14),
+                                ),
+                              ),
+                              DropdownMenuItem(
+                                value: 'CAD',
+                                child: Text(
+                                  'CAD (C\$)',
+                                  style: GoogleFonts.inter(fontSize: 14),
+                                ),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  _currency = value;
+                                });
+                              }
+                            },
+                            icon: const Icon(
+                              Icons.keyboard_arrow_down,
+                              color: Color(0xFF007AFF),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -1607,7 +1961,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                             width: 20,
                             height: 20,
                             child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                              strokeWidth: 3.0,
                               color: Colors.white,
                             ),
                           )
@@ -1632,49 +1986,30 @@ class _AddEntryPageState extends State<AddEntryPage>
   void _validateAndSaveFuel() {
     // Check date
     if (_fuelDateController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select date and time'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Please select date and time');
       return;
     }
 
     // Check truck/reefer number
     if (_truckNumberController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            _isReeferFuel
-                ? 'Please enter reefer number'
-                : 'Please enter truck number',
-          ),
-          backgroundColor: Colors.red,
-        ),
+      AppDialogs.showWarning(
+        context,
+        _isReeferFuel
+            ? 'Please enter reefer number'
+            : 'Please enter truck number',
       );
       return;
     }
 
     // Check fuel quantity
     if (_fuelQuantityController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter fuel quantity'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Please enter fuel quantity');
       return;
     }
 
     // Check fuel price
     if (_fuelPriceController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter price per unit'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      AppDialogs.showWarning(context, 'Please enter price per unit');
       return;
     }
 
@@ -1734,25 +2069,19 @@ class _AddEntryPageState extends State<AddEntryPage>
       }
 
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEditMode
-                  ? 'Fuel entry updated successfully!'
-                  : 'Fuel entry saved successfully!',
-            ),
-            backgroundColor: Colors.green,
-          ),
+        AppDialogs.showSuccess(
+          context,
+          _isEditMode
+              ? 'Fuel entry updated successfully!'
+              : 'Fuel entry saved successfully!',
         );
         Navigator.pop(context, true); // Return true to indicate success
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to save fuel entry: ${e.toString()}'),
-            backgroundColor: Colors.red,
-          ),
+        AppDialogs.showError(
+          context,
+          'Failed to save fuel entry: ${e.toString()}',
         );
       }
     } finally {

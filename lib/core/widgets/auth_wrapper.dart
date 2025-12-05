@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/local_auth_service.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
+import 'package:milow/core/utils/app_dialogs.dart';
 import 'package:milow/features/settings/presentation/pages/pin_entry_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -23,11 +23,10 @@ class AuthWrapper extends StatefulWidget {
 
 class _AuthWrapperState extends State<AuthWrapper> {
   final LocalAuthService _authService = LocalAuthService();
-  bool _isChecking = true;
-  bool _isAuthenticated = false;
-  bool _isDataReady = false;
   static bool _hasAuthenticatedThisSession = false;
   static bool _emailVerificationSnackbarShown = false;
+
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -35,14 +34,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
     _checkAuthentication();
   }
 
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
   Future<void> _checkAuthentication() async {
     // If already authenticated this session, skip check
     if (_hasAuthenticatedThisSession) {
-      setState(() {
-        _isAuthenticated = true;
-        _isDataReady = true;
-        _isChecking = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
       _maybeShowEmailVerifiedSnackbar();
       return;
     }
@@ -51,11 +51,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
       // Not logged in, no need for PIN/biometric or data prefetch
-      setState(() {
-        _isAuthenticated = true;
-        _isDataReady = true;
-        _isChecking = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
       _maybeShowEmailVerifiedSnackbar();
       return;
     }
@@ -70,12 +66,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (!needsAuth) {
       // No authentication needed - wait for prefetch to complete
       await prefetchFuture;
-      setState(() {
-        _isAuthenticated = true;
-        _isDataReady = true;
-        _isChecking = false;
-      });
       _hasAuthenticatedThisSession = true;
+      if (mounted) setState(() => _isLoading = false);
       _maybeShowEmailVerifiedSnackbar();
       return;
     }
@@ -87,15 +79,11 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
     if (isBiometricEnabled && canCheckBiometrics && !isPinEnabled) {
       // Only biometric enabled - authenticate directly without showing PIN page
-      setState(() {
-        _isChecking = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
       await _authenticateWithBiometricOnly(prefetchFuture);
     } else {
       // PIN is enabled (with or without biometric) - show PIN entry page
-      setState(() {
-        _isChecking = false;
-      });
+      if (mounted) setState(() => _isLoading = false);
       _showPinEntry(prefetchFuture);
     }
   }
@@ -108,10 +96,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (authenticated && mounted) {
       // Wait for data prefetch to complete before showing content
       await prefetchFuture;
-      setState(() {
-        _isAuthenticated = true;
-        _isDataReady = true;
-      });
       _hasAuthenticatedThisSession = true;
       _maybeShowEmailVerifiedSnackbar();
     } else if (mounted) {
@@ -132,10 +116,6 @@ class _AuthWrapperState extends State<AuthWrapper> {
     if (authenticated == true) {
       // Wait for data prefetch to complete before showing content
       await prefetchFuture;
-      setState(() {
-        _isAuthenticated = true;
-        _isDataReady = true;
-      });
       _hasAuthenticatedThisSession = true;
       _maybeShowEmailVerifiedSnackbar();
     } else if (mounted) {
@@ -158,10 +138,9 @@ class _AuthWrapperState extends State<AuthWrapper> {
       if (diff.inMinutes <= 10) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Your email has been successfully verified.'),
-            ),
+          AppDialogs.showSuccess(
+            context,
+            'Your email has been successfully verified.',
           );
           _emailVerificationSnackbarShown = true;
         });
@@ -173,136 +152,13 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isChecking) {
-      // Show beautiful loading screen while checking
-      return _buildLoadingScreen(context);
+    if (_isLoading) {
+      // Show a simple loading indicator while checking auth
+      // The splash screen handles the beautiful loading experience
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator(strokeWidth: 3.0)),
+      );
     }
-
-    if (!_isAuthenticated || !_isDataReady) {
-      // Show loading screen while waiting for authentication or data
-      return _buildLoadingScreen(context);
-    }
-
-    // Show the actual app content
     return widget.child;
-  }
-
-  Widget _buildLoadingScreen(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final secondaryColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
-
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            // App Logo/Icon with animation
-            TweenAnimationBuilder<double>(
-              tween: Tween(begin: 0.8, end: 1.0),
-              duration: const Duration(milliseconds: 1000),
-              curve: Curves.easeInOut,
-              builder: (context, value, child) {
-                return Transform.scale(scale: value, child: child);
-              },
-              child: Container(
-                width: 100,
-                height: 100,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF007AFF).withValues(alpha: 0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: const Icon(
-                  Icons.local_shipping_rounded,
-                  size: 50,
-                  color: Colors.white,
-                ),
-              ),
-            ),
-            const SizedBox(height: 32),
-            // App Name
-            Text(
-              'Milow',
-              style: GoogleFonts.inter(
-                fontSize: 32,
-                fontWeight: FontWeight.w700,
-                color: textColor,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Trucking Made Simple',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w400,
-                color: secondaryColor,
-              ),
-            ),
-            const SizedBox(height: 48),
-            // Loading indicator with shimmer effect
-            SizedBox(
-              width: 200,
-              child: Column(
-                children: [
-                  // Progress bar
-                  TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0.0, end: 1.0),
-                    duration: const Duration(milliseconds: 2000),
-                    builder: (context, value, child) {
-                      return Container(
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF2A2A2A)
-                              : const Color(0xFFE5E7EB),
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                        child: FractionallySizedBox(
-                          alignment: Alignment.centerLeft,
-                          widthFactor: value,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
-                              ),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Loading your data...',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: secondaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

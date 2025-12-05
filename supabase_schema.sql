@@ -87,6 +87,7 @@ create table trips (
   start_odometer numeric,
   end_odometer numeric,
   distance_unit text not null default 'mi',  -- 'mi' or 'km'
+  border_crossing text,
   notes text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()

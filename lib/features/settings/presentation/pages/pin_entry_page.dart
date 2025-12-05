@@ -135,17 +135,11 @@ class _PinEntryPageState extends State<PinEntryPage> {
           children: [
             const Spacer(),
             // App icon or logo
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(
-                Icons.local_shipping,
-                size: 64,
-                color: Color(0xFF007AFF),
-              ),
+            Image.asset(
+              'assets/images/milow_icon.png',
+              width: 100,
+              height: 100,
+              fit: BoxFit.contain,
             ),
             const SizedBox(height: 32),
             // Title

@@ -99,8 +99,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
   }
 
   Future<void> _updatePassword() async {
-    final password = _passwordController.text.trim();
-    final confirmPassword = _confirmPasswordController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
 
     // Validation
     if (password.isEmpty) {
@@ -351,35 +351,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
       builder: (context, value, child) {
         return Transform.scale(
           scale: value,
-          child: Container(
+          child: Image.asset(
+            'assets/images/milow_icon.png',
             width: 100,
             height: 100,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: _isSuccess
-                    ? [const Color(0xFF10B981), const Color(0xFF059669)]
-                    : [const Color(0xFF8B5CF6), const Color(0xFF6D28D9)],
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color:
-                      (_isSuccess
-                              ? const Color(0xFF10B981)
-                              : const Color(0xFF8B5CF6))
-                          .withValues(alpha: 0.4),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Icon(
-              _isSuccess ? Icons.check_rounded : Icons.lock_reset_rounded,
-              size: 48,
-              color: Colors.white,
-            ),
+            fit: BoxFit.contain,
           ),
         );
       },
@@ -579,7 +555,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
                 width: 24,
                 height: 24,
                 child: CircularProgressIndicator(
-                  strokeWidth: 2.5,
+                  strokeWidth: 3.0,
                   color: Colors.white,
                 ),
               )
@@ -613,8 +589,8 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
                 ),
                 const SizedBox(height: 16),
                 const CircularProgressIndicator(
+                  strokeWidth: 3.0,
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
-                  strokeWidth: 2,
                 ),
               ],
             ),

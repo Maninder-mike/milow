@@ -3,6 +3,9 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Notification types
+enum NotificationType { reminder, company, news }
+
 /// Service to manage notifications and provide unread count across the app
 class NotificationService {
   NotificationService._();
@@ -33,9 +36,8 @@ class NotificationService {
         final List<dynamic> decoded = jsonDecode(notificationsJson);
         _unreadCount = decoded.where((n) => n['isRead'] == false).length;
       } else {
-        // If no notifications stored yet, assume there are unread notifications
-        // (initial mock data has some unread)
-        _unreadCount = 4; // Default unread count for first-time users
+        // No notifications stored yet, start with 0
+        _unreadCount = 0;
       }
 
       _notificationController.add(_unreadCount);
@@ -44,6 +46,58 @@ class NotificationService {
       debugPrint('Error getting unread count: $e');
       return 0;
     }
+  }
+
+  /// Add a new notification
+  Future<void> addNotification({
+    required String title,
+    required String message,
+    NotificationType type = NotificationType.reminder,
+  }) async {
+    try {
+      debugPrint('🔔 Adding notification: $title');
+      final prefs = await SharedPreferences.getInstance();
+      final String? notificationsJson = prefs.getString('notifications');
+
+      List<dynamic> notifications = [];
+      if (notificationsJson != null) {
+        notifications = jsonDecode(notificationsJson);
+      }
+
+      // Generate unique ID
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+
+      // Add new notification at the beginning
+      notifications.insert(0, {
+        'id': id,
+        'type': type.toString().split('.').last,
+        'title': title,
+        'message': message,
+        'timestamp': DateTime.now().toIso8601String(),
+        'isRead': false,
+      });
+
+      await prefs.setString('notifications', jsonEncode(notifications));
+      debugPrint('🔔 Notification saved to SharedPreferences');
+
+      await refreshUnreadCount();
+      debugPrint('🔔 Unread count refreshed: $_unreadCount');
+    } catch (e) {
+      debugPrint('🔔 Error adding notification: $e');
+    }
+  }
+
+  /// Add a reminder for missing end odometer
+  Future<void> addMissingOdometerReminder({
+    required String tripNumber,
+    required String truckNumber,
+  }) async {
+    await addNotification(
+      title: 'Missing End Odometer',
+      message:
+          'Trip #$tripNumber ($truckNumber) is missing the end odometer reading. Please update it to track your mileage accurately.',
+      type: NotificationType.reminder,
+    );
   }
 
   /// Mark all notifications as read

@@ -123,7 +123,10 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
       ),
       body: _loading
           ? const Center(
-              child: CircularProgressIndicator(color: Color(0xFF007AFF)),
+              child: CircularProgressIndicator(
+                color: Color(0xFF007AFF),
+                strokeWidth: 3.0,
+              ),
             )
           : Column(
               children: [

@@ -33,6 +33,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Future<void> _loadNotifications() async {
     final prefs = await SharedPreferences.getInstance();
+
+    // Check if we've migrated (cleared old dummy data)
+    final hasMigrated = prefs.getBool('notifications_migrated_v2') ?? false;
+    if (!hasMigrated) {
+      // Clear old dummy data from previous versions
+      await prefs.remove('notifications');
+      await prefs.setBool('notifications_migrated_v2', true);
+      setState(() {
+        _notifications = [];
+      });
+      return;
+    }
+
     final String? notificationsJson = prefs.getString('notifications');
     if (notificationsJson != null) {
       final List<dynamic> decoded = jsonDecode(notificationsJson);
@@ -42,103 +55,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
             .toList();
       });
     } else {
-      // If no notifications stored, use initial mock data
+      // Start with empty notifications - no dummy data
       setState(() {
-        _notifications = [
-          NotificationItem(
-            id: '1',
-            type: NotificationType.company,
-            title: 'New Company Policy Update',
-            message:
-                'Please review the updated safety guidelines for long-haul trips effective next month.',
-            timestamp: DateTime.now().subtract(const Duration(hours: 2)),
-            isRead: false,
-          ),
-          NotificationItem(
-            id: '2',
-            type: NotificationType.news,
-            title: 'Fuel Prices Expected to Drop',
-            message:
-                'Industry analysts predict a 5% decrease in diesel prices across major routes this quarter.',
-            timestamp: DateTime.now().subtract(const Duration(hours: 5)),
-            isRead: false,
-          ),
-          NotificationItem(
-            id: '3',
-            type: NotificationType.company,
-            title: 'Maintenance Schedule Reminder',
-            message:
-                'Your truck #TRK-4521 is due for scheduled maintenance on Dec 15, 2025.',
-            timestamp: DateTime.now().subtract(const Duration(days: 1)),
-            isRead: true,
-          ),
-          NotificationItem(
-            id: '4',
-            type: NotificationType.news,
-            title: 'New Rest Stop Opened on I-95',
-            message:
-                'A new truck-friendly rest area with amenities is now open at mile marker 245.',
-            timestamp: DateTime.now().subtract(const Duration(days: 2)),
-            isRead: true,
-          ),
-          NotificationItem(
-            id: '5',
-            type: NotificationType.company,
-            title: 'Bonus Payout Announcement',
-            message:
-                'Q4 performance bonuses will be processed on December 20th. Great work team!',
-            timestamp: DateTime.now().subtract(const Duration(days: 3)),
-            isRead: true,
-          ),
-          NotificationItem(
-            id: '6',
-            type: NotificationType.news,
-            title: 'Winter Weather Advisory',
-            message:
-                'Heavy snowfall expected in northern routes. Check weather conditions before departure.',
-            timestamp: DateTime.now().subtract(const Duration(days: 4)),
-            isRead: true,
-          ),
-          // Additional dummy notifications
-          NotificationItem(
-            id: '7',
-            type: NotificationType.company,
-            title: 'Driver Appreciation Week',
-            message:
-                'Join us for special events and giveaways to celebrate our drivers!',
-            timestamp: DateTime.now().subtract(const Duration(days: 5)),
-            isRead: false,
-          ),
-          NotificationItem(
-            id: '8',
-            type: NotificationType.news,
-            title: 'New Route Added: West Coast Express',
-            message:
-                'A new express route is now available for west coast deliveries.',
-            timestamp: DateTime.now().subtract(const Duration(days: 6)),
-            isRead: false,
-          ),
-          NotificationItem(
-            id: '9',
-            type: NotificationType.company,
-            title: 'Health Insurance Update',
-            message:
-                'Review the new health insurance options available for all employees.',
-            timestamp: DateTime.now().subtract(const Duration(days: 7)),
-            isRead: true,
-          ),
-          NotificationItem(
-            id: '10',
-            type: NotificationType.news,
-            title: 'Tech Upgrade: New Fleet Management App',
-            message:
-                'Download the new app for improved fleet tracking and communication.',
-            timestamp: DateTime.now().subtract(const Duration(days: 8)),
-            isRead: true,
-          ),
-        ];
+        _notifications = [];
       });
-      await _saveNotifications();
     }
   }
 
@@ -153,6 +73,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
   List<NotificationItem> get _filteredNotifications {
     if (_selectedFilter == 'All') {
       return _notifications;
+    } else if (_selectedFilter == 'Reminders') {
+      return _notifications
+          .where((n) => n.type == NotificationType.reminder)
+          .toList();
     } else if (_selectedFilter == 'Company') {
       return _notifications
           .where((n) => n.type == NotificationType.company)
@@ -183,6 +107,39 @@ class _NotificationsPageState extends State<NotificationsPage> {
     await _saveNotifications();
     // Update notification service count
     await NotificationService.instance.refreshUnreadCount();
+  }
+
+  IconData _getNotificationIcon(NotificationType type) {
+    switch (type) {
+      case NotificationType.reminder:
+        return Icons.notification_important;
+      case NotificationType.company:
+        return Icons.business;
+      case NotificationType.news:
+        return Icons.newspaper;
+    }
+  }
+
+  Color _getNotificationColor(NotificationType type) {
+    switch (type) {
+      case NotificationType.reminder:
+        return const Color(0xFFF59E0B); // Amber/Orange for reminders
+      case NotificationType.company:
+        return const Color(0xFF007AFF); // Blue for company
+      case NotificationType.news:
+        return const Color(0xFF10B981); // Green for news
+    }
+  }
+
+  String _getNotificationLabel(NotificationType type) {
+    switch (type) {
+      case NotificationType.reminder:
+        return 'Reminder';
+      case NotificationType.company:
+        return 'Company';
+      case NotificationType.news:
+        return 'News';
+    }
   }
 
   @override
@@ -252,6 +209,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
               child: Row(
                 children: [
                   _buildFilterChip('All', _notifications.length),
+                  const SizedBox(width: 8),
+                  _buildFilterChip(
+                    'Reminders',
+                    _notifications
+                        .where((n) => n.type == NotificationType.reminder)
+                        .length,
+                  ),
                   const SizedBox(width: 8),
                   _buildFilterChip(
                     'Company',
@@ -403,18 +367,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: notification.type == NotificationType.company
-                    ? const Color(0xFF007AFF).withValues(alpha: 0.1)
-                    : const Color(0xFF10B981).withValues(alpha: 0.1),
+                color: _getNotificationColor(
+                  notification.type,
+                ).withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
-                notification.type == NotificationType.company
-                    ? Icons.business
-                    : Icons.newspaper,
-                color: notification.type == NotificationType.company
-                    ? const Color(0xFF007AFF)
-                    : const Color(0xFF10B981),
+                _getNotificationIcon(notification.type),
+                color: _getNotificationColor(notification.type),
                 size: 20,
               ),
             ),
@@ -484,21 +444,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           vertical: 3,
                         ),
                         decoration: BoxDecoration(
-                          color: notification.type == NotificationType.company
-                              ? const Color(0xFF007AFF).withValues(alpha: 0.1)
-                              : const Color(0xFF10B981).withValues(alpha: 0.1),
+                          color: _getNotificationColor(
+                            notification.type,
+                          ).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(4),
                         ),
                         child: Text(
-                          notification.type == NotificationType.company
-                              ? 'Company'
-                              : 'News',
+                          _getNotificationLabel(notification.type),
                           style: GoogleFonts.inter(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
-                            color: notification.type == NotificationType.company
-                                ? const Color(0xFF007AFF)
-                                : const Color(0xFF10B981),
+                            color: _getNotificationColor(notification.type),
                           ),
                         ),
                       ),
@@ -568,7 +524,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 }
 
-enum NotificationType { company, news }
+enum NotificationType { reminder, company, news }
 
 class NotificationItem {
   Map<String, dynamic> toJson() => {
@@ -581,11 +537,22 @@ class NotificationItem {
   };
 
   static NotificationItem fromJson(Map<String, dynamic> json) {
+    NotificationType type;
+    switch (json['type']) {
+      case 'reminder':
+        type = NotificationType.reminder;
+        break;
+      case 'company':
+        type = NotificationType.company;
+        break;
+      case 'news':
+      default:
+        type = NotificationType.news;
+        break;
+    }
     return NotificationItem(
       id: json['id'],
-      type: json['type'] == 'company'
-          ? NotificationType.company
-          : NotificationType.news,
+      type: type,
       title: json['title'],
       message: json['message'],
       timestamp: DateTime.parse(json['timestamp']),

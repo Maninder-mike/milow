@@ -282,7 +282,9 @@ class _LogViewerPageState extends State<LogViewerPage> {
           // Logs list
           Expanded(
             child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
+                ? const Center(
+                    child: CircularProgressIndicator(strokeWidth: 3.0),
+                  )
                 : _filteredLogs.isEmpty
                 ? Center(
                     child: Column(

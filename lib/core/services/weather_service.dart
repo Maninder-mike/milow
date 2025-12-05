@@ -9,13 +9,13 @@ class WeatherService {
 
   Future<Map<String, dynamic>?> getCurrentWeather() async {
     try {
-      // Get current location
-      final position = await _getCurrentLocation();
-      if (position == null) return null;
+      // Get current location (geolocation first, then IP fallback for web/CORS)
+      final coords = await _getCoordinates();
+      if (coords == null) return null;
 
       // Fetch weather data
       final url = Uri.parse(
-        '$_baseUrl?latitude=${position.latitude}&longitude=${position.longitude}&current=temperature_2m,weather_code,is_day&temperature_unit=celsius',
+        '$_baseUrl?latitude=${coords['lat']}&longitude=${coords['lon']}&current=temperature_2m,weather_code,is_day&temperature_unit=celsius',
       );
 
       final response = await http.get(url);
@@ -34,24 +34,49 @@ class WeatherService {
     return null;
   }
 
-  Future<Position?> _getCurrentLocation() async {
+  Future<Map<String, double>?> _getCoordinates() async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
-      if (!serviceEnabled) return null;
+      if (serviceEnabled) {
+        LocationPermission permission = await Geolocator.checkPermission();
+        if (permission == LocationPermission.denied) {
+          permission = await Geolocator.requestPermission();
+        }
 
-      LocationPermission permission = await Geolocator.checkPermission();
-      if (permission == LocationPermission.denied) {
-        permission = await Geolocator.requestPermission();
-        if (permission == LocationPermission.denied) return null;
+        if (permission == LocationPermission.always ||
+            permission == LocationPermission.whileInUse) {
+          final pos = await Geolocator.getCurrentPosition();
+          return {'lat': pos.latitude, 'lon': pos.longitude};
+        }
       }
 
-      if (permission == LocationPermission.deniedForever) return null;
-
-      return await Geolocator.getCurrentPosition();
+      // Fallback: use IP-based lookup (works on web/https without geolocation)
+      final ipCoords = await _getCoordinatesFromIp();
+      if (ipCoords != null) return ipCoords;
     } catch (e) {
       debugPrint('Error getting location: $e');
-      return null;
     }
+    return null;
+  }
+
+  Future<Map<String, double>?> _getCoordinatesFromIp() async {
+    try {
+      // ipapi has permissive CORS and no key for basic geo info
+      final response = await http
+          .get(Uri.parse('https://ipapi.co/json/'))
+          .timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final lat = (data['latitude'] as num?)?.toDouble();
+        final lon = (data['longitude'] as num?)?.toDouble();
+        if (lat != null && lon != null) {
+          return {'lat': lat, 'lon': lon};
+        }
+      }
+    } catch (e) {
+      debugPrint('IP geolocation failed: $e');
+    }
+    return null;
   }
 
   String getWeatherIcon(int code, {bool isDay = true}) {

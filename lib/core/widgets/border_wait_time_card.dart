@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/models/border_wait_time.dart';
@@ -24,15 +25,12 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF8FAFC);
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
     final subtextColor = isDark
-        ? const Color(0xFF94A3B8)
+        ? Colors.white.withValues(alpha: 0.6)
         : const Color(0xFF667085);
     final dividerColor = isDark
-        ? const Color(0xFF334155)
+        ? Colors.white.withValues(alpha: 0.1)
         : const Color(0xFFE2E8F0);
 
     // Determine delay color based on commercial truck delay
@@ -41,130 +39,165 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
       widget.waitTime.operationalStatus,
     );
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+            color: isDark
+                ? Colors.black.withValues(alpha: 0.3)
+                : Colors.black.withValues(alpha: 0.08),
+            blurRadius: 24,
+            spreadRadius: 0,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () {
-            setState(() {
-              _isExpanded = !_isExpanded;
-            });
-          },
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+          child: Container(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? [
+                        Colors.white.withValues(alpha: 0.15),
+                        Colors.white.withValues(alpha: 0.05),
+                      ]
+                    : [
+                        Colors.white.withValues(alpha: 0.9),
+                        Colors.white.withValues(alpha: 0.7),
+                      ],
+              ),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.8),
+                width: 1.5,
+              ),
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: () {
+                  setState(() {
+                    _isExpanded = !_isExpanded;
+                  });
+                },
+                borderRadius: BorderRadius.circular(24),
+                child: Column(
                   children: [
-                    // Delay section
-                    Container(
-                      width: 90,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
+                    Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
                         children: [
-                          Text(
-                            widget.waitTime.delayDisplay.split(' ').first,
-                            style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
-                              height: 1,
+                          // Delay section
+                          Container(
+                            width: 90,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  widget.waitTime.delayDisplay.split(' ').first,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.w700,
+                                    color: textColor,
+                                    height: 1,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _getDelayLabel(),
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: delayColor,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            _getDelayLabel(),
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: delayColor,
+                          // Divider
+                          Container(width: 1, height: 50, color: dividerColor),
+                          const SizedBox(width: 16),
+                          // Port info
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.waitTime.crossingName.isNotEmpty
+                                      ? widget.waitTime.crossingName
+                                      : widget.waitTime.portName,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                    color: textColor,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  '${widget.waitTime.portName} • ${widget.waitTime.lanesOpen}/${widget.waitTime.maxLanes} lanes',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: subtextColor,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
                           ),
+                          // Expand/remove icon
+                          if (widget.onRemove != null)
+                            IconButton(
+                              icon: Icon(
+                                Icons.close,
+                                size: 20,
+                                color: subtextColor,
+                              ),
+                              onPressed: widget.onRemove,
+                              tooltip: 'Remove',
+                            )
+                          else
+                            AnimatedRotation(
+                              turns: _isExpanded ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 200),
+                              child: Icon(
+                                Icons.keyboard_arrow_down,
+                                color: subtextColor,
+                              ),
+                            ),
                         ],
                       ),
                     ),
-                    // Divider
-                    Container(width: 1, height: 50, color: dividerColor),
-                    const SizedBox(width: 16),
-                    // Port info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.waitTime.crossingName.isNotEmpty
-                                ? widget.waitTime.crossingName
-                                : widget.waitTime.portName,
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '${widget.waitTime.portName} • ${widget.waitTime.lanesOpen}/${widget.waitTime.maxLanes} lanes',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: subtextColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
+                    // Expanded content
+                    AnimatedCrossFade(
+                      firstChild: const SizedBox.shrink(),
+                      secondChild: _buildExpandedContent(
+                        isDark: isDark,
+                        textColor: textColor,
+                        subtextColor: subtextColor,
+                        dividerColor: dividerColor,
                       ),
+                      crossFadeState: _isExpanded
+                          ? CrossFadeState.showSecond
+                          : CrossFadeState.showFirst,
+                      duration: const Duration(milliseconds: 200),
                     ),
-                    // Expand/remove icon
-                    if (widget.onRemove != null)
-                      IconButton(
-                        icon: Icon(Icons.close, size: 20, color: subtextColor),
-                        onPressed: widget.onRemove,
-                        tooltip: 'Remove',
-                      )
-                    else
-                      AnimatedRotation(
-                        turns: _isExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: subtextColor,
-                        ),
-                      ),
                   ],
                 ),
               ),
-              // Expanded content
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: _buildExpandedContent(
-                  isDark: isDark,
-                  textColor: textColor,
-                  subtextColor: subtextColor,
-                  dividerColor: dividerColor,
-                ),
-                crossFadeState: _isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
-              ),
-            ],
+            ),
           ),
         ),
       ),

@@ -15,7 +15,6 @@ import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class RecordsListPage extends StatefulWidget {
   const RecordsListPage({super.key});
@@ -34,92 +33,212 @@ class _RecordsListPageState extends State<RecordsListPage> {
   List<Map<String, dynamic>> _allRecords = [];
   bool _isLoading = true;
 
-  // Realtime subscriptions
-  RealtimeChannel? _tripsChannel;
-  RealtimeChannel? _fuelChannel;
+  // Track expanded cards
+  final Set<String> _expandedCards = {};
+
+  // PDF Export Column Selection
+  static const Map<String, String> tripColumnLabels = {
+    'tripNumber': 'Trip #',
+    'date': 'Date',
+    'truck': 'Truck',
+    'trailer': 'Trailer',
+    'borderCrossing': 'Border Crossing',
+    'from': 'From (Pickup)',
+    'to': 'To (Delivery)',
+    'miles': 'Miles/Km',
+    'notes': 'Notes',
+    'officialUse': 'Official Use',
+  };
+
+  static const Map<String, String> fuelColumnLabels = {
+    'date': 'Date',
+    'type': 'Type',
+    'truck': 'Truck #',
+    'location': 'Location',
+    'quantity': 'Quantity',
+    'odometer': 'Odometer',
+    'cost': 'Cost',
+  };
+
+  // Default selected columns
+  Set<String> _selectedTripColumns = {
+    'tripNumber',
+    'date',
+    'from',
+    'borderCrossing',
+    'to',
+    'notes',
+    'officialUse',
+  };
+
+  Set<String> _selectedFuelColumns = {
+    'date',
+    'type',
+    'truck',
+    'location',
+    'odometer',
+    'quantity',
+  };
 
   @override
   void initState() {
     super.initState();
     _loadRecords();
-    _setupRealtimeSubscriptions();
   }
 
-  void _setupRealtimeSubscriptions() {
-    final supabase = Supabase.instance.client;
-
-    // Subscribe to trips table changes
-    _tripsChannel = supabase
-        .channel('records_trips')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'trips',
-          callback: (payload) {
-            // Invalidate cache so dashboard fetches fresh data
-            DataPrefetchService.instance.invalidateCache();
-            _loadRecords();
-          },
-        )
-        .subscribe();
-
-    // Subscribe to fuel_entries table changes
-    _fuelChannel = supabase
-        .channel('records_fuel')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'fuel_entries',
-          callback: (payload) {
-            // Invalidate cache so dashboard fetches fresh data
-            DataPrefetchService.instance.invalidateCache();
-            _loadRecords();
-          },
-        )
-        .subscribe();
+  /// Pull-to-refresh handler
+  Future<void> _onRefresh() async {
+    DataPrefetchService.instance.invalidateCache();
+    await _loadRecords();
   }
 
-  /// Extract city and state from a full address using regex
+  /// Extract city and state/province from address
+  /// Returns format: "City ST" (e.g., "Vaughan ON" or "Irwindale CA")
   String _extractCityState(String address) {
     if (address.isEmpty) return address;
 
-    // Pattern to match "City, State/Province" or "City, State ZIP"
-    final RegExp cityStatePattern = RegExp(
-      r'([A-Za-z\s]+),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
+    // Normalize: replace newlines with commas for easier parsing
+    final normalized = address
+        .replaceAll('\n', ', ')
+        .replaceAll(RegExp(r',\s*,'), ',');
+
+    // Pattern 1: Match "CITY STATE ZIP" at end of segment
+    // e.g., "IRWINDALE CA 91702" or "CHARLOTTETOWN PE C1E 0K4"
+    final dispatchPattern = RegExp(
+      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s+[A-Z0-9]{3,7}(?:\s*[A-Z0-9]{0,4})?\s*$',
       caseSensitive: false,
     );
 
-    final match = cityStatePattern.firstMatch(address);
+    final segments = normalized.split(',');
+    for (final segment in segments) {
+      final trimmed = segment.trim();
+      final dispatchMatch = dispatchPattern.firstMatch(trimmed.toUpperCase());
+      if (dispatchMatch != null) {
+        // Get the last word(s) before state - extract city from end
+        final rawCity = dispatchMatch.group(1)!.trim();
+        final city = _extractLastCity(rawCity);
+        final state = dispatchMatch.group(2)!.toUpperCase();
+        return '$city $state';
+      }
+    }
+
+    // Pattern 2: Match "CITY STATE" followed by ( or end (e.g., "VAUGHAN ON (Yard)")
+    final cityStateParenPattern = RegExp(
+      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s*(?:\(|$)',
+      caseSensitive: false,
+    );
+    for (final segment in segments) {
+      final trimmed = segment.trim();
+      final match = cityStateParenPattern.firstMatch(trimmed.toUpperCase());
+      if (match != null) {
+        final rawCity = match.group(1)!.trim();
+        final city = _extractLastCity(rawCity);
+        final state = match.group(2)!.toUpperCase();
+        return '$city $state';
+      }
+    }
+
+    // Pattern 3: Standard format "City, ST" or "City, ST ZIP"
+    final cityStatePattern = RegExp(
+      r'([A-Za-z][A-Za-z\s]+?),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
+      caseSensitive: false,
+    );
+    final match = cityStatePattern.firstMatch(normalized);
     if (match != null) {
-      final city = match.group(1)?.trim() ?? '';
-      final state = match.group(2)?.toUpperCase() ?? '';
-      if (city.isNotEmpty && state.isNotEmpty) {
-        return '$city, $state';
+      final city = _toTitleCase(match.group(1)!.trim());
+      final state = match.group(2)!.toUpperCase();
+      return '$city $state';
+    }
+
+    // Fallback: just return first non-numeric part abbreviated
+    final parts = normalized.split(',');
+    for (final part in parts) {
+      final trimmed = part.trim();
+      if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
+        return trimmed.length > 20 ? '${trimmed.substring(0, 17)}...' : trimmed;
       }
     }
 
-    // If no match, try to extract just the city
-    final parts = address.split(',');
-    if (parts.length >= 2) {
-      for (final part in parts) {
-        final trimmed = part.trim();
-        if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
-          final idx = parts.indexOf(part);
-          if (idx + 1 < parts.length) {
-            final nextPart = parts[idx + 1].trim();
-            final stateMatch = RegExp(
-              r'^([A-Z]{2})\b',
-            ).firstMatch(nextPart.toUpperCase());
-            if (stateMatch != null) {
-              return '$trimmed, ${stateMatch.group(1)}';
-            }
-          }
-          return trimmed;
-        }
+    return address.length > 20 ? '${address.substring(0, 17)}...' : address;
+  }
+
+  /// Extract the actual city name from a string that might include street names
+  /// e.g., "COLD CREEK ROAD VAUGHAN" -> "Vaughan"
+  /// e.g., "QUEBEC CITY" -> "Quebec City"
+  String _extractLastCity(String raw) {
+    final words = raw.split(RegExp(r'\s+'));
+    if (words.isEmpty) return _toTitleCase(raw);
+
+    // Common street suffixes to skip
+    final streetSuffixes = {
+      'ROAD',
+      'RD',
+      'STREET',
+      'ST',
+      'AVENUE',
+      'AVE',
+      'BLVD',
+      'BOULEVARD',
+      'DRIVE',
+      'DR',
+      'LANE',
+      'LN',
+      'WAY',
+      'COURT',
+      'CT',
+      'PLACE',
+      'PL',
+      'CIRCLE',
+      'CIR',
+      'HIGHWAY',
+      'HWY',
+      'ROUTE',
+      'RTE',
+      'PARKWAY',
+      'PKWY',
+    };
+
+    // Find the last street suffix and take everything after it
+    int lastStreetIndex = -1;
+    for (int i = 0; i < words.length; i++) {
+      if (streetSuffixes.contains(words[i].toUpperCase())) {
+        lastStreetIndex = i;
       }
     }
 
-    return address.length > 25 ? '${address.substring(0, 22)}...' : address;
+    if (lastStreetIndex >= 0 && lastStreetIndex < words.length - 1) {
+      // Take everything after the last street suffix
+      final cityWords = words.sublist(lastStreetIndex + 1);
+      return _toTitleCase(cityWords.join(' '));
+    }
+
+    // If no street suffix found, check if first word looks like a number (street address)
+    if (words.length > 1 && RegExp(r'^\d').hasMatch(words.first)) {
+      // Skip the street number and take the last 1-2 words as city
+      final cityWords = words.length > 2
+          ? words.sublist(words.length - 2)
+          : [words.last];
+      // But if second-to-last is a street suffix, just take last word
+      if (cityWords.length > 1 &&
+          streetSuffixes.contains(cityWords.first.toUpperCase())) {
+        return _toTitleCase(cityWords.last);
+      }
+      return _toTitleCase(cityWords.join(' '));
+    }
+
+    // Return the whole thing as city (e.g., "QUEBEC CITY")
+    return _toTitleCase(raw);
+  }
+
+  String _toTitleCase(String text) {
+    if (text.isEmpty) return text;
+    return text
+        .split(' ')
+        .map((word) {
+          if (word.isEmpty) return word;
+          return word[0].toUpperCase() + word.substring(1).toLowerCase();
+        })
+        .join(' ');
   }
 
   Future<void> _loadRecords() async {
@@ -282,8 +401,6 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
   @override
   void dispose() {
-    _tripsChannel?.unsubscribe();
-    _fuelChannel?.unsubscribe();
     _searchController.dispose();
     super.dispose();
   }
@@ -387,421 +504,937 @@ class _RecordsListPageState extends State<RecordsListPage> {
         ? const Color(0xFF3A3A3A)
         : const Color(0xFFD0D5DD);
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          'All Records',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-        actions: [
-          IconButton(
-            icon: Icon(Icons.save_alt, color: textColor),
-            onPressed: () => _showDownloadBottomSheet(
-              textColor,
-              secondaryTextColor,
-              cardColor,
-              borderColor,
-            ),
-          ),
-          IconButton(
-            icon: Badge(
-              isLabelVisible: _selectedFilter != 'All',
-              child: Icon(Icons.filter_list, color: textColor),
-            ),
-            onPressed: _showFilterBottomSheet,
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // Search bar
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-              },
-              decoration: InputDecoration(
-                hintText: 'Search by load ID or route...',
-                hintStyle: GoogleFonts.inter(color: secondaryTextColor),
-                prefixIcon: Icon(Icons.search, color: secondaryTextColor),
-                suffixIcon: _searchQuery.isNotEmpty
-                    ? IconButton(
-                        icon: Icon(Icons.clear, color: secondaryTextColor),
-                        onPressed: () {
-                          setState(() {
-                            _searchController.clear();
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                    : null,
-                filled: true,
-                fillColor: cardColor,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: borderColor),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: borderColor),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(color: Color(0xFF007AFF)),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-              ),
-              style: GoogleFonts.inter(color: textColor),
-            ),
-          ),
-
-          // Filter chip (shown when filter is active)
-          if (_selectedFilter != 'All')
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Chip(
-                    label: Text(
-                      _selectedFilter,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF007AFF),
+    return Container(
+      color: backgroundColor,
+      child: SafeArea(
+        top: false,
+        bottom: false,
+        child: Scaffold(
+          backgroundColor: backgroundColor,
+          body: NestedScrollView(
+            headerSliverBuilder: (context, innerBoxIsScrolled) {
+              return [
+                // Main AppBar (always visible)
+                SliverAppBar(
+                  backgroundColor: backgroundColor,
+                  elevation: 0,
+                  floating: false,
+                  pinned: true,
+                  leading: IconButton(
+                    icon: Icon(Icons.arrow_back, color: textColor),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  title: Text(
+                    'All Records',
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w600,
+                      color: textColor,
+                    ),
+                  ),
+                  actions: [
+                    IconButton(
+                      icon: Icon(Icons.save_alt, color: textColor),
+                      onPressed: () => _showDownloadBottomSheet(
+                        textColor,
+                        secondaryTextColor,
+                        cardColor,
+                        borderColor,
                       ),
                     ),
-                    backgroundColor: const Color(
-                      0xFF007AFF,
-                    ).withValues(alpha: 0.1),
-                    deleteIcon: const Icon(
-                      Icons.close,
-                      size: 16,
-                      color: Color(0xFF007AFF),
+                    IconButton(
+                      icon: Badge(
+                        isLabelVisible: _selectedFilter != 'All',
+                        child: Icon(Icons.filter_list, color: textColor),
+                      ),
+                      onPressed: _showFilterBottomSheet,
                     ),
-                    onDeleted: () {
-                      setState(() {
-                        _selectedFilter = 'All';
-                      });
-                    },
-                    side: BorderSide.none,
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${_filteredRecords.length} results',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: secondaryTextColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-          const SizedBox(height: 8),
-
-          // Records list
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _filteredRecords.isEmpty
-                ? Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.inbox_outlined,
-                          size: 64,
+                  ],
+                ),
+                // Search bar (hides on scroll up)
+                SliverAppBar(
+                  backgroundColor: backgroundColor,
+                  elevation: 0,
+                  floating: true,
+                  pinned: false,
+                  toolbarHeight: 72,
+                  automaticallyImplyLeading: false,
+                  flexibleSpace: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                      decoration: InputDecoration(
+                        hintText: 'Search by load ID or route...',
+                        hintStyle: GoogleFonts.inter(color: secondaryTextColor),
+                        prefixIcon: Icon(
+                          Icons.search,
                           color: secondaryTextColor,
                         ),
-                        const SizedBox(height: 16),
-                        Text(
-                          'No records found',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: Icon(
+                                  Icons.clear,
+                                  color: secondaryTextColor,
+                                ),
+                                onPressed: () {
+                                  setState(() {
+                                    _searchController.clear();
+                                    _searchQuery = '';
+                                  });
+                                },
+                              )
+                            : null,
+                        filled: true,
+                        fillColor: cardColor,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: borderColor),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: BorderSide(color: borderColor),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(12),
+                          borderSide: const BorderSide(
+                            color: Color(0xFF007AFF),
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _searchQuery.isNotEmpty || _selectedFilter != 'All'
-                              ? 'Try adjusting your search or filter'
-                              : 'Add your first trip or fuel entry',
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            color: secondaryTextColor,
-                          ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
                         ),
-                      ],
+                      ),
+                      style: GoogleFonts.inter(color: textColor),
                     ),
-                  )
-                : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _filteredRecords.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final record = _filteredRecords[index];
-                      return Dismissible(
-                        key: Key('${record['type']}_${record['id']}'),
-                        background: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.only(left: 20),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.edit, color: Colors.white),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Modify',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                  ),
+                ),
+                // Filter chip (shown when filter is active)
+                if (_selectedFilter != 'All')
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: Row(
+                        children: [
+                          Chip(
+                            label: Text(
+                              _selectedFilter,
+                              style: GoogleFonts.inter(
+                                fontSize: 12,
+                                color: const Color(0xFF007AFF),
                               ),
-                            ],
+                            ),
+                            backgroundColor: const Color(
+                              0xFF007AFF,
+                            ).withValues(alpha: 0.1),
+                            deleteIcon: const Icon(
+                              Icons.close,
+                              size: 16,
+                              color: Color(0xFF007AFF),
+                            ),
+                            onDeleted: () {
+                              setState(() {
+                                _selectedFilter = 'All';
+                              });
+                            },
+                            side: BorderSide.none,
                           ),
-                        ),
-                        secondaryBackground: Container(
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444),
-                            borderRadius: BorderRadius.circular(12),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_filteredRecords.length} results',
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: secondaryTextColor,
+                            ),
                           ),
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Delete',
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(Icons.delete, color: Colors.white),
-                            ],
-                          ),
-                        ),
-                        confirmDismiss: (direction) async {
-                          if (direction == DismissDirection.endToStart) {
-                            // Capture scaffold messenger before async gap
-                            final scaffoldMessenger = ScaffoldMessenger.of(
-                              context,
-                            );
-
-                            // Delete action
-                            final confirmed = await showDialog<bool>(
-                              context: context,
-                              builder: (dialogContext) => AlertDialog(
-                                title: Text(
-                                  'Delete Record',
-                                  style: GoogleFonts.inter(
-                                    fontWeight: FontWeight.w600,
+                        ],
+                      ),
+                    ),
+                  ),
+                const SliverToBoxAdapter(child: SizedBox(height: 8)),
+              ];
+            },
+            body: Container(
+              color: backgroundColor,
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                displacement: 60,
+                strokeWidth: 3.0,
+                color: const Color(0xFF007AFF),
+                backgroundColor: isDark
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white,
+                child: _isLoading
+                    ? const Center(
+                        child: CircularProgressIndicator(strokeWidth: 3.0),
+                      )
+                    : _filteredRecords.isEmpty
+                    ? ListView(
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.5,
+                            child: Center(
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.inbox_outlined,
+                                    size: 64,
+                                    color: secondaryTextColor,
                                   ),
-                                ),
-                                content: Text(
-                                  'Are you sure you want to delete ${record['id']}?',
-                                  style: GoogleFonts.inter(),
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogContext, false),
-                                    child: Text(
-                                      'Cancel',
-                                      style: GoogleFonts.inter(
-                                        color: secondaryTextColor,
-                                      ),
+                                  const SizedBox(height: 16),
+                                  Text(
+                                    'No records found',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                      color: textColor,
                                     ),
                                   ),
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.pop(dialogContext, true),
-                                    child: Text(
-                                      'Delete',
-                                      style: GoogleFonts.inter(
-                                        color: const Color(0xFFEF4444),
-                                      ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    _searchQuery.isNotEmpty ||
+                                            _selectedFilter != 'All'
+                                        ? 'Try adjusting your search or filter'
+                                        : 'Add your first trip or fuel entry',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: secondaryTextColor,
                                     ),
                                   ),
                                 ],
                               ),
-                            );
+                            ),
+                          ),
+                        ],
+                      )
+                    : ListView.separated(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _filteredRecords.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        itemBuilder: (context, index) {
+                          final record = _filteredRecords[index];
+                          return Dismissible(
+                            key: Key('${record['type']}_${record['id']}'),
+                            background: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3B82F6),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.centerLeft,
+                              padding: const EdgeInsets.only(left: 20),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.edit, color: Colors.white),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Modify',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            secondaryBackground: Container(
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEF4444),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.only(right: 20),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  Text(
+                                    'Delete',
+                                    style: GoogleFonts.inter(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  const Icon(Icons.delete, color: Colors.white),
+                                ],
+                              ),
+                            ),
+                            confirmDismiss: (direction) async {
+                              if (direction == DismissDirection.endToStart) {
+                                // Capture scaffold messenger before async gap
+                                final scaffoldMessenger = ScaffoldMessenger.of(
+                                  context,
+                                );
 
-                            if (confirmed == true) {
-                              // Delete from Supabase
-                              try {
-                                final isTrip = record['type'] == 'trip';
-                                final data = record['data'];
+                                // Delete action - show beautiful confirmation dialog
+                                final confirmed = await showModalBottomSheet<bool>(
+                                  context: context,
+                                  backgroundColor: Colors.transparent,
+                                  builder: (dialogContext) {
+                                    final dialogIsDark =
+                                        Theme.of(dialogContext).brightness ==
+                                        Brightness.dark;
+                                    final dialogCardColor = dialogIsDark
+                                        ? const Color(0xFF1E1E1E)
+                                        : Colors.white;
+                                    final dialogTextColor = dialogIsDark
+                                        ? Colors.white
+                                        : const Color(0xFF101828);
+                                    final dialogSecondaryColor = dialogIsDark
+                                        ? const Color(0xFF9CA3AF)
+                                        : const Color(0xFF667085);
 
-                                if (isTrip) {
-                                  final trip = data as Trip;
-                                  if (trip.id != null) {
-                                    await TripService.deleteTrip(trip.id!);
-                                  }
-                                } else {
-                                  final fuel = data as FuelEntry;
-                                  if (fuel.id != null) {
-                                    await FuelService.deleteFuelEntry(fuel.id!);
+                                    return Container(
+                                      margin: const EdgeInsets.all(16),
+                                      decoration: BoxDecoration(
+                                        color: dialogCardColor,
+                                        borderRadius: BorderRadius.circular(24),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(
+                                              alpha: 0.15,
+                                            ),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, -5),
+                                          ),
+                                        ],
+                                      ),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const SizedBox(height: 12),
+                                          // Handle bar
+                                          Container(
+                                            width: 40,
+                                            height: 4,
+                                            decoration: BoxDecoration(
+                                              color: dialogSecondaryColor
+                                                  .withValues(alpha: 0.3),
+                                              borderRadius:
+                                                  BorderRadius.circular(2),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 24),
+                                          // Warning icon
+                                          Container(
+                                            width: 64,
+                                            height: 64,
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFFEF4444,
+                                              ).withValues(alpha: 0.1),
+                                              shape: BoxShape.circle,
+                                            ),
+                                            child: const Icon(
+                                              Icons.delete_outline_rounded,
+                                              color: Color(0xFFEF4444),
+                                              size: 32,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 20),
+                                          // Title
+                                          Text(
+                                            'Delete Record',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 20,
+                                              fontWeight: FontWeight.w700,
+                                              color: dialogTextColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 8),
+                                          // Message
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 24,
+                                            ),
+                                            child: Text(
+                                              'Are you sure you want to delete ${record['id']}? This action cannot be undone.',
+                                              textAlign: TextAlign.center,
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                color: dialogSecondaryColor,
+                                                height: 1.5,
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 28),
+                                          // Buttons
+                                          Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 16,
+                                            ),
+                                            child: Row(
+                                              children: [
+                                                // Cancel button
+                                                Expanded(
+                                                  child: GestureDetector(
+                                                    onTap: () => Navigator.pop(
+                                                      dialogContext,
+                                                      false,
+                                                    ),
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 14,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: dialogIsDark
+                                                            ? const Color(
+                                                                0xFF2A2A2A,
+                                                              )
+                                                            : const Color(
+                                                                0xFFF3F4F6,
+                                                              ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                      child: Center(
+                                                        child: Text(
+                                                          'Cancel',
+                                                          style: GoogleFonts.inter(
+                                                            fontSize: 16,
+                                                            fontWeight:
+                                                                FontWeight.w600,
+                                                            color:
+                                                                dialogTextColor,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 12),
+                                                // Delete button
+                                                Expanded(
+                                                  child: GestureDetector(
+                                                    onTap: () => Navigator.pop(
+                                                      dialogContext,
+                                                      true,
+                                                    ),
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 14,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFFEF4444,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                        boxShadow: [
+                                                          BoxShadow(
+                                                            color:
+                                                                const Color(
+                                                                  0xFFEF4444,
+                                                                ).withValues(
+                                                                  alpha: 0.3,
+                                                                ),
+                                                            blurRadius: 8,
+                                                            offset:
+                                                                const Offset(
+                                                                  0,
+                                                                  4,
+                                                                ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                      child: Center(
+                                                        child: Text(
+                                                          'Delete',
+                                                          style:
+                                                              GoogleFonts.inter(
+                                                                fontSize: 16,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w600,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          const SizedBox(height: 24),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                );
+
+                                if (confirmed == true) {
+                                  // Delete from Supabase
+                                  try {
+                                    final isTrip = record['type'] == 'trip';
+                                    final data = record['data'];
+
+                                    if (isTrip) {
+                                      final trip = data as Trip;
+                                      if (trip.id != null) {
+                                        await TripService.deleteTrip(trip.id!);
+                                      }
+                                    } else {
+                                      final fuel = data as FuelEntry;
+                                      if (fuel.id != null) {
+                                        await FuelService.deleteFuelEntry(
+                                          fuel.id!,
+                                        );
+                                      }
+                                    }
+
+                                    // Remove from local list
+                                    setState(() {
+                                      _allRecords.removeWhere(
+                                        (r) =>
+                                            r['type'] == record['type'] &&
+                                            r['id'] == record['id'],
+                                      );
+                                    });
+
+                                    scaffoldMessenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          '${record['id']} deleted',
+                                        ),
+                                        backgroundColor: const Color(
+                                          0xFF10B981,
+                                        ),
+                                      ),
+                                    );
+                                    return false; // Don't auto-dismiss, we already removed it
+                                  } catch (e) {
+                                    scaffoldMessenger.showSnackBar(
+                                      SnackBar(
+                                        content: Text('Failed to delete: $e'),
+                                        backgroundColor: const Color(
+                                          0xFFEF4444,
+                                        ),
+                                      ),
+                                    );
+                                    return false;
                                   }
                                 }
-
-                                // Remove from local list
-                                setState(() {
-                                  _allRecords.removeWhere(
-                                    (r) =>
-                                        r['type'] == record['type'] &&
-                                        r['id'] == record['id'],
-                                  );
-                                });
-
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text('${record['id']} deleted'),
-                                    backgroundColor: const Color(0xFF10B981),
-                                  ),
-                                );
-                                return false; // Don't auto-dismiss, we already removed it
-                              } catch (e) {
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text('Failed to delete: $e'),
-                                    backgroundColor: const Color(0xFFEF4444),
-                                  ),
+                                return false;
+                              } else {
+                                // Modify action - show bottom sheet
+                                _showModifyBottomSheet(
+                                  record,
+                                  textColor,
+                                  secondaryTextColor,
+                                  cardColor,
+                                  borderColor,
                                 );
                                 return false;
                               }
-                            }
-                            return false;
-                          } else {
-                            // Modify action - show bottom sheet
-                            _showModifyBottomSheet(
+                            },
+                            child: _buildExpandableCard(
                               record,
-                              textColor,
-                              secondaryTextColor,
                               cardColor,
                               borderColor,
-                            );
-                            return false;
-                          }
+                              textColor,
+                              secondaryTextColor,
+                            ),
+                          );
                         },
-                        child: Container(
-                          padding: const EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: cardColor,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: borderColor),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableCard(
+    Map<String, dynamic> record,
+    Color cardColor,
+    Color borderColor,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    final cardKey = '${record['type']}_${record['id']}';
+    final isExpanded = _expandedCards.contains(cardKey);
+    final isTrip = record['type'] == 'trip';
+    final data = record['data'];
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          if (isExpanded) {
+            _expandedCards.remove(cardKey);
+          } else {
+            _expandedCards.add(cardKey);
+          }
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Main card content
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color:
+                        (isTrip
+                                ? const Color(0xFF3B82F6)
+                                : const Color(0xFFF59E0B))
+                            .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isTrip ? Icons.local_shipping : Icons.local_gas_station,
+                    color: isTrip
+                        ? const Color(0xFF3B82F6)
+                        : const Color(0xFFF59E0B),
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    children: [
+                      // Top row: ID left, Value right
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            record['id'] as String? ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
                           ),
-                          child: Row(
+                          Text(
+                            record['value'] as String? ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF3B82F6),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      // Bottom row: Description left, Date right
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              record['description'] as String? ?? '',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: secondaryTextColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
-                              Container(
-                                width: 48,
-                                height: 48,
-                                decoration: BoxDecoration(
-                                  color:
-                                      (record['type'] == 'trip'
-                                              ? const Color(0xFF3B82F6)
-                                              : const Color(0xFFF59E0B))
-                                          .withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  record['type'] == 'trip'
-                                      ? Icons.local_shipping
-                                      : Icons.local_gas_station,
-                                  color: record['type'] == 'trip'
-                                      ? const Color(0xFF3B82F6)
-                                      : const Color(0xFFF59E0B),
-                                  size: 24,
+                              Text(
+                                record['date'] as String? ?? '',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: secondaryTextColor,
                                 ),
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  children: [
-                                    // Top row: ID left, Value right
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Text(
-                                          record['id'] as String? ?? '',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: textColor,
-                                          ),
-                                        ),
-                                        Text(
-                                          record['value'] as String? ?? '',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 15,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF3B82F6),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 4),
-                                    // Bottom row: Description left, Date right
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            record['description'] as String? ??
-                                                '',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 13,
-                                              color: secondaryTextColor,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          record['date'] as String? ?? '',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 13,
-                                            color: secondaryTextColor,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
+                              const SizedBox(width: 4),
+                              AnimatedRotation(
+                                turns: isExpanded ? 0.5 : 0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 20,
+                                  color: secondaryTextColor,
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                      );
-                    },
+                        ],
+                      ),
+                    ],
                   ),
+                ),
+              ],
+            ),
+            // Expanded details
+            if (isExpanded) ...[
+              const SizedBox(height: 16),
+              Container(width: double.infinity, height: 1, color: borderColor),
+              const SizedBox(height: 16),
+              if (isTrip)
+                _buildTripDetails(data as Trip, textColor, secondaryTextColor)
+              else
+                _buildFuelDetails(
+                  data as FuelEntry,
+                  textColor,
+                  secondaryTextColor,
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTripDetails(
+    Trip trip,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Truck & Trailers
+        _buildDetailRow(
+          Icons.local_shipping_outlined,
+          'Truck',
+          trip.truckNumber,
+          textColor,
+          secondaryTextColor,
+        ),
+        if (trip.trailers.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            Icons.rv_hookup,
+            'Trailer${trip.trailers.length > 1 ? 's' : ''}',
+            trip.trailers.join(', '),
+            textColor,
+            secondaryTextColor,
           ),
         ],
-      ),
+        // Odometer readings
+        if (trip.startOdometer != null || trip.endOdometer != null) ...[
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            Icons.speed,
+            'Odometer',
+            '${trip.startOdometer?.toStringAsFixed(0) ?? '-'} → ${trip.endOdometer?.toStringAsFixed(0) ?? '-'} ${trip.distanceUnitLabel}',
+            textColor,
+            secondaryTextColor,
+          ),
+        ],
+        // Pickup locations
+        if (trip.pickupLocations.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildDetailSection(
+            Icons.arrow_upward,
+            'Pickup${trip.pickupLocations.length > 1 ? 's' : ''}',
+            trip.pickupLocations,
+            const Color(0xFF10B981),
+            textColor,
+            secondaryTextColor,
+          ),
+        ],
+        // Delivery locations
+        if (trip.deliveryLocations.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildDetailSection(
+            Icons.arrow_downward,
+            'Deliver${trip.deliveryLocations.length > 1 ? 'ies' : 'y'}',
+            trip.deliveryLocations,
+            const Color(0xFFEF4444),
+            textColor,
+            secondaryTextColor,
+          ),
+        ],
+        // Notes
+        if (trip.notes != null && trip.notes!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            Icons.notes,
+            'Notes',
+            trip.notes!,
+            textColor,
+            secondaryTextColor,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildFuelDetails(
+    FuelEntry fuel,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Fuel Type & Vehicle
+        _buildDetailRow(
+          fuel.isTruckFuel ? Icons.local_shipping_outlined : Icons.ac_unit,
+          fuel.isTruckFuel ? 'Truck' : 'Reefer',
+          fuel.isTruckFuel
+              ? (fuel.truckNumber ?? '-')
+              : (fuel.reeferNumber ?? '-'),
+          textColor,
+          secondaryTextColor,
+        ),
+        // Location
+        if (fuel.location != null && fuel.location!.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            Icons.location_on_outlined,
+            'Location',
+            fuel.location!,
+            textColor,
+            secondaryTextColor,
+          ),
+        ],
+        // Quantity & Price
+        const SizedBox(height: 12),
+        _buildDetailRow(
+          Icons.local_gas_station,
+          'Quantity',
+          '${fuel.fuelQuantity.toStringAsFixed(2)} ${fuel.fuelUnitLabel}',
+          textColor,
+          secondaryTextColor,
+        ),
+        const SizedBox(height: 12),
+        _buildDetailRow(
+          Icons.attach_money,
+          'Price',
+          fuel.formattedPricePerUnit,
+          textColor,
+          secondaryTextColor,
+        ),
+        const SizedBox(height: 12),
+        _buildDetailRow(
+          Icons.receipt_long,
+          'Total',
+          fuel.formattedTotalCost,
+          textColor,
+          secondaryTextColor,
+          valueColor: const Color(0xFF10B981),
+        ),
+        // Odometer / Reefer Hours
+        if (fuel.isTruckFuel && fuel.odometerReading != null) ...[
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            Icons.speed,
+            'Odometer',
+            '${fuel.odometerReading!.toStringAsFixed(0)} ${fuel.distanceUnitLabel}',
+            textColor,
+            secondaryTextColor,
+          ),
+        ],
+        if (!fuel.isTruckFuel && fuel.reeferHours != null) ...[
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            Icons.timer_outlined,
+            'Reefer Hours',
+            fuel.reeferHours!.toStringAsFixed(1),
+            textColor,
+            secondaryTextColor,
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(
+    IconData icon,
+    String label,
+    String value,
+    Color textColor,
+    Color secondaryTextColor, {
+    Color? valueColor,
+  }) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: secondaryTextColor),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: GoogleFonts.inter(fontSize: 13, color: secondaryTextColor),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: GoogleFonts.inter(
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              color: valueColor ?? textColor,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDetailSection(
+    IconData icon,
+    String label,
+    List<String> items,
+    Color iconColor,
+    Color textColor,
+    Color secondaryTextColor,
+  ) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Icon(icon, size: 18, color: iconColor),
+        const SizedBox(width: 8),
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: GoogleFonts.inter(fontSize: 13, color: secondaryTextColor),
+          ),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: items
+                .map(
+                  (item) => Padding(
+                    padding: const EdgeInsets.only(bottom: 4),
+                    child: Text(
+                      item,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: textColor,
+                      ),
+                    ),
+                  ),
+                )
+                .toList(),
+          ),
+        ),
+      ],
     );
   }
 
@@ -866,447 +1499,591 @@ class _RecordsListPageState extends State<RecordsListPage> {
                 top: 20,
                 bottom: MediaQuery.of(context).viewInsets.bottom + 20,
               ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Center(
-                    child: Container(
-                      width: 40,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: Colors.grey[400],
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.85,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      Center(
+                        child: Container(
+                          width: 40,
+                          height: 4,
+                          decoration: BoxDecoration(
+                            color: Colors.grey[400],
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF007AFF,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Icon(
+                              Icons.picture_as_pdf,
+                              color: Color(0xFF007AFF),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Export Records',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.w600,
+                                    color: textColor,
+                                  ),
+                                ),
+                                Text(
+                                  'Download as PDF file',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 13,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Date Range Section
+                      Text(
+                        'Date Range',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Row(
+                        children: [
+                          // Start Date
+                          Expanded(
+                            child: _buildDatePickerField(
+                              label: 'From',
+                              date: tempDateRange?.start,
+                              textColor: textColor,
+                              secondaryTextColor: secondaryTextColor,
+                              cardColor: cardColor,
+                              borderColor: borderColor,
+                              isDark: isDark,
+                              onTap: () async {
+                                final picked = await _showCustomDatePicker(
+                                  context,
+                                  initialDate:
+                                      tempDateRange?.start ??
+                                      DateTime.now().subtract(
+                                        const Duration(days: 30),
+                                      ),
+                                  firstDate: DateTime(2020),
+                                  lastDate:
+                                      tempDateRange?.end ?? DateTime.now(),
+                                  isDark: isDark,
+                                );
+                                if (picked != null) {
+                                  setModalState(() {
+                                    tempDateRange = DateTimeRange(
+                                      start: picked,
+                                      end: tempDateRange?.end ?? DateTime.now(),
+                                    );
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            child: Icon(
+                              Icons.arrow_forward,
+                              color: secondaryTextColor,
+                              size: 20,
+                            ),
+                          ),
+                          // End Date
+                          Expanded(
+                            child: _buildDatePickerField(
+                              label: 'To',
+                              date: tempDateRange?.end,
+                              textColor: textColor,
+                              secondaryTextColor: secondaryTextColor,
+                              cardColor: cardColor,
+                              borderColor: borderColor,
+                              isDark: isDark,
+                              onTap: () async {
+                                final picked = await _showCustomDatePicker(
+                                  context,
+                                  initialDate:
+                                      tempDateRange?.end ?? DateTime.now(),
+                                  firstDate:
+                                      tempDateRange?.start ?? DateTime(2020),
+                                  lastDate: DateTime.now(),
+                                  isDark: isDark,
+                                );
+                                if (picked != null) {
+                                  setModalState(() {
+                                    tempDateRange = DateTimeRange(
+                                      start:
+                                          tempDateRange?.start ??
+                                          DateTime.now().subtract(
+                                            const Duration(days: 30),
+                                          ),
+                                      end: picked,
+                                    );
+                                  });
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      // Quick date range options
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: Row(
+                          children: [
+                            _buildQuickDateChip(
+                              'Last 7 days',
+                              () {
+                                setModalState(() {
+                                  tempDateRange = DateTimeRange(
+                                    start: DateTime.now().subtract(
+                                      const Duration(days: 7),
+                                    ),
+                                    end: DateTime.now(),
+                                  );
+                                });
+                              },
+                              secondaryTextColor,
+                              cardColor,
+                              borderColor,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildQuickDateChip(
+                              'Biweekly',
+                              () {
+                                setModalState(() {
+                                  tempDateRange = DateTimeRange(
+                                    start: DateTime.now().subtract(
+                                      const Duration(days: 14),
+                                    ),
+                                    end: DateTime.now(),
+                                  );
+                                });
+                              },
+                              secondaryTextColor,
+                              cardColor,
+                              borderColor,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildQuickDateChip(
+                              'Last 30 days',
+                              () {
+                                setModalState(() {
+                                  tempDateRange = DateTimeRange(
+                                    start: DateTime.now().subtract(
+                                      const Duration(days: 30),
+                                    ),
+                                    end: DateTime.now(),
+                                  );
+                                });
+                              },
+                              secondaryTextColor,
+                              cardColor,
+                              borderColor,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildQuickDateChip(
+                              'This month',
+                              () {
+                                setModalState(() {
+                                  final now = DateTime.now();
+                                  tempDateRange = DateTimeRange(
+                                    start: DateTime(now.year, now.month, 1),
+                                    end: DateTime.now(),
+                                  );
+                                });
+                              },
+                              secondaryTextColor,
+                              cardColor,
+                              borderColor,
+                            ),
+                            const SizedBox(width: 8),
+                            _buildQuickDateChip(
+                              'All time',
+                              () {
+                                setModalState(() {
+                                  tempDateRange = null;
+                                });
+                              },
+                              secondaryTextColor,
+                              cardColor,
+                              borderColor,
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Filter Selection
+                      Text(
+                        'Record Type',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
                       Container(
-                        padding: const EdgeInsets.all(10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+                          color: isDark
+                              ? const Color(0xFF2A2A2A)
+                              : const Color(0xFFF5F5F5),
+                          border: Border.all(color: borderColor),
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Icon(
-                          Icons.picture_as_pdf,
-                          color: Color(0xFF007AFF),
-                          size: 24,
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedExportFilter,
+                            isExpanded: true,
+                            icon: Icon(
+                              Icons.keyboard_arrow_down,
+                              color: secondaryTextColor,
+                            ),
+                            dropdownColor: cardColor,
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: textColor,
+                            ),
+                            items:
+                                [
+                                      'All',
+                                      'Trips Only',
+                                      'Fuel Only',
+                                      'Short (<100 mi)',
+                                      'Medium (100-200 mi)',
+                                      'Long (>200 mi)',
+                                    ]
+                                    .map(
+                                      (filter) => DropdownMenuItem(
+                                        value: filter,
+                                        child: Row(
+                                          children: [
+                                            Icon(
+                                              _getFilterIcon(filter),
+                                              size: 18,
+                                              color: secondaryTextColor,
+                                            ),
+                                            const SizedBox(width: 10),
+                                            Text(filter),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                            onChanged: (value) {
+                              setModalState(() {
+                                selectedExportFilter = value!;
+                              });
+                            },
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 24),
+
+                      // Record count preview
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: exportCount > 0
+                                ? [
+                                    const Color(
+                                      0xFF007AFF,
+                                    ).withValues(alpha: 0.1),
+                                    const Color(
+                                      0xFF007AFF,
+                                    ).withValues(alpha: 0.05),
+                                  ]
+                                : [
+                                    const Color(
+                                      0xFFEF4444,
+                                    ).withValues(alpha: 0.1),
+                                    const Color(
+                                      0xFFEF4444,
+                                    ).withValues(alpha: 0.05),
+                                  ],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: exportCount > 0
+                                ? const Color(0xFF007AFF).withValues(alpha: 0.3)
+                                : const Color(
+                                    0xFFEF4444,
+                                  ).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
                           children: [
-                            Text(
-                              'Export Records',
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: textColor,
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: exportCount > 0
+                                    ? const Color(
+                                        0xFF007AFF,
+                                      ).withValues(alpha: 0.2)
+                                    : const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                exportCount > 0
+                                    ? Icons.description_outlined
+                                    : Icons.warning_amber_rounded,
+                                color: exportCount > 0
+                                    ? const Color(0xFF007AFF)
+                                    : const Color(0xFFEF4444),
+                                size: 20,
                               ),
                             ),
-                            Text(
-                              'Download as PDF file',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: secondaryTextColor,
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    exportCount > 0
+                                        ? '$exportCount records found'
+                                        : 'No records found',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: exportCount > 0
+                                          ? const Color(0xFF007AFF)
+                                          : const Color(0xFFEF4444),
+                                    ),
+                                  ),
+                                  if (exportCount > 0)
+                                    Text(
+                                      'Ready to export',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: secondaryTextColor,
+                                      ),
+                                    )
+                                  else
+                                    Text(
+                                      'Try adjusting your filters',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: secondaryTextColor,
+                                      ),
+                                    ),
+                                ],
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
+                      const SizedBox(height: 24),
 
-                  // Date Range Section
-                  Text(
-                    'Date Range',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      // Start Date
-                      Expanded(
-                        child: _buildDatePickerField(
-                          label: 'From',
-                          date: tempDateRange?.start,
-                          textColor: textColor,
-                          secondaryTextColor: secondaryTextColor,
-                          cardColor: cardColor,
-                          borderColor: borderColor,
-                          isDark: isDark,
-                          onTap: () async {
-                            final picked = await _showCustomDatePicker(
-                              context,
-                              initialDate:
-                                  tempDateRange?.start ??
-                                  DateTime.now().subtract(
-                                    const Duration(days: 30),
-                                  ),
-                              firstDate: DateTime(2020),
-                              lastDate: tempDateRange?.end ?? DateTime.now(),
-                              isDark: isDark,
-                            );
-                            if (picked != null) {
-                              setModalState(() {
-                                tempDateRange = DateTimeRange(
-                                  start: picked,
-                                  end: tempDateRange?.end ?? DateTime.now(),
-                                );
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 12),
-                        child: Icon(
-                          Icons.arrow_forward,
-                          color: secondaryTextColor,
-                          size: 20,
-                        ),
-                      ),
-                      // End Date
-                      Expanded(
-                        child: _buildDatePickerField(
-                          label: 'To',
-                          date: tempDateRange?.end,
-                          textColor: textColor,
-                          secondaryTextColor: secondaryTextColor,
-                          cardColor: cardColor,
-                          borderColor: borderColor,
-                          isDark: isDark,
-                          onTap: () async {
-                            final picked = await _showCustomDatePicker(
-                              context,
-                              initialDate: tempDateRange?.end ?? DateTime.now(),
-                              firstDate: tempDateRange?.start ?? DateTime(2020),
-                              lastDate: DateTime.now(),
-                              isDark: isDark,
-                            );
-                            if (picked != null) {
-                              setModalState(() {
-                                tempDateRange = DateTimeRange(
-                                  start:
-                                      tempDateRange?.start ??
-                                      DateTime.now().subtract(
-                                        const Duration(days: 30),
-                                      ),
-                                  end: picked,
-                                );
-                              });
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  // Quick date range options
-                  SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: Row(
-                      children: [
-                        _buildQuickDateChip(
-                          'Last 7 days',
-                          () {
-                            setModalState(() {
-                              tempDateRange = DateTimeRange(
-                                start: DateTime.now().subtract(
-                                  const Duration(days: 7),
-                                ),
-                                end: DateTime.now(),
-                              );
-                            });
-                          },
-                          secondaryTextColor,
-                          cardColor,
-                          borderColor,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildQuickDateChip(
-                          'Biweekly',
-                          () {
-                            setModalState(() {
-                              tempDateRange = DateTimeRange(
-                                start: DateTime.now().subtract(
-                                  const Duration(days: 14),
-                                ),
-                                end: DateTime.now(),
-                              );
-                            });
-                          },
-                          secondaryTextColor,
-                          cardColor,
-                          borderColor,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildQuickDateChip(
-                          'Last 30 days',
-                          () {
-                            setModalState(() {
-                              tempDateRange = DateTimeRange(
-                                start: DateTime.now().subtract(
-                                  const Duration(days: 30),
-                                ),
-                                end: DateTime.now(),
-                              );
-                            });
-                          },
-                          secondaryTextColor,
-                          cardColor,
-                          borderColor,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildQuickDateChip(
-                          'This month',
-                          () {
-                            setModalState(() {
-                              final now = DateTime.now();
-                              tempDateRange = DateTimeRange(
-                                start: DateTime(now.year, now.month, 1),
-                                end: DateTime.now(),
-                              );
-                            });
-                          },
-                          secondaryTextColor,
-                          cardColor,
-                          borderColor,
-                        ),
-                        const SizedBox(width: 8),
-                        _buildQuickDateChip(
-                          'All time',
-                          () {
-                            setModalState(() {
-                              tempDateRange = null;
-                            });
-                          },
-                          secondaryTextColor,
-                          cardColor,
-                          borderColor,
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Filter Selection
-                  Text(
-                    'Record Type',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 4,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF2A2A2A)
-                          : const Color(0xFFF5F5F5),
-                      border: Border.all(color: borderColor),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: selectedExportFilter,
-                        isExpanded: true,
-                        icon: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: secondaryTextColor,
-                        ),
-                        dropdownColor: cardColor,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: textColor,
-                        ),
-                        items:
-                            [
-                                  'All',
-                                  'Trips Only',
-                                  'Fuel Only',
-                                  'Short (<100 mi)',
-                                  'Medium (100-200 mi)',
-                                  'Long (>200 mi)',
-                                ]
-                                .map(
-                                  (filter) => DropdownMenuItem(
-                                    value: filter,
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          _getFilterIcon(filter),
-                                          size: 18,
-                                          color: secondaryTextColor,
-                                        ),
-                                        const SizedBox(width: 10),
-                                        Text(filter),
-                                      ],
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onChanged: (value) {
-                          setModalState(() {
-                            selectedExportFilter = value!;
-                          });
-                        },
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Record count preview
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: exportCount > 0
-                            ? [
-                                const Color(0xFF007AFF).withValues(alpha: 0.1),
-                                const Color(0xFF007AFF).withValues(alpha: 0.05),
-                              ]
-                            : [
-                                const Color(0xFFEF4444).withValues(alpha: 0.1),
-                                const Color(0xFFEF4444).withValues(alpha: 0.05),
-                              ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: exportCount > 0
-                            ? const Color(0xFF007AFF).withValues(alpha: 0.3)
-                            : const Color(0xFFEF4444).withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: exportCount > 0
-                                ? const Color(0xFF007AFF).withValues(alpha: 0.2)
-                                : const Color(
-                                    0xFFEF4444,
-                                  ).withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Icon(
-                            exportCount > 0
-                                ? Icons.description_outlined
-                                : Icons.warning_amber_rounded,
-                            color: exportCount > 0
-                                ? const Color(0xFF007AFF)
-                                : const Color(0xFFEF4444),
-                            size: 20,
+                      // Column Selection for Trips
+                      if (selectedExportFilter != 'Fuel Only') ...[
+                        Text(
+                          'Trip Columns',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
                           ),
                         ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                exportCount > 0
-                                    ? '$exportCount records found'
-                                    : 'No records found',
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tripColumnLabels.entries.map((entry) {
+                            final isSelected = _selectedTripColumns.contains(
+                              entry.key,
+                            );
+                            return FilterChip(
+                              label: Text(
+                                entry.value,
                                 style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: exportCount > 0
-                                      ? const Color(0xFF007AFF)
-                                      : const Color(0xFFEF4444),
+                                  fontSize: 12,
+                                  color: isSelected ? Colors.white : textColor,
                                 ),
                               ),
-                              if (exportCount > 0)
-                                Text(
-                                  'Ready to export',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: secondaryTextColor,
-                                  ),
-                                )
-                              else
-                                Text(
-                                  'Try adjusting your filters',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: secondaryTextColor,
-                                  ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setModalState(() {
+                                  if (selected) {
+                                    _selectedTripColumns.add(entry.key);
+                                  } else {
+                                    // Ensure at least one column is selected
+                                    if (_selectedTripColumns.length > 1) {
+                                      _selectedTripColumns.remove(entry.key);
+                                    }
+                                  }
+                                });
+                              },
+                              selectedColor: const Color(0xFF007AFF),
+                              checkmarkColor: Colors.white,
+                              backgroundColor: isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF5F5F5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? const Color(0xFF007AFF)
+                                      : borderColor,
                                 ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 20),
+                      ],
+
+                      // Column Selection for Fuel
+                      if (selectedExportFilter != 'Trips Only' &&
+                          !selectedExportFilter.contains('mi)')) ...[
+                        Text(
+                          'Fuel Columns',
+                          style: GoogleFonts.inter(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: fuelColumnLabels.entries.map((entry) {
+                            final isSelected = _selectedFuelColumns.contains(
+                              entry.key,
+                            );
+                            return FilterChip(
+                              label: Text(
+                                entry.value,
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  color: isSelected ? Colors.white : textColor,
+                                ),
+                              ),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                setModalState(() {
+                                  if (selected) {
+                                    _selectedFuelColumns.add(entry.key);
+                                  } else {
+                                    // Ensure at least one column is selected
+                                    if (_selectedFuelColumns.length > 1) {
+                                      _selectedFuelColumns.remove(entry.key);
+                                    }
+                                  }
+                                });
+                              },
+                              selectedColor: const Color(0xFFF97316),
+                              checkmarkColor: Colors.white,
+                              backgroundColor: isDark
+                                  ? const Color(0xFF1E293B)
+                                  : const Color(0xFFF5F5F5),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(8),
+                                side: BorderSide(
+                                  color: isSelected
+                                      ? const Color(0xFFF97316)
+                                      : borderColor,
+                                ),
+                              ),
+                            );
+                          }).toList(),
+                        ),
+                        const SizedBox(height: 24),
+                      ],
+
+                      // Download Button
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: exportCount > 0
+                              ? () {
+                                  setState(() {
+                                    _selectedDateRange = tempDateRange;
+                                  });
+                                  Navigator.pop(context);
+                                  _downloadPDF(
+                                    selectedExportFilter,
+                                    tempDateRange,
+                                  );
+                                }
+                              : null,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF007AFF),
+                            disabledBackgroundColor: isDark
+                                ? const Color(0xFF3A3A3A)
+                                : const Color(0xFFE5E5E5),
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            elevation: 0,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.download_rounded,
+                                color: exportCount > 0
+                                    ? Colors.white
+                                    : secondaryTextColor,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Download PDF',
+                                style: GoogleFonts.inter(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: exportCount > 0
+                                      ? Colors.white
+                                      : secondaryTextColor,
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-
-                  // Download Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: exportCount > 0
-                          ? () {
-                              setState(() {
-                                _selectedDateRange = tempDateRange;
-                              });
-                              Navigator.pop(context);
-                              _downloadPDF(selectedExportFilter, tempDateRange);
-                            }
-                          : null,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
-                        disabledBackgroundColor: isDark
-                            ? const Color(0xFF3A3A3A)
-                            : const Color(0xFFE5E5E5),
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.download_rounded,
-                            color: exportCount > 0
-                                ? Colors.white
-                                : secondaryTextColor,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Download PDF',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: exportCount > 0
-                                  ? Colors.white
-                                  : secondaryTextColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             );
           },
@@ -1488,7 +2265,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFF007AFF)),
+        child: CircularProgressIndicator(
+          color: Color(0xFF007AFF),
+          strokeWidth: 3.0,
+        ),
       ),
     );
 
@@ -1765,37 +2545,18 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   color: PdfColors.grey300,
                   width: 0.5,
                 ),
-                columnWidths: {
-                  0: const pw.FlexColumnWidth(1.0), // Trip #
-                  1: const pw.FlexColumnWidth(1.2), // Date
-                  2: const pw.FlexColumnWidth(2.0), // From (Pickup)
-                  3: const pw.FlexColumnWidth(2.0), // To (Delivery)
-                  4: const pw.FlexColumnWidth(0.8), // Miles
-                },
+                columnWidths: _buildTripColumnWidths(),
                 children: [
                   // Header row
                   pw.TableRow(
                     decoration: const pw.BoxDecoration(color: PdfColors.blue50),
-                    children: [
-                      _buildPdfTableHeaderCell('Trip #'),
-                      _buildPdfTableHeaderCell('Date'),
-                      _buildPdfTableHeaderCell('From (Pickup)'),
-                      _buildPdfTableHeaderCell('To (Delivery)'),
-                      _buildPdfTableHeaderCell('Miles'),
-                    ],
+                    children: _buildTripHeaderCells(),
                   ),
                   // Data rows
                   ...tripRecords.asMap().entries.map((entry) {
                     final index = entry.key;
                     final record = entry.value;
                     final trip = record['data'] as Trip;
-                    final pickupLocation = trip.pickupLocations.isNotEmpty
-                        ? _extractCityState(trip.pickupLocations.first)
-                        : '-';
-                    final deliveryLocation = trip.deliveryLocations.isNotEmpty
-                        ? _extractCityState(trip.deliveryLocations.last)
-                        : '-';
-                    final miles = trip.totalDistance?.toStringAsFixed(0) ?? '-';
 
                     return pw.TableRow(
                       decoration: pw.BoxDecoration(
@@ -1803,23 +2564,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             ? PdfColors.white
                             : PdfColors.grey50,
                       ),
-                      children: [
-                        _buildPdfTableDataCell(
-                          trip.tripNumber,
-                          bold: true,
-                          color: PdfColors.blue800,
-                        ),
-                        _buildPdfTableDataCell(
-                          DateFormat('MMM d, yyyy').format(trip.tripDate),
-                        ),
-                        _buildPdfTableDataCell(pickupLocation),
-                        _buildPdfTableDataCell(deliveryLocation),
-                        _buildPdfTableDataCell(
-                          '$miles ${trip.distanceUnitLabel}',
-                          bold: true,
-                          color: PdfColors.green700,
-                        ),
-                      ],
+                      children: _buildTripDataCells(trip),
                     );
                   }),
                 ],
@@ -1887,61 +2632,20 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   color: PdfColors.grey300,
                   width: 0.5,
                 ),
-                columnWidths: {
-                  0: const pw.FlexColumnWidth(1.2), // Date
-                  1: const pw.FlexColumnWidth(0.8), // Type
-                  2: const pw.FlexColumnWidth(1.0), // Vehicle #
-                  3: const pw.FlexColumnWidth(2.0), // Location
-                  4: const pw.FlexColumnWidth(1.0), // Quantity
-                  5: const pw.FlexColumnWidth(1.0), // Odometer
-                },
+                columnWidths: _buildFuelColumnWidths(),
                 children: [
                   // Header row
                   pw.TableRow(
                     decoration: const pw.BoxDecoration(
                       color: PdfColors.orange50,
                     ),
-                    children: [
-                      _buildPdfTableHeaderCell(
-                        'Date',
-                        color: PdfColors.orange900,
-                      ),
-                      _buildPdfTableHeaderCell(
-                        'Type',
-                        color: PdfColors.orange900,
-                      ),
-                      _buildPdfTableHeaderCell(
-                        'Vehicle #',
-                        color: PdfColors.orange900,
-                      ),
-                      _buildPdfTableHeaderCell(
-                        'Location',
-                        color: PdfColors.orange900,
-                      ),
-                      _buildPdfTableHeaderCell(
-                        'Quantity',
-                        color: PdfColors.orange900,
-                      ),
-                      _buildPdfTableHeaderCell(
-                        'Odometer ($odometerUnit)',
-                        color: PdfColors.orange900,
-                      ),
-                    ],
+                    children: _buildFuelHeaderCells(),
                   ),
                   // Data rows
                   ...fuelRecords.asMap().entries.map((entry) {
                     final index = entry.key;
                     final record = entry.value;
                     final fuel = record['data'] as FuelEntry;
-                    final location = fuel.location != null
-                        ? _extractCityState(fuel.location!)
-                        : '-';
-                    final vehicleNumber = fuel.isTruckFuel
-                        ? fuel.truckNumber ?? '-'
-                        : fuel.reeferNumber ?? '-';
-                    final odometer = fuel.odometerReading != null
-                        ? '${fuel.odometerReading!.toStringAsFixed(0)} $odometerUnit'
-                        : '-';
 
                     return pw.TableRow(
                       decoration: pw.BoxDecoration(
@@ -1949,29 +2653,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             ? PdfColors.white
                             : PdfColors.grey50,
                       ),
-                      children: [
-                        _buildPdfTableDataCell(
-                          DateFormat('MMM d, yyyy').format(fuel.fuelDate),
-                        ),
-                        _buildPdfTableDataCell(
-                          fuel.isTruckFuel ? 'Truck' : 'Reefer',
-                          color: fuel.isTruckFuel
-                              ? PdfColors.blue700
-                              : PdfColors.purple700,
-                        ),
-                        _buildPdfTableDataCell(vehicleNumber, bold: true),
-                        _buildPdfTableDataCell(location),
-                        _buildPdfTableDataCell(
-                          '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}',
-                          bold: true,
-                          color: PdfColors.orange700,
-                        ),
-                        _buildPdfTableDataCell(
-                          odometer,
-                          bold: true,
-                          color: PdfColors.blueGrey700,
-                        ),
-                      ],
+                      children: _buildFuelDataCells(fuel, odometerUnit, '\$'),
                     );
                   }),
                 ],
@@ -2078,6 +2760,236 @@ class _RecordsListPageState extends State<RecordsListPage> {
         overflow: pw.TextOverflow.clip,
       ),
     );
+  }
+
+  /// Build dynamic column widths for trip table based on selected columns
+  Map<int, pw.TableColumnWidth> _buildTripColumnWidths() {
+    final Map<int, pw.TableColumnWidth> widths = {};
+    final columns = _getOrderedTripColumns();
+
+    for (int i = 0; i < columns.length; i++) {
+      switch (columns[i]) {
+        case 'tripNumber':
+          widths[i] = const pw.FlexColumnWidth(1.0);
+          break;
+        case 'date':
+          widths[i] = const pw.FlexColumnWidth(1.2);
+          break;
+        case 'truck':
+          widths[i] = const pw.FlexColumnWidth(0.8);
+          break;
+        case 'trailer':
+          widths[i] = const pw.FlexColumnWidth(0.8);
+          break;
+        case 'borderCrossing':
+          widths[i] = const pw.FlexColumnWidth(1.2);
+          break;
+        case 'from':
+          widths[i] = const pw.FlexColumnWidth(1.8);
+          break;
+        case 'to':
+          widths[i] = const pw.FlexColumnWidth(1.8);
+          break;
+        case 'miles':
+          widths[i] = const pw.FlexColumnWidth(0.8);
+          break;
+        case 'notes':
+          widths[i] = const pw.FlexColumnWidth(1.5);
+          break;
+        case 'officialUse':
+          widths[i] = const pw.FlexColumnWidth(1.2);
+          break;
+      }
+    }
+    return widths;
+  }
+
+  /// Get ordered list of selected trip columns
+  List<String> _getOrderedTripColumns() {
+    final order = [
+      'tripNumber',
+      'date',
+      'truck',
+      'trailer',
+      'borderCrossing',
+      'from',
+      'to',
+      'miles',
+      'notes',
+      'officialUse',
+    ];
+    return order.where((col) => _selectedTripColumns.contains(col)).toList();
+  }
+
+  /// Build header cells for trip table
+  List<pw.Widget> _buildTripHeaderCells() {
+    return _getOrderedTripColumns().map((col) {
+      return _buildPdfTableHeaderCell(tripColumnLabels[col] ?? col);
+    }).toList();
+  }
+
+  /// Build data cells for a trip row
+  List<pw.Widget> _buildTripDataCells(Trip trip) {
+    return _getOrderedTripColumns().map((col) {
+      switch (col) {
+        case 'tripNumber':
+          return _buildPdfTableDataCell(
+            trip.tripNumber,
+            bold: true,
+            color: PdfColors.blue800,
+          );
+        case 'date':
+          return _buildPdfTableDataCell(
+            DateFormat('MMM d, yyyy').format(trip.tripDate),
+          );
+        case 'truck':
+          return _buildPdfTableDataCell(trip.truckNumber);
+        case 'trailer':
+          return _buildPdfTableDataCell(
+            trip.trailers.isNotEmpty ? trip.trailers.join(', ') : '-',
+          );
+        case 'borderCrossing':
+          return _buildPdfTableDataCell(trip.borderCrossing ?? '-');
+        case 'from':
+          return _buildPdfTableDataCell(
+            trip.pickupLocations.isNotEmpty
+                ? _extractCityState(trip.pickupLocations.first)
+                : '-',
+          );
+        case 'to':
+          return _buildPdfTableDataCell(
+            trip.deliveryLocations.isNotEmpty
+                ? _extractCityState(trip.deliveryLocations.last)
+                : '-',
+          );
+        case 'miles':
+          final miles = trip.totalDistance?.toStringAsFixed(0) ?? '-';
+          return _buildPdfTableDataCell(
+            '$miles ${trip.distanceUnitLabel}',
+            bold: true,
+            color: PdfColors.green700,
+          );
+        case 'notes':
+          return _buildPdfTableDataCell(trip.notes ?? '-');
+        case 'officialUse':
+          return _buildPdfTableDataCell('');
+        default:
+          return _buildPdfTableDataCell('-');
+      }
+    }).toList();
+  }
+
+  /// Build dynamic column widths for fuel table based on selected columns
+  Map<int, pw.TableColumnWidth> _buildFuelColumnWidths() {
+    final Map<int, pw.TableColumnWidth> widths = {};
+    final columns = _getOrderedFuelColumns();
+
+    for (int i = 0; i < columns.length; i++) {
+      switch (columns[i]) {
+        case 'date':
+          widths[i] = const pw.FlexColumnWidth(1.2);
+          break;
+        case 'type':
+          widths[i] = const pw.FlexColumnWidth(0.8);
+          break;
+        case 'truck':
+          widths[i] = const pw.FlexColumnWidth(1.0);
+          break;
+        case 'location':
+          widths[i] = const pw.FlexColumnWidth(1.8);
+          break;
+        case 'quantity':
+          widths[i] = const pw.FlexColumnWidth(1.0);
+          break;
+        case 'odometer':
+          widths[i] = const pw.FlexColumnWidth(1.0);
+          break;
+        case 'cost':
+          widths[i] = const pw.FlexColumnWidth(1.0);
+          break;
+      }
+    }
+    return widths;
+  }
+
+  /// Get ordered list of selected fuel columns
+  List<String> _getOrderedFuelColumns() {
+    final order = [
+      'date',
+      'type',
+      'truck',
+      'location',
+      'quantity',
+      'odometer',
+      'cost',
+    ];
+    return order.where((col) => _selectedFuelColumns.contains(col)).toList();
+  }
+
+  /// Build header cells for fuel table
+  List<pw.Widget> _buildFuelHeaderCells() {
+    return _getOrderedFuelColumns().map((col) {
+      return _buildPdfTableHeaderCell(
+        fuelColumnLabels[col] ?? col,
+        color: PdfColors.orange900,
+      );
+    }).toList();
+  }
+
+  /// Build data cells for a fuel row
+  List<pw.Widget> _buildFuelDataCells(
+    FuelEntry fuel,
+    String odometerUnit,
+    String currency,
+  ) {
+    return _getOrderedFuelColumns().map((col) {
+      switch (col) {
+        case 'date':
+          return _buildPdfTableDataCell(
+            DateFormat('MMM d, yyyy').format(fuel.fuelDate),
+          );
+        case 'type':
+          return _buildPdfTableDataCell(
+            fuel.isReeferFuel ? 'Reefer' : 'Truck',
+            bold: true,
+            color: fuel.isReeferFuel ? PdfColors.cyan700 : PdfColors.orange700,
+          );
+        case 'truck':
+          return _buildPdfTableDataCell(
+            fuel.isReeferFuel
+                ? (fuel.reeferNumber ?? '-')
+                : (fuel.truckNumber ?? '-'),
+          );
+        case 'location':
+          return _buildPdfTableDataCell(_extractCityState(fuel.location ?? ''));
+        case 'quantity':
+          return _buildPdfTableDataCell(
+            '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}',
+          );
+        case 'odometer':
+          if (fuel.isReeferFuel) {
+            return _buildPdfTableDataCell(
+              fuel.reeferHours != null
+                  ? '${fuel.reeferHours!.toStringAsFixed(1)} hrs'
+                  : '-',
+            );
+          } else {
+            return _buildPdfTableDataCell(
+              fuel.odometerReading != null
+                  ? '${fuel.odometerReading!.toStringAsFixed(0)} $odometerUnit'
+                  : '-',
+            );
+          }
+        case 'cost':
+          return _buildPdfTableDataCell(
+            '$currency${fuel.totalCost.toStringAsFixed(2)}',
+            bold: true,
+            color: PdfColors.green700,
+          );
+        default:
+          return _buildPdfTableDataCell('-');
+      }
+    }).toList();
   }
 
   void _showPdfSuccessDialog(String filePath, String fileName) {
