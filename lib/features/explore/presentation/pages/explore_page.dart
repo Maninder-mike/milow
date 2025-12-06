@@ -518,54 +518,85 @@ class _ExplorePageState extends State<ExplorePage> {
           _selectedCategory = label;
         });
       },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-            decoration: BoxDecoration(
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
               color: isSelected
-                  ? const Color(0xFF6C5CE7)
+                  ? const Color(0xFF6C5CE7).withValues(alpha: 0.3)
                   : isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.white.withValues(alpha: 0.7),
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(
-                color: isSelected
-                    ? const Color(0xFF6C5CE7)
-                    : isDark
-                    ? Colors.white.withValues(alpha: 0.15)
-                    : Colors.white.withValues(alpha: 0.5),
-                width: 0.5,
-              ),
+                  ? Colors.black.withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.05),
+              blurRadius: isSelected ? 16 : 12,
+              spreadRadius: 0,
+              offset: const Offset(0, 4),
             ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  icon,
-                  size: 18,
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                gradient: isSelected
+                    ? const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF7C6CE7), Color(0xFF6C5CE7)],
+                      )
+                    : LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                Colors.white.withValues(alpha: 0.15),
+                                Colors.white.withValues(alpha: 0.08),
+                              ]
+                            : [
+                                Colors.white.withValues(alpha: 0.9),
+                                Colors.white.withValues(alpha: 0.7),
+                              ],
+                      ),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
                   color: isSelected
-                      ? Colors.white
+                      ? Colors.white.withValues(alpha: 0.3)
                       : isDark
-                      ? Colors.white.withValues(alpha: 0.7)
-                      : const Color(0xFF667085),
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : Colors.white.withValues(alpha: 0.8),
+                  width: 1.5,
                 ),
-                const SizedBox(width: 6),
-                Text(
-                  label,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    icon,
+                    size: 18,
                     color: isSelected
                         ? Colors.white
                         : isDark
-                        ? Colors.white
-                        : const Color(0xFF101828),
+                        ? Colors.white.withValues(alpha: 0.8)
+                        : const Color(0xFF667085),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  Text(
+                    label,
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: isSelected
+                          ? Colors.white
+                          : isDark
+                          ? Colors.white
+                          : const Color(0xFF101828),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
