@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class NewsListPage extends StatelessWidget {
   final String title;
@@ -45,7 +46,7 @@ class NewsListPage extends StatelessWidget {
           return Container(
             margin: const EdgeInsets.only(bottom: 16),
             decoration: BoxDecoration(
-              color: cardColor,
+              // Remove color from here, move to Material
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
                 BoxShadow(
@@ -55,82 +56,108 @@ class NewsListPage extends StatelessWidget {
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  height: 180,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEBF2FA),
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(12),
+            child: Material(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(12),
+              child: InkWell(
+                onTap: () async {
+                  final urlString = item['url'];
+                  if (urlString != null && urlString.isNotEmpty) {
+                    try {
+                      final uri = Uri.parse(urlString);
+                      if (!await launchUrl(
+                        uri,
+                        mode: LaunchMode.inAppWebView,
+                      )) {
+                        await launchUrl(
+                          uri,
+                          mode: LaunchMode.externalApplication,
+                        );
+                      }
+                    } catch (e) {
+                      // Handle invalid URLs
+                    }
+                  }
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      height: 180,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFEBF2FA),
+                        borderRadius: BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                      ),
+                      child: ClipRRect(
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(12),
+                        ),
+                        child: Image.network(
+                          'https://picsum.photos/seed/${item['title'].hashCode}/800/400',
+                          fit: BoxFit.cover,
+                          width: double.infinity,
+                          errorBuilder: (context, error, stackTrace) =>
+                              const Center(
+                                child: Icon(
+                                  Icons.image,
+                                  size: 48,
+                                  color: Color(0xFF98A2B3),
+                                ),
+                              ),
+                        ),
+                      ),
                     ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
-                    ),
-                    child: Image.network(
-                      'https://picsum.photos/seed/${item['title'].hashCode}/800/400',
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      errorBuilder: (context, error, stackTrace) =>
-                          const Center(
-                            child: Icon(
-                              Icons.image,
-                              size: 48,
-                              color: Color(0xFF98A2B3),
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            item['title'] ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
                             ),
                           ),
-                    ),
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item['title'] ?? '',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
-                      ),
-                      if (item['source']?.isNotEmpty ?? false) ...[
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.source,
-                              size: 16,
-                              color: secondaryTextColor,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              item['source'] ?? '',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: secondaryTextColor,
-                              ),
+                          if (item['source']?.isNotEmpty ?? false) ...[
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.source,
+                                  size: 16,
+                                  color: secondaryTextColor,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  item['source'] ?? '',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
-                        ),
-                      ],
-                      const SizedBox(height: 8),
-                      Text(
-                        'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: secondaryTextColor,
-                          height: 1.5,
-                        ),
+                          const SizedBox(height: 8),
+                          Text(
+                            item['description'] ?? 'No description available',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: secondaryTextColor,
+                              height: 1.5,
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           );
         },

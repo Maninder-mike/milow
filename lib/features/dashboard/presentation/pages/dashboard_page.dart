@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 // TabsShell provides navigation; this page returns content only
 import 'package:milow/core/widgets/dashboard_card.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/news_card.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
@@ -17,6 +18,8 @@ import 'package:milow/features/dashboard/presentation/pages/news_list_page.dart'
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
 import 'package:milow/core/services/weather_service.dart';
+import 'package:milow/core/services/news_service.dart';
+import 'package:milow/core/models/news_article.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
 import 'package:milow/core/services/trip_service.dart';
@@ -33,7 +36,8 @@ class DashboardPage extends StatefulWidget {
   State<DashboardPage> createState() => _DashboardPageState();
 }
 
-class _DashboardPageState extends State<DashboardPage> {
+class _DashboardPageState extends State<DashboardPage>
+    with WidgetsBindingObserver {
   final WeatherService _weatherService = WeatherService();
   Map<String, dynamic>? _weatherData;
   bool _isLoadingWeather = true;
@@ -45,6 +49,9 @@ class _DashboardPageState extends State<DashboardPage> {
   List<BorderWaitTime> _borderWaitTimes = [];
   bool _isLoadingBorders = true;
   String? _borderError;
+  List<NewsArticle> _newsArticles = [];
+  bool _isLoadingNews = true;
+  bool _showTruckingNews = false; // User preference
   Timer? _borderRefreshTimer;
 
   // Recent entries (trips and fuel)
@@ -67,8 +74,10 @@ class _DashboardPageState extends State<DashboardPage> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _loadPreferences();
     _loadWeather();
+    _loadNews();
     _loadBorderWaitTimes(
       forceRefresh: false,
     ); // Use prefetched data if available
@@ -91,6 +100,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _borderRefreshTimer?.cancel();
     _notificationSubscription?.cancel();
     _webAutoRefreshTimer?.cancel();
@@ -109,6 +119,15 @@ class _DashboardPageState extends State<DashboardPage> {
       _loadRecentEntries(),
       _loadDashboardStats(),
     ]);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    // Reload news when app resumes (e.g., returning from Settings)
+    if (state == AppLifecycleState.resumed) {
+      _loadNews();
+    }
   }
 
   Future<void> _loadNotificationCount() async {
@@ -566,6 +585,59 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _loadNews() async {
+    // Check if trucking news is enabled
+    final showNews = await PreferencesService.getShowTruckingNews();
+
+    if (mounted) {
+      setState(() {
+        _showTruckingNews = showNews;
+      });
+    }
+
+    if (!showNews) {
+      // User has disabled trucking news, keep the list empty
+      if (mounted) {
+        setState(() {
+          _newsArticles = [];
+          _isLoadingNews = false;
+        });
+      }
+      return;
+    }
+
+    try {
+      final news = await NewsService.getTruckingNews();
+      if (mounted) {
+        setState(() {
+          _newsArticles = news;
+          _isLoadingNews = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          // Keep empty list if failed, maybe show cached if available logic is in service
+          _isLoadingNews = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _launchUrl(String urlString) async {
+    if (urlString.isEmpty) return;
+    try {
+      final uri = Uri.parse(urlString);
+      // Try launching in in-app browser first
+      if (!await launchUrl(uri, mode: LaunchMode.inAppWebView)) {
+        // Fallback to external application (browser) if in-app fails
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      // Handle error safely
+    }
+  }
+
   String _getErrorMessage(dynamic error) {
     final errorStr = error.toString().toLowerCase();
     if (errorStr.contains('socketexception') ||
@@ -693,7 +765,7 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
     );
 
-    Widget newsStrip(List<Map<String, String>> items) => SizedBox(
+    Widget newsStrip(List<NewsArticle> items) => SizedBox(
       height: 180,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
@@ -701,8 +773,9 @@ class _DashboardPageState extends State<DashboardPage> {
         itemBuilder: (c, i) => SizedBox(
           width: context.responsive(xs: 180.0, sm: 200.0, md: 220.0),
           child: NewsCard(
-            title: items[i]['title']!,
-            source: items[i]['source']!,
+            title: items[i].title,
+            source: items[i].source,
+            onTap: () => _launchUrl(items[i].url ?? ''),
           ),
         ),
         separatorBuilder: (_, _) => SizedBox(width: gutter),
@@ -1134,99 +1207,105 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
                 const SizedBox(height: 16),
-                SectionHeader(
-                  title: 'Trucking News',
-                  onAction: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NewsListPage(
-                        title: 'Trucking News',
-                        items: [
-                          {
-                            'title': 'Major Highway Accident on I-95',
-                            'source': 'Transport Weekly',
-                          },
-                          {
-                            'title': 'Toll Rates Increase Nationwide',
-                            'source': 'Trucking Today',
-                          },
-                          {
-                            'title': 'New ELD Mandate Updates',
-                            'source': 'DOT News',
-                          },
-                          {
-                            'title': 'Fuel Prices Drop 10%',
-                            'source': 'Industry Report',
-                          },
-                          {
-                            'title': 'Winter Weather Advisory',
-                            'source': 'Weather Channel',
-                          },
-                          {
-                            'title': 'Driver Shortage Solutions',
-                            'source': 'Fleet Management',
-                          },
-                        ],
+                // Only show Trucking News section if enabled in settings
+                if (_showTruckingNews) ...[
+                  SectionHeader(
+                    title: 'Trucking News',
+                    onAction: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => NewsListPage(
+                          title: 'Trucking News',
+                          // Pass real articles if possible, or let NewsListPage fetch them too?
+                          // Simplified: Pass the current _newsArticles list
+                          items: _newsArticles
+                              .map(
+                                (article) => {
+                                  'title': article.title,
+                                  'source': article.source,
+                                  'url': article.url ?? '',
+                                  'date': article.publishedAt != null
+                                      ? DateFormat(
+                                          'MMM d',
+                                        ).format(article.publishedAt!)
+                                      : '',
+                                  'description': article.description ?? '',
+                                },
+                              )
+                              .toList(),
+                        ),
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(height: 12),
-                newsStrip(const [
-                  {
-                    'title': 'Major Highway Accident on I-95',
-                    'source': 'Transport Weekly',
-                  },
-                  {
-                    'title': 'Toll Rates Increase Nationwide',
-                    'source': 'Trucking Today',
-                  },
-                  {'title': 'New ELD Mandate Updates', 'source': 'DOT News'},
-                  {
-                    'title': 'Fuel Prices Drop 10%',
-                    'source': 'Industry Report',
-                  },
-                  {
-                    'title': 'Winter Weather Advisory',
-                    'source': 'Weather Channel',
-                  },
-                  {
-                    'title': 'Driver Shortage Solutions',
-                    'source': 'Fleet Management',
-                  },
-                ]),
-                const SizedBox(height: 16),
-                SectionHeader(
-                  title: 'Learning Pages',
-                  onAction: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const NewsListPage(
-                        title: 'Learning Pages',
-                        items: [
-                          {'title': 'Safety Regulations 101', 'source': ''},
-                          {'title': 'Route Planning Tips', 'source': ''},
-                          {'title': 'Vehicle Maintenance Guide', 'source': ''},
-                          {
-                            'title': 'Fuel Efficiency Best Practices',
-                            'source': '',
-                          },
-                          {'title': 'HOS Rules & Compliance', 'source': ''},
-                          {'title': 'Load Securing Techniques', 'source': ''},
-                        ],
+                  const SizedBox(height: 12),
+                  if (_isLoadingNews)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 20),
+                      child: Center(child: CircularProgressIndicator()),
+                    )
+                  else if (_newsArticles.isEmpty)
+                    Padding(
+                      padding: EdgeInsets.symmetric(horizontal: margin),
+                      child: Text(
+                        'No news available',
+                        style: GoogleFonts.inter(
+                          color: secondaryTextColor,
+                          fontSize: 14,
+                        ),
                       ),
+                    )
+                  else
+                    newsStrip(_newsArticles),
+                  const SizedBox(height: 16),
+                ],
+                const SectionHeader(title: 'Learning Pages'),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.symmetric(horizontal: margin),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 24,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.05),
                     ),
                   ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.school_outlined,
+                        size: 32,
+                        color: secondaryTextColor,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Learning Resources Coming Soon',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'We are working on great educational content for you.',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: secondaryTextColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
                 ),
-                const SizedBox(height: 12),
-                newsStrip(const [
-                  {'title': 'Safety Regulations 101', 'source': ''},
-                  {'title': 'Route Planning Tips', 'source': ''},
-                  {'title': 'Vehicle Maintenance Guide', 'source': ''},
-                  {'title': 'Fuel Efficiency Best Practices', 'source': ''},
-                  {'title': 'HOS Rules & Compliance', 'source': ''},
-                  {'title': 'Load Securing Techniques', 'source': ''},
-                ]),
                 // Extra padding for floating bottom nav bar
                 const SizedBox(height: 120),
               ],

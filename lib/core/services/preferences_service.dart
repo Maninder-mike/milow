@@ -5,6 +5,7 @@ enum UnitSystem { metric, imperial }
 class PreferencesService {
   static const String _showWeatherKey = 'show_weather_on_dashboard';
   static const String _unitSystemKey = 'unit_system';
+  static const String _showTruckingNewsKey = 'show_trucking_news';
 
   // Unit System preference (Metric/Imperial)
   static Future<UnitSystem> getUnitSystem() async {
@@ -64,5 +65,17 @@ class PreferencesService {
   static Future<void> setShowWeather(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_showWeatherKey, value);
+  }
+
+  // Trucking News display preference
+  static Future<bool> getShowTruckingNews() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_showTruckingNewsKey) ??
+        false; // Default: OFF for new users
+  }
+
+  static Future<void> setShowTruckingNews(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_showTruckingNewsKey, value);
   }
 }

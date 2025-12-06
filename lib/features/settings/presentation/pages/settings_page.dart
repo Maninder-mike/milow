@@ -24,6 +24,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _avatarUrl;
   bool _loading = true;
   bool _showWeather = true;
+  bool _showTruckingNews = false;
   UnitSystem _unitSystem = UnitSystem.metric;
   int _tripCount = 0;
   double _totalMiles = 0;
@@ -55,9 +56,11 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadPreferences() async {
     final showWeather = await PreferencesService.getShowWeather();
+    final showTruckingNews = await PreferencesService.getShowTruckingNews();
     final unitSystem = await PreferencesService.getUnitSystem();
     setState(() {
       _showWeather = showWeather;
+      _showTruckingNews = showTruckingNews;
       _unitSystem = unitSystem;
     });
   }
@@ -531,21 +534,39 @@ class _SettingsPageState extends State<SettingsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildGlassyCard(
             isDark: isDark,
-            child: _buildGlassyMenuItem(
-              icon: Icons.traffic_outlined,
-              title:
-                  AppLocalizations.of(context)?.borderWaitTimes ??
-                  'Border Wait Times',
-              iconColor: const Color(0xFFFECA57),
-              onTap: () async {
-                await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const BorderCrossingSelector(),
-                  ),
-                );
-              },
-              isDark: isDark,
+            child: Column(
+              children: [
+                _buildGlassyMenuItem(
+                  icon: Icons.traffic_outlined,
+                  title:
+                      AppLocalizations.of(context)?.borderWaitTimes ??
+                      'Border Wait Times',
+                  iconColor: const Color(0xFFFECA57),
+                  onTap: () async {
+                    await Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BorderCrossingSelector(),
+                      ),
+                    );
+                  },
+                  isDark: isDark,
+                ),
+                _buildGlassyDivider(isDark),
+                _buildGlassyToggleItem(
+                  icon: Icons.article_outlined,
+                  title: 'Trucking News',
+                  iconColor: const Color(0xFF6C5CE7),
+                  value: _showTruckingNews,
+                  onChanged: (value) async {
+                    await PreferencesService.setShowTruckingNews(value);
+                    setState(() {
+                      _showTruckingNews = value;
+                    });
+                  },
+                  isDark: isDark,
+                ),
+              ],
             ),
           ),
         ),
@@ -903,6 +924,65 @@ class _SettingsPageState extends State<SettingsPage> {
                 await PreferencesService.setShowWeather(value);
                 setState(() => _showWeather = value);
               },
+              activeThumbColor: Colors.white,
+              activeTrackColor: const Color(0xFF6C5CE7),
+              inactiveThumbColor: Colors.white,
+              inactiveTrackColor: isDark
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : Colors.black.withValues(alpha: 0.1),
+              trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGlassyToggleItem({
+    required IconData icon,
+    required String title,
+    required Color iconColor,
+    required bool value,
+    required Function(bool) onChanged,
+    required bool isDark,
+  }) {
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  iconColor.withValues(alpha: 0.2),
+                  iconColor.withValues(alpha: 0.1),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 22, color: iconColor),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+                color: textColor,
+              ),
+            ),
+          ),
+          Transform.scale(
+            scale: 0.85,
+            child: Switch(
+              value: value,
+              onChanged: (val) => onChanged(val),
               activeThumbColor: Colors.white,
               activeTrackColor: const Color(0xFF6C5CE7),
               inactiveThumbColor: Colors.white,
