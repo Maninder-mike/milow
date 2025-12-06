@@ -1,3 +1,4 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
@@ -1084,125 +1085,175 @@ class _RecordsListPageState extends State<RecordsListPage> {
           }
         });
       },
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(16),
+      child: Container(
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.black.withValues(alpha: 0.3)
+                  : Colors.black.withValues(alpha: 0.08),
+              blurRadius: 24,
+              spreadRadius: 0,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Main card content
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color:
-                        (isTrip
-                                ? const Color(0xFF3B82F6)
-                                : const Color(0xFFF59E0B))
-                            .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    isTrip ? Icons.local_shipping : Icons.local_gas_station,
-                    color: isTrip
-                        ? const Color(0xFF3B82F6)
-                        : const Color(0xFFF59E0B),
-                    size: 24,
-                  ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: Theme.of(context).brightness == Brightness.dark
+                      ? [
+                          Colors.white.withValues(alpha: 0.15),
+                          Colors.white.withValues(alpha: 0.05),
+                        ]
+                      : [
+                          Colors.white.withValues(alpha: 0.9),
+                          Colors.white.withValues(alpha: 0.7),
+                        ],
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.white.withValues(alpha: 0.2)
+                      : Colors.white.withValues(alpha: 0.8),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Main card content
+                  Row(
                     children: [
-                      // Top row: ID left, Value right
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            record['id'] as String? ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
-                          ),
-                          Text(
-                            record['value'] as String? ?? '',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF3B82F6),
-                            ),
-                          ),
-                        ],
+                      Container(
+                        width: 48,
+                        height: 48,
+                        decoration: BoxDecoration(
+                          color:
+                              (isTrip
+                                      ? const Color(0xFF3B82F6)
+                                      : const Color(0xFFF59E0B))
+                                  .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          isTrip
+                              ? Icons.local_shipping
+                              : Icons.local_gas_station,
+                          color: isTrip
+                              ? const Color(0xFF3B82F6)
+                              : const Color(0xFFF59E0B),
+                          size: 24,
+                        ),
                       ),
-                      const SizedBox(height: 4),
-                      // Bottom row: Description left, Date right
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              record['description'] as String? ?? '',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: secondaryTextColor,
-                              ),
-                              overflow: TextOverflow.ellipsis,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            // Top row: ID left, Value right
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  record['id'] as String? ?? '',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: textColor,
+                                  ),
+                                ),
+                                Text(
+                                  record['value'] as String? ?? '',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF3B82F6),
+                                  ),
+                                ),
+                              ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                record['date'] as String? ?? '',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: secondaryTextColor,
+                            const SizedBox(height: 4),
+                            // Bottom row: Description left, Date right
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    record['description'] as String? ?? '',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 13,
+                                      color: secondaryTextColor,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 4),
-                              AnimatedRotation(
-                                turns: isExpanded ? 0.5 : 0,
-                                duration: const Duration(milliseconds: 200),
-                                child: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  size: 20,
-                                  color: secondaryTextColor,
+                                const SizedBox(width: 8),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      record['date'] as String? ?? '',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 13,
+                                        color: secondaryTextColor,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    AnimatedRotation(
+                                      turns: isExpanded ? 0.5 : 0,
+                                      duration: const Duration(
+                                        milliseconds: 200,
+                                      ),
+                                      child: Icon(
+                                        Icons.keyboard_arrow_down,
+                                        size: 20,
+                                        color: secondaryTextColor,
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                            ],
-                          ),
-                        ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              ],
+                  // Expanded details
+                  if (isExpanded) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      width: double.infinity,
+                      height: 1,
+                      color: borderColor,
+                    ),
+                    const SizedBox(height: 16),
+                    if (isTrip)
+                      _buildTripDetails(
+                        data as Trip,
+                        textColor,
+                        secondaryTextColor,
+                      )
+                    else
+                      _buildFuelDetails(
+                        data as FuelEntry,
+                        textColor,
+                        secondaryTextColor,
+                      ),
+                  ],
+                ],
+              ),
             ),
-            // Expanded details
-            if (isExpanded) ...[
-              const SizedBox(height: 16),
-              Container(width: double.infinity, height: 1, color: borderColor),
-              const SizedBox(height: 16),
-              if (isTrip)
-                _buildTripDetails(data as Trip, textColor, secondaryTextColor)
-              else
-                _buildFuelDetails(
-                  data as FuelEntry,
-                  textColor,
-                  secondaryTextColor,
-                ),
-            ],
-          ],
+          ),
         ),
       ),
     );
