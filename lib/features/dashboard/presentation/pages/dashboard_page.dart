@@ -64,7 +64,7 @@ class _DashboardPageState extends State<DashboardPage>
   String _distanceUnit = 'mi';
   String _tripsTrend = '+0%';
   String _milesTrend = '+0%';
-  String _timePeriod = 'weekly'; // weekly, biweekly, monthly, yearly
+  String _timePeriod = 'biweekly'; // weekly, biweekly, monthly, yearly
 
   // Notification state
   int _unreadNotificationCount = 0;
@@ -278,25 +278,27 @@ class _DashboardPageState extends State<DashboardPage>
             'Select Time Period',
             style: GoogleFonts.inter(fontWeight: FontWeight.w600),
           ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: periods.entries.map((entry) {
-              return RadioListTile<String>(
-                title: Text(entry.value, style: GoogleFonts.inter()),
-                value: entry.key,
-                groupValue: _timePeriod,
-                activeColor: const Color(0xFF007AFF),
-                onChanged: (value) {
-                  if (value != null) {
-                    Navigator.pop(context);
-                    setState(() {
-                      _timePeriod = value;
-                    });
-                    _loadDashboardStats();
-                  }
-                },
-              );
-            }).toList(),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: periods.entries.map((entry) {
+                return RadioListTile<String>(
+                  title: Text(entry.value, style: GoogleFonts.inter()),
+                  value: entry.key,
+                  groupValue: _timePeriod,
+                  activeColor: const Color(0xFF007AFF),
+                  onChanged: (value) {
+                    if (value != null) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _timePeriod = value;
+                      });
+                      _loadDashboardStats();
+                    }
+                  },
+                );
+              }).toList(),
+            ),
           ),
         );
       },
