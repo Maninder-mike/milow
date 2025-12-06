@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/auth_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/services/version_checker_service.dart';
+import 'package:milow/core/utils/app_dialogs.dart';
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
 
@@ -598,6 +600,41 @@ class _SettingsPageState extends State<SettingsPage> {
                   title: 'Help Center',
                   iconColor: const Color(0xFF00CEC9),
                   onTap: () {},
+                  isDark: isDark,
+                ),
+                _buildGlassyDivider(isDark),
+                _buildGlassyMenuItem(
+                  icon: Icons.system_update_outlined,
+                  title: 'Check for Updates',
+                  iconColor: const Color(0xFF6C5CE7),
+                  onTap: () async {
+                    AppDialogs.showLoading(
+                      context,
+                      message: 'Checking for updates...',
+                    );
+                    final result = await VersionCheckerService.checkForUpdates(
+                      forceCheck: true,
+                    );
+                    if (!context.mounted) return;
+                    AppDialogs.hideLoading(context);
+
+                    if (result.updateAvailable) {
+                      AppDialogs.showUpdateAvailable(
+                        context,
+                        currentVersion: result.currentVersion ?? 'Unknown',
+                        latestVersion:
+                            result.versionInfo?.latestVersion ?? 'Unknown',
+                        downloadUrl: result.versionInfo?.downloadUrl ?? '',
+                        changelog: result.versionInfo?.changelog,
+                        isCritical: result.isCriticalUpdate,
+                      );
+                    } else {
+                      AppDialogs.showSuccess(
+                        context,
+                        'You\'re on the latest version!',
+                      );
+                    }
+                  },
                   isDark: isDark,
                 ),
               ],

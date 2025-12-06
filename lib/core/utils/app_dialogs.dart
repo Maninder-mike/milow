@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 /// Centralized utility for displaying user feedback messages.
 ///
@@ -498,6 +499,204 @@ class AppDialogs {
               );
             }),
             const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Show update available dialog with download option
+  /// If isCritical is true, user cannot dismiss the dialog
+  static Future<bool?> showUpdateAvailable(
+    BuildContext context, {
+    required String currentVersion,
+    required String latestVersion,
+    required String downloadUrl,
+    String? changelog,
+    bool isCritical = false,
+  }) async {
+    if (!context.mounted) return null;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final secondaryTextColor = isDark
+        ? const Color(0xFF9CA3AF)
+        : const Color(0xFF667085);
+
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: !isCritical,
+      builder: (context) => PopScope(
+        canPop: !isCritical,
+        child: AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                isCritical ? Icons.system_update : Icons.system_update_outlined,
+                color: isCritical
+                    ? const Color(0xFFF59E0B)
+                    : const Color(0xFF007AFF),
+                size: 24,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  isCritical ? 'Update Required' : 'Update Available',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                isCritical
+                    ? 'A critical update is required to continue using the app.'
+                    : 'A new version of the app is available.',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  color: secondaryTextColor,
+                  height: 1.5,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (isDark ? Colors.white : Colors.black).withValues(
+                    alpha: 0.05,
+                  ),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Current',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: secondaryTextColor,
+                          ),
+                        ),
+                        Text(
+                          currentVersion,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Icon(
+                      Icons.arrow_forward,
+                      color: secondaryTextColor,
+                      size: 20,
+                    ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Text(
+                          'Latest',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: secondaryTextColor,
+                          ),
+                        ),
+                        Text(
+                          latestVersion,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (changelog != null && changelog.isNotEmpty) ...[
+                const SizedBox(height: 12),
+                Text(
+                  'What\'s New:',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  changelog,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: secondaryTextColor,
+                    height: 1.4,
+                  ),
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            if (!isCritical)
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: Text(
+                  'Later',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: secondaryTextColor,
+                  ),
+                ),
+              ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop(true);
+                // Open download URL in browser
+                final uri = Uri.parse(downloadUrl);
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                }
+              },
+              style: TextButton.styleFrom(
+                backgroundColor:
+                    (isCritical
+                            ? const Color(0xFFF59E0B)
+                            : const Color(0xFF007AFF))
+                        .withValues(alpha: 0.1),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: Text(
+                'Download',
+                style: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: isCritical
+                      ? const Color(0xFFF59E0B)
+                      : const Color(0xFF007AFF),
+                ),
+              ),
+            ),
           ],
         ),
       ),

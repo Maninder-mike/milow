@@ -1,0 +1,124 @@
+name: Build, Sign, Release, Update Supabase
+
+on:
+  push:
+    branches: [ release ]
+    paths:
+      - "pubspec.yaml"
+      - "lib/**"
+      - "android/**"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Extract version from pubspec.yaml
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+
+      # Check if this tag already exists → skip build
+      - name: Check if release version exists
+        id: check
+        run: |
+          if git rev-parse "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Stop if version already released
+        if: steps.check.outputs.exists == 'true'
+        run: echo "Version already released. Skipping build." && exit 0
+
+      # Decode keystore
+      - name: Prepare Android signing
+        run: |
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release.jks
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+
+      # Create key.properties for Gradle
+      - name: Create key.properties
+        run: |
+          cat > android/key.properties << EOF
+          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
+          keyPassword=${{ secrets.KEY_PASSWORD }}
+          keyAlias=${{ secrets.KEY_ALIAS }}
+          storeFile=$GITHUB_WORKSPACE/release.jks
+          EOF
+
+      # Install Flutter
+      - name: Install Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.0"
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # Build signed APK
+      - name: Build signed APK
+        run: flutter build apk --release
+
+      - name: Rename APK
+        run: |
+          mkdir -p build_output
+          cp build/app/outputs/flutter-apk/app-release.apk \
+             build_output/milow-${{ steps.version.outputs.version }}.apk
+
+      # Create GitHub Release
+      - name: Create Release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Upload APK
+      - name: Upload APK
+        id: upload_apk
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          files: build_output/milow-${{ steps.version.outputs.version }}.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Update Supabase row - FIXED to avoid array access warning
+      - name: Update Supabase Version
+        run: |
+          # Wait a moment for GitHub to process the upload
+          sleep 5
+          
+          # Fetch the download URL from GitHub API
+          DOWNLOAD_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.version.outputs.version }}" \
+            | jq -r '.assets[0].browser_download_url')
+          
+          echo "Download URL: $DOWNLOAD_URL"
+          
+          # Update Supabase
+          curl -X PATCH "$SUPABASE_URL/rest/v1/app_version?platform=eq.android" \
+            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d "{
+              \"latest_version\": \"${{ steps.version.outputs.version }}\",
+              \"download_url\": \"$DOWNLOAD_URL\",
+              \"changelog\": \"Release ${{ steps.version.outputs.version }}\"
+            }"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}

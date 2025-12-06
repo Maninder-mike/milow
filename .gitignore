@@ -12,7 +12,6 @@
 .swiftpm/
 migrate_working_dir/
 WARP.md
-update_version.yml
 
 # IntelliJ related
 *.iml
