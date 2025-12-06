@@ -386,21 +386,6 @@ class _ExplorePageState extends State<ExplorePage> {
                     color: textColor,
                   ),
                 ),
-                actions: [
-                  Container(
-                    margin: const EdgeInsets.only(right: 8),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : Colors.black.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: IconButton(
-                      icon: Icon(Icons.search, color: textColor),
-                      onPressed: () => _showSearchDialog(),
-                    ),
-                  ),
-                ],
               ),
               SliverToBoxAdapter(
                 child: _isLoading
@@ -585,14 +570,6 @@ class _ExplorePageState extends State<ExplorePage> {
           ),
         ),
       ),
-    );
-  }
-
-  void _showSearchDialog() {
-    showDialog(
-      context: context,
-      builder: (context) =>
-          _SearchDialog(trips: _allTrips, extractCityState: _extractCityState),
     );
   }
 
@@ -2848,120 +2825,3 @@ class _AllActivityPageState extends State<_AllActivityPage> {
 }
 
 // ============== Search Dialog ==============
-
-class _SearchDialog extends StatefulWidget {
-  final List<Trip> trips;
-  final String Function(String) extractCityState;
-
-  const _SearchDialog({required this.trips, required this.extractCityState});
-
-  @override
-  State<_SearchDialog> createState() => _SearchDialogState();
-}
-
-class _SearchDialogState extends State<_SearchDialog> {
-  final _searchController = TextEditingController();
-  List<Trip> _results = [];
-
-  @override
-  void dispose() {
-    _searchController.dispose();
-    super.dispose();
-  }
-
-  void _search(String query) {
-    if (query.isEmpty) {
-      setState(() => _results = []);
-      return;
-    }
-
-    final lowerQuery = query.toLowerCase();
-    final results = widget.trips.where((trip) {
-      return trip.tripNumber.toLowerCase().contains(lowerQuery) ||
-          trip.truckNumber.toLowerCase().contains(lowerQuery) ||
-          trip.pickupLocations.any(
-            (l) => l.toLowerCase().contains(lowerQuery),
-          ) ||
-          trip.deliveryLocations.any(
-            (l) => l.toLowerCase().contains(lowerQuery),
-          );
-    }).toList();
-
-    setState(() => _results = results);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Dialog(
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        height: MediaQuery.of(context).size.height * 0.6,
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _searchController,
-              autofocus: true,
-              onChanged: _search,
-              decoration: InputDecoration(
-                hintText: 'Search trips, locations...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _results.isEmpty
-                  ? Center(
-                      child: Text(
-                        _searchController.text.isEmpty
-                            ? 'Start typing to search'
-                            : 'No results found',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: const Color(0xFF9CA3AF),
-                        ),
-                      ),
-                    )
-                  : ListView.builder(
-                      itemCount: _results.length,
-                      itemBuilder: (context, index) {
-                        final trip = _results[index];
-                        final route =
-                            trip.pickupLocations.isNotEmpty &&
-                                trip.deliveryLocations.isNotEmpty
-                            ? '${widget.extractCityState(trip.pickupLocations.first)} → ${widget.extractCityState(trip.deliveryLocations.last)}'
-                            : 'No route';
-                        return ListTile(
-                          leading: const Icon(
-                            Icons.local_shipping,
-                            color: Color(0xFF007AFF),
-                          ),
-                          title: Text(
-                            'Trip ${trip.tripNumber}',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          subtitle: Text(
-                            route,
-                            style: GoogleFonts.inter(fontSize: 13),
-                          ),
-                          onTap: () => Navigator.pop(context),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
