@@ -36,7 +36,7 @@ class Shimmer extends StatefulWidget {
     return context.findAncestorStateOfType<ShimmerState>();
   }
 
-  const Shimmer({super.key, required this.child});
+  const Shimmer({required this.child, super.key});
 
   final Widget child;
 
@@ -99,9 +99,7 @@ class ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
 /// Widget that applies shimmer loading effect to its child
 class ShimmerLoading extends StatefulWidget {
   const ShimmerLoading({
-    super.key,
-    required this.isLoading,
-    required this.child,
+    required this.isLoading, required this.child, super.key,
   });
 
   final bool isLoading;

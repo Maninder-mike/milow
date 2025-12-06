@@ -163,7 +163,7 @@ class FuelService {
     final entries = await getFuelEntries();
 
     // Group by currency
-    Map<String, double> totals = {'USD': 0.0, 'CAD': 0.0};
+    final Map<String, double> totals = {'USD': 0.0, 'CAD': 0.0};
 
     for (final entry in entries) {
       final cost = entry.totalCost;
@@ -178,7 +178,7 @@ class FuelService {
     final entries = await getFuelEntries();
 
     // Group by unit
-    Map<String, double> totals = {'gal': 0.0, 'L': 0.0};
+    final Map<String, double> totals = {'gal': 0.0, 'L': 0.0};
 
     for (final entry in entries) {
       totals[entry.fuelUnit] =

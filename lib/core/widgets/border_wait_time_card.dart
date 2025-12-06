@@ -9,8 +9,7 @@ class BorderWaitTimeCard extends StatefulWidget {
   final VoidCallback? onRemove;
 
   const BorderWaitTimeCard({
-    super.key,
-    required this.waitTime,
+    required this.waitTime, super.key,
     this.onTap,
     this.onRemove,
   });
@@ -34,7 +33,7 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
         : const Color(0xFFE2E8F0);
 
     // Determine delay color based on commercial truck delay
-    Color delayColor = _getDelayColor(
+    final Color delayColor = _getDelayColor(
       widget.waitTime.commercialDelay,
       widget.waitTime.operationalStatus,
     );
@@ -510,8 +509,7 @@ class BorderWaitTimeCompactCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const BorderWaitTimeCompactCard({
-    super.key,
-    required this.waitTime,
+    required this.waitTime, super.key,
     this.onTap,
   });
 

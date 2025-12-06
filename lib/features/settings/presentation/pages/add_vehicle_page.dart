@@ -104,7 +104,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     final plateStateController = TextEditingController();
     final lengthController = TextEditingController();
     final vinController = TextEditingController();
-    String trailerType = 'Dry Van';
+    final String trailerType = 'Dry Van';
 
     showModalBottomSheet(
       context: context,
@@ -703,9 +703,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           ),
           TextButton(
             onPressed: () {
-              setState(() {
-                _trucks.removeWhere((t) => t['id'] == id);
-              });
+              _trucks.removeWhere((t) => (t['id'] as String) == id);
               Navigator.pop(context);
             },
             child: Text('Delete', style: GoogleFonts.inter(color: Colors.red)),
@@ -737,9 +735,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           ),
           TextButton(
             onPressed: () {
-              setState(() {
-                _trailers.removeWhere((t) => t['id'] == id);
-              });
+              _trailers.removeWhere((t) => (t['id'] as String) == id);
               Navigator.pop(context);
             },
             child: Text('Delete', style: GoogleFonts.inter(color: Colors.red)),
@@ -984,7 +980,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         ),
                       ),
                       if (truck['color'] != null &&
-                          truck['color'].isNotEmpty) ...[
+                          (truck['color'] as String).isNotEmpty) ...[
                         const SizedBox(width: 12),
                         Icon(Icons.palette, size: 14, color: subtitleColor),
                         const SizedBox(width: 4),
@@ -1073,7 +1069,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         ),
                       ),
                       if (trailer['length'] != null &&
-                          trailer['length'].isNotEmpty) ...[
+                          (trailer['length'] as String).isNotEmpty) ...[
                         const SizedBox(width: 8),
                         Text(
                           "${trailer['length']}' ft",

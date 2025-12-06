@@ -424,10 +424,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(
+                      const Icon(
                         Icons.access_time,
                         size: 14,
-                        color: const Color(0xFF98A2B3),
+                        color: Color(0xFF98A2B3),
                       ),
                       const SizedBox(width: 4),
                       Text(

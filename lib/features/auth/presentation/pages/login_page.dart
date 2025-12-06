@@ -1,10 +1,10 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:milow/core/utils/app_dialogs.dart';
+import 'package:milow/l10n/app_localizations.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -50,15 +50,24 @@ class _LoginPageState extends State<LoginPage>
   Future<void> _signIn() async {
     // Validation
     if (_emailController.text.trim().isEmpty) {
-      AppDialogs.showWarning(context, 'Please enter your email');
+      AppDialogs.showWarning(
+        context,
+        AppLocalizations.of(context)!.pleaseEnterEmail,
+      );
       return;
     }
     if (!_emailValid) {
-      AppDialogs.showWarning(context, 'Please enter a valid email');
+      AppDialogs.showWarning(
+        context,
+        AppLocalizations.of(context)!.pleaseEnterValidEmail,
+      );
       return;
     }
     if (_passwordController.text.isEmpty) {
-      AppDialogs.showWarning(context, 'Please enter your password');
+      AppDialogs.showWarning(
+        context,
+        AppLocalizations.of(context)!.pleaseEnterPassword,
+      );
       return;
     }
 
@@ -72,15 +81,20 @@ class _LoginPageState extends State<LoginPage>
         password: _passwordController.text,
       );
       if (res.session != null && mounted) {
-        AppDialogs.showSuccess(context, 'Welcome back!');
+        AppDialogs.showSuccess(
+          context,
+          '${AppLocalizations.of(context)!.welcomeBack}!',
+        );
         context.go('/dashboard');
       } else {
-        setState(() => _loginError = 'Invalid credentials');
+        setState(
+          () => _loginError = AppLocalizations.of(context)!.invalidCredentials,
+        );
       }
     } on AuthException catch (e) {
       setState(() => _loginError = e.message);
     } catch (_) {
-      setState(() => _loginError = 'Sign-in failed. Please try again.');
+      setState(() => _loginError = AppLocalizations.of(context)!.signInFailed);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -93,21 +107,19 @@ class _LoginPageState extends State<LoginPage>
     });
 
     try {
+      // GoogleSignIn v7 migration
+      // Explicitly provide serverClientId since google-services.json is missing on Android
       const webClientId =
           '800960714534-bqjn3ba41jgnn3vr0t20org6h5d1titq.apps.googleusercontent.com';
 
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        serverClientId: webClientId,
-      );
-
-      final googleUser = await googleSignIn.signIn();
+      await GoogleSignIn.instance.initialize(serverClientId: webClientId);
+      final googleUser = await GoogleSignIn.instance.authenticate();
       if (googleUser == null) {
         setState(() => _isGoogleLoading = false);
         return;
       }
 
       final googleAuth = await googleUser.authentication;
-      final accessToken = googleAuth.accessToken;
       final idToken = googleAuth.idToken;
 
       if (idToken == null) {
@@ -117,11 +129,14 @@ class _LoginPageState extends State<LoginPage>
       final response = await Supabase.instance.client.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
-        accessToken: accessToken,
+        // accessToken is no longer provided/needed from GoogleSignInAuthentication in v7 for this flow
       );
 
       if (response.session != null && mounted) {
-        AppDialogs.showSuccess(context, 'Signed in with Google!');
+        AppDialogs.showSuccess(
+          context,
+          AppLocalizations.of(context)!.signedInWithGoogle,
+        );
         context.go('/dashboard');
       } else {
         throw Exception('Failed to create session');
@@ -129,7 +144,9 @@ class _LoginPageState extends State<LoginPage>
     } on AuthException catch (error) {
       setState(() => _loginError = error.message);
     } catch (error) {
-      setState(() => _loginError = 'Google sign-in failed. Please try again.');
+      setState(
+        () => _loginError = AppLocalizations.of(context)!.googleSignInFailed,
+      );
       debugPrint('Google sign-in error: $error');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
@@ -224,33 +241,38 @@ class _LoginPageState extends State<LoginPage>
                           _buildLogo(),
                           const SizedBox(height: 16),
                           Text(
-                            'Welcome Back',
-                            style: GoogleFonts.inter(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
-                            ),
+                            AppLocalizations.of(context)!.welcomeBack,
+                            style: Theme.of(context).textTheme.headlineMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: textColor,
+                                ),
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Sign in to continue your journey',
-                            style: GoogleFonts.inter(
-                              fontSize: 15,
-                              color: const Color(0xFF667085),
-                            ),
+                            AppLocalizations.of(context)!.signInSubtitle,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(
+                                  fontSize: 15,
+                                  color: const Color(0xFF667085),
+                                ),
                           ),
                           const SizedBox(height: 40),
 
                           // Email Field
-                          _buildLabel('Email Address'),
+                          _buildLabel(
+                            AppLocalizations.of(context)!.emailAddress,
+                          ),
                           const SizedBox(height: 8),
                           TextField(
                             controller: _emailController,
                             keyboardType: TextInputType.emailAddress,
                             onChanged: _validateEmail,
-                            style: GoogleFonts.inter(color: textColor),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge?.copyWith(color: textColor),
                             decoration: _inputDecoration(
-                              hint: 'name@email.com',
+                              hint: AppLocalizations.of(context)!.emailHint,
                               prefixIcon: Icons.alternate_email,
                               suffixIcon: _emailValid
                                   ? Icons.check_circle
@@ -262,14 +284,18 @@ class _LoginPageState extends State<LoginPage>
                           const SizedBox(height: 20),
 
                           // Password Field
-                          _buildLabel('Password'),
+                          _buildLabel(AppLocalizations.of(context)!.password),
                           const SizedBox(height: 8),
                           TextField(
                             controller: _passwordController,
                             obscureText: _obscurePassword,
-                            style: GoogleFonts.inter(color: textColor),
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyLarge?.copyWith(color: textColor),
                             decoration: _inputDecoration(
-                              hint: 'Enter your password',
+                              hint: AppLocalizations.of(
+                                context,
+                              )!.enterPasswordHint,
                               prefixIcon: Icons.lock_outline,
                               suffixIcon: _obscurePassword
                                   ? Icons.visibility_off_outlined
@@ -294,13 +320,77 @@ class _LoginPageState extends State<LoginPage>
                                 minimumSize: const Size(0, 30),
                               ),
                               child: Text(
-                                'Forgot Password?',
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: const Color(0xFF007AFF),
-                                  fontWeight: FontWeight.w500,
+                                AppLocalizations.of(context)!.forgotPassword,
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: const Color(0xFF007AFF),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 24),
+
+                          // Sign In Button
+                          Container(
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF007AFF), Color(0xFF00D4AA)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF007AFF,
+                                  ).withValues(alpha: 0.4),
+                                  blurRadius: 12,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: ElevatedButton(
+                              onPressed: _isLoading ? null : _signIn,
+                              style: ElevatedButton.styleFrom(
+                                minimumSize: const Size(double.infinity, 54),
+                                backgroundColor: Colors.transparent,
+                                shadowColor: Colors.transparent,
+                                disabledBackgroundColor: Colors.transparent,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
+                              child: _isLoading
+                                  ? const SizedBox(
+                                      width: 24,
+                                      height: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 3.0,
+                                        color: Colors.white,
+                                      ),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          AppLocalizations.of(context)!.signIn,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .titleMedium
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        const Icon(
+                                          Icons.arrow_forward,
+                                          size: 20,
+                                          color: Colors.white,
+                                        ),
+                                      ],
+                                    ),
                             ),
                           ),
 
@@ -363,11 +453,11 @@ class _LoginPageState extends State<LoginPage>
                                   horizontal: 16,
                                 ),
                                 child: Text(
-                                  'or continue with',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    color: const Color(0xFF667085),
-                                  ),
+                                  AppLocalizations.of(context)!.orContinueWith,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: const Color(0xFF667085),
+                                      ),
                                 ),
                               ),
                               Expanded(
@@ -400,21 +490,19 @@ class _LoginPageState extends State<LoginPage>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                "Don't have an account? ",
-                                style: GoogleFonts.inter(
-                                  fontSize: 14,
-                                  color: const Color(0xFF667085),
-                                ),
+                                "${AppLocalizations.of(context)!.dontHaveAccount} ",
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: const Color(0xFF667085)),
                               ),
                               GestureDetector(
                                 onTap: () => context.go('/signup'),
                                 child: Text(
-                                  'Sign Up',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF007AFF),
-                                  ),
+                                  AppLocalizations.of(context)!.signUp,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: const Color(0xFF007AFF),
+                                      ),
                                 ),
                               ),
                             ],
@@ -424,84 +512,6 @@ class _LoginPageState extends State<LoginPage>
                     ),
                   ),
                 ],
-              ),
-            ),
-          ),
-
-          // Bottom Sign In Button
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: Container(
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF007AFF), Color(0xFF00D4AA)],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF007AFF).withValues(alpha: 0.4),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: ElevatedButton(
-                    onPressed: _isLoading ? null : _signIn,
-                    style: ElevatedButton.styleFrom(
-                      minimumSize: const Size(double.infinity, 54),
-                      backgroundColor: Colors.transparent,
-                      shadowColor: Colors.transparent,
-                      disabledBackgroundColor: Colors.transparent,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 3.0,
-                              color: Colors.white,
-                            ),
-                          )
-                        : Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                'Sign In',
-                                style: GoogleFonts.inter(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.arrow_forward,
-                                size: 20,
-                                color: Colors.white,
-                              ),
-                            ],
-                          ),
-                  ),
-                ),
               ),
             ),
           ),
@@ -566,9 +576,8 @@ class _LoginPageState extends State<LoginPage>
                   const SizedBox(width: 12),
                   // Text
                   Text(
-                    'Continue with Google',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
+                    AppLocalizations.of(context)!.continueWithGoogle,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: isDark ? Colors.white : const Color(0xFF101828),
                     ),
                   ),
@@ -583,8 +592,7 @@ class _LoginPageState extends State<LoginPage>
       alignment: Alignment.centerLeft,
       child: Text(
         text,
-        style: GoogleFonts.inter(
-          fontSize: 14,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
           fontWeight: FontWeight.w600,
           color: Theme.of(context).textTheme.bodyLarge?.color,
         ),
@@ -602,7 +610,7 @@ class _LoginPageState extends State<LoginPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.inter(
+      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
         color: const Color(0xFF98A2B3),
         fontSize: 14,
       ),

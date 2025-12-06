@@ -7,9 +7,7 @@ class CountryCodeSelector extends StatefulWidget {
   final ValueChanged<CountryCode> onCountryChanged;
 
   const CountryCodeSelector({
-    super.key,
-    required this.selectedCountry,
-    required this.onCountryChanged,
+    required this.selectedCountry, required this.onCountryChanged, super.key,
   });
 
   @override

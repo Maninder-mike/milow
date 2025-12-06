@@ -12,7 +12,7 @@ class AppTheme {
   static const Color surfaceLight = Color(0xFFFFFFFF);
   static const Color errorColor = Color(0xFFB00020); // Material Error
 
-  // Material Design 3 Type Scale with Roboto (default Android font)
+  // Material Design 3 Type Scale with Noto Sans Gurmukhi (supports Punjabi)
   static TextTheme _buildTextTheme(Brightness brightness) {
     final baseColor = brightness == Brightness.light
         ? const Color(0xFF000000)
@@ -23,21 +23,21 @@ class AppTheme {
 
     return TextTheme(
       // Display styles
-      displayLarge: GoogleFonts.roboto(
+      displayLarge: GoogleFonts.notoSansGurmukhi(
         fontSize: 57,
         fontWeight: FontWeight.w400,
         letterSpacing: -0.25,
         height: 1.12,
         color: baseColor,
       ),
-      displayMedium: GoogleFonts.roboto(
+      displayMedium: GoogleFonts.notoSansGurmukhi(
         fontSize: 45,
         fontWeight: FontWeight.w400,
         letterSpacing: 0,
         height: 1.16,
         color: baseColor,
       ),
-      displaySmall: GoogleFonts.roboto(
+      displaySmall: GoogleFonts.notoSansGurmukhi(
         fontSize: 36,
         fontWeight: FontWeight.w400,
         letterSpacing: 0,
@@ -45,21 +45,21 @@ class AppTheme {
         color: baseColor,
       ),
       // Headline styles
-      headlineLarge: GoogleFonts.roboto(
+      headlineLarge: GoogleFonts.notoSansGurmukhi(
         fontSize: 32,
         fontWeight: FontWeight.w400,
         letterSpacing: 0,
         height: 1.25,
         color: baseColor,
       ),
-      headlineMedium: GoogleFonts.roboto(
+      headlineMedium: GoogleFonts.notoSansGurmukhi(
         fontSize: 28,
         fontWeight: FontWeight.w400,
         letterSpacing: 0,
         height: 1.29,
         color: baseColor,
       ),
-      headlineSmall: GoogleFonts.roboto(
+      headlineSmall: GoogleFonts.notoSansGurmukhi(
         fontSize: 24,
         fontWeight: FontWeight.w400,
         letterSpacing: 0,
@@ -67,21 +67,21 @@ class AppTheme {
         color: baseColor,
       ),
       // Title styles
-      titleLarge: GoogleFonts.roboto(
+      titleLarge: GoogleFonts.notoSansGurmukhi(
         fontSize: 22,
         fontWeight: FontWeight.w500,
         letterSpacing: 0,
         height: 1.27,
         color: baseColor,
       ),
-      titleMedium: GoogleFonts.roboto(
+      titleMedium: GoogleFonts.notoSansGurmukhi(
         fontSize: 16,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.15,
         height: 1.5,
         color: baseColor,
       ),
-      titleSmall: GoogleFonts.roboto(
+      titleSmall: GoogleFonts.notoSansGurmukhi(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.1,
@@ -89,21 +89,21 @@ class AppTheme {
         color: baseColor,
       ),
       // Label styles
-      labelLarge: GoogleFonts.roboto(
+      labelLarge: GoogleFonts.notoSansGurmukhi(
         fontSize: 14,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.1,
         height: 1.43,
         color: baseColor,
       ),
-      labelMedium: GoogleFonts.roboto(
+      labelMedium: GoogleFonts.notoSansGurmukhi(
         fontSize: 12,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
         height: 1.33,
         color: baseColor,
       ),
-      labelSmall: GoogleFonts.roboto(
+      labelSmall: GoogleFonts.notoSansGurmukhi(
         fontSize: 11,
         fontWeight: FontWeight.w500,
         letterSpacing: 0.5,
@@ -111,21 +111,21 @@ class AppTheme {
         color: baseColor,
       ),
       // Body styles
-      bodyLarge: GoogleFonts.roboto(
+      bodyLarge: GoogleFonts.notoSansGurmukhi(
         fontSize: 16,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.5,
         height: 1.5,
         color: baseColor,
       ),
-      bodyMedium: GoogleFonts.roboto(
+      bodyMedium: GoogleFonts.notoSansGurmukhi(
         fontSize: 14,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.25,
         height: 1.43,
         color: secondaryColor,
       ),
-      bodySmall: GoogleFonts.roboto(
+      bodySmall: GoogleFonts.notoSansGurmukhi(
         fontSize: 12,
         fontWeight: FontWeight.w400,
         letterSpacing: 0.4,
@@ -136,7 +136,7 @@ class AppTheme {
   }
 
   static ThemeData get lightTheme {
-    final colorScheme = ColorScheme.light(
+    final colorScheme = const ColorScheme.light(
       primary: primaryBlue,
       onPrimary: Colors.white,
       primaryContainer: primaryLight,
@@ -146,9 +146,9 @@ class AppTheme {
       error: errorColor,
       onError: Colors.white,
       surface: surfaceLight,
-      onSurface: const Color(0xFF1C1B1F),
-      surfaceContainerHighest: const Color(0xFFE7E0EC),
-      outline: const Color(0xFF79747E),
+      onSurface: Color(0xFF1C1B1F),
+      surfaceContainerHighest: Color(0xFFE7E0EC),
+      outline: Color(0xFF79747E),
     );
 
     return ThemeData(
@@ -165,7 +165,7 @@ class AppTheme {
         elevation: 0,
         backgroundColor: surfaceLight,
         foregroundColor: colorScheme.onSurface,
-        titleTextStyle: GoogleFonts.roboto(
+        titleTextStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 22,
           fontWeight: FontWeight.w500,
           color: colorScheme.onSurface,
@@ -198,13 +198,13 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: primaryBlue, width: 2),
+          borderSide: const BorderSide(color: primaryBlue, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: errorColor),
+          borderSide: const BorderSide(color: errorColor),
         ),
-        labelStyle: GoogleFonts.roboto(
+        labelStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 16,
           fontWeight: FontWeight.w400,
           letterSpacing: 0.5,
@@ -221,7 +221,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.roboto(
+          textStyle: GoogleFonts.notoSansGurmukhi(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
@@ -237,7 +237,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.roboto(
+          textStyle: GoogleFonts.notoSansGurmukhi(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
@@ -248,7 +248,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primaryBlue,
-          textStyle: GoogleFonts.roboto(
+          textStyle: GoogleFonts.notoSansGurmukhi(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
@@ -261,12 +261,12 @@ class AppTheme {
         type: BottomNavigationBarType.fixed,
         selectedItemColor: primaryBlue,
         unselectedItemColor: const Color(0xFF5F6368),
-        selectedLabelStyle: GoogleFonts.roboto(
+        selectedLabelStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.5,
         ),
-        unselectedLabelStyle: GoogleFonts.roboto(
+        unselectedLabelStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 12,
           fontWeight: FontWeight.w400,
           letterSpacing: 0.4,
@@ -292,19 +292,19 @@ class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    final colorScheme = ColorScheme.dark(
+    final colorScheme = const ColorScheme.dark(
       primary: primaryLight,
-      onPrimary: const Color(0xFF003258),
+      onPrimary: Color(0xFF003258),
       primaryContainer: primaryDark,
       onPrimaryContainer: primaryLight,
       secondary: secondaryBlue,
       onSecondary: Colors.black,
-      error: const Color(0xFFCF6679),
+      error: Color(0xFFCF6679),
       onError: Colors.black,
-      surface: const Color(0xFF1C1B1F),
-      onSurface: const Color(0xFFE6E1E5),
-      surfaceContainerHighest: const Color(0xFF36343B),
-      outline: const Color(0xFF938F99),
+      surface: Color(0xFF1C1B1F),
+      onSurface: Color(0xFFE6E1E5),
+      surfaceContainerHighest: Color(0xFF36343B),
+      outline: Color(0xFF938F99),
     );
 
     return ThemeData(
@@ -320,7 +320,7 @@ class AppTheme {
         elevation: 0,
         backgroundColor: const Color(0xFF1C1B1F),
         foregroundColor: colorScheme.onSurface,
-        titleTextStyle: GoogleFonts.roboto(
+        titleTextStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 22,
           fontWeight: FontWeight.w500,
           color: colorScheme.onSurface,
@@ -351,13 +351,13 @@ class AppTheme {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: primaryLight, width: 2),
+          borderSide: const BorderSide(color: primaryLight, width: 2),
         ),
         errorBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: Color(0xFFCF6679)),
         ),
-        labelStyle: GoogleFonts.roboto(
+        labelStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 16,
           fontWeight: FontWeight.w400,
           letterSpacing: 0.5,
@@ -373,7 +373,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.roboto(
+          textStyle: GoogleFonts.notoSansGurmukhi(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
@@ -389,7 +389,7 @@ class AppTheme {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
-          textStyle: GoogleFonts.roboto(
+          textStyle: GoogleFonts.notoSansGurmukhi(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
@@ -400,7 +400,7 @@ class AppTheme {
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
           foregroundColor: primaryLight,
-          textStyle: GoogleFonts.roboto(
+          textStyle: GoogleFonts.notoSansGurmukhi(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             letterSpacing: 0.1,
@@ -413,12 +413,12 @@ class AppTheme {
         backgroundColor: const Color(0xFF1C1B1F),
         selectedItemColor: primaryLight,
         unselectedItemColor: const Color(0xFF938F99),
-        selectedLabelStyle: GoogleFonts.roboto(
+        selectedLabelStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.5,
         ),
-        unselectedLabelStyle: GoogleFonts.roboto(
+        unselectedLabelStyle: GoogleFonts.notoSansGurmukhi(
           fontSize: 12,
           fontWeight: FontWeight.w400,
           letterSpacing: 0.4,

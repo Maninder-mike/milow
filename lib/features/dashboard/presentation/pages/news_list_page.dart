@@ -5,7 +5,7 @@ class NewsListPage extends StatelessWidget {
   final String title;
   final List<Map<String, String>> items;
 
-  const NewsListPage({super.key, required this.title, required this.items});
+  const NewsListPage({required this.title, required this.items, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -60,9 +60,9 @@ class NewsListPage extends StatelessWidget {
               children: [
                 Container(
                   height: 180,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEBF2FA),
-                    borderRadius: const BorderRadius.vertical(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEBF2FA),
+                    borderRadius: BorderRadius.vertical(
                       top: Radius.circular(12),
                     ),
                   ),

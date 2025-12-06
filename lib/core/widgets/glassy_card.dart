@@ -10,8 +10,7 @@ class GlassyCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const GlassyCard({
-    super.key,
-    required this.child,
+    required this.child, super.key,
     this.padding,
     this.borderRadius = 24,
     this.accentColor,
@@ -23,7 +22,7 @@ class GlassyCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final accent = accentColor ?? const Color(0xFF6C5CE7);
 
-    Widget cardContent = Container(
+    final Widget cardContent = Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
@@ -90,7 +89,7 @@ class GlassyCard extends StatelessWidget {
 class GlassyBackground extends StatelessWidget {
   final Widget child;
 
-  const GlassyBackground({super.key, required this.child});
+  const GlassyBackground({required this.child, super.key});
 
   @override
   Widget build(BuildContext context) {

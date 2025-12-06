@@ -10,11 +10,7 @@ class DashboardCard extends StatelessWidget {
   final String? trend;
 
   const DashboardCard({
-    super.key,
-    required this.value,
-    required this.title,
-    required this.icon,
-    required this.color,
+    required this.value, required this.title, required this.icon, required this.color, super.key,
     this.trend,
   });
 

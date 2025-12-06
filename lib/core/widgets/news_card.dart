@@ -7,9 +7,7 @@ class NewsCard extends StatelessWidget {
   final String source;
   final Color accentColor;
   const NewsCard({
-    super.key,
-    required this.title,
-    required this.source,
+    required this.title, required this.source, super.key,
     this.accentColor = const Color(0xFF6C5CE7),
   });
 

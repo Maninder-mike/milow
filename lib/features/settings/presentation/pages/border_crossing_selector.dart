@@ -176,10 +176,10 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
-                        Icon(
+                        const Icon(
                           Icons.bookmark,
                           size: 18,
-                          color: const Color(0xFF007AFF),
+                          color: Color(0xFF007AFF),
                         ),
                         const SizedBox(width: 8),
                         Text(

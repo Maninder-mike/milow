@@ -61,7 +61,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
   };
 
   // Default selected columns
-  Set<String> _selectedTripColumns = {
+  final Set<String> _selectedTripColumns = {
     'tripNumber',
     'date',
     'from',
@@ -71,7 +71,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
     'officialUse',
   };
 
-  Set<String> _selectedFuelColumns = {
+  final Set<String> _selectedFuelColumns = {
     'date',
     'type',
     'truck',
@@ -716,7 +716,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         itemCount: _filteredRecords.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 12),
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: 12),
                         itemBuilder: (context, index) {
                           final record = _filteredRecords[index];
                           return Dismissible(
@@ -781,7 +782,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                         Brightness.dark;
                                     final dialogCardColor = dialogIsDark
                                         ? const Color(0xFF1E1E1E)
-                                        : Colors.white;
+                                        : Theme.of(
+                                                dialogContext,
+                                              ).dialogTheme.backgroundColor ??
+                                              Colors.white;
                                     final dialogTextColor = dialogIsDark
                                         ? Colors.white
                                         : const Color(0xFF101828);
@@ -2207,9 +2211,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     surface: Colors.white,
                     onSurface: Color(0xFF101828),
                   ),
-            dialogBackgroundColor: isDark
-                ? const Color(0xFF1E1E1E)
-                : Colors.white,
+            dialogTheme: DialogThemeData(
+              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
                 foregroundColor: const Color(0xFF007AFF),
@@ -2477,7 +2481,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   _buildPdfSummaryDivider(),
                   _buildPdfSummaryCard(
                     'Total Miles',
-                    '${tripRecords.fold<double>(0, (sum, r) => sum + ((r['rawDistance'] as num?)?.toDouble() ?? 0)).toStringAsFixed(0)}',
+                    tripRecords
+                        .fold<double>(
+                          0,
+                          (sum, r) =>
+                              sum +
+                              ((r['rawDistance'] as num?)?.toDouble() ?? 0),
+                        )
+                        .toStringAsFixed(0),
                     PdfColors.green700,
                   ),
                 ],
@@ -2492,9 +2503,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   vertical: 8,
                   horizontal: 12,
                 ),
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   color: PdfColors.blue700,
-                  borderRadius: const pw.BorderRadius.only(
+                  borderRadius: pw.BorderRadius.only(
                     topLeft: pw.Radius.circular(8),
                     topRight: pw.Radius.circular(8),
                   ),
@@ -2579,9 +2590,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   vertical: 8,
                   horizontal: 12,
                 ),
-                decoration: pw.BoxDecoration(
+                decoration: const pw.BoxDecoration(
                   color: PdfColors.orange700,
-                  borderRadius: const pw.BorderRadius.only(
+                  borderRadius: pw.BorderRadius.only(
                     topLeft: pw.Radius.circular(8),
                     topRight: pw.Radius.circular(8),
                   ),
@@ -3080,12 +3091,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         Navigator.pop(context);
-                        await SharePlus.instance.share(
-                          ShareParams(
-                            files: [XFile(filePath)],
-                            text: 'Milow Records Report',
-                          ),
-                        );
+                        // ignore: deprecated_member_use
+                        await Share.shareXFiles([
+                          XFile(filePath),
+                        ], text: 'Milow Records Report');
                       },
                       icon: const Icon(Icons.share, color: Color(0xFF007AFF)),
                       label: Text(

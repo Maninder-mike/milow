@@ -16,6 +16,7 @@ import 'package:milow/core/services/local_profile_store.dart';
 import 'package:milow/l10n/app_localizations.dart';
 
 // Placeholder imports - will be replaced with actual pages
+
 import 'package:milow/features/auth/presentation/pages/login_page.dart';
 import 'package:milow/features/auth/presentation/pages/sign_up_page.dart';
 import 'package:milow/features/settings/presentation/pages/feedback_page.dart';
@@ -23,7 +24,7 @@ import 'package:milow/features/settings/presentation/pages/privacy_security_page
 import 'package:milow/features/settings/presentation/pages/appearance_page.dart';
 import 'package:milow/features/settings/presentation/pages/edit_profile_page.dart';
 import 'package:milow/features/settings/presentation/pages/notifications_page.dart';
-import 'package:milow/features/settings/presentation/pages/log_viewer_page.dart';
+
 import 'package:milow/features/settings/presentation/pages/language_page.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 // Note: tab pages are hosted via TabsShell
@@ -36,7 +37,7 @@ import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  await dotenv.load(fileName: '.env');
 
   // Initialize logging service first to capture all activities
   await logger.init();
@@ -132,6 +133,7 @@ final GoRouter _router = GoRouter(
       path: '/reset-password',
       builder: (context, state) => const ResetPasswordPage(),
     ),
+
     GoRoute(
       path: '/dashboard',
       builder: (context, state) =>
@@ -164,10 +166,7 @@ final GoRouter _router = GoRouter(
       path: '/language',
       builder: (context, state) => const AuthWrapper(child: LanguagePage()),
     ),
-    GoRoute(
-      path: '/logs',
-      builder: (context, state) => const AuthWrapper(child: LogViewerPage()),
-    ),
+
     GoRoute(
       path: '/add-entry',
       builder: (context, state) {

@@ -18,17 +18,13 @@ class FuelEntry {
   final DateTime? updatedAt;
 
   FuelEntry({
-    this.id,
+    required this.fuelDate, required this.fuelType, required this.fuelQuantity, required this.pricePerUnit, this.id,
     this.userId,
-    required this.fuelDate,
-    required this.fuelType,
     this.truckNumber,
     this.reeferNumber,
     this.location,
     this.odometerReading,
     this.reeferHours,
-    required this.fuelQuantity,
-    required this.pricePerUnit,
     this.fuelUnit = 'gal',
     this.distanceUnit = 'mi',
     this.currency = 'USD',

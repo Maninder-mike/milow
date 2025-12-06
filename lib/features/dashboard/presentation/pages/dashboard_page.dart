@@ -1,3 +1,4 @@
+// ignore_for_file: deprecated_member_use
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -47,7 +48,7 @@ class _DashboardPageState extends State<DashboardPage> {
   Timer? _borderRefreshTimer;
 
   // Recent entries (trips and fuel)
-  List<dynamic> _recentEntries = [];
+  List<Map<String, dynamic>> _recentEntries = [];
   bool _isLoadingEntries = true;
 
   // Dashboard stats
@@ -552,7 +553,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
       if (mounted) {
         setState(() {
-          _recentEntries = recent;
+          _recentEntries = List<Map<String, dynamic>>.from(recent);
           _isLoadingEntries = false;
         });
       }
@@ -842,10 +843,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 if (_isLoadingBorders) ...[
                   Padding(
                     padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: ShimmerLoading(
+                    child: const ShimmerLoading(
                       isLoading: true,
                       child: Column(
-                        children: const [
+                        children: [
                           ShimmerBorderWaitCard(),
                           ShimmerBorderWaitCard(),
                         ],
@@ -936,10 +937,10 @@ class _DashboardPageState extends State<DashboardPage> {
                         TextButton.icon(
                           onPressed: () =>
                               _loadBorderWaitTimes(forceRefresh: true),
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.refresh,
                             size: 16,
-                            color: const Color(0xFF007AFF),
+                            color: Color(0xFF007AFF),
                           ),
                           label: Text(
                             'Refresh',
@@ -986,10 +987,10 @@ class _DashboardPageState extends State<DashboardPage> {
                           border: Border.all(color: borderColor),
                         ),
                         child: _isLoadingEntries
-                            ? ShimmerLoading(
+                            ? const ShimmerLoading(
                                 isLoading: true,
                                 child: Column(
-                                  children: const [
+                                  children: [
                                     ShimmerEntryItem(),
                                     ShimmerEntryItem(),
                                     ShimmerEntryItem(),

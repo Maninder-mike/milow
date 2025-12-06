@@ -631,7 +631,7 @@ class _SignUpPageState extends State<SignUpPage>
                                         ),
                                         children: [
                                           const TextSpan(
-                                            text: "I agree to the ",
+                                            text: 'I agree to the ',
                                           ),
                                           TextSpan(
                                             text: 'Terms & Conditions',

@@ -580,15 +580,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
           opacity: value,
           child: Transform.scale(
             scale: 0.8 + (0.2 * value),
-            child: Column(
+            child: const Column(
               children: [
-                const Icon(
+                Icon(
                   Icons.check_circle_outline,
                   size: 80,
                   color: Color(0xFF10B981),
                 ),
-                const SizedBox(height: 16),
-                const CircularProgressIndicator(
+                SizedBox(height: 16),
+                CircularProgressIndicator(
                   strokeWidth: 3.0,
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
                 ),

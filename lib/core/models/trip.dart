@@ -17,14 +17,9 @@ class Trip {
   final DateTime? updatedAt;
 
   Trip({
-    this.id,
+    required this.tripNumber, required this.truckNumber, required this.tripDate, required this.pickupLocations, required this.deliveryLocations, this.id,
     this.userId,
-    required this.tripNumber,
-    required this.truckNumber,
     this.trailers = const [],
-    required this.tripDate,
-    required this.pickupLocations,
-    required this.deliveryLocations,
     this.startOdometer,
     this.endOdometer,
     this.distanceUnit = 'mi',

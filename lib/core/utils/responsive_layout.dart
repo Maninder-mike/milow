@@ -139,8 +139,7 @@ class ResponsiveContainer extends StatelessWidget {
   final bool center;
 
   const ResponsiveContainer({
-    super.key,
-    required this.child,
+    required this.child, super.key,
     this.maxWidth,
     this.padding,
     this.center = true,
@@ -184,8 +183,7 @@ class ResponsiveGrid extends StatelessWidget {
   final ScrollPhysics? physics;
 
   const ResponsiveGrid({
-    super.key,
-    required this.children,
+    required this.children, super.key,
     this.columns,
     this.mainAxisSpacing,
     this.crossAxisSpacing,
@@ -226,8 +224,7 @@ class ResponsiveRow extends StatelessWidget {
   final double? runSpacing;
 
   const ResponsiveRow({
-    super.key,
-    required this.children,
+    required this.children, super.key,
     this.alignment = WrapAlignment.start,
     this.runAlignment = WrapAlignment.start,
     this.spacing,
@@ -268,8 +265,7 @@ class ResponsiveColumn extends StatelessWidget {
   final int? xl; // 1440+dp: 12 columns
 
   const ResponsiveColumn({
-    super.key,
-    required this.child,
+    required this.child, super.key,
     this.xs,
     this.sm,
     this.md,
@@ -310,7 +306,7 @@ class ResponsiveBuilder extends StatelessWidget {
   )
   builder;
 
-  const ResponsiveBuilder({super.key, required this.builder});
+  const ResponsiveBuilder({required this.builder, super.key});
 
   @override
   Widget build(BuildContext context) {

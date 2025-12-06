@@ -8,8 +8,7 @@ class SectionHeader extends StatelessWidget {
   final String actionLabel;
 
   const SectionHeader({
-    super.key,
-    required this.title,
+    required this.title, super.key,
     this.onAction,
     this.actionLabel = 'See more',
   });

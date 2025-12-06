@@ -5,7 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
 
-  const SplashScreen({super.key, required this.onComplete});
+  const SplashScreen({required this.onComplete, super.key});
 
   @override
   State<SplashScreen> createState() => _SplashScreenState();

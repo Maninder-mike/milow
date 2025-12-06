@@ -8,7 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthWrapper extends StatefulWidget {
   final Widget child;
 
-  const AuthWrapper({super.key, required this.child});
+  const AuthWrapper({required this.child, super.key});
 
   // Static method to reset authentication state (call on sign out)
   static void resetAuthenticationState() {

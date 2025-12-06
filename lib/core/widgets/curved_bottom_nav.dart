@@ -8,8 +8,7 @@ class CurvedBottomNavItem {
   final String label;
   const CurvedBottomNavItem({
     required this.icon,
-    this.activeIcon,
-    required this.label,
+    required this.label, this.activeIcon,
   });
 }
 
@@ -20,11 +19,7 @@ class CurvedBottomNav extends StatelessWidget {
   final ValueChanged<int> onTap;
 
   const CurvedBottomNav({
-    super.key,
-    required this.currentIndex,
-    required this.items,
-    required this.onCenterTap,
-    required this.onTap,
+    required this.currentIndex, required this.items, required this.onCenterTap, required this.onTap, super.key,
   });
 
   @override
@@ -183,12 +178,7 @@ class _NavButton extends StatelessWidget {
 
   const _NavButton({
     required this.icon,
-    this.activeIcon,
-    required this.label,
-    required this.selected,
-    required this.activeColor,
-    required this.inactiveColor,
-    required this.onTap,
+    required this.label, required this.selected, required this.activeColor, required this.inactiveColor, required this.onTap, this.activeIcon,
   });
 
   @override

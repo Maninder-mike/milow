@@ -10,6 +10,7 @@ import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
+
 import 'package:intl/intl.dart';
 
 class ExplorePage extends StatefulWidget {
@@ -417,7 +418,9 @@ class _ExplorePageState extends State<ExplorePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _SectionLabel(label: 'CATEGORIES'),
+                            _SectionLabel(
+                              label: AppLocalizations.of(context)!.categories,
+                            ),
                             const SizedBox(height: 12),
                             SingleChildScrollView(
                               scrollDirection: Axis.horizontal,
@@ -451,7 +454,9 @@ class _ExplorePageState extends State<ExplorePage> {
                             ),
                             const SizedBox(height: 24),
                             _SectionHeaderRow(
-                              title: 'Popular Destinations',
+                              title: AppLocalizations.of(
+                                context,
+                              )!.popularDestinations,
                               onAction: _filteredDestinations.isNotEmpty
                                   ? () => _navigateToAllDestinations()
                                   : null,
@@ -479,7 +484,9 @@ class _ExplorePageState extends State<ExplorePage> {
                               ),
                             const SizedBox(height: 24),
                             _SectionHeaderRow(
-                              title: 'Recent Activity',
+                              title: AppLocalizations.of(
+                                context,
+                              )!.recentActivity,
                               onAction: _filteredActivity.isNotEmpty
                                   ? () => _navigateToAllActivity()
                                   : null,
@@ -1232,10 +1239,10 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
               ),
               child: Row(
                 children: [
-                  Icon(
+                  const Icon(
                     Icons.speed_outlined,
                     size: 18,
-                    color: const Color(0xFF10B981),
+                    color: Color(0xFF10B981),
                   ),
                   const SizedBox(width: 8),
                   Text(

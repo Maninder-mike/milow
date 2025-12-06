@@ -73,9 +73,8 @@ class _PinEntryPageState extends State<PinEntryPage> {
       _hasMultipleBiometrics = hasMultiple;
     });
 
-    // Auto-trigger biometric if enabled
     if (_canUseBiometric) {
-      _authenticateWithBiometric();
+      if (mounted) await _authenticateWithBiometric();
     }
   }
 

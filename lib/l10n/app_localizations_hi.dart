@@ -39,13 +39,34 @@ class AppLocalizationsHi extends AppLocalizations {
   String get dashboard => 'डैशबोर्ड';
 
   @override
+  String get categories => 'Categories';
+
+  @override
+  String get popularDestinations => 'Popular Destinations';
+
+  @override
+  String get recentActivity => 'Recent Activity';
+
+  @override
+  String get logs => 'Logs';
+
+  @override
+  String get totalDrivenMiles => 'Miles';
+
+  @override
+  String get trips => 'यात्राएं';
+
+  @override
   String get explore => 'एक्सप्लोर';
 
   @override
   String get inbox => 'इनबॉक्स';
 
   @override
-  String get trips => 'यात्राएं';
+  String get home => 'Home';
+
+  @override
+  String get support => 'Support';
 
   @override
   String get addEntry => 'एंट्री जोड़ें';
@@ -259,4 +280,43 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get no => 'नहीं';
+
+  @override
+  String get signInSubtitle => 'Sign in to continue your journey';
+
+  @override
+  String get emailAddress => 'Email Address';
+
+  @override
+  String get enterPasswordHint => 'Enter your password';
+
+  @override
+  String get orContinueWith => 'or continue with';
+
+  @override
+  String get continueWithGoogle => 'Continue with Google';
+
+  @override
+  String get emailHint => 'name@email.com';
+
+  @override
+  String get pleaseEnterEmail => 'Please enter your email';
+
+  @override
+  String get pleaseEnterValidEmail => 'Please enter a valid email';
+
+  @override
+  String get pleaseEnterPassword => 'Please enter your password';
+
+  @override
+  String get invalidCredentials => 'Invalid credentials';
+
+  @override
+  String get signInFailed => 'Sign-in failed. Please try again.';
+
+  @override
+  String get googleSignInFailed => 'Google sign-in failed. Please try again.';
+
+  @override
+  String get signedInWithGoogle => 'Signed in with Google!';
 }

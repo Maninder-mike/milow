@@ -960,7 +960,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       double? longitude;
 
       // Try geolocation first
-      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      final bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (serviceEnabled) {
         LocationPermission permission = await Geolocator.checkPermission();
         if (permission == LocationPermission.denied) {
@@ -970,7 +970,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         if (permission == LocationPermission.always ||
             permission == LocationPermission.whileInUse) {
           try {
-            Position position = await Geolocator.getCurrentPosition(
+            final Position position = await Geolocator.getCurrentPosition(
               locationSettings: const LocationSettings(
                 accuracy: LocationAccuracy.high,
               ),
@@ -1005,13 +1005,13 @@ class _AddEntryPageState extends State<AddEntryPage>
         return;
       }
 
-      List<Placemark> placemarks = await placemarkFromCoordinates(
+      final List<Placemark> placemarks = await placemarkFromCoordinates(
         latitude,
         longitude,
       );
 
       if (placemarks.isNotEmpty && mounted) {
-        Placemark place = placemarks[0];
+        final Placemark place = placemarks[0];
         String address = '';
 
         if (place.street != null && place.street!.isNotEmpty) {
@@ -1807,7 +1807,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                           _buildLabel('Currency'),
                           const SizedBox(height: 8),
                           DropdownButtonFormField<String>(
-                            value: _currency,
+                            initialValue: _currency,
                             decoration: _inputDecoration(
                               hint: 'Select',
                               prefixIcon: Icons.attach_money,

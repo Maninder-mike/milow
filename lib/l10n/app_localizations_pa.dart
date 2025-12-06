@@ -39,13 +39,34 @@ class AppLocalizationsPa extends AppLocalizations {
   String get dashboard => 'ਡੈਸ਼ਬੋਰਡ';
 
   @override
+  String get categories => 'ਸ਼੍ਰੇਣੀਆਂ';
+
+  @override
+  String get popularDestinations => 'ਮਸ਼ਹੂਰ ਮੰਜ਼ਿਲਾਂ';
+
+  @override
+  String get recentActivity => 'ਹਾਲੀਆ ਗਤੀਵਿਧੀ';
+
+  @override
+  String get logs => 'ਲੌਗ';
+
+  @override
+  String get totalDrivenMiles => 'ਮੀਲ';
+
+  @override
+  String get trips => 'ਟ੍ਰਿੱਪਾਂ';
+
+  @override
   String get explore => 'ਖੋਜੋ';
 
   @override
   String get inbox => 'ਇਨਬਾਕਸ';
 
   @override
-  String get trips => 'ਟ੍ਰਿੱਪਾਂ';
+  String get home => 'ਮੁੱਖ ਪੰਨਾ';
+
+  @override
+  String get support => 'ਸਹਾਇਤਾ';
 
   @override
   String get addEntry => 'ਐਂਟਰੀ ਸ਼ਾਮਲ ਕਰੋ';
@@ -260,4 +281,45 @@ class AppLocalizationsPa extends AppLocalizations {
 
   @override
   String get no => 'ਨਹੀਂ';
+
+  @override
+  String get signInSubtitle => 'ਆਪਣੀ ਯਾਤਰਾ ਜਾਰੀ ਰੱਖਣ ਲਈ ਸਾਈਨ ਇਨ ਕਰੋ';
+
+  @override
+  String get emailAddress => 'ਈਮੇਲ ਪਤਾ';
+
+  @override
+  String get enterPasswordHint => 'ਆਪਣਾ ਪਾਸਵਰਡ ਦਰਜ ਕਰੋ';
+
+  @override
+  String get orContinueWith => 'ਜਾਂ ਇਸ ਨਾਲ ਜਾਰੀ ਰੱਖੋ';
+
+  @override
+  String get continueWithGoogle => 'Google ਨਾਲ ਜਾਰੀ ਰੱਖੋ';
+
+  @override
+  String get emailHint => 'name@email.com';
+
+  @override
+  String get pleaseEnterEmail => 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਈਮੇਲ ਦਰਜ ਕਰੋ';
+
+  @override
+  String get pleaseEnterValidEmail => 'ਕਿਰਪਾ ਕਰਕੇ ਇੱਕ ਵੈਧ ਈਮੇਲ ਦਰਜ ਕਰੋ';
+
+  @override
+  String get pleaseEnterPassword => 'ਕਿਰਪਾ ਕਰਕੇ ਆਪਣਾ ਪਾਸਵਰਡ ਦਰਜ ਕਰੋ';
+
+  @override
+  String get invalidCredentials => 'ਗਲਤ ਵੇਰਵੇ';
+
+  @override
+  String get signInFailed =>
+      'ਸਾਈਨ-ਇਨ ਅਸਫਲ ਰਿਹਾ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।';
+
+  @override
+  String get googleSignInFailed =>
+      'Google ਸਾਈਨ-ਇਨ ਅਸਫਲ ਰਿਹਾ। ਕਿਰਪਾ ਕਰਕੇ ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।';
+
+  @override
+  String get signedInWithGoogle => 'Google ਨਾਲ ਸਾਈਨ ਇਨ ਕੀਤਾ!';
 }

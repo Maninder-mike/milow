@@ -5,10 +5,11 @@ import 'package:milow/features/explore/presentation/pages/explore_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
 import 'package:milow/features/settings/presentation/pages/settings_page.dart';
+import 'package:milow/l10n/app_localizations.dart';
 
 class TabsShell extends StatefulWidget {
   final int initialIndex;
-  const TabsShell({super.key, required this.initialIndex});
+  const TabsShell({required this.initialIndex, super.key});
 
   @override
   State<TabsShell> createState() => _TabsShellState();
@@ -84,26 +85,26 @@ class _TabsShellState extends State<TabsShell> {
       ),
       bottomNavigationBar: CurvedBottomNav(
         currentIndex: _index,
-        items: const [
+        items: [
           CurvedBottomNavItem(
             icon: Icons.explore_outlined,
             activeIcon: Icons.explore,
-            label: 'Explore',
+            label: AppLocalizations.of(context)!.explore,
           ),
           CurvedBottomNavItem(
             icon: Icons.dashboard_outlined,
             activeIcon: Icons.dashboard,
-            label: 'Home',
+            label: AppLocalizations.of(context)!.home,
           ),
           CurvedBottomNavItem(
             icon: Icons.inbox_outlined,
             activeIcon: Icons.inbox,
-            label: 'Inbox',
+            label: AppLocalizations.of(context)!.inbox,
           ),
           CurvedBottomNavItem(
             icon: Icons.settings_outlined,
             activeIcon: Icons.settings,
-            label: 'Settings',
+            label: AppLocalizations.of(context)!.settings,
           ),
         ],
         onCenterTap: _onCenterTap,

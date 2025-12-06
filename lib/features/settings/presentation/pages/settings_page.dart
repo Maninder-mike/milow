@@ -8,7 +8,8 @@ import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
-import 'package:hive/hive.dart';
+
+import 'package:milow/core/services/trip_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -25,7 +26,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _showWeather = true;
   UnitSystem _unitSystem = UnitSystem.metric;
   int _tripCount = 0;
-  int _fuelCount = 0;
+  double _totalMiles = 0;
 
   @override
   void initState() {
@@ -37,15 +38,14 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _loadStats() async {
     try {
-      final tripsBox = await Hive.openBox('trips');
-      final fuelBox = await Hive.openBox('fuel_entries');
-      final tripCount = tripsBox.length;
-      final fuelCount = fuelBox.length;
+      // Fetch fresh data from TripService
+      final tripCount = await TripService.getTripsCount();
+      final totalDistance = await TripService.getTotalDistance();
 
       if (mounted) {
         setState(() {
           _tripCount = tripCount;
-          _fuelCount = fuelCount;
+          _totalMiles = totalDistance;
         });
       }
     } catch (e) {
@@ -233,13 +233,19 @@ class _SettingsPageState extends State<SettingsPage> {
                               children: [
                                 _buildMinimalStat(
                                   _tripCount.toString(),
-                                  'trips',
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.trips.toLowerCase(),
                                   isDark,
                                 ),
-                                const SizedBox(width: 16),
+                                const SizedBox(width: 8),
                                 _buildMinimalStat(
-                                  _fuelCount.toString(),
-                                  'logs',
+                                  _totalMiles >= 1000
+                                      ? '${(_totalMiles / 1000).toStringAsFixed(1)}K'
+                                      : _totalMiles.toStringAsFixed(0),
+                                  AppLocalizations.of(
+                                    context,
+                                  )!.totalDrivenMiles,
                                   isDark,
                                 ),
                                 const SizedBox(width: 16),
@@ -321,10 +327,10 @@ class _SettingsPageState extends State<SettingsPage> {
         height: 60,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          gradient: LinearGradient(
+          gradient: const LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [const Color(0xFF6C5CE7), const Color(0xFF00D9FF)],
+            colors: [Color(0xFF6C5CE7), Color(0xFF00D9FF)],
           ),
           boxShadow: [
             BoxShadow(
@@ -413,7 +419,7 @@ class _SettingsPageState extends State<SettingsPage> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.auto_awesome, size: 10, color: const Color(0xFF6C5CE7)),
+          const Icon(Icons.auto_awesome, size: 10, color: Color(0xFF6C5CE7)),
           const SizedBox(width: 3),
           Text(
             'PRO',
@@ -550,7 +556,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildSupportSection(BuildContext context, bool isDark) {
     return Column(
       children: [
-        _buildSectionLabel('Support', isDark),
+        _buildSectionLabel(AppLocalizations.of(context)!.support, isDark),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -897,7 +903,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 await PreferencesService.setShowWeather(value);
                 setState(() => _showWeather = value);
               },
-              activeColor: Colors.white,
+              activeThumbColor: Colors.white,
               activeTrackColor: const Color(0xFF6C5CE7),
               inactiveThumbColor: Colors.white,
               inactiveTrackColor: isDark
