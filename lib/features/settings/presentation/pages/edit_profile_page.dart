@@ -10,6 +10,7 @@ import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/models/country_code.dart';
 import 'package:milow/core/widgets/country_code_selector.dart';
 import 'package:milow/core/utils/error_handler.dart';
+import 'package:milow/core/widgets/glassy_card.dart';
 
 // Expected local (national) number lengths for common dial codes (excluding country code).
 // If a dial code is not listed, generic validation 4-15 digits applies.
@@ -270,328 +271,357 @@ class _EditProfilePageState extends State<EditProfilePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
 
     return Scaffold(
-      backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: Text(
-          AppLocalizations.of(context)?.editProfile ?? 'Edit Profile',
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: textColor,
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: isDark
+                ? [
+                    const Color(0xFF1a1a2e),
+                    const Color(0xFF16213e),
+                    const Color(0xFF0f0f1a),
+                  ]
+                : [
+                    const Color(0xFFF0F4FF),
+                    const Color(0xFFFDF2F8),
+                    const Color(0xFFF0FDF4),
+                  ],
+            stops: const [0.0, 0.5, 1.0],
           ),
         ),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
-          onPressed: () => context.pop(),
-        ),
-      ),
-      body: _loading
-          ? const Center(
-              child: CircularProgressIndicator(
-                color: Color(0xFF007AFF),
-                strokeWidth: 3.0,
+        child: Column(
+          children: [
+            AppBar(
+              title: Text(
+                AppLocalizations.of(context)?.editProfile ?? 'Edit Profile',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
               ),
-            )
-          : SafeArea(
-              child: SingleChildScrollView(
-                child: Form(
-                  key: _formKey,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      // Avatar Section
-                      Center(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back, color: textColor),
+                onPressed: () => context.pop(),
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(
+                      child: CircularProgressIndicator(
+                        color: Color(0xFF007AFF),
+                        strokeWidth: 3.0,
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      child: Form(
+                        key: _formKey,
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            GestureDetector(
-                              onTap: () => _showImageOptions(context, isDark),
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: const Color(
-                                        0xFF007AFF,
-                                      ).withValues(alpha: 0.2),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 4),
+                            const SizedBox(height: 8),
+                            // Avatar Section
+                            Center(
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () =>
+                                        _showImageOptions(context, isDark),
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: const Color(
+                                              0xFF007AFF,
+                                            ).withOpacity(0.2),
+                                            blurRadius: 20,
+                                            offset: const Offset(0, 4),
+                                          ),
+                                        ],
+                                      ),
+                                      child: CircleAvatar(
+                                        radius: 60,
+                                        backgroundColor: const Color(
+                                          0xFFBFDBFE,
+                                        ),
+                                        backgroundImage: _pickedImage != null
+                                            ? FileImage(
+                                                File(_pickedImage!.path),
+                                              )
+                                            : (_avatarUrl != null &&
+                                                  _avatarUrl!.isNotEmpty)
+                                            ? NetworkImage(_avatarUrl!)
+                                            : null,
+                                        child:
+                                            (_avatarUrl == null &&
+                                                _pickedImage == null)
+                                            ? const Icon(
+                                                Icons.person,
+                                                size: 60,
+                                                color: Color(0xFF3B82F6),
+                                              )
+                                            : null,
+                                      ),
                                     ),
-                                  ],
-                                ),
-                                child: CircleAvatar(
-                                  radius: 60,
-                                  backgroundColor: const Color(0xFFBFDBFE),
-                                  backgroundImage: _pickedImage != null
-                                      ? FileImage(File(_pickedImage!.path))
-                                      : (_avatarUrl != null &&
-                                            _avatarUrl!.isNotEmpty)
-                                      ? NetworkImage(_avatarUrl!)
-                                      : null,
-                                  child:
-                                      (_avatarUrl == null &&
-                                          _pickedImage == null)
-                                      ? const Icon(
-                                          Icons.person,
-                                          size: 60,
-                                          color: Color(0xFF3B82F6),
-                                        )
-                                      : null,
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    'Tap to change photo',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 14,
+                                      color: isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF667085),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            // Form Fields
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'PERSONAL INFORMATION',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : const Color(0xFF98A2B3),
+                                  letterSpacing: 0.5,
                                 ),
                               ),
                             ),
                             const SizedBox(height: 12),
-                            Text(
-                              'Tap to change photo',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: const Color(0xFF667085),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
                               ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // Form Fields
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'PERSONAL INFORMATION',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF98A2B3),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            _buildTextField(
-                              controller: _nameController,
-                              label: 'Full Name',
-                              icon: Icons.person_outline,
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Name is required';
-                                }
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildTextField(
-                              controller: _emailController,
-                              label: 'Email Address',
-                              icon: Icons.email_outlined,
-                              keyboardType: TextInputType.emailAddress,
-                              validator: (v) {
-                                if (v == null || v.trim().isEmpty) {
-                                  return 'Email is required';
-                                }
-                                final valid = RegExp(
-                                  r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$',
-                                  caseSensitive: false,
-                                ).hasMatch(v.trim());
-                                if (!valid) return 'Invalid email format';
-                                return null;
-                              },
-                            ),
-                            const SizedBox(height: 16),
-                            _buildPhoneField(),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'LOCATION',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF98A2B3),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            _buildTextField(
-                              controller: _addressController,
-                              label: 'Address',
-                              icon: Icons.location_on_outlined,
-                            ),
-                            const SizedBox(height: 16),
-                            _buildTextField(
-                              controller: _countryController,
-                              label: 'Country',
-                              icon: Icons.public_outlined,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Text(
-                          'COMPANY INFORMATION',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF98A2B3),
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16),
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.05),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            _buildTextField(
-                              controller: _companyNameController,
-                              label: 'Company Name',
-                              icon: Icons.business,
-                              hintText: 'Optional',
-                            ),
-                            const SizedBox(height: 16),
-                            _buildTextField(
-                              controller: _companyCodeController,
-                              label: 'Company Code',
-                              icon: Icons.badge_outlined,
-                              hintText: 'Optional',
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 32),
-                      // Action Buttons
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton(
-                                onPressed: () => context.pop(),
-                                style: OutlinedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  side: BorderSide(
-                                    color: isDark
-                                        ? const Color(0xFF3A3A3A)
-                                        : const Color(0xFFE5E7EB),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Cancel',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
-                                  ),
+                              child: GlassyCard(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  children: [
+                                    _buildTextField(
+                                      controller: _nameController,
+                                      label: 'Full Name',
+                                      icon: Icons.person_outline,
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'Name is required';
+                                        }
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildTextField(
+                                      controller: _emailController,
+                                      label: 'Email Address',
+                                      icon: Icons.email_outlined,
+                                      keyboardType: TextInputType.emailAddress,
+                                      validator: (v) {
+                                        if (v == null || v.trim().isEmpty) {
+                                          return 'Email is required';
+                                        }
+                                        final valid = RegExp(
+                                          r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$',
+                                          caseSensitive: false,
+                                        ).hasMatch(v.trim());
+                                        if (!valid)
+                                          return 'Invalid email format';
+                                        return null;
+                                      },
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildPhoneField(),
+                                  ],
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: ElevatedButton(
-                                onPressed: _saving ? null : _save,
-                                style: ElevatedButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    vertical: 16,
-                                  ),
-                                  backgroundColor: const Color(0xFF007AFF),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  elevation: 0,
-                                  shadowColor: const Color(
-                                    0xFF007AFF,
-                                  ).withValues(alpha: 0.3),
+                            const SizedBox(height: 24),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'LOCATION',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : const Color(0xFF98A2B3),
+                                  letterSpacing: 0.5,
                                 ),
-                                child: _saving
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          color: Colors.white,
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: GlassyCard(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  children: [
+                                    _buildTextField(
+                                      controller: _addressController,
+                                      label: 'Address',
+                                      icon: Icons.location_on_outlined,
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildTextField(
+                                      controller: _countryController,
+                                      label: 'Country',
+                                      icon: Icons.public_outlined,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Text(
+                                'COMPANY INFORMATION',
+                                style: GoogleFonts.inter(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark
+                                      ? Colors.white60
+                                      : const Color(0xFF98A2B3),
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: GlassyCard(
+                                padding: const EdgeInsets.all(20),
+                                child: Column(
+                                  children: [
+                                    _buildTextField(
+                                      controller: _companyNameController,
+                                      label: 'Company Name',
+                                      icon: Icons.business,
+                                      hintText: 'Optional',
+                                    ),
+                                    const SizedBox(height: 16),
+                                    _buildTextField(
+                                      controller: _companyCodeController,
+                                      label: 'Company Code',
+                                      icon: Icons.badge_outlined,
+                                      hintText: 'Optional',
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            // Action Buttons
+                            Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: OutlinedButton(
+                                      onPressed: () => context.pop(),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
                                         ),
-                                      )
-                                    : Text(
-                                        'Save',
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        side: BorderSide(
+                                          color: isDark
+                                              ? const Color(0xFF3A3A3A)
+                                              : const Color(0xFFE5E7EB),
+                                        ),
+                                        backgroundColor: isDark
+                                            ? Colors.black12
+                                            : Colors.white54,
+                                      ),
+                                      child: Text(
+                                        'Cancel',
                                         style: GoogleFonts.inter(
                                           fontSize: 16,
                                           fontWeight: FontWeight.w600,
-                                          color: Colors.white,
+                                          color: textColor,
                                         ),
                                       ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: ElevatedButton(
+                                      onPressed: _saving ? null : _save,
+                                      style: ElevatedButton.styleFrom(
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 16,
+                                        ),
+                                        backgroundColor: const Color(
+                                          0xFF007AFF,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                        ),
+                                        elevation: 0,
+                                        shadowColor: const Color(
+                                          0xFF007AFF,
+                                        ).withOpacity(0.3),
+                                      ),
+                                      child: _saving
+                                          ? const SizedBox(
+                                              height: 20,
+                                              width: 20,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : Text(
+                                              'Save',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 16,
+                                                fontWeight: FontWeight.w600,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            const SizedBox(height: 32),
                           ],
                         ),
                       ),
-                      const SizedBox(height: 32),
-                    ],
-                  ),
-                ),
-              ),
+                    ),
             ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -602,23 +632,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            const Icon(
-              Icons.phone_outlined,
-              size: 18,
-              color: Color(0xFF007AFF),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              'Contact Number',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-            ),
-          ],
+        Text(
+          'Contact Number',
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
         ),
         const SizedBox(height: 8),
         Row(
@@ -660,6 +680,11 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     fontSize: 15,
                     color: const Color(0xFF98A2B3),
                   ),
+                  prefixIcon: const Icon(
+                    Icons.phone_outlined,
+                    color: Color(0xFF007AFF),
+                    size: 20,
+                  ),
                   filled: true,
                   fillColor: isDark
                       ? const Color(0xFF2A2A2A)
@@ -669,11 +694,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     vertical: 14,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none,
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(
+                      color: isDark
+                          ? const Color(0xFF3A3A3A)
+                          : const Color(0xFFE5E7EB),
+                    ),
                   ),
                   enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide(
                       color: isDark
                           ? const Color(0xFF3A3A3A)
@@ -681,18 +710,18 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(
                       color: Color(0xFF007AFF),
                       width: 2,
                     ),
                   ),
                   errorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Colors.red),
                   ),
                   focusedErrorBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(color: Colors.red, width: 2),
                   ),
                   errorStyle: GoogleFonts.inter(
@@ -722,19 +751,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Icon(icon, size: 18, color: const Color(0xFF007AFF)),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
-            ),
-          ],
+        Text(
+          label,
+          style: GoogleFonts.inter(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: textColor,
+          ),
         ),
         const SizedBox(height: 8),
         TextFormField(
@@ -748,6 +771,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
               fontSize: 15,
               color: const Color(0xFF98A2B3),
             ),
+            prefixIcon: Icon(icon, color: const Color(0xFF007AFF), size: 20),
             filled: true,
             fillColor: isDark
                 ? const Color(0xFF2A2A2A)
@@ -757,11 +781,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
               vertical: 14,
             ),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: BorderSide.none,
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: isDark
+                    ? const Color(0xFF3A3A3A)
+                    : const Color(0xFFE5E7EB),
+              ),
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(
                 color: isDark
                     ? const Color(0xFF3A3A3A)
@@ -769,18 +797,17 @@ class _EditProfilePageState extends State<EditProfilePage> {
               ),
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Color(0xFF007AFF), width: 2),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
+              borderRadius: BorderRadius.circular(12),
               borderSide: const BorderSide(color: Colors.red, width: 2),
             ),
-            errorStyle: GoogleFonts.inter(fontSize: 12, color: Colors.red),
           ),
         ),
       ],
