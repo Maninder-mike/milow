@@ -723,7 +723,8 @@ class _ExplorePageState extends State<ExplorePage> {
                                     context,
                                     MaterialPageRoute(
                                       builder: (_) => VisitedStatesMapPage(
-                                        visitedStates: _visitedStates,
+                                        trips: _allTrips,
+                                        fuelEntries: _allFuelEntries,
                                       ),
                                     ),
                                   );

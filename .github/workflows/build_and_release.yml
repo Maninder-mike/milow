@@ -165,17 +165,23 @@ jobs:
           
           # Save changelog to file
           cat > RELEASE_NOTES.md << EOF
-          ## What's Changed
+          # Milow v${{ steps.version.outputs.version_number }} 🚀
+          
+          ## 🗄️ Database & Backend
+          
+          - **Supabase Catalog**: Version entry updated automatically.
+          
+          ## 📝 What's Changed
           
           $CHANGELOG
           
-          ## Download
+          ## 📥 Download
           
           - **APK Size**: ${{ steps.prepare_apk.outputs.apk_size }}
           - **Flutter Version**: 3.38.4
           - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           
-          ## Installation
+          ## 📲 Installation
           
           1. Download the APK file below
           2. Enable "Install from Unknown Sources" on your Android device
