@@ -102,7 +102,10 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Wait for animations to complete then navigate
     await Future.delayed(const Duration(milliseconds: 1800));
-    widget.onComplete();
+    
+    if (mounted) {
+      widget.onComplete();
+    }
   }
 
   @override

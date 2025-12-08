@@ -92,8 +92,8 @@ class _TabsShellState extends State<TabsShell> {
             label: AppLocalizations.of(context)!.explore,
           ),
           CurvedBottomNavItem(
-            icon: Icons.dashboard_outlined,
-            activeIcon: Icons.dashboard,
+            icon: Icons.home_outlined,
+            activeIcon: Icons.home,
             label: AppLocalizations.of(context)!.home,
           ),
           CurvedBottomNavItem(

@@ -7,6 +7,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:go_router/go_router.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/trip_service.dart';
@@ -159,6 +160,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       _tripNotesController.text = widget.initialData!['notes'] ?? '';
 
       // Handle date if present
+      bool dateParsed = false;
       if (widget.initialData!['date'] != null) {
         debugPrint('Parsing date: ${widget.initialData!['date']}');
         try {
@@ -190,18 +192,26 @@ class _AddEntryPageState extends State<AddEntryPage>
 
               final parsedDate = DateTime(year, month, day, hour, minute);
               _tripDateController.text = _formatDateTime(parsedDate);
+              dateParsed = true;
               debugPrint(
                 'Date parsed successfully: ${_tripDateController.text}',
               );
             }
           }
         } catch (e) {
-          // If parsing fails, leave as current time
+          // If parsing fails, will set to today's date below
           debugPrint('Failed to parse date: $e');
         }
       }
+
+      // If date was not parsed from shared message, set to today's date
+      if (!dateParsed) {
+        _tripDateController.text = _formatDateTime(DateTime.now());
+        debugPrint('Setting date to today: ${_tripDateController.text}');
+      }
     }
 
+    // Set default dates if controllers are empty (for non-shared entry creation)
     if (_tripDateController.text.isEmpty) {
       _tripDateController.text = _formatDateTime(DateTime.now());
     }
@@ -1090,7 +1100,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                             children: [
                               IconButton(
                                 icon: Icon(Icons.arrow_back, color: textColor),
-                                onPressed: () => Navigator.pop(context),
+                                onPressed: () => context.go('/dashboard'),
                                 padding: EdgeInsets.zero,
                                 constraints: const BoxConstraints(),
                               ),
@@ -1349,7 +1359,7 @@ class _AddEntryPageState extends State<AddEntryPage>
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.go('/dashboard'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       shape: RoundedRectangleBorder(
@@ -1550,11 +1560,18 @@ class _AddEntryPageState extends State<AddEntryPage>
               ? 'Trip updated successfully!'
               : 'Trip saved successfully!',
         );
-        Navigator.pop(context, true); // Return true to indicate success
+        // Navigate to dashboard after saving
+        // Use a small delay to ensure dialog is shown before navigation
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            context.go('/dashboard');
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
-        AppDialogs.showError(context, 'Failed to save trip: ${e.toString()}');
+        final message = ErrorHandler.getErrorMessage(e);
+        AppDialogs.showError(context, message);
       }
     } finally {
       if (mounted) {
@@ -1928,7 +1945,7 @@ class _AddEntryPageState extends State<AddEntryPage>
               children: [
                 Expanded(
                   child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
+                    onPressed: () => context.go('/dashboard'),
                     style: OutlinedButton.styleFrom(
                       minimumSize: const Size(0, 50),
                       shape: RoundedRectangleBorder(
@@ -2075,14 +2092,18 @@ class _AddEntryPageState extends State<AddEntryPage>
               ? 'Fuel entry updated successfully!'
               : 'Fuel entry saved successfully!',
         );
-        Navigator.pop(context, true); // Return true to indicate success
+        // Navigate to dashboard after saving
+        // Use a small delay to ensure dialog is shown before navigation
+        Future.delayed(const Duration(milliseconds: 500), () {
+          if (mounted) {
+            context.go('/dashboard');
+          }
+        });
       }
     } catch (e) {
       if (mounted) {
-        AppDialogs.showError(
-          context,
-          'Failed to save fuel entry: ${e.toString()}',
-        );
+        final message = ErrorHandler.getErrorMessage(e);
+        AppDialogs.showError(context, message);
       }
     } finally {
       if (mounted) {

@@ -2,7 +2,8 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
-// Tab shell provides nav; this page returns content only
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/intl.dart';
 
 class InboxPage extends StatefulWidget {
   const InboxPage({super.key});
@@ -143,9 +144,10 @@ class _InboxPageState extends State<InboxPage>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildMessageList(isDark, textColor, 'All messages'),
-                _buildMessageList(isDark, textColor, 'Unread messages'),
-                _buildMessageList(isDark, textColor, 'Archived messages'),
+                _buildAnnouncementList(isDark, textColor),
+                // For now, these tabs duplicate content or can be filtered later
+                _buildAnnouncementList(isDark, textColor, filter: 'unread'),
+                _buildAnnouncementList(isDark, textColor, filter: 'archived'),
               ],
             ),
           ),
@@ -175,19 +177,116 @@ class _InboxPageState extends State<InboxPage>
     );
   }
 
-  Widget _buildMessageList(bool isDark, Color textColor, String category) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: [
-        _buildPlaceholderCard(
-          isDark,
-          textColor,
-          '$category will appear here',
-          Icons.mail_outline,
-        ),
-        const SizedBox(height: 16),
-        _buildInfoCard(isDark),
-      ],
+  Widget _buildAnnouncementList(
+    bool isDark,
+    Color textColor, {
+    String? filter,
+  }) {
+    // Filter logic can be added here (e.g. tracking read state locally or in a separate table)
+    // For MVP, we just show all active announcements.
+    final stream = Supabase.instance.client
+        .from('announcements')
+        .stream(primaryKey: ['id'])
+        .order('created_at', ascending: false);
+
+    return StreamBuilder<List<Map<String, dynamic>>>(
+      stream: stream,
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return Center(child: Text('Error: ${snapshot.error}'));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+        final announcements = snapshot.data!;
+
+        if (announcements.isEmpty) {
+          return ListView(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            children: [
+              _buildPlaceholderCard(
+                isDark,
+                textColor,
+                'Announcements will appear here',
+                Icons.notifications_none,
+              ),
+              const SizedBox(height: 16),
+              _buildInfoCard(isDark),
+            ],
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.all(16),
+          itemCount: announcements.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (context, index) {
+            final item = announcements[index];
+            final title = item['title'] ?? 'New Message';
+            final body = item['body'] ?? '';
+            final date =
+                DateTime.tryParse(item['created_at'] ?? '') ?? DateTime.now();
+            final version = item['version'];
+
+            return Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.white.withValues(alpha: 0.7),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : Colors.white.withValues(alpha: 0.5),
+                ),
+              ),
+              child: ListTile(
+                contentPadding: const EdgeInsets.all(16),
+                leading: CircleAvatar(
+                  backgroundColor: const Color(
+                    0xFF6C5CE7,
+                  ).withValues(alpha: 0.1),
+                  child: const Icon(
+                    Icons.rocket_launch,
+                    color: Color(0xFF6C5CE7),
+                  ),
+                ),
+                title: Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontWeight: FontWeight.w600,
+                    color: textColor,
+                    fontSize: 16,
+                  ),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const SizedBox(height: 4),
+                    Text(
+                      body,
+                      style: GoogleFonts.inter(
+                        color: isDark ? Colors.grey[400] : Colors.grey[700],
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '${DateFormat.yMMMd().format(date)} ${DateFormat.jm().format(date)}',
+                      style: GoogleFonts.inter(
+                        fontSize: 12,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 

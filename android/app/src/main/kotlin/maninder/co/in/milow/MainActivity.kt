@@ -9,11 +9,15 @@ import android.os.Bundle
 class MainActivity: FlutterFragmentActivity() {
     private val CHANNEL = "maninder.co.in.milow/share"
     private var sharedText: String? = null
+    private var methodChannel: MethodChannel? = null
+    private var flutterEngine: FlutterEngine? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        this.flutterEngine = flutterEngine
         
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL).setMethodCallHandler { call, result ->
+        methodChannel = MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CHANNEL)
+        methodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getSharedText" -> {
                     result.success(sharedText)
@@ -31,7 +35,16 @@ class MainActivity: FlutterFragmentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        setIntent(intent) // Important: update the intent so getIntent() returns the latest one
         handleIntent(intent)
+        
+        // Notify Flutter that a new share intent has arrived
+        if (intent.action == Intent.ACTION_SEND && intent.type == "text/plain") {
+            // Wait a bit for Flutter engine to be ready if app was in background
+            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                methodChannel?.invokeMethod("onShareIntentReceived", null)
+            }, 100)
+        }
     }
 
     private fun handleIntent(intent: Intent?) {

@@ -10,6 +10,7 @@ import 'package:milow/core/services/version_checker_service.dart';
 import 'package:milow/core/utils/app_dialogs.dart';
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
+import 'package:milow/features/settings/presentation/pages/about_page.dart';
 
 import 'package:milow/core/services/trip_service.dart';
 
@@ -635,6 +636,17 @@ class _SettingsPageState extends State<SettingsPage> {
                       );
                     }
                   },
+                  isDark: isDark,
+                ),
+                _buildGlassyDivider(isDark),
+                _buildGlassyMenuItem(
+                  icon: Icons.info_outline,
+                  title: 'About Milow',
+                  iconColor: const Color(0xFFFF7675),
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AboutPage()),
+                  ),
                   isDark: isDark,
                 ),
               ],

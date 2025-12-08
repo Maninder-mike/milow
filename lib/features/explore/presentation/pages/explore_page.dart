@@ -3,13 +3,20 @@ import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 // Tab shell provides nav; this page returns content only
-import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/models/trip.dart';
 import 'package:milow/core/models/fuel_entry.dart';
-import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
+import 'package:milow/features/explore/presentation/pages/visited_states_map_page.dart';
+import 'package:milow/features/explore/presentation/widgets/explore_map_view.dart';
+import 'package:milow/features/explore/presentation/utils/explore_map_helper.dart';
+import 'package:milow/features/explore/presentation/widgets/stats_overview_card.dart';
+import 'package:milow/features/explore/presentation/widgets/state_collector_card.dart';
+import 'package:milow/features/explore/presentation/widgets/smart_suggestions_card.dart';
+import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/services/geo_service.dart';
 
 import 'package:intl/intl.dart';
 
@@ -187,6 +194,9 @@ class _ExplorePageState extends State<ExplorePage> {
         .join(' ');
   }
 
+  List<ExploreMapMarker> _mapMarkers = [];
+  bool _isMapLoading = true;
+
   Future<void> _loadData() async {
     try {
       final prefetch = DataPrefetchService.instance;
@@ -210,6 +220,9 @@ class _ExplorePageState extends State<ExplorePage> {
           _isLoading = false;
         });
       }
+
+      // Generate map markers in background
+      _generateMapMarkers();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -217,6 +230,217 @@ class _ExplorePageState extends State<ExplorePage> {
         });
       }
     }
+  }
+
+  static const Set<String> _usStateCodes = {
+    'AL',
+    'AK',
+    'AZ',
+    'AR',
+    'CA',
+    'CO',
+    'CT',
+    'DE',
+    'DC',
+    'FL',
+    'GA',
+    'HI',
+    'ID',
+    'IL',
+    'IN',
+    'IA',
+    'KS',
+    'KY',
+    'LA',
+    'ME',
+    'MD',
+    'MA',
+    'MI',
+    'MN',
+    'MS',
+    'MO',
+    'MT',
+    'NE',
+    'NV',
+    'NH',
+    'NJ',
+    'NM',
+    'NY',
+    'NC',
+    'ND',
+    'OH',
+    'OK',
+    'OR',
+    'PA',
+    'RI',
+    'SC',
+    'SD',
+    'TN',
+    'TX',
+    'UT',
+    'VT',
+    'VA',
+    'WA',
+    'WV',
+    'WI',
+    'WY',
+  };
+
+  Set<String> _visitedStates = {};
+
+  Future<void> _generateMapMarkers() async {
+    final markers = <ExploreMapMarker>[];
+    final states = <String>{};
+    // GeoService is static, no instance needed
+
+    // Process recent trips (take last 10 for performance)
+    final recentTrips = _allTrips.take(10).toList();
+    for (final trip in recentTrips) {
+      if (trip.deliveryLocations.isNotEmpty) {
+        final loc =
+            trip.deliveryLocations.last; // Use last delivery as main point
+
+        // Extract state for collector
+        final mainLoc = _extractCityState(
+          loc,
+        ); // Normalize address for better geocoding success
+        final state = _extractStateCode(loc);
+        if (state != null && _usStateCodes.contains(state)) states.add(state);
+
+        final latLng = await GeoService.getCoordinates(mainLoc);
+        if (latLng != null) {
+          markers.add(
+            ExploreMapMarker(
+              id: trip.id ?? 'trip_${DateTime.now().millisecondsSinceEpoch}',
+              type: MapMarkerType.trip,
+              point: latLng,
+              title: 'Trip ${trip.tripNumber ?? "Unknown"}',
+              subtitle: mainLoc,
+              date: trip.createdAt ?? DateTime.now(),
+              data: trip,
+            ),
+          );
+        }
+      }
+    }
+
+    // Process recent fuel (take last 10)
+    final recentFuel = _allFuelEntries.take(10).toList();
+    for (final fuel in recentFuel) {
+      if (fuel.location != null) {
+        // Extract state for collector
+        final mainLoc = _extractCityState(fuel.location!);
+        final state = _extractStateCode(fuel.location!);
+        if (state != null && _usStateCodes.contains(state)) states.add(state);
+
+        final latLng = await GeoService.getCoordinates(mainLoc);
+        if (latLng != null) {
+          markers.add(
+            ExploreMapMarker(
+              id: fuel.id ?? 'fuel_${DateTime.now().millisecondsSinceEpoch}',
+              type: MapMarkerType.fuel,
+              point: latLng,
+              title: fuel.isTruckFuel ? 'Truck Fuel' : 'Reefer Fuel',
+              subtitle:
+                  '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel} @ $mainLoc',
+              date: fuel.createdAt ?? DateTime.now(),
+              data: fuel,
+            ),
+          );
+        }
+      }
+    }
+
+    // Also scan all trips for states, not just the recent ones for markers
+    for (final trip in _allTrips) {
+      for (final loc in trip.deliveryLocations) {
+        final state = _extractStateCode(loc);
+        if (state != null && _usStateCodes.contains(state)) states.add(state);
+      }
+    }
+
+    if (mounted) {
+      setState(() {
+        _mapMarkers = markers;
+        _isMapLoading = false;
+        _visitedStates = states;
+      });
+      _calculateStats();
+    }
+  }
+
+  double _statsTotalMiles = 0;
+  double _statsFuelCost = 0;
+  int _statsTripCount = 0;
+
+  void _calculateStats() {
+    final now = DateTime.now();
+    final startOfMonth = DateTime(now.year, now.month, 1);
+
+    // Filter trips for this month
+    final monthTrips = _allTrips
+        .where((t) => t.tripDate.isAfter(startOfMonth))
+        .toList();
+
+    double miles = 0;
+    for (var trip in monthTrips) {
+      miles += trip.totalDistance ?? 0;
+    }
+
+    // Filter fuel for this month
+    final monthFuel = _allFuelEntries
+        .where((f) => f.fuelDate.isAfter(startOfMonth))
+        .toList();
+    double cost = 0;
+    for (var fuel in monthFuel) {
+      cost += fuel.totalCost;
+    }
+
+    if (mounted) {
+      setState(() {
+        _statsTotalMiles = miles;
+        _statsTripCount = monthTrips.length;
+        _statsFuelCost = cost;
+      });
+    }
+  }
+
+  String? _extractStateCode(String address) {
+    if (address.isEmpty) return null;
+
+    // Normalize
+    final normalized = address.replaceAll('\n', ', ').toUpperCase();
+
+    // Pattern for "City, ST" or "City, ST ZIP"
+    final statePattern = RegExp(r',\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)');
+    final match = statePattern.firstMatch(normalized);
+    if (match != null) {
+      return match.group(1);
+    }
+
+    // Pattern for "City ST ZIP" (no comma)
+    final zipPattern = RegExp(r'\s+([A-Z]{2})\s+\d{5}');
+    final zipMatch = zipPattern.firstMatch(normalized);
+    if (zipMatch != null) {
+      return zipMatch.group(1);
+    }
+
+    // Basic fallback: Check last part if it looks like a state code
+    final parts = normalized.split(RegExp(r'[\s,]+'));
+    if (parts.isNotEmpty) {
+      // iterate backwards
+      for (var i = parts.length - 1; i >= 0; i--) {
+        final part = parts[i];
+        if (part.length == 2 && RegExp(r'^[A-Z]{2}$').hasMatch(part)) {
+          // Exclude common non-state 2-letter words like "RD", "ST", "DR"?
+          // Actually US state codes are specific.
+          // For now, assume it's a state if it's near the end.
+          return part;
+        }
+      }
+    }
+
+    return null;
   }
 
   List<Trip> get _filteredTrips {
@@ -437,7 +661,93 @@ class _ExplorePageState extends State<ExplorePage> {
                                 ],
                               ),
                             ),
+
                             const SizedBox(height: 24),
+
+                            // Interactive Map Preview
+                            if (_selectedCategory == 'All Routes' ||
+                                _selectedCategory == 'Long Haul' ||
+                                _selectedCategory == 'Regional' ||
+                                _selectedCategory == 'Local') ...[
+                              _SectionHeaderRow(
+                                title: 'Activity Map',
+                                onAction: () {
+                                  // TODO: Navigate to full screen map
+                                },
+                              ),
+                              const SizedBox(height: 12),
+                              if (_isMapLoading)
+                                const Center(child: CircularProgressIndicator())
+                              else
+                                ExploreMapView(
+                                  markers: _mapMarkers,
+                                  isDark: isDark,
+                                  onMarkerTap: (marker) {
+                                    showDialog(
+                                      context: context,
+                                      builder: (context) => AlertDialog(
+                                        title: Text(marker.title),
+                                        content: Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(marker.subtitle),
+                                            const SizedBox(height: 8),
+                                            Text(
+                                              'Date: ${DateFormat.yMMMd().format(marker.date)}',
+                                              style: const TextStyle(
+                                                fontSize: 12,
+                                                color: Colors.grey,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        actions: [
+                                          TextButton(
+                                            onPressed: () =>
+                                                Navigator.pop(context),
+                                            child: const Text('Close'),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              const SizedBox(height: 24),
+                              StateCollectorCard(
+                                visitedStates: _visitedStates,
+                                isDark: isDark,
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (_) => VisitedStatesMapPage(
+                                        visitedStates: _visitedStates,
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              // Personal Stats & Insights
+                              StatsOverviewCard(
+                                totalMiles: _statsTotalMiles,
+                                totalFuelCost: _statsFuelCost,
+                                tripCount: _statsTripCount,
+                                isDark: isDark,
+                              ),
+                              const SizedBox(height: 24),
+
+                              SmartSuggestionsCard(
+                                isDark: isDark,
+                                trips: _allTrips,
+                                fuelEntries: _allFuelEntries,
+                              ),
+                              const SizedBox(height: 24),
+                            ],
+
                             _SectionHeaderRow(
                               title: AppLocalizations.of(
                                 context,
@@ -447,26 +757,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   : null,
                             ),
                             const SizedBox(height: 12),
-                            if (_filteredDestinations.isEmpty)
-                              _EmptyStateCard(
-                                message: _selectedCategory == 'All Routes'
-                                    ? 'No destinations yet.'
-                                    : 'No destinations for $_selectedCategory trips.',
-                                icon: Icons.location_city,
-                              )
-                            else
-                              Column(
-                                children: _filteredDestinations.take(5).map((
-                                  dest,
-                                ) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: _SimpleDestinationCard(
-                                      destination: dest,
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
+                            _buildDestinationsList(),
                             const SizedBox(height: 24),
                             _SectionHeaderRow(
                               title: AppLocalizations.of(
@@ -477,26 +768,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   : null,
                             ),
                             const SizedBox(height: 12),
-                            if (_filteredActivity.isEmpty)
-                              _EmptyStateCard(
-                                message: _selectedCategory == 'All Routes'
-                                    ? 'No recent activity.'
-                                    : 'No recent $_selectedCategory activity.',
-                                icon: Icons.history,
-                              )
-                            else
-                              Column(
-                                children: _filteredActivity.take(5).map((
-                                  activity,
-                                ) {
-                                  return Padding(
-                                    padding: const EdgeInsets.only(bottom: 10),
-                                    child: _SimpleActivityCard(
-                                      activity: activity,
-                                    ),
-                                  );
-                                }).toList(),
-                              ),
+                            _buildActivityList(),
                             // Extra padding for floating bottom nav bar
                             const SizedBox(height: 120),
                           ],
@@ -510,6 +782,40 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
+  Widget _buildDestinationsList() {
+    if (_filteredDestinations.isEmpty) {
+      return _EmptyStateCard(
+        message: 'No recent destinations found.',
+        icon: Icons.map,
+      );
+    }
+    return Column(
+      children: _filteredDestinations.take(5).map((dest) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _SimpleDestinationCard(destination: dest),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildActivityList() {
+    if (_filteredActivity.isEmpty) {
+      return _EmptyStateCard(
+        message: 'No recent activity.',
+        icon: Icons.history,
+      );
+    }
+    return Column(
+      children: _filteredActivity.take(5).map((activity) {
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: _SimpleActivityCard(activity: activity),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildCategoryChip(String label, IconData icon, bool isSelected) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return GestureDetector(
@@ -519,86 +825,42 @@ class _ExplorePageState extends State<ExplorePage> {
         });
       },
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
+          color: isSelected
+              ? Theme.of(context).primaryColor
+              : (isDark ? Colors.white10 : Colors.grey.shade100),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
-              color: isSelected
-                  ? const Color(0xFF6C5CE7).withValues(alpha: 0.3)
-                  : isDark
-                  ? Colors.black.withValues(alpha: 0.2)
-                  : Colors.black.withValues(alpha: 0.05),
-              blurRadius: isSelected ? 16 : 12,
-              spreadRadius: 0,
-              offset: const Offset(0, 4),
-            ),
+            if (isSelected)
+              BoxShadow(
+                color: const Color(0xFF6C5CE7).withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
           ],
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF7C6CE7), Color(0xFF6C5CE7)],
-                      )
-                    : LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: isDark
-                            ? [
-                                Colors.white.withValues(alpha: 0.15),
-                                Colors.white.withValues(alpha: 0.08),
-                              ]
-                            : [
-                                Colors.white.withValues(alpha: 0.9),
-                                Colors.white.withValues(alpha: 0.7),
-                              ],
-                      ),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected
-                      ? Colors.white.withValues(alpha: 0.3)
-                      : isDark
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.8),
-                  width: 1.5,
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    icon,
-                    size: 18,
-                    color: isSelected
-                        ? Colors.white
-                        : isDark
-                        ? Colors.white.withValues(alpha: 0.8)
-                        : const Color(0xFF667085),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    label,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: isSelected
-                          ? Colors.white
-                          : isDark
-                          ? Colors.white
-                          : const Color(0xFF101828),
-                    ),
-                  ),
-                ],
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 18,
+              color: isSelected
+                  ? Colors.white
+                  : (isDark ? Colors.white70 : Colors.black54),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.inter(
+                color: isSelected
+                    ? Colors.white
+                    : (isDark ? Colors.white70 : Colors.black87),
+                fontWeight: FontWeight.w500,
               ),
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -812,7 +1074,6 @@ class _SimpleDestinationCard extends StatelessWidget {
         ? Colors.white.withValues(alpha: 0.6)
         : const Color(0xFF667085);
     final city = destination['city'] as String;
-    final count = destination['count'] as int;
     final description = destination['description'] as String;
 
     return _GlassyCard(
@@ -852,20 +1113,9 @@ class _SimpleDestinationCard extends StatelessWidget {
               ],
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: const Color(0xFF6C5CE7).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              '$count',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF6C5CE7),
-              ),
-            ),
+          Icon(
+            Icons.chevron_right,
+            color: isDark ? Colors.white54 : Colors.grey.shade400,
           ),
         ],
       ),
@@ -879,17 +1129,17 @@ class _SimpleActivityCard extends StatelessWidget {
   const _SimpleActivityCard({required this.activity});
 
   String _formatTimeAgo(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} min ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays > 7) {
       return DateFormat('MMM d').format(date);
+    } else if (diff.inDays > 0) {
+      return '${diff.inDays}d ago';
+    } else if (diff.inHours > 0) {
+      return '${diff.inHours}h ago';
+    } else if (diff.inMinutes > 0) {
+      return '${diff.inMinutes}m ago';
+    } else {
+      return 'Just now';
     }
   }
 
@@ -900,12 +1150,11 @@ class _SimpleActivityCard extends StatelessWidget {
     final subtitleColor = isDark
         ? Colors.white.withValues(alpha: 0.6)
         : const Color(0xFF667085);
-    final icon = activity['icon'] as IconData;
-    final isTrip = icon == Icons.local_shipping;
-    final iconColor = isTrip
-        ? const Color(0xFF6C5CE7)
-        : const Color(0xFF10B981);
+
+    final title = activity['title'] as String;
+    final subtitle = activity['subtitle'] as String;
     final date = activity['date'] as DateTime;
+    final icon = activity['icon'] as IconData;
 
     return _GlassyCard(
       padding: const EdgeInsets.all(16),
@@ -914,10 +1163,10 @@ class _SimpleActivityCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.15),
+              color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: iconColor, size: 24),
+            child: Icon(icon, color: const Color(0xFF6C5CE7), size: 26),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -925,7 +1174,7 @@ class _SimpleActivityCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  activity['title'] as String,
+                  title,
                   style: GoogleFonts.inter(
                     fontSize: 15,
                     fontWeight: FontWeight.w600,
@@ -934,7 +1183,7 @@ class _SimpleActivityCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  activity['subtitle'] as String,
+                  subtitle,
                   style: GoogleFonts.inter(fontSize: 13, color: subtitleColor),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -946,9 +1195,8 @@ class _SimpleActivityCard extends StatelessWidget {
             _formatTimeAgo(date),
             style: GoogleFonts.inter(
               fontSize: 12,
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.5)
-                  : const Color(0xFF9CA3AF),
+              color: isDark ? Colors.white54 : Colors.grey.shade500,
+              fontWeight: FontWeight.w500,
             ),
           ),
         ],

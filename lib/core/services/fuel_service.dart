@@ -26,7 +26,7 @@ class FuelService {
 
       return FuelEntry.fromJson(response);
     } catch (e) {
-      throw Exception('Failed to create fuel entry: $e');
+      rethrow;
     }
   }
 
@@ -64,7 +64,7 @@ class FuelService {
 
       return data.map((json) => FuelEntry.fromJson(json)).toList();
     } catch (e) {
-      throw Exception('Failed to get fuel entries: $e');
+      rethrow;
     }
   }
 
@@ -86,7 +86,7 @@ class FuelService {
       if (response == null) return null;
       return FuelEntry.fromJson(response);
     } catch (e) {
-      throw Exception('Failed to get fuel entry: $e');
+      rethrow;
     }
   }
 
@@ -115,7 +115,7 @@ class FuelService {
 
       return FuelEntry.fromJson(response);
     } catch (e) {
-      throw Exception('Failed to update fuel entry: $e');
+      rethrow;
     }
   }
 

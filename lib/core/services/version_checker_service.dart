@@ -1,6 +1,7 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'dart:io';
 import 'package:milow/core/services/logging_service.dart';
 
 /// Model for app version information from Supabase
@@ -130,11 +131,14 @@ class VersionCheckerService {
   /// Fetch latest version info from Supabase
   static Future<AppVersionInfo?> _fetchLatestVersion() async {
     try {
+      final platform = Platform.isAndroid ? 'android' : 'ios';
       final response = await Supabase.instance.client
           .from('app_version')
           .select()
-          .eq('platform', 'android')
-          .single();
+          .eq('platform', platform)
+          .maybeSingle(); // Use maybeSingle to avoid exception if no row
+
+      if (response == null) return null;
 
       return AppVersionInfo.fromJson(response);
     } catch (e) {

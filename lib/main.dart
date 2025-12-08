@@ -207,10 +207,12 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   static const platform = MethodChannel('maninder.co.in.milow/share');
+  static bool _isProcessingShareIntent = false;
 
   @override
   void initState() {
     super.initState();
+    _setupMethodChannelListener();
     _checkForSharedText();
     _setupDeepLinkListener();
     _checkForUpdates();
@@ -239,9 +241,25 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  void _setupMethodChannelListener() {
+    // Listen for notifications from native side when new share intent arrives
+    platform.setMethodCallHandler((call) async {
+      if (call.method == 'onShareIntentReceived') {
+        debugPrint('📱 Share intent received from native side');
+        _checkForSharedText();
+      }
+    });
+  }
+
   void _setupDeepLinkListener() {
     // Listen for auth state changes (handles deep link redirects)
     Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      // Skip auth redirects if we're processing a share intent
+      if (_isProcessingShareIntent) {
+        debugPrint('⏸️ Skipping auth redirect - processing share intent');
+        return;
+      }
+
       final event = data.event;
       final session = data.session;
 
@@ -251,6 +269,25 @@ class _MyAppState extends State<MyApp> {
         // User clicked on password reset link in email
         _router.go('/reset-password');
       } else if (event == AuthChangeEvent.signedIn && session != null) {
+        // Check current location to avoid redirecting if user is already in the app
+        // This prevents overriding the share intent navigation (and other deep links)
+        // when a session update/refresh occurs
+        final currentPath =
+            _router.routerDelegate.currentConfiguration.uri.path;
+        final isAuthPage =
+            currentPath == '/splash' ||
+            currentPath == '/login' ||
+            currentPath == '/signup' ||
+            currentPath == '/forgot-password' ||
+            currentPath == '/reset-password';
+
+        if (!isAuthPage) {
+          debugPrint(
+            '⏸️ Already in app ($currentPath), skipping auth redirect',
+          );
+          return;
+        }
+
         final user = session.user;
 
         // Check if this is an OAuth sign-in (Google, Apple, etc.)
@@ -289,13 +326,22 @@ class _MyAppState extends State<MyApp> {
     try {
       final String? sharedText = await platform.invokeMethod('getSharedText');
       if (sharedText != null && sharedText.isNotEmpty) {
-        // Wait a bit for the app to fully initialize
-        Future.delayed(const Duration(milliseconds: 500), () {
+        // Set flag to prevent auth listener from interfering
+        _isProcessingShareIntent = true;
+        debugPrint(
+          '📥 Processing share intent: ${sharedText.substring(0, sharedText.length > 50 ? 50 : sharedText.length)}...',
+        );
+
+        // Wait a bit longer to ensure auth state is stable and app is fully initialized
+        await Future.delayed(const Duration(milliseconds: 1000));
+
+        if (mounted) {
           _handleSharedText(sharedText);
-        });
+        }
       }
     } catch (e) {
       debugPrint('Error getting shared text: $e');
+      _isProcessingShareIntent = false;
     }
   }
 
@@ -304,9 +350,16 @@ class _MyAppState extends State<MyApp> {
     final tripData = TripParserService.parse(text);
 
     // Navigate to Add Entry Page with data
-    // We need to ensure navigation happens after the app is built or use the router directly
-    // Since _router is global, we can use it.
-    _router.push('/add-entry', extra: tripData);
+    // Use go() instead of push() to replace current route and prevent back navigation issues
+    // This ensures we always navigate to add-entry, even if already there (will refresh with new data)
+    _router.go('/add-entry', extra: tripData);
+
+    // Clear the flag after a delay to allow navigation to complete
+    // This gives time for the navigation to finish before auth listener can interfere
+    Future.delayed(const Duration(milliseconds: 2000), () {
+      _isProcessingShareIntent = false;
+      debugPrint('✅ Share intent processing complete');
+    });
   }
 
   @override

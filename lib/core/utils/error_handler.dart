@@ -29,11 +29,18 @@ class ErrorHandler {
 
     final errorStr = error.toString().toLowerCase();
 
+    // ClientException (often from http package used by Supabase)
+    if (errorStr.contains('clientexception')) {
+      return 'Network error. Please check your connection.';
+    }
+
     // Network-related errors
     if (errorStr.contains('socketexception') ||
         errorStr.contains('connection refused') ||
         errorStr.contains('network is unreachable') ||
-        errorStr.contains('no internet')) {
+        errorStr.contains('no internet') ||
+        errorStr.contains('xmlhttprequest error') || // Web specific
+        errorStr.contains('connection closed')) {
       return 'No internet connection. Please check your network.';
     }
 
@@ -79,7 +86,21 @@ class ErrorHandler {
       return 'Unable to get your location. Please check location settings.';
     }
 
-    // Generic fallback
+    // Handle generic Exception objects by extracting their message
+    if (error is Exception) {
+      final msg = error.toString();
+      // "Exception: actual message" -> "actual message"
+      if (msg.startsWith('Exception: ')) {
+        return msg.substring(11);
+      }
+    }
+
+    // Generic fallback - if we can't identify it, it's better to show something descriptive
+    // than just "Something went wrong" if the error string is reasonably short.
+    if (error.toString().length < 100) {
+      return error.toString();
+    }
+
     return 'Something went wrong. Please try again.';
   }
 

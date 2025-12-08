@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
@@ -1085,175 +1084,125 @@ class _RecordsListPageState extends State<RecordsListPage> {
           }
         });
       },
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.black.withValues(alpha: 0.3)
-                  : Colors.black.withValues(alpha: 0.08),
-              blurRadius: 24,
-              spreadRadius: 0,
-              offset: const Offset(0, 8),
-            ),
-          ],
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24),
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: Theme.of(context).brightness == Brightness.dark
-                      ? [
-                          Colors.white.withValues(alpha: 0.15),
-                          Colors.white.withValues(alpha: 0.05),
-                        ]
-                      : [
-                          Colors.white.withValues(alpha: 0.9),
-                          Colors.white.withValues(alpha: 0.7),
-                        ],
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Main card content
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color:
+                        (isTrip
+                                ? const Color(0xFF3B82F6)
+                                : const Color(0xFFF59E0B))
+                            .withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    isTrip ? Icons.local_shipping : Icons.local_gas_station,
+                    color: isTrip
+                        ? const Color(0xFF3B82F6)
+                        : const Color(0xFFF59E0B),
+                    size: 24,
+                  ),
                 ),
-                border: Border.all(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? Colors.white.withValues(alpha: 0.2)
-                      : Colors.white.withValues(alpha: 0.8),
-                  width: 1.5,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Main card content
-                  Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
                     children: [
-                      Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color:
-                              (isTrip
-                                      ? const Color(0xFF3B82F6)
-                                      : const Color(0xFFF59E0B))
-                                  .withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Icon(
-                          isTrip
-                              ? Icons.local_shipping
-                              : Icons.local_gas_station,
-                          color: isTrip
-                              ? const Color(0xFF3B82F6)
-                              : const Color(0xFFF59E0B),
-                          size: 24,
-                        ),
+                      // Top row: ID left, Value right
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            record['id'] as String? ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: textColor,
+                            ),
+                          ),
+                          Text(
+                            record['value'] as String? ?? '',
+                            style: GoogleFonts.inter(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w600,
+                              color: const Color(0xFF3B82F6),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            // Top row: ID left, Value right
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  record['id'] as String? ?? '',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
-                                  ),
-                                ),
-                                Text(
-                                  record['value'] as String? ?? '',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: const Color(0xFF3B82F6),
-                                  ),
-                                ),
-                              ],
+                      const SizedBox(height: 4),
+                      // Bottom row: Description left, Date right
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              record['description'] as String? ?? '',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                color: secondaryTextColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(height: 4),
-                            // Bottom row: Description left, Date right
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    record['description'] as String? ?? '',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 13,
-                                      color: secondaryTextColor,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
+                          ),
+                          const SizedBox(width: 8),
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                record['date'] as String? ?? '',
+                                style: GoogleFonts.inter(
+                                  fontSize: 13,
+                                  color: secondaryTextColor,
                                 ),
-                                const SizedBox(width: 8),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Text(
-                                      record['date'] as String? ?? '',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 13,
-                                        color: secondaryTextColor,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 4),
-                                    AnimatedRotation(
-                                      turns: isExpanded ? 0.5 : 0,
-                                      duration: const Duration(
-                                        milliseconds: 200,
-                                      ),
-                                      child: Icon(
-                                        Icons.keyboard_arrow_down,
-                                        size: 20,
-                                        color: secondaryTextColor,
-                                      ),
-                                    ),
-                                  ],
+                              ),
+                              const SizedBox(width: 4),
+                              AnimatedRotation(
+                                turns: isExpanded ? 0.5 : 0,
+                                duration: const Duration(milliseconds: 200),
+                                child: Icon(
+                                  Icons.keyboard_arrow_down,
+                                  size: 20,
+                                  color: secondaryTextColor,
                                 ),
-                              ],
-                            ),
-                          ],
-                        ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   ),
-                  // Expanded details
-                  if (isExpanded) ...[
-                    const SizedBox(height: 16),
-                    Container(
-                      width: double.infinity,
-                      height: 1,
-                      color: borderColor,
-                    ),
-                    const SizedBox(height: 16),
-                    if (isTrip)
-                      _buildTripDetails(
-                        data as Trip,
-                        textColor,
-                        secondaryTextColor,
-                      )
-                    else
-                      _buildFuelDetails(
-                        data as FuelEntry,
-                        textColor,
-                        secondaryTextColor,
-                      ),
-                  ],
-                ],
-              ),
+                ),
+              ],
             ),
-          ),
+            // Expanded details
+            if (isExpanded) ...[
+              const SizedBox(height: 16),
+              Container(width: double.infinity, height: 1, color: borderColor),
+              const SizedBox(height: 16),
+              if (isTrip)
+                _buildTripDetails(data as Trip, textColor, secondaryTextColor)
+              else
+                _buildFuelDetails(
+                  data as FuelEntry,
+                  textColor,
+                  secondaryTextColor,
+                ),
+            ],
+          ],
         ),
       ),
     );
@@ -2334,13 +2283,28 @@ class _RecordsListPageState extends State<RecordsListPage> {
       // Get records to export using the proper filter method
       final recordsToExport = _getExportRecords(filter, dateRange);
 
-      // Separate trips and fuel entries
-      final tripRecords = recordsToExport
-          .where((r) => r['type'] == 'trip')
-          .toList();
-      final fuelRecords = recordsToExport
-          .where((r) => r['type'] == 'fuel')
-          .toList();
+      // Separate trips and fuel entries, then sort in ascending order by date
+      final tripRecords =
+          recordsToExport.where((r) => r['type'] == 'trip').toList()
+            ..sort((a, b) {
+              final dateA = a['rawDate'] as DateTime?;
+              final dateB = b['rawDate'] as DateTime?;
+              if (dateA == null && dateB == null) return 0;
+              if (dateA == null) return 1;
+              if (dateB == null) return -1;
+              return dateA.compareTo(dateB); // Ascending order
+            });
+
+      final fuelRecords =
+          recordsToExport.where((r) => r['type'] == 'fuel').toList()
+            ..sort((a, b) {
+              final dateA = a['rawDate'] as DateTime?;
+              final dateB = b['rawDate'] as DateTime?;
+              if (dateA == null && dateB == null) return 0;
+              if (dateA == null) return 1;
+              if (dateB == null) return -1;
+              return dateA.compareTo(dateB); // Ascending order
+            });
 
       // Get unit system
       final unitSystem = await PreferencesService.getUnitSystem();
@@ -2725,11 +2689,54 @@ class _RecordsListPageState extends State<RecordsListPage> {
         ),
       );
 
-      // Get the downloads directory
-      final directory = await getApplicationDocumentsDirectory();
+      // Get accessible Downloads directory for saving PDFs
+      Directory? milowDocumentsDir;
+
+      try {
+        // Try to get external storage directory
+        final externalStorage = await getExternalStorageDirectory();
+
+        if (externalStorage != null) {
+          // Extract the base path (before /Android/data/...)
+          // For most devices: /storage/emulated/0
+          String basePath;
+          final externalPath = externalStorage.path;
+
+          if (externalPath.contains('/Android/data/')) {
+            basePath = externalPath.split('/Android/data/')[0];
+          } else if (externalPath.contains('/Android/')) {
+            basePath = externalPath.split('/Android/')[0];
+          } else {
+            // Fallback: try common paths
+            basePath = '/storage/emulated/0';
+          }
+
+          // Use Downloads folder which is accessible through file managers
+          milowDocumentsDir = Directory('$basePath/Download/Milow Documents');
+        } else {
+          // Fallback to application documents if external storage not available
+          final documentsDirectory = await getApplicationDocumentsDirectory();
+          milowDocumentsDir = Directory(
+            '${documentsDirectory.path}/Milow Documents',
+          );
+        }
+      } catch (e) {
+        debugPrint('Error getting external storage: $e');
+        // Fallback to application documents on error
+        final documentsDirectory = await getApplicationDocumentsDirectory();
+        milowDocumentsDir = Directory(
+          '${documentsDirectory.path}/Milow Documents',
+        );
+      }
+
+      // Create "Milow Documents" folder if it doesn't exist
+      if (!await milowDocumentsDir.exists()) {
+        await milowDocumentsDir.create(recursive: true);
+      }
+
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final fileName = 'milow_records_$timestamp.pdf';
-      final filePath = '${directory.path}/$fileName';
+      final filePath = '${milowDocumentsDir.path}/$fileName';
 
       // Save the PDF
       final file = File(filePath);
@@ -2794,7 +2801,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
       child: pw.Text(
         text,
         style: pw.TextStyle(
-          fontSize: 9,
+          fontSize: 6,
           fontWeight: pw.FontWeight.bold,
           color: color ?? PdfColors.blue900,
         ),
@@ -2813,12 +2820,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
       child: pw.Text(
         text,
         style: pw.TextStyle(
-          fontSize: 8,
+          fontSize: 6,
           fontWeight: bold ? pw.FontWeight.bold : null,
           color: color ?? PdfColors.grey800,
         ),
         softWrap: true,
-        maxLines: 3,
+        maxLines: 5,
         overflow: pw.TextOverflow.clip,
       ),
     );
@@ -2847,10 +2854,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
           widths[i] = const pw.FlexColumnWidth(1.2);
           break;
         case 'from':
-          widths[i] = const pw.FlexColumnWidth(1.8);
+          widths[i] = const pw.FlexColumnWidth(2.5);
           break;
         case 'to':
-          widths[i] = const pw.FlexColumnWidth(1.8);
+          widths[i] = const pw.FlexColumnWidth(2.5);
           break;
         case 'miles':
           widths[i] = const pw.FlexColumnWidth(0.8);
@@ -2915,13 +2922,13 @@ class _RecordsListPageState extends State<RecordsListPage> {
         case 'from':
           return _buildPdfTableDataCell(
             trip.pickupLocations.isNotEmpty
-                ? _extractCityState(trip.pickupLocations.first)
+                ? trip.pickupLocations.join(', ')
                 : '-',
           );
         case 'to':
           return _buildPdfTableDataCell(
             trip.deliveryLocations.isNotEmpty
-                ? _extractCityState(trip.deliveryLocations.last)
+                ? trip.deliveryLocations.join(', ')
                 : '-',
           );
         case 'miles':

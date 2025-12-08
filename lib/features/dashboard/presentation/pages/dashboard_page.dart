@@ -1,6 +1,5 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -38,7 +37,7 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage>
-    with WidgetsBindingObserver {
+    with WidgetsBindingObserver, TickerProviderStateMixin {
   final WeatherService _weatherService = WeatherService();
   Map<String, dynamic>? _weatherData;
   bool _isLoadingWeather = true;
@@ -72,10 +71,42 @@ class _DashboardPageState extends State<DashboardPage>
   StreamSubscription<int>? _notificationSubscription;
   Timer? _webAutoRefreshTimer;
 
+  // Bell icon animation
+  late AnimationController _bellAnimationController;
+  late Animation<double> _bellRotationAnimation;
+  late Animation<double> _bellScaleAnimation;
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+
+    // Initialize bell animation controller
+    _bellAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    // Create rotation animation (-15° to +15°)
+    _bellRotationAnimation =
+        Tween<double>(
+          begin: -0.26, // -15 degrees in radians
+          end: 0.26, // +15 degrees in radians
+        ).animate(
+          CurvedAnimation(
+            parent: _bellAnimationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+
+    // Create scale animation (1.0 to 1.1)
+    _bellScaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _bellAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
     _loadPreferences();
     _loadWeather();
     _loadNews();
@@ -105,6 +136,7 @@ class _DashboardPageState extends State<DashboardPage>
     _borderRefreshTimer?.cancel();
     _notificationSubscription?.cancel();
     _webAutoRefreshTimer?.cancel();
+    _bellAnimationController.dispose();
     super.dispose();
   }
 
@@ -134,16 +166,31 @@ class _DashboardPageState extends State<DashboardPage>
   Future<void> _loadNotificationCount() async {
     await NotificationService.instance.init();
     _unreadNotificationCount = NotificationService.instance.unreadCount;
+    _updateBellAnimation(_unreadNotificationCount);
     _notificationSubscription = NotificationService.instance.unreadCountStream
         .listen((count) {
           if (mounted) {
             setState(() {
               _unreadNotificationCount = count;
             });
+            _updateBellAnimation(count);
           }
         });
     if (mounted) {
       setState(() {});
+    }
+  }
+
+  void _updateBellAnimation(int count) {
+    if (count > 0) {
+      // Start animation if not already running
+      if (!_bellAnimationController.isAnimating) {
+        _bellAnimationController.repeat(reverse: true);
+      }
+    } else {
+      // Stop animation when no unread notifications
+      _bellAnimationController.stop();
+      _bellAnimationController.reset();
     }
   }
 
@@ -1058,200 +1105,153 @@ class _DashboardPageState extends State<DashboardPage>
                       const SizedBox(height: 12),
                       Container(
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.black.withValues(alpha: 0.3)
-                                  : Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 24,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 8),
-                            ),
-                          ],
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: borderColor),
                         ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: isDark
-                                      ? [
-                                          Colors.white.withValues(alpha: 0.15),
-                                          Colors.white.withValues(alpha: 0.05),
-                                        ]
-                                      : [
-                                          Colors.white.withValues(alpha: 0.9),
-                                          Colors.white.withValues(alpha: 0.7),
-                                        ],
+                        child: _isLoadingEntries
+                            ? const ShimmerLoading(
+                                isLoading: true,
+                                child: Column(
+                                  children: [
+                                    ShimmerEntryItem(),
+                                    ShimmerEntryItem(),
+                                    ShimmerEntryItem(),
+                                    ShimmerEntryItem(showDivider: false),
+                                  ],
                                 ),
-                                border: Border.all(
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.2)
-                                      : Colors.white.withValues(alpha: 0.8),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: _isLoadingEntries
-                                  ? const ShimmerLoading(
-                                      isLoading: true,
-                                      child: Column(
-                                        children: [
-                                          ShimmerEntryItem(),
-                                          ShimmerEntryItem(),
-                                          ShimmerEntryItem(),
-                                          ShimmerEntryItem(showDivider: false),
-                                        ],
+                              )
+                            : _recentEntries.isEmpty
+                            ? Padding(
+                                padding: const EdgeInsets.all(32),
+                                child: Center(
+                                  child: Column(
+                                    children: [
+                                      Icon(
+                                        Icons.inbox_outlined,
+                                        size: 48,
+                                        color: secondaryTextColor,
                                       ),
-                                    )
-                                  : _recentEntries.isEmpty
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(32),
-                                      child: Center(
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                              Icons.inbox_outlined,
-                                              size: 48,
-                                              color: secondaryTextColor,
-                                            ),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              'No entries yet',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                color: secondaryTextColor,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Add your first trip or fuel entry',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                color: secondaryTextColor,
-                                              ),
-                                            ),
-                                          ],
+                                      const SizedBox(height: 12),
+                                      Text(
+                                        'No entries yet',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 14,
+                                          color: secondaryTextColor,
                                         ),
                                       ),
-                                    )
-                                  : Column(
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        'Add your first trip or fuel entry',
+                                        style: GoogleFonts.inter(
+                                          fontSize: 12,
+                                          color: secondaryTextColor,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              )
+                            : Column(
+                                children: [
+                                  ..._recentEntries.asMap().entries.map((
+                                    entry,
+                                  ) {
+                                    final index = entry.key;
+                                    final item = entry.value;
+                                    final isTrip = item['type'] == 'trip';
+
+                                    Widget entryWidget;
+                                    if (isTrip) {
+                                      final trip = item['data'] as Trip;
+                                      final pickups = trip.pickupLocations;
+                                      final deliveries = trip.deliveryLocations;
+                                      final route =
+                                          pickups.isNotEmpty &&
+                                              deliveries.isNotEmpty
+                                          ? '${_extractCityState(pickups.first)} → ${_extractCityState(deliveries.last)}'
+                                          : 'No route';
+                                      final distance = trip.totalDistance;
+                                      final distanceStr = distance != null
+                                          ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
+                                          : '-';
+
+                                      entryWidget = _buildRecordEntry(
+                                        textColor,
+                                        secondaryTextColor,
+                                        'trip',
+                                        'Trip #${trip.tripNumber}',
+                                        route,
+                                        DateFormat(
+                                          'MMM d, yyyy',
+                                        ).format(trip.tripDate),
+                                        distanceStr,
+                                      );
+                                    } else {
+                                      final fuel = item['data'] as FuelEntry;
+                                      final location = fuel.location != null
+                                          ? _extractCityState(fuel.location!)
+                                          : 'Unknown location';
+                                      final quantity =
+                                          '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
+                                      final identifier = fuel.isTruckFuel
+                                          ? fuel.truckNumber ?? 'Truck'
+                                          : fuel.reeferNumber ?? 'Reefer';
+
+                                      entryWidget = _buildRecordEntry(
+                                        textColor,
+                                        secondaryTextColor,
+                                        'fuel',
+                                        '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
+                                        location,
+                                        DateFormat(
+                                          'MMM d, yyyy',
+                                        ).format(fuel.fuelDate),
+                                        quantity,
+                                      );
+                                    }
+
+                                    return Column(
                                       children: [
-                                        ..._recentEntries.asMap().entries.map((
-                                          entry,
-                                        ) {
-                                          final index = entry.key;
-                                          final item = entry.value;
-                                          final isTrip = item['type'] == 'trip';
-
-                                          Widget entryWidget;
-                                          if (isTrip) {
-                                            final trip = item['data'] as Trip;
-                                            final pickups =
-                                                trip.pickupLocations;
-                                            final deliveries =
-                                                trip.deliveryLocations;
-                                            final route =
-                                                pickups.isNotEmpty &&
-                                                    deliveries.isNotEmpty
-                                                ? '${_extractCityState(pickups.first)} → ${_extractCityState(deliveries.last)}'
-                                                : 'No route';
-                                            final distance = trip.totalDistance;
-                                            final distanceStr = distance != null
-                                                ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
-                                                : '-';
-
-                                            entryWidget = _buildRecordEntry(
-                                              textColor,
-                                              secondaryTextColor,
-                                              'trip',
-                                              'Trip #${trip.tripNumber}',
-                                              route,
-                                              DateFormat(
-                                                'MMM d, yyyy',
-                                              ).format(trip.tripDate),
-                                              distanceStr,
-                                            );
-                                          } else {
-                                            final fuel =
-                                                item['data'] as FuelEntry;
-                                            final location =
-                                                fuel.location != null
-                                                ? _extractCityState(
-                                                    fuel.location!,
-                                                  )
-                                                : 'Unknown location';
-                                            final quantity =
-                                                '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
-                                            final identifier = fuel.isTruckFuel
-                                                ? fuel.truckNumber ?? 'Truck'
-                                                : fuel.reeferNumber ?? 'Reefer';
-
-                                            entryWidget = _buildRecordEntry(
-                                              textColor,
-                                              secondaryTextColor,
-                                              'fuel',
-                                              '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
-                                              location,
-                                              DateFormat(
-                                                'MMM d, yyyy',
-                                              ).format(fuel.fuelDate),
-                                              quantity,
-                                            );
-                                          }
-
-                                          return Column(
-                                            children: [
-                                              entryWidget,
-                                              if (index <
-                                                  _recentEntries.length - 1)
-                                                Divider(
-                                                  height: 1,
-                                                  color: borderColor,
-                                                ),
-                                            ],
-                                          );
-                                        }),
-                                        Divider(height: 1, color: borderColor),
-                                        // See more button
-                                        InkWell(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const RecordsListPage(),
-                                              ),
-                                            );
-                                          },
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 14,
-                                            ),
-                                            child: Center(
-                                              child: Text(
-                                                'See more',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: const Color(
-                                                    0xFF007AFF,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
+                                        entryWidget,
+                                        if (index < _recentEntries.length - 1)
+                                          Divider(
+                                            height: 1,
+                                            color: borderColor,
+                                          ),
+                                      ],
+                                    );
+                                  }),
+                                  Divider(height: 1, color: borderColor),
+                                  // See more button
+                                  InkWell(
+                                    onTap: () {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const RecordsListPage(),
+                                        ),
+                                      );
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 14,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          'See more',
+                                          style: GoogleFonts.inter(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: const Color(0xFF007AFF),
                                           ),
                                         ),
-                                      ],
+                                      ),
                                     ),
-                            ),
-                          ),
-                        ),
+                                  ),
+                                ],
+                              ),
                       ),
                     ],
                   ),
@@ -1410,7 +1410,27 @@ class _DashboardPageState extends State<DashboardPage>
         child: Stack(
           alignment: Alignment.center,
           children: [
-            Icon(Icons.notifications_outlined, color: iconColor, size: 24),
+            // Animated bell icon
+            AnimatedBuilder(
+              animation: _bellAnimationController,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle: _unreadNotificationCount > 0
+                      ? _bellRotationAnimation.value
+                      : 0.0,
+                  child: Transform.scale(
+                    scale: _unreadNotificationCount > 0
+                        ? _bellScaleAnimation.value
+                        : 1.0,
+                    child: Icon(
+                      Icons.notifications_outlined,
+                      color: iconColor,
+                      size: 24,
+                    ),
+                  ),
+                );
+              },
+            ),
             // Red dot indicator for unread notifications
             if (_unreadNotificationCount > 0)
               Positioned(

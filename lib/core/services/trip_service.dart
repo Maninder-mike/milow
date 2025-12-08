@@ -34,7 +34,8 @@ class TripService {
       if (e.toString().contains('already exists')) {
         rethrow;
       }
-      throw Exception('Failed to create trip: $e');
+      // Rethrow all errors so ErrorHandler can parse them correctly
+      rethrow;
     }
   }
 
@@ -154,10 +155,7 @@ class TripService {
 
       return Trip.fromJson(response);
     } catch (e) {
-      if (e.toString().contains('already exists')) {
-        rethrow;
-      }
-      throw Exception('Failed to update trip: $e');
+      rethrow;
     }
   }
 
