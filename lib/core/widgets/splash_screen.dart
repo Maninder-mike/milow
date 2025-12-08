@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -94,15 +95,15 @@ class _SplashScreenState extends State<SplashScreen>
   void _startAnimationSequence() async {
     // Start logo animation
     await Future.delayed(const Duration(milliseconds: 200));
-    _logoController.forward();
+    unawaited(_logoController.forward());
 
     // Start text animation after logo
     await Future.delayed(const Duration(milliseconds: 600));
-    _textController.forward();
+    unawaited(_textController.forward());
 
     // Wait for animations to complete then navigate
     await Future.delayed(const Duration(milliseconds: 1800));
-    
+
     if (mounted) {
       widget.onComplete();
     }

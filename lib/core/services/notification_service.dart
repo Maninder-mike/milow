@@ -34,7 +34,12 @@ class NotificationService {
 
       if (notificationsJson != null) {
         final List<dynamic> decoded = jsonDecode(notificationsJson);
-        _unreadCount = decoded.where((n) => n['isRead'] == false).length;
+        _unreadCount = decoded.where((n) {
+          if (n is Map) {
+            return n['isRead'] == false;
+          }
+          return false;
+        }).length;
       } else {
         // No notifications stored yet, start with 0
         _unreadCount = 0;
@@ -109,7 +114,9 @@ class NotificationService {
       if (notificationsJson != null) {
         final List<dynamic> decoded = jsonDecode(notificationsJson);
         for (var notification in decoded) {
-          notification['isRead'] = true;
+          if (notification is Map) {
+            notification['isRead'] = true;
+          }
         }
         await prefs.setString('notifications', jsonEncode(decoded));
         _unreadCount = 0;

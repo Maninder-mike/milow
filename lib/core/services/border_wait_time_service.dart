@@ -7,8 +7,7 @@ import 'package:milow/core/models/border_wait_time.dart';
 
 class BorderWaitTimeService {
   static const String _apiUrl = 'https://bwt.cbp.gov/api/waittimes';
-  static const String _corsProxy =
-      'https://api.allorigins.win/raw?url='; // CORS-friendly fallback for web
+
   static const String _cacheKey =
       'border_wait_times_cache_v2'; // Updated to v2 for new format
   static const String _cacheTimeKey = 'border_wait_times_cache_time_v2';
@@ -43,10 +42,7 @@ class BorderWaitTimeService {
 
     // Fetch from API
     try {
-      // Use proxy on web to avoid CORS failures in Chrome
-      final uri = kIsWeb
-          ? Uri.parse('$_corsProxy${Uri.encodeComponent(_apiUrl)}')
-          : Uri.parse(_apiUrl);
+      final uri = Uri.parse(_apiUrl);
 
       final response = await http.get(uri).timeout(const Duration(seconds: 10));
 

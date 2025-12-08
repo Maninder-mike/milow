@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/utils/error_handler.dart';
 import 'package:milow/core/utils/app_dialogs.dart';
@@ -16,6 +16,10 @@ import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/models/trip.dart';
 import 'package:milow/core/models/fuel_entry.dart';
 import 'package:milow/core/utils/unit_utils.dart';
+import 'package:milow/core/services/prediction_service.dart';
+import 'package:milow/core/services/receipt_scanner_service.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class AddEntryPage extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -92,6 +96,14 @@ class _AddEntryPageState extends State<AddEntryPage>
   // Edit mode flag
   bool get _isEditMode =>
       widget.editingTrip != null || widget.editingFuel != null;
+
+  // FocusNodes for Autocomplete
+  final _tripTruckFocusNode = FocusNode();
+  final List<FocusNode> _trailerFocusNodes = [];
+  final List<FocusNode> _pickupFocusNodes = [];
+  final List<FocusNode> _deliveryFocusNodes = [];
+  final _truckFocusNode = FocusNode(); // For Fuel
+  final _locationFocusNode = FocusNode(); // For Fuel
 
   @override
   void initState() {
@@ -495,14 +507,31 @@ class _AddEntryPageState extends State<AddEntryPage>
     _odometerController.dispose();
     _fuelQuantityController.dispose();
     _fuelPriceController.dispose();
+
+    // Dispose FocusNodes
+    _tripTruckFocusNode.dispose();
+    _truckFocusNode.dispose();
+    _locationFocusNode.dispose();
+    for (var node in _trailerFocusNodes) {
+      node.dispose();
+    }
+    for (var node in _pickupFocusNodes) {
+      node.dispose();
+    }
+    for (var node in _deliveryFocusNodes) {
+      node.dispose();
+    }
+
     super.dispose();
   }
 
   // Methods to manage pickup locations
-  void _addPickupLocation() {
+  void _addPickupLocation([String? location]) {
     if (_pickupControllers.length < _maxLocations) {
       setState(() {
-        _pickupControllers.add(TextEditingController());
+        final controller = TextEditingController(text: location);
+        _pickupControllers.add(controller);
+        _pickupFocusNodes.add(FocusNode());
       });
     }
   }
@@ -512,15 +541,19 @@ class _AddEntryPageState extends State<AddEntryPage>
       setState(() {
         _pickupControllers[index].dispose();
         _pickupControllers.removeAt(index);
+        _pickupFocusNodes[index].dispose();
+        _pickupFocusNodes.removeAt(index);
       });
     }
   }
 
   // Methods to manage delivery locations
-  void _addDeliveryLocation() {
+  void _addDeliveryLocation([String? location]) {
     if (_deliveryControllers.length < _maxLocations) {
       setState(() {
-        _deliveryControllers.add(TextEditingController());
+        final controller = TextEditingController(text: location);
+        _deliveryControllers.add(controller);
+        _deliveryFocusNodes.add(FocusNode());
       });
     }
   }
@@ -530,15 +563,19 @@ class _AddEntryPageState extends State<AddEntryPage>
       setState(() {
         _deliveryControllers[index].dispose();
         _deliveryControllers.removeAt(index);
+        _deliveryFocusNodes[index].dispose();
+        _deliveryFocusNodes.removeAt(index);
       });
     }
   }
 
   // Methods to manage trailers
-  void _addTrailer() {
+  void _addTrailer([String? trailerNumber]) {
     if (_trailerControllers.length < _maxLocations) {
       setState(() {
-        _trailerControllers.add(TextEditingController());
+        final controller = TextEditingController(text: trailerNumber);
+        _trailerControllers.add(controller);
+        _trailerFocusNodes.add(FocusNode());
       });
     }
   }
@@ -548,11 +585,13 @@ class _AddEntryPageState extends State<AddEntryPage>
       setState(() {
         _trailerControllers[index].dispose();
         _trailerControllers.removeAt(index);
+        _trailerFocusNodes[index].dispose();
+        _trailerFocusNodes.removeAt(index);
       });
     }
   }
 
-  /// Build border crossing dropdown with add/edit capability
+  // Build border crossing dropdown with add/edit capability
   Widget _buildBorderCrossingDropdown() {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
@@ -669,6 +708,103 @@ class _AddEntryPageState extends State<AddEntryPage>
     );
   }
 
+  Widget _buildAutocompleteField({
+    required TextEditingController controller,
+    required FocusNode focusNode,
+    required String hint,
+    required IconData prefixIcon,
+    required Future<Iterable<String>> Function(String) optionsBuilder,
+    IconData? suffixIcon,
+    VoidCallback? onSuffixTap,
+    TextCapitalization textCapitalization = TextCapitalization.sentences,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return RawAutocomplete<String>(
+          textEditingController: controller,
+          focusNode: focusNode,
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<String>.empty();
+            }
+            return optionsBuilder(textEditingValue.text);
+          },
+          fieldViewBuilder:
+              (
+                BuildContext context,
+                TextEditingController fieldTextEditingController,
+                FocusNode fieldFocusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                return TextField(
+                  controller: fieldTextEditingController,
+                  focusNode: fieldFocusNode,
+                  textCapitalization: textCapitalization,
+                  decoration: _inputDecoration(
+                    hint: hint,
+                    prefixIcon: prefixIcon,
+                    suffixIcon: suffixIcon,
+                    onSuffixTap: onSuffixTap,
+                  ),
+                  onSubmitted: (String value) {
+                    onFieldSubmitted();
+                  },
+                );
+              },
+          optionsViewBuilder:
+              (
+                BuildContext context,
+                AutocompleteOnSelected<String> onSelected,
+                Iterable<String> options,
+              ) {
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: Material(
+                    elevation: 8.0,
+                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    borderRadius: const BorderRadius.vertical(
+                      bottom: Radius.circular(12),
+                    ),
+                    child: Container(
+                      width: constraints.maxWidth,
+                      constraints: const BoxConstraints(maxHeight: 200),
+                      child: ListView.builder(
+                        padding: EdgeInsets.zero,
+                        shrinkWrap: true,
+                        itemCount: options.length,
+                        itemBuilder: (BuildContext context, int index) {
+                          final String option = options.elementAt(index);
+                          return InkWell(
+                            onTap: () {
+                              onSelected(option);
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 16.0,
+                                vertical: 12.0,
+                              ),
+                              child: Text(
+                                option,
+                                style: GoogleFonts.inter(
+                                  color: isDark
+                                      ? Colors.white
+                                      : const Color(0xFF101828),
+                                ),
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                );
+              },
+        );
+      },
+    );
+  }
+
   // Build trailer fields with add/remove buttons
   List<Widget> _buildTrailerFields() {
     final fields = <Widget>[];
@@ -684,14 +820,14 @@ class _AddEntryPageState extends State<AddEntryPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextField(
+                child: _buildAutocompleteField(
                   controller: _trailerControllers[i],
+                  focusNode: _trailerFocusNodes[i],
                   textCapitalization: TextCapitalization.characters,
-                  keyboardType: TextInputType.text,
-                  decoration: _inputDecoration(
-                    hint: i == 0 ? 'e.g., TL-202' : 'Trailer ${i + 1}',
-                    prefixIcon: Icons.rv_hookup,
-                  ),
+                  hint: i == 0 ? 'e.g., TL-202' : 'Trailer ${i + 1}',
+                  prefixIcon: Icons.rv_hookup,
+                  optionsBuilder:
+                      PredictionService.instance.getTrailerSuggestions,
                 ),
               ),
               if (canRemove) ...[
@@ -763,16 +899,15 @@ class _AddEntryPageState extends State<AddEntryPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextField(
+                child: _buildAutocompleteField(
                   controller: _pickupControllers[i],
-                  textCapitalization: TextCapitalization.words,
-                  keyboardType: TextInputType.streetAddress,
-                  decoration: _inputDecoration(
-                    hint: i == 0 ? 'City, State' : 'Additional pickup ${i + 1}',
-                    prefixIcon: Icons.location_on,
-                    suffixIcon: Icons.my_location,
-                    onSuffixTap: () => _getLocationFor(_pickupControllers[i]),
-                  ),
+                  focusNode: _pickupFocusNodes[i],
+                  hint: i == 0 ? 'City, State' : 'Additional pickup ${i + 1}',
+                  prefixIcon: Icons.location_on,
+                  suffixIcon: Icons.my_location,
+                  onSuffixTap: () => _getLocationFor(_pickupControllers[i]),
+                  optionsBuilder:
+                      PredictionService.instance.getLocationSuggestions,
                 ),
               ),
               if (canRemove) ...[
@@ -844,18 +979,16 @@ class _AddEntryPageState extends State<AddEntryPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextField(
+                child: _buildAutocompleteField(
                   controller: _deliveryControllers[i],
+                  focusNode: _deliveryFocusNodes[i],
                   textCapitalization: TextCapitalization.words,
-                  keyboardType: TextInputType.streetAddress,
-                  decoration: _inputDecoration(
-                    hint: i == 0
-                        ? 'City, State'
-                        : 'Additional delivery ${i + 1}',
-                    prefixIcon: Icons.location_on,
-                    suffixIcon: Icons.my_location,
-                    onSuffixTap: () => _getLocationFor(_deliveryControllers[i]),
-                  ),
+                  hint: i == 0 ? 'City, State' : 'Additional delivery ${i + 1}',
+                  prefixIcon: Icons.location_on,
+                  suffixIcon: Icons.my_location,
+                  onSuffixTap: () => _getLocationFor(_deliveryControllers[i]),
+                  optionsBuilder:
+                      PredictionService.instance.getLocationSuggestions,
                 ),
               ),
               if (canRemove) ...[
@@ -995,12 +1128,10 @@ class _AddEntryPageState extends State<AddEntryPage>
 
       // Fallback to IP-based location on web or if geolocation failed
       if (latitude == null || longitude == null) {
-        if (kIsWeb) {
-          final coords = await _getLocationFromIp();
-          if (coords != null) {
-            latitude = coords['lat'];
-            longitude = coords['lon'];
-          }
+        final coords = await _getLocationFromIp();
+        if (coords != null) {
+          latitude = coords['lat'];
+          longitude = coords['lon'];
         }
       }
 
@@ -1214,14 +1345,14 @@ class _AddEntryPageState extends State<AddEntryPage>
                         children: [
                           _buildLabel('Truck Number'),
                           const SizedBox(height: 8),
-                          TextField(
+                          _buildAutocompleteField(
                             controller: _tripTruckNumberController,
+                            focusNode: _tripTruckFocusNode,
                             textCapitalization: TextCapitalization.characters,
-                            keyboardType: TextInputType.text,
-                            decoration: _inputDecoration(
-                              hint: 'e.g., T-101',
-                              prefixIcon: Icons.local_shipping,
-                            ),
+                            hint: 'e.g., T-101',
+                            prefixIcon: Icons.local_shipping,
+                            optionsBuilder:
+                                PredictionService.instance.getTruckSuggestions,
                           ),
                         ],
                       ),
@@ -1631,6 +1762,24 @@ class _AddEntryPageState extends State<AddEntryPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Scan Receipt Button
+                OutlinedButton.icon(
+                  onPressed: _scanReceipt,
+                  icon: const Icon(Icons.camera_alt_outlined),
+                  label: const Text('Scan Receipt (Auto-fill)'),
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    side: BorderSide(
+                      color: Theme.of(
+                        context,
+                      ).primaryColor.withValues(alpha: 0.5),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 _buildLabel('Date & Time'),
                 const SizedBox(height: 8),
                 TextField(
@@ -1645,16 +1794,16 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(height: 16),
                 _buildLabel(_isReeferFuel ? 'Reefer Number' : 'Truck Number'),
                 const SizedBox(height: 8),
-                TextField(
+                _buildAutocompleteField(
                   controller: _truckNumberController,
+                  focusNode: _truckFocusNode,
                   textCapitalization: TextCapitalization.characters,
-                  keyboardType: TextInputType.text,
-                  decoration: _inputDecoration(
-                    hint: _isReeferFuel ? 'e.g., R-101' : 'e.g., T-101',
-                    prefixIcon: _isReeferFuel
-                        ? Icons.ac_unit
-                        : Icons.local_shipping,
-                  ),
+                  hint: _isReeferFuel ? 'e.g., R-101' : 'e.g., T-101',
+                  prefixIcon: _isReeferFuel
+                      ? Icons.ac_unit
+                      : Icons.local_shipping,
+                  optionsBuilder:
+                      PredictionService.instance.getTruckSuggestions,
                 ),
                 const SizedBox(height: 16),
                 // Fuel Type Selector
@@ -1777,18 +1926,18 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(height: 16),
                 _buildLabel(_isReeferFuel ? 'Fuel Location' : 'Location'),
                 const SizedBox(height: 8),
-                TextField(
+                _buildAutocompleteField(
                   controller: _locationController,
+                  focusNode: _locationFocusNode,
                   textCapitalization: TextCapitalization.words,
-                  keyboardType: TextInputType.streetAddress,
-                  decoration: _inputDecoration(
-                    hint: _isReeferFuel
-                        ? 'Reefer fuel station'
-                        : 'Gas station or city',
-                    prefixIcon: Icons.location_on,
-                    suffixIcon: Icons.my_location,
-                    onSuffixTap: () => _getLocationFor(_locationController),
-                  ),
+                  hint: _isReeferFuel
+                      ? 'Reefer fuel station'
+                      : 'Gas station or city',
+                  prefixIcon: Icons.location_on,
+                  suffixIcon: Icons.my_location,
+                  onSuffixTap: () => _getLocationFor(_locationController),
+                  optionsBuilder:
+                      PredictionService.instance.getLocationSuggestions,
                 ),
                 const SizedBox(height: 16),
                 Row(
@@ -1850,7 +1999,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                               ),
                             ],
                             onChanged: (value) {
-                              if (value != null) {
+                              if (value != null && value != _currency) {
                                 setState(() {
                                   _currency = value;
                                 });
@@ -2266,5 +2415,99 @@ class _AddEntryPageState extends State<AddEntryPage>
         ],
       ),
     );
+  }
+
+  Future<void> _scanReceipt() async {
+    try {
+      final picker = ImagePicker();
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+        ),
+        builder: (context) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.camera_alt),
+                title: const Text('Take Photo'),
+                onTap: () => Navigator.pop(context, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library),
+                title: const Text('Choose from Gallery'),
+                onTap: () => Navigator.pop(context, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      if (source == null) return;
+
+      final pickedFile = await picker.pickImage(source: source);
+      if (pickedFile == null) return;
+
+      if (!mounted) return;
+
+      // Show loading
+      // ignore: unawaited_futures
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (c) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final data = await ReceiptScannerService.instance.scanReceipt(
+        File(pickedFile.path),
+      );
+
+      if (mounted) {
+        Navigator.pop(context); // Hide loading
+
+        // Populate fields
+        setState(() {
+          if (data.date != null) {
+            // Preserve current time, just update date
+            final now = DateTime.now();
+            final newDate = DateTime(
+              data.date!.year,
+              data.date!.month,
+              data.date!.day,
+              now.hour,
+              now.minute,
+            );
+            _fuelDateController.text = _formatDateTime(newDate);
+          }
+          if (data.volume != null) {
+            _fuelQuantityController.text = data.volume!.toStringAsFixed(3);
+          }
+          if (data.totalCost != null &&
+              data.volume != null &&
+              data.volume! > 0) {
+            final price = data.totalCost! / data.volume!;
+            _fuelPriceController.text = price.toStringAsFixed(3);
+          }
+          if (data.vendor != null) {
+            _locationController.text = data.vendor!;
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Receipt scanned! Please verify the details.'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        // Close loading dialog if open
+        Navigator.canPop(context) ? Navigator.pop(context) : null;
+        ErrorHandler.showError(context, e);
+      }
+    }
   }
 }

@@ -38,7 +38,7 @@ class GeoService {
       // Add "USA" or "Canada" context if missing to improve accuracy?
       // For now, rely on geocoder's ability.
 
-      List<Location> locations = await locationFromAddress(address);
+      final List<Location> locations = await locationFromAddress(address);
 
       if (locations.isNotEmpty) {
         final loc = locations.first;

@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:milow/core/models/news_article.dart';
@@ -21,12 +22,12 @@ class NewsService {
     if (lastFetch != null &&
         cachedData != null &&
         DateTime.now().difference(lastFetch) < _cacheDuration) {
-      print('DEBUG: Returning cached news from: $lastFetch');
+      debugPrint('DEBUG: Returning cached news from: $lastFetch');
       final List<dynamic> decoded = jsonDecode(cachedData);
       return decoded.map((json) => NewsArticle.fromJson(json)).toList();
     }
 
-    print(
+    debugPrint(
       'DEBUG: Cache expired or missing (Last fetch: $lastFetch). Fetching from API...',
     );
 
@@ -34,10 +35,10 @@ class NewsService {
     try {
       return await _fetchFromApi(box);
     } catch (e) {
-      print('DEBUG: API Error: $e');
+      debugPrint('DEBUG: API Error: $e');
       // If API fails, try to return stale cache if available
       if (cachedData != null) {
-        print('DEBUG: Returning stale cache due to API error.');
+        debugPrint('DEBUG: Returning stale cache due to API error.');
         final List<dynamic> decoded = jsonDecode(cachedData);
         return decoded.map((json) => NewsArticle.fromJson(json)).toList();
       }
@@ -47,7 +48,9 @@ class NewsService {
 
   static Future<List<NewsArticle>> _fetchFromApi(Box box) async {
     final apiKey = dotenv.env['NEWS_API_KEY'];
-    print('DEBUG: API Key present: ${apiKey != null && apiKey.isNotEmpty}');
+    debugPrint(
+      'DEBUG: API Key present: ${apiKey != null && apiKey.isNotEmpty}',
+    );
     if (apiKey == null || apiKey.isEmpty) {
       throw Exception('NEWS_API_KEY not found in .env');
     }
@@ -59,7 +62,7 @@ class NewsService {
     final response = await http.get(url);
 
     if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
+      final data = jsonDecode(response.body) as Map<String, dynamic>;
       final articlesJson = data['articles'] as List;
 
       // Convert to NewsArticle objects

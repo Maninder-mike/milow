@@ -84,7 +84,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
     } else {
       // PIN is enabled (with or without biometric) - show PIN entry page
       if (mounted) setState(() => _isLoading = false);
-      _showPinEntry(prefetchFuture);
+      await _showPinEntry(prefetchFuture);
     }
   }
 
@@ -100,7 +100,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       _maybeShowEmailVerifiedSnackbar();
     } else if (mounted) {
       // Biometric failed - try again
-      _authenticateWithBiometricOnly(prefetchFuture);
+      await _authenticateWithBiometricOnly(prefetchFuture);
     }
   }
 
@@ -120,7 +120,7 @@ class _AuthWrapperState extends State<AuthWrapper> {
       _maybeShowEmailVerifiedSnackbar();
     } else if (mounted) {
       // If not authenticated, try again
-      _showPinEntry(prefetchFuture);
+      await _showPinEntry(prefetchFuture);
     }
   }
 

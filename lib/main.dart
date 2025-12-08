@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -230,13 +231,15 @@ class _MyAppState extends State<MyApp> {
     final result = await VersionCheckerService.checkForUpdates();
 
     if (result.updateAvailable && mounted) {
-      AppDialogs.showUpdateAvailable(
-        context,
-        currentVersion: result.currentVersion ?? 'Unknown',
-        latestVersion: result.versionInfo?.latestVersion ?? 'Unknown',
-        downloadUrl: result.versionInfo?.downloadUrl ?? '',
-        changelog: result.versionInfo?.changelog,
-        isCritical: result.isCriticalUpdate,
+      unawaited(
+        AppDialogs.showUpdateAvailable(
+          context,
+          currentVersion: result.currentVersion ?? 'Unknown',
+          latestVersion: result.versionInfo?.latestVersion ?? 'Unknown',
+          downloadUrl: result.versionInfo?.downloadUrl ?? '',
+          changelog: result.versionInfo?.changelog,
+          isCritical: result.isCriticalUpdate,
+        ),
       );
     }
   }
@@ -246,14 +249,14 @@ class _MyAppState extends State<MyApp> {
     platform.setMethodCallHandler((call) async {
       if (call.method == 'onShareIntentReceived') {
         debugPrint('📱 Share intent received from native side');
-        _checkForSharedText();
+        unawaited(_checkForSharedText());
       }
     });
   }
 
   void _setupDeepLinkListener() {
     // Listen for auth state changes (handles deep link redirects)
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) async {
       // Skip auth redirects if we're processing a share intent
       if (_isProcessingShareIntent) {
         debugPrint('⏸️ Skipping auth redirect - processing share intent');
@@ -307,9 +310,8 @@ class _MyAppState extends State<MyApp> {
           if (now.difference(confirmedTime).inMinutes <= 5) {
             debugPrint('✅ Email verified, redirecting to login');
             // Sign out the user so they can login properly with password
-            Supabase.instance.client.auth.signOut().then((_) {
-              _router.go('/login');
-            });
+            await Supabase.instance.client.auth.signOut();
+            _router.go('/login');
           } else {
             // Regular email/password sign in
             _router.go('/dashboard');
@@ -356,10 +358,12 @@ class _MyAppState extends State<MyApp> {
 
     // Clear the flag after a delay to allow navigation to complete
     // This gives time for the navigation to finish before auth listener can interfere
-    Future.delayed(const Duration(milliseconds: 2000), () {
-      _isProcessingShareIntent = false;
-      debugPrint('✅ Share intent processing complete');
-    });
+    unawaited(
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        _isProcessingShareIntent = false;
+        debugPrint('✅ Share intent processing complete');
+      }),
+    );
   }
 
   @override

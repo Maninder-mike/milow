@@ -10,10 +10,10 @@ class ExploreMapView extends StatefulWidget {
   final bool isDark;
 
   const ExploreMapView({
-    super.key,
     required this.markers,
-    this.onMarkerTap,
     required this.isDark,
+    this.onMarkerTap,
+    super.key,
   });
 
   @override
@@ -36,13 +36,10 @@ class _ExploreMapViewState extends State<ExploreMapView> {
             children: [
               FlutterMap(
                 mapController: _mapController,
-                options: MapOptions(
-                  initialCenter: const LatLng(
-                    39.8283,
-                    -98.5795,
-                  ), // Center of US
+                options: const MapOptions(
+                  initialCenter: LatLng(39.8283, -98.5795), // Center of US
                   initialZoom: 3.5,
-                  interactionOptions: const InteractionOptions(
+                  interactionOptions: InteractionOptions(
                     flags: InteractiveFlag.all & ~InteractiveFlag.rotate,
                   ),
                 ),
@@ -144,7 +141,7 @@ class _ExploreMapViewState extends State<ExploreMapView> {
         border: Border.all(color: Colors.white, width: 2),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.4),
+            color: color.withValues(alpha: 0.4),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),

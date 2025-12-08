@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import '../../../../l10n/app_localizations.dart';
+import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/theme_service.dart';
 import 'package:provider/provider.dart';

@@ -10,11 +10,11 @@ class SmartSuggestionsCard extends StatelessWidget {
   final List<FuelEntry> fuelEntries;
 
   const SmartSuggestionsCard({
-    Key? key,
     required this.isDark,
     required this.trips,
     required this.fuelEntries,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -135,7 +135,7 @@ class SmartSuggestionsCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Icon(icon, color: color, size: 24),

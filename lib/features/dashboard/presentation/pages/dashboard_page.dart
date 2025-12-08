@@ -1,6 +1,6 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
-import 'package:flutter/foundation.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -69,7 +69,6 @@ class _DashboardPageState extends State<DashboardPage>
   // Notification state
   int _unreadNotificationCount = 0;
   StreamSubscription<int>? _notificationSubscription;
-  Timer? _webAutoRefreshTimer;
 
   // Bell icon animation
   late AnimationController _bellAnimationController;
@@ -116,13 +115,7 @@ class _DashboardPageState extends State<DashboardPage>
     _loadRecentEntries();
     _loadDashboardStats();
     _loadNotificationCount();
-    // Web: auto-refresh periodically since pull-to-refresh isn't available
-    if (kIsWeb) {
-      _webAutoRefreshTimer = Timer.periodic(
-        const Duration(minutes: 2),
-        (_) => _onRefresh(),
-      );
-    }
+
     // Refresh border wait times every 5 minutes
     _borderRefreshTimer = Timer.periodic(
       const Duration(minutes: 5),
@@ -135,7 +128,7 @@ class _DashboardPageState extends State<DashboardPage>
     WidgetsBinding.instance.removeObserver(this);
     _borderRefreshTimer?.cancel();
     _notificationSubscription?.cancel();
-    _webAutoRefreshTimer?.cancel();
+
     _bellAnimationController.dispose();
     super.dispose();
   }
@@ -602,7 +595,7 @@ class _DashboardPageState extends State<DashboardPage>
       }
 
       // Combine and sort by date
-      final List<dynamic> combined = [];
+      final List<Map<String, dynamic>> combined = [];
 
       for (final trip in trips) {
         combined.add({'type': 'trip', 'data': trip, 'date': trip.tripDate});

@@ -11,7 +11,9 @@ class AppScaffold extends StatelessWidget {
   final Widget? floatingActionButton;
 
   const AppScaffold({
-    required this.body, required this.currentIndex, super.key,
+    required this.body,
+    required this.currentIndex,
+    super.key,
     this.appBar,
     this.padding,
     this.floatingActionButton,

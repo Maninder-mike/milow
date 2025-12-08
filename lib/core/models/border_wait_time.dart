@@ -27,7 +27,9 @@ class BorderWaitTime {
     required this.portStatus,
     required this.maxLanes,
     required this.lanesOpen,
-    required this.commercialLanesOpen, required this.fastLanesOpen, this.commercialDelay,
+    required this.commercialLanesOpen,
+    required this.fastLanesOpen,
+    this.commercialDelay,
     this.fastLanesDelay,
     this.fastMaxLanes = 0,
     this.hours,
@@ -67,15 +69,18 @@ class BorderWaitTime {
     }
 
     // Extract commercial truck data - nested under standard_lanes and FAST_lanes
-    final commercialVehicles = json['commercial_vehicle_lanes'] ?? {};
-    final standardLanes = commercialVehicles['standard_lanes'] ?? {};
-    final fastLanes = commercialVehicles['FAST_lanes'] ?? {};
+    final commercialVehicles =
+        json['commercial_vehicle_lanes'] as Map<String, dynamic>? ?? {};
+    final standardLanes =
+        commercialVehicles['standard_lanes'] as Map<String, dynamic>? ?? {};
+    final fastLanes =
+        commercialVehicles['FAST_lanes'] as Map<String, dynamic>? ?? {};
 
     return BorderWaitTime(
       portNumber: parseInt(json['port_number']),
-      portName: json['port_name'] ?? '',
-      crossingName: json['crossing_name'] ?? '',
-      portStatus: json['port_status'] ?? 'Closed',
+      portName: json['port_name'] as String? ?? '',
+      crossingName: json['crossing_name'] as String? ?? '',
+      portStatus: json['port_status'] as String? ?? 'Closed',
       maxLanes: parseInt(commercialVehicles['maximum_lanes']),
       lanesOpen: parseInt(standardLanes['lanes_open']),
       commercialDelay: parseDelay(standardLanes['delay_minutes']),
@@ -83,10 +88,10 @@ class BorderWaitTime {
       commercialLanesOpen: parseInt(standardLanes['lanes_open']),
       fastLanesOpen: parseInt(fastLanes['lanes_open']),
       fastMaxLanes: parseInt(fastLanes['maximum_lanes']),
-      hours: json['hours'],
-      border: json['border'],
+      hours: json['hours'] as String?,
+      border: json['border'] as String?,
       lastUpdated: json['date'] != null
-          ? DateTime.tryParse(json['date'])
+          ? DateTime.tryParse(json['date'] as String)
           : null,
       updateTime: standardLanes['update_time']?.toString(),
       operationalStatus: standardLanes['operational_status']?.toString(),

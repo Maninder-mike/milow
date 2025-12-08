@@ -10,12 +10,12 @@ class StatsOverviewCard extends StatelessWidget {
   final bool isDark;
 
   const StatsOverviewCard({
-    Key? key,
     required this.totalMiles,
     required this.totalFuelCost,
     required this.tripCount,
     required this.isDark,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -90,7 +90,7 @@ class StatsOverviewCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha: 0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 20),

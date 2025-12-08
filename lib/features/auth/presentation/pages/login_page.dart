@@ -114,12 +114,9 @@ class _LoginPageState extends State<LoginPage>
 
       await GoogleSignIn.instance.initialize(serverClientId: webClientId);
       final googleUser = await GoogleSignIn.instance.authenticate();
-      if (googleUser == null) {
-        setState(() => _isGoogleLoading = false);
-        return;
-      }
+      // googleUser is supposedly non-nullable here per linter
 
-      final googleAuth = await googleUser.authentication;
+      final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
 
       if (idToken == null) {
@@ -490,7 +487,7 @@ class _LoginPageState extends State<LoginPage>
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Text(
-                                "${AppLocalizations.of(context)!.dontHaveAccount} ",
+                                '${AppLocalizations.of(context)!.dontHaveAccount} ',
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: const Color(0xFF667085)),
                               ),

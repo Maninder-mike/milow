@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import '../../../../l10n/app_localizations.dart';
+import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
@@ -340,7 +340,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                           BoxShadow(
                                             color: const Color(
                                               0xFF007AFF,
-                                            ).withOpacity(0.2),
+                                            ).withValues(alpha: 0.2),
                                             blurRadius: 20,
                                             offset: const Offset(0, 4),
                                           ),
@@ -436,8 +436,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                           r'^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$',
                                           caseSensitive: false,
                                         ).hasMatch(v.trim());
-                                        if (!valid)
+                                        if (!valid) {
                                           return 'Invalid email format';
+                                        }
                                         return null;
                                       },
                                     ),
@@ -589,7 +590,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                         elevation: 0,
                                         shadowColor: const Color(
                                           0xFF007AFF,
-                                        ).withOpacity(0.3),
+                                        ).withValues(alpha: 0.3),
                                       ),
                                       child: _saving
                                           ? const SizedBox(

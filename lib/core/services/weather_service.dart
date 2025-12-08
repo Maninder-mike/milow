@@ -21,11 +21,12 @@ class WeatherService {
       final response = await http.get(url);
 
       if (response.statusCode == 200) {
-        final data = json.decode(response.body);
+        final data = json.decode(response.body) as Map<String, dynamic>;
+        final current = data['current'] as Map<String, dynamic>;
         return {
-          'temperature': data['current']['temperature_2m'],
-          'weatherCode': data['current']['weather_code'],
-          'isDay': data['current']['is_day'] == 1,
+          'temperature': current['temperature_2m'],
+          'weatherCode': current['weather_code'],
+          'isDay': current['is_day'] == 1,
         };
       }
     } catch (e) {

@@ -25,33 +25,35 @@ class _AddVehiclePageState extends State<AddVehiclePage>
   }
 
   Future<void> _loadVehicles() async {
-    // TODO: Load from Supabase
+    // Load from Supabase (Mock implementation for now)
     // For now, using sample data
-    setState(() {
-      _trucks.addAll([
-        {
-          'id': '1',
-          'make': 'Freightliner',
-          'model': 'Cascadia',
-          'year': '2023',
-          'plate': 'ABC1234',
-          'plateState': 'CA',
-          'color': 'White',
-        },
-      ]);
-      _trailers.addAll([
-        {
-          'id': '1',
-          'type': 'Dry Van',
-          'make': 'Wabash',
-          'model': 'DuraPlate',
-          'year': '2022',
-          'length': '53',
-          'plate': 'TRL5678',
-          'plateState': 'CA',
-        },
-      ]);
-    });
+    if (mounted) {
+      setState(() {
+        _trucks.addAll([
+          {
+            'id': '1',
+            'make': 'Freightliner',
+            'model': 'Cascadia',
+            'year': '2023',
+            'plate': 'ABC1234',
+            'plateState': 'CA',
+            'color': 'White',
+          },
+        ]);
+        _trailers.addAll([
+          {
+            'id': '1',
+            'type': 'Dry Van',
+            'make': 'Wabash',
+            'model': 'DuraPlate',
+            'year': '2022',
+            'length': '53',
+            'plate': 'TRL5678',
+            'plateState': 'CA',
+          },
+        ]);
+      });
+    }
   }
 
   @override

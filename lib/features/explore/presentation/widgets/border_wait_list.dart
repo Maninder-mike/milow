@@ -6,7 +6,7 @@ import 'package:milow/core/services/border_wait_time_service.dart';
 class BorderWaitList extends StatelessWidget {
   final bool isDark;
 
-  const BorderWaitList({super.key, required this.isDark});
+  const BorderWaitList({required this.isDark, super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -73,7 +73,7 @@ class BorderWaitList extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -106,7 +106,7 @@ class BorderWaitList extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.1),
+              color: statusColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Row(

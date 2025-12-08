@@ -8,11 +8,11 @@ class StateCollectorCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const StateCollectorCard({
-    Key? key,
     required this.visitedStates,
     required this.isDark,
     this.onTap,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +37,7 @@ class StateCollectorCard extends StatelessWidget {
                   color: isDark ? Colors.white : Colors.black87,
                 ),
               ),
-              Icon(Icons.map, color: Colors.blueAccent),
+              const Icon(Icons.map, color: Colors.blueAccent),
             ],
           ),
           const SizedBox(height: 16),
@@ -96,10 +96,10 @@ class StateCollectorCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blueAccent.withOpacity(0.1),
+                    color: Colors.blueAccent.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: Colors.blueAccent.withOpacity(0.3),
+                      color: Colors.blueAccent.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(

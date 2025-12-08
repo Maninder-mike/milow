@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
@@ -1466,7 +1467,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
     // Refresh records if update was successful
     if (result == true) {
-      _loadRecords();
+      await _loadRecords();
     }
   }
 
@@ -1868,11 +1869,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               child: Icon(
                                 exportCount > 0
                                     ? Icons.description_outlined
-                                    : Icons.warning_amber_rounded,
+                                    : Icons.error_outline,
                                 color: exportCount > 0
                                     ? const Color(0xFF007AFF)
                                     : const Color(0xFFEF4444),
-                                size: 20,
+                                size: 24,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -1882,32 +1883,23 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 children: [
                                   Text(
                                     exportCount > 0
-                                        ? '$exportCount records found'
+                                        ? '$exportCount Records found'
                                         : 'No records found',
                                     style: GoogleFonts.inter(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
-                                      color: exportCount > 0
-                                          ? const Color(0xFF007AFF)
-                                          : const Color(0xFFEF4444),
+                                      color: textColor,
                                     ),
                                   ),
-                                  if (exportCount > 0)
-                                    Text(
-                                      'Ready to export',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: secondaryTextColor,
-                                      ),
-                                    )
-                                  else
-                                    Text(
-                                      'Try adjusting your filters',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: secondaryTextColor,
-                                      ),
+                                  Text(
+                                    exportCount > 0
+                                        ? 'Ready to export'
+                                        : 'Adjust filters',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      color: secondaryTextColor,
                                     ),
+                                  ),
                                 ],
                               ),
                             ),
@@ -2265,13 +2257,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
   Future<void> _downloadPDF(String filter, DateTimeRange? dateRange) async {
     // Show loading indicator
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => const Center(
-        child: CircularProgressIndicator(
-          color: Color(0xFF007AFF),
-          strokeWidth: 3.0,
+    unawaited(
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF007AFF),
+            strokeWidth: 3.0,
+          ),
         ),
       ),
     );

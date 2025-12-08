@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -620,14 +621,16 @@ class _SettingsPageState extends State<SettingsPage> {
                     AppDialogs.hideLoading(context);
 
                     if (result.updateAvailable) {
-                      AppDialogs.showUpdateAvailable(
-                        context,
-                        currentVersion: result.currentVersion ?? 'Unknown',
-                        latestVersion:
-                            result.versionInfo?.latestVersion ?? 'Unknown',
-                        downloadUrl: result.versionInfo?.downloadUrl ?? '',
-                        changelog: result.versionInfo?.changelog,
-                        isCritical: result.isCriticalUpdate,
+                      unawaited(
+                        AppDialogs.showUpdateAvailable(
+                          context,
+                          currentVersion: result.currentVersion ?? 'Unknown',
+                          latestVersion:
+                              result.versionInfo?.latestVersion ?? 'Unknown',
+                          downloadUrl: result.versionInfo?.downloadUrl ?? '',
+                          changelog: result.versionInfo?.changelog,
+                          isCritical: result.isCriticalUpdate,
+                        ),
                       );
                     } else {
                       AppDialogs.showSuccess(

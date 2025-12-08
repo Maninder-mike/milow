@@ -6,7 +6,7 @@ import 'package:milow/core/services/trip_service.dart';
 class DestinationWeatherCard extends StatefulWidget {
   final bool isDark;
 
-  const DestinationWeatherCard({super.key, required this.isDark});
+  const DestinationWeatherCard({required this.isDark, super.key});
 
   @override
   State<DestinationWeatherCard> createState() => _DestinationWeatherCardState();
@@ -84,9 +84,9 @@ class _DestinationWeatherCardState extends State<DestinationWeatherCard> {
       return const SizedBox.shrink();
     }
 
-    final temp = _weatherData!['temperature'];
-    final code = _weatherData!['weatherCode'];
-    final isDay = _weatherData!['isDay'];
+    final temp = (_weatherData!['temperature'] as num).toDouble();
+    final code = _weatherData!['weatherCode'] as int;
+    final isDay = _weatherData!['isDay'] as bool;
     final icon = WeatherService().getWeatherIcon(code, isDay: isDay);
 
     return Container(
@@ -103,7 +103,7 @@ class _DestinationWeatherCardState extends State<DestinationWeatherCard> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 4),
           ),

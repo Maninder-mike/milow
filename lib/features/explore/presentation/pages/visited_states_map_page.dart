@@ -4,15 +4,16 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:milow/core/models/trip.dart';
 import 'package:milow/core/models/fuel_entry.dart';
+import 'package:go_router/go_router.dart';
 
 class VisitedStatesMapPage extends StatefulWidget {
   final List<Trip> trips;
   final List<FuelEntry> fuelEntries;
 
   const VisitedStatesMapPage({
-    super.key,
     required this.trips,
     required this.fuelEntries,
+    super.key,
   });
 
   @override
@@ -689,6 +690,36 @@ class _RegionDetailsSheet extends StatelessWidget {
                       'No visits recorded here yet.',
                       style: GoogleFonts.inter(color: Colors.grey),
                     ),
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        context.pop(); // Close sheet
+                        context.go(
+                          '/add_entry',
+                          extra: {'startLocation': regionName},
+                        );
+                      },
+                      icon: const Icon(
+                        Icons.add_location_alt_outlined,
+                        size: 18,
+                      ),
+                      label: Text(
+                        'Add Trip Here',
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF007AFF),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -718,7 +749,7 @@ class _RegionDetailsSheet extends StatelessWidget {
           DateFormat.yMMMd().format(item.tripDate),
           style: GoogleFonts.inter(fontSize: 12),
         ),
-        trailing: Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+        trailing: const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
       );
     } else if (item is FuelEntry) {
       return ListTile(

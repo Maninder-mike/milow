@@ -18,7 +18,9 @@ class NewsArticle {
   factory NewsArticle.fromJson(Map<String, dynamic> json) {
     return NewsArticle(
       title: json['title'] ?? 'No Title',
-      source: json['source']?['name'] ?? 'Unknown Source',
+      source:
+          (json['source'] as Map<String, dynamic>?)?['name'] as String? ??
+          'Unknown Source',
       url: json['url'],
       urlToImage: json['urlToImage'],
       publishedAt: json['publishedAt'] != null

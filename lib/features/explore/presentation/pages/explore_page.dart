@@ -222,7 +222,7 @@ class _ExplorePageState extends State<ExplorePage> {
       }
 
       // Generate map markers in background
-      _generateMapMarkers();
+      await _generateMapMarkers();
     } catch (e) {
       if (mounted) {
         setState(() {
@@ -314,7 +314,7 @@ class _ExplorePageState extends State<ExplorePage> {
               id: trip.id ?? 'trip_${DateTime.now().millisecondsSinceEpoch}',
               type: MapMarkerType.trip,
               point: latLng,
-              title: 'Trip ${trip.tripNumber ?? "Unknown"}',
+              title: 'Trip ${trip.tripNumber}',
               subtitle: mainLoc,
               date: trip.createdAt ?? DateTime.now(),
               data: trip,
@@ -672,7 +672,8 @@ class _ExplorePageState extends State<ExplorePage> {
                               _SectionHeaderRow(
                                 title: 'Activity Map',
                                 onAction: () {
-                                  // TODO: Navigate to full screen map
+                                  // Navigation to full screen map to be implemented
+                                  debugPrint('Navigate to full screen map');
                                 },
                               ),
                               const SizedBox(height: 12),
@@ -785,7 +786,7 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Widget _buildDestinationsList() {
     if (_filteredDestinations.isEmpty) {
-      return _EmptyStateCard(
+      return const _EmptyStateCard(
         message: 'No recent destinations found.',
         icon: Icons.map,
       );
@@ -802,7 +803,7 @@ class _ExplorePageState extends State<ExplorePage> {
 
   Widget _buildActivityList() {
     if (_filteredActivity.isEmpty) {
-      return _EmptyStateCard(
+      return const _EmptyStateCard(
         message: 'No recent activity.',
         icon: Icons.history,
       );
@@ -835,7 +836,7 @@ class _ExplorePageState extends State<ExplorePage> {
           boxShadow: [
             if (isSelected)
               BoxShadow(
-                color: const Color(0xFF6C5CE7).withOpacity(0.3),
+                color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
                 blurRadius: 8,
                 offset: const Offset(0, 4),
               ),
