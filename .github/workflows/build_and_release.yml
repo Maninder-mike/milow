@@ -4,14 +4,14 @@ on:
   push:
     branches: [ release ]
     paths:
-      - "pubspec.yaml"
-      - "lib/**"
-      - "android/**"
+      - "apps/driver/pubspec.yaml"
+      - "apps/driver/lib/**"
+      - "apps/driver/android/**"
   workflow_dispatch:  # Allow manual triggering
       
 jobs:
   build-and-release:
-    name: Build and Release APK
+    name: Build, Release APK & Deploy to Play Store
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -32,11 +32,11 @@ jobs:
         with:
           fetch-depth: 0  # Fetch all history for changelog generation
 
-      # Extract version from pubspec.yaml
+      # Extract version from apps/driver/pubspec.yaml
       - name: Read version
         id: version
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          VERSION=$(grep '^version:' apps/driver/pubspec.yaml | sed 's/version: //;s/\+.*//')
           echo "version=v$VERSION" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Building version: v$VERSION"
@@ -70,7 +70,7 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.38.4"
+          flutter-version: "3.24.0" # Updated to matches pubspec env if needed or keep stable
           channel: 'stable'
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:'
@@ -81,7 +81,7 @@ jobs:
         with:
           path: |
             ~/.pub-cache
-            **/.dart_tool
+            apps/driver/.dart_tool
           key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
             ${{ runner.os }}-pub-
@@ -97,7 +97,7 @@ jobs:
       - name: Create key.properties
         run: |
           echo "📝 Creating key.properties..."
-          cat > android/key.properties << EOF
+          cat > apps/driver/android/key.properties << EOF
           storePassword=$KEYSTORE_PASSWORD
           keyPassword=$KEY_PASSWORD
           keyAlias=$KEY_ALIAS
@@ -108,7 +108,7 @@ jobs:
       - name: Create .env file
         run: |
           echo "🔧 Creating .env file..."
-          cat > .env << EOF
+          cat > apps/driver/.env << EOF
           NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           EOF
@@ -117,14 +117,15 @@ jobs:
       - name: Install dependencies
         run: |
           echo "📦 Installing Flutter dependencies..."
+          cd apps/driver
           flutter pub get
-          flutter --version
 
       # Run tests (optional, can be disabled)
       - name: Run tests
         continue-on-error: true
         run: |
           echo "🧪 Running tests..."
+          cd apps/driver
           flutter test || echo "::warning::Tests failed but continuing build"
 
       # Analyze code
@@ -132,21 +133,35 @@ jobs:
         continue-on-error: true
         run: |
           echo "🔍 Analyzing code..."
+          cd apps/driver
           flutter analyze || echo "::warning::Analysis found issues but continuing build"
 
-      # Build signed APK
-      - name: Build signed APK
+      # Build signed APK and App Bundle
+      - name: Build Release Artifacts
         run: |
-          echo "🏗️ Building release APK..."
+          echo "🏗️ Building release APK & App Bundle..."
+          cd apps/driver
           flutter build apk --release --verbose
+          flutter build appbundle --release --verbose
           echo "✅ Build complete!"
 
-      # Prepare build output
+      # Upload to Play Store
+      - name: Upload to Play Store
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+          packageName: maninder.co.in.milow
+          releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
+          track: beta
+          status: completed
+          changesNotSentForReview: true # Optional, helps with some updates
+
+      # Prepare build output (APK only for GitHub Release, AAB went to Play Store)
       - name: Prepare APK for release
         run: |
           echo "📦 Preparing APK..."
           mkdir -p build_output
-          cp build/app/outputs/flutter-apk/app-release.apk \
+          cp apps/driver/build/app/outputs/flutter-apk/app-release.apk \
              build_output/milow-${{ steps.version.outputs.version }}.apk
           
           # Get APK size
@@ -177,6 +192,7 @@ jobs:
           ## 🗄️ Database & Backend
           
           - **Supabase Catalog**: Version entry updated automatically.
+          - **Google Play**: Uploaded to Beta track.
           
           ## 📝 What's Changed
           
@@ -185,7 +201,6 @@ jobs:
           ## 📥 Download
           
           - **APK Size**: ${{ steps.prepare_apk.outputs.apk_size }}
-          - **Flutter Version**: 3.38.4
           - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
           
           ## 📲 Installation
@@ -301,8 +316,5 @@ jobs:
           echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **APK Size**: ${{ steps.prepare_apk.outputs.apk_size }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Play Store**: Beta Track Upload Completed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "### Next Steps" >> $GITHUB_STEP_SUMMARY
-          echo "1. Test the APK on a device" >> $GITHUB_STEP_SUMMARY
-          echo "2. Update the wiki if needed" >> $GITHUB_STEP_SUMMARY
-          echo "3. Announce the release" >> $GITHUB_STEP_SUMMARY
