@@ -1,18 +1,22 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:milow_core/milow_core.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../users/data/user_repository_provider.dart';
+import 'package:go_router/go_router.dart';
+import '../providers/driver_selection_provider.dart';
 
-class DriversSidebar extends StatefulWidget {
+class DriversSidebar extends ConsumerStatefulWidget {
   const DriversSidebar({super.key});
 
   @override
-  State<DriversSidebar> createState() => _DriversSidebarState();
+  ConsumerState<DriversSidebar> createState() => _DriversSidebarState();
 }
 
-class _DriversSidebarState extends State<DriversSidebar> {
+class _DriversSidebarState extends ConsumerState<DriversSidebar> {
   final Map<String, bool> _expandedSections = {
     'ACTIVE DRIVERS': true,
-    'ON RESET':
-        false, // Default closed like image/request implies specific focus
+    'ON RESET': false,
     'OFF DUTY': false,
     'INACTIVE': false,
   };
@@ -33,6 +37,9 @@ class _DriversSidebarState extends State<DriversSidebar> {
     final titleColor = isLight
         ? const Color(0xFF616161)
         : const Color(0xFFBBBBBB);
+
+    final usersAsync = ref.watch(usersProvider);
+    final selectedDriver = ref.watch(selectedDriverProvider);
 
     return Container(
       color: backgroundColor,
@@ -95,61 +102,42 @@ class _DriversSidebarState extends State<DriversSidebar> {
               ),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
               cursorColor: isLight ? Colors.black : Colors.white,
+              onChanged: (value) {
+                // TODO: Implement search
+              },
             ),
           ),
 
           // Lists
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: [
-                _buildCollapsibleSection('ACTIVE DRIVERS', isLight, [
-                  _buildDriverItem(
-                    'Mike Ross',
-                    'Trip #1024 - Delivering',
-                    'MR',
-                    Colors.blue,
-                    isLight,
-                  ),
-                  _buildDriverItem(
-                    'Harvey Specter',
-                    'Trip #1025 - Pickup',
-                    'HS',
-                    Colors.purple,
-                    isLight,
-                  ),
-                ]),
-                const Divider(),
-                _buildCollapsibleSection('ON RESET', isLight, [
-                  _buildDriverItem(
-                    'Louis Litt',
-                    'Resetting at Yard',
-                    'LL',
-                    Colors.orange,
-                    isLight,
-                  ),
-                ]),
-                const Divider(),
-                _buildCollapsibleSection('OFF DUTY', isLight, [
-                  _buildDriverItem(
-                    'Rachel Zane',
-                    'Home',
-                    'RZ',
-                    Colors.green,
-                    isLight,
-                  ),
-                ]),
-                const Divider(),
-                _buildCollapsibleSection('INACTIVE', isLight, [
-                  _buildDriverItem(
-                    'Donna Paulsen',
-                    'On Leave',
-                    'DP',
-                    Colors.red,
-                    isLight,
-                  ),
-                ]),
-              ],
+            child: usersAsync.when(
+              data: (users) {
+                // Filter verified drivers
+                final drivers = users
+                    .where((u) => u.role == UserRole.driver && u.isVerified)
+                    .toList();
+
+                return ListView(
+                  padding: EdgeInsets.zero,
+                  children: [
+                    _buildCollapsibleSection(
+                      'ACTIVE DRIVERS',
+                      isLight,
+                      drivers
+                          .map(
+                            (driver) =>
+                                _buildUserItem(driver, isLight, selectedDriver),
+                          )
+                          .toList(),
+                    ),
+                    _buildCollapsibleSection('ON RESET', isLight, []),
+                    _buildCollapsibleSection('OFF DUTY', isLight, []),
+                    _buildCollapsibleSection('INACTIVE', isLight, []),
+                  ],
+                );
+              },
+              loading: () => const Center(child: ProgressRing()),
+              error: (e, s) => Center(child: Text('Error: $e')),
             ),
           ),
         ],
@@ -162,6 +150,8 @@ class _DriversSidebarState extends State<DriversSidebar> {
     bool isLight,
     List<Widget> children,
   ) {
+    // Removed empty check to always show sections
+
     final textColor = isLight
         ? const Color(0xFF333333)
         : const Color(0xFFCCCCCC);
@@ -177,14 +167,32 @@ class _DriversSidebarState extends State<DriversSidebar> {
           onPressed: () => _toggleSection(title),
           builder: (context, states) {
             return Container(
-              color: states.isHovered ? hoverColor : Colors.transparent,
+              decoration: BoxDecoration(
+                color: states.isHovered
+                    ? hoverColor
+                    : (isLight
+                          ? const Color(0xFFFAFAFA)
+                          : const Color(
+                              0xFF252526,
+                            )), // Subtle bg or transparent
+                border: Border(
+                  top: BorderSide(
+                    color: isLight
+                        ? const Color(0xFFE5E5E5)
+                        : const Color(
+                            0xFF3E3E42,
+                          ), // VS Code sidebar toggle border color
+                    width: 1.0,
+                  ),
+                ),
+              ),
               padding: const EdgeInsets.only(
                 left: 4,
                 right: 8,
-                top: 2,
-                bottom: 2,
-              ), // Compact like VS Code
-              height: 22,
+                top: 4,
+                bottom: 4,
+              ), // increased padding slightly for touch/click
+              height: 28, // slight height increase for header
               child: Row(
                 children: [
                   Icon(
@@ -204,7 +212,7 @@ class _DriversSidebarState extends State<DriversSidebar> {
                     ),
                   ),
                   const Spacer(),
-                  // Badge count (simulated)
+                  // Badge count
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 6,
@@ -235,12 +243,10 @@ class _DriversSidebarState extends State<DriversSidebar> {
     );
   }
 
-  Widget _buildDriverItem(
-    String name,
-    String details,
-    String initials,
-    Color color,
+  Widget _buildUserItem(
+    UserProfile driver,
     bool isLight,
+    UserProfile? selectedDriver,
   ) {
     final textColor = isLight
         ? const Color(0xFF333333)
@@ -251,31 +257,35 @@ class _DriversSidebarState extends State<DriversSidebar> {
     final hoverColor = isLight
         ? const Color(0xFFE8E8E8)
         : const Color(0xFF2A2D2E);
+    final selectedColor = isLight
+        ? const Color(0xFFE8E8E8) // Visual Studio Code selection style
+        : const Color(0xFF37373D);
+
+    final isSelected = selectedDriver?.id == driver.id;
+
+    // Build details string
+    String details = driver.email ?? 'No email';
+    // If we had trip info, we'd use it here. For now, use role or email.
+    if (driver.role.label.isNotEmpty) {
+      details = '${driver.role.label} • $details';
+    }
 
     return HoverButton(
-      onPressed: () {},
+      onPressed: () {
+        ref.read(selectedDriverProvider.notifier).select(driver);
+        context.go('/drivers');
+      },
       builder: (context, states) {
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          color: states.isHovered ? hoverColor : Colors.transparent,
+          color: isSelected
+              ? selectedColor
+              : (states.isHovered ? hoverColor : Colors.transparent),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Picture (Placeholder)
-              Container(
-                width: 28,
-                height: 28,
-                decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-                alignment: Alignment.center,
-                child: Text(
-                  initials,
-                  style: GoogleFonts.inter(
-                    color: Colors.white,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
+              // Avatar
+              _buildAvatar(driver),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -285,7 +295,7 @@ class _DriversSidebarState extends State<DriversSidebar> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          name,
+                          driver.fullName ?? 'Unknown',
                           style: GoogleFonts.inter(
                             fontSize: 13,
                             fontWeight: FontWeight.w600,
@@ -293,10 +303,21 @@ class _DriversSidebarState extends State<DriversSidebar> {
                           ),
                         ),
                         if (states.isHovered)
-                          Icon(
-                            FluentIcons.settings,
-                            size: 12,
-                            color: subTextColor,
+                          Padding(
+                            padding: const EdgeInsets.only(left: 4),
+                            child: IconButton(
+                              icon: Icon(
+                                FluentIcons.settings,
+                                size: 12,
+                                color: subTextColor,
+                              ),
+                              onPressed: () {
+                                ref
+                                    .read(selectedDriverProvider.notifier)
+                                    .select(driver);
+                                context.go('/drivers');
+                              },
+                            ),
                           ),
                       ],
                     ),
@@ -317,6 +338,58 @@ class _DriversSidebarState extends State<DriversSidebar> {
           ),
         );
       },
+    );
+  }
+
+  Widget _buildAvatar(UserProfile driver) {
+    if (driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty) {
+      return Container(
+        width: 28,
+        height: 28,
+        decoration: const BoxDecoration(shape: BoxShape.circle),
+        clipBehavior: Clip.antiAlias,
+        child: Image.network(
+          driver.avatarUrl!,
+          fit: BoxFit.cover,
+          errorBuilder: (context, error, stackTrace) =>
+              _buildInitialsAvatar(driver),
+        ),
+      );
+    }
+    return _buildInitialsAvatar(driver);
+  }
+
+  Widget _buildInitialsAvatar(UserProfile driver) {
+    String initials = '?';
+    if (driver.fullName != null && driver.fullName!.isNotEmpty) {
+      final parts = driver.fullName!.trim().split(' ');
+      if (parts.length >= 2) {
+        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      } else if (parts.isNotEmpty) {
+        initials = parts[0][0].toUpperCase();
+      }
+    } else if (driver.email != null && driver.email!.isNotEmpty) {
+      initials = driver.email![0].toUpperCase();
+    }
+
+    final theme = FluentTheme.of(context);
+
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: theme.accentColor.defaultBrushFor(theme.brightness),
+        shape: BoxShape.circle,
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: GoogleFonts.inter(
+          color: Colors.white,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
     );
   }
 }

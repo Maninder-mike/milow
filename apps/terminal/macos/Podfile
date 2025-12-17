@@ -39,4 +39,12 @@ post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
   end
+
+  Dir.glob(File.join(installer.sandbox.root, '**', '*.xcconfig')).each do |file_path|
+    text = File.read(file_path)
+    text.gsub!(/\"[^\"]*TOOLCHAIN_DIR[^\"]*\"/, "")
+    text.gsub!(/\S*TOOLCHAIN_DIR\S*/, "")
+    text.gsub!(/[^\s]*com\.apple\.security\.cryptexd[^\s]*/, "")
+    File.open(file_path, "w") { |file| file.puts text }
+  end
 end

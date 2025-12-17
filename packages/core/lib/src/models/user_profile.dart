@@ -1,10 +1,10 @@
-/// Enum representing user roles
 enum UserRole {
   admin,
   dispatcher,
   driver,
   safetyOfficer,
-  assistant;
+  assistant,
+  pending;
 
   String get label {
     switch (this) {
@@ -18,45 +18,44 @@ enum UserRole {
         return 'Safety Officer';
       case UserRole.assistant:
         return 'Assistant';
+      case UserRole.pending:
+        return 'Pending';
     }
   }
 }
 
 /// Model representing a user profile
+/// Model representing a user profile
 class UserProfile {
   final String id;
   final String? email;
-  final String? firstName;
-  final String? lastName;
-  final UserRole role;
+  final String? fullName;
+  final String? avatarUrl;
+  final UserRole role; // Uses the updated UserRole enum
+  final bool isVerified;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
-  UserProfile({
+  const UserProfile({
     required this.id,
     this.email,
-    this.firstName,
-    this.lastName,
-    this.role = UserRole.driver,
+    this.fullName,
+    this.avatarUrl,
+    required this.role,
+    this.isVerified = false,
     this.createdAt,
     this.updatedAt,
   });
-
-  String get fullName {
-    if (firstName != null && lastName != null) {
-      return '$firstName $lastName';
-    }
-    return firstName ?? lastName ?? email ?? 'Unknown';
-  }
 
   /// Create UserProfile from JSON (Supabase response)
   factory UserProfile.fromJson(Map<String, dynamic> json) {
     return UserProfile(
       id: json['id'] as String,
       email: json['email'] as String?,
-      firstName: json['first_name'] as String?,
-      lastName: json['last_name'] as String?,
+      fullName: json['full_name'] as String?,
+      avatarUrl: json['avatar_url'] as String?,
       role: _parseRole(json['role'] as String?),
+      isVerified: json['is_verified'] as bool? ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -71,36 +70,38 @@ class UserProfile {
     return {
       'id': id,
       'email': email,
-      'first_name': firstName,
-      'last_name': lastName,
+      'full_name': fullName,
+      'avatar_url': avatarUrl,
       'role': role.name, // Store as string in DB
+      'is_verified': isVerified,
     };
   }
 
-  static UserRole _parseRole(String? roleStr) {
-    if (roleStr == null) return UserRole.driver;
-    try {
-      return UserRole.values.firstWhere((e) => e.name == roleStr);
-    } catch (_) {
-      return UserRole.driver; // Fallback
-    }
+  static UserRole _parseRole(String? role) {
+    if (role == null) return UserRole.pending;
+    return UserRole.values.firstWhere(
+      (e) => e.name == role,
+      orElse: () => UserRole.pending,
+    );
   }
 
   UserProfile copyWith({
     String? id,
     String? email,
-    String? firstName,
-    String? lastName,
+    String? fullName,
+    String? avatarUrl,
     UserRole? role,
+    bool? isVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
     return UserProfile(
       id: id ?? this.id,
       email: email ?? this.email,
-      firstName: firstName ?? this.firstName,
-      lastName: lastName ?? this.lastName,
+      fullName: fullName ?? this.fullName,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
       role: role ?? this.role,
+      isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

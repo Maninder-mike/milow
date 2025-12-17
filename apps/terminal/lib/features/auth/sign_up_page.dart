@@ -4,6 +4,7 @@ import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow_core/milow_core.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -13,6 +14,7 @@ class SignUpPage extends StatefulWidget {
 }
 
 class _SignUpPageState extends State<SignUpPage> {
+  UserRole _selectedRole = UserRole.dispatcher; // Default role
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -48,7 +50,10 @@ class _SignUpPageState extends State<SignUpPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
         emailRedirectTo: 'milow-admin://login',
-        data: {'full_name': _nameController.text.trim()},
+        data: {
+          'full_name': _nameController.text.trim(),
+          'role': _selectedRole.name,
+        },
       );
 
       if (mounted) {
@@ -155,6 +160,58 @@ class _SignUpPageState extends State<SignUpPage> {
                         ),
                       ),
                       const SizedBox(height: 32),
+
+                      // Role Selection
+                      Container(
+                        padding: const EdgeInsets.only(left: 8, right: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: ComboBox<UserRole>(
+                          value: _selectedRole,
+                          items: UserRole.values
+                              .where(
+                                (role) =>
+                                    role != UserRole.driver &&
+                                    role != UserRole.pending,
+                              )
+                              .map((role) {
+                                // Format role name nicely
+                                final label = role.name
+                                    .replaceAllMapped(
+                                      RegExp(r'([A-Z])'),
+                                      (match) => ' ${match.group(0)}',
+                                    )
+                                    .replaceFirstMapped(
+                                      RegExp(r'^[a-z]'),
+                                      (match) => match.group(0)!.toUpperCase(),
+                                    );
+
+                                return ComboBoxItem(
+                                  value: role,
+                                  child: Text(
+                                    label,
+                                    style: const TextStyle(color: Colors.black),
+                                  ),
+                                );
+                              })
+                              .toList(),
+                          onChanged: (role) {
+                            if (role != null) {
+                              setState(() => _selectedRole = role);
+                            }
+                          },
+                          isExpanded: true,
+                          placeholder: Text(
+                            'Select Role',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.7),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
 
                       // Name Field
                       _buildTextField(
@@ -300,7 +357,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       // Sign Up Button
                       SizedBox(
                         width: double.infinity,
-                        height: 40,
+                        height: 48,
                         child: FilledButton(
                           onPressed: _isLoading ? null : _signUp,
                           style: ButtonStyle(

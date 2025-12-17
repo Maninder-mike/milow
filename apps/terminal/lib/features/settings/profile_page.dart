@@ -19,7 +19,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _addressController = TextEditingController();
   final _countryController = TextEditingController();
   final _companyNameController = TextEditingController();
-  final _companyCodeController = TextEditingController();
 
   // Read-only fields
   String _email = '';
@@ -43,8 +42,89 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     // Let's rely on the fetched role being 'admin' to unlock editing,
     // OR just allow it for this specific user as requested.
     return _role.toLowerCase() == 'admin' ||
-        (user?.email?.contains('admin') ?? false) ||
-        true; // FORCE TRUE for this user as requested: "this is admin profile"
+        (user?.email?.contains('admin') ?? false);
+  }
+
+  // Controller for manual approval
+  final _manualApprovalEmailController = TextEditingController();
+
+  Future<void> _manualApproveUser() async {
+    final email = _manualApprovalEmailController.text.trim();
+    if (email.isEmpty) return;
+
+    try {
+      // Find user by email
+      final response = await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .eq('email', email)
+          .maybeSingle();
+
+      if (response == null) {
+        if (mounted) {
+          displayInfoBar(
+            context,
+            builder: (context, close) {
+              return InfoBar(
+                title: const Text('User Not Found'),
+                content: Text('No user found with email: $email'),
+                severity: InfoBarSeverity.warning,
+                action: IconButton(
+                  icon: const Icon(FluentIcons.clear),
+                  onPressed: close,
+                ),
+              );
+            },
+          );
+        }
+        return;
+      }
+
+      // Update user
+      await Supabase.instance.client
+          .from('profiles')
+          .update({
+            'is_verified': true,
+            'company_name':
+                _companyNameController.text, // Sync admin's company name
+          })
+          .eq('email', email);
+
+      if (mounted) {
+        _manualApprovalEmailController.clear();
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Success'),
+              content: Text('User $email has been approved.'),
+              severity: InfoBarSeverity.success,
+              action: IconButton(
+                icon: const Icon(FluentIcons.clear),
+                onPressed: close,
+              ),
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Error'),
+              content: Text('Failed to approve user: $e'),
+              severity: InfoBarSeverity.error,
+              action: IconButton(
+                icon: const Icon(FluentIcons.clear),
+                onPressed: close,
+              ),
+            );
+          },
+        );
+      }
+    }
   }
 
   // Define available roles
@@ -60,7 +140,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   @override
   void initState() {
     super.initState();
-    _loadUserProfile();
+    _loadUserProfile().then((_) {
+      if (_isAdmin && mounted) {
+        _loadVerifiedUsers();
+      }
+    });
   }
 
   Future<void> _loadUserProfile() async {
@@ -85,7 +169,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             _addressController.text = data['address'] as String? ?? '';
             _countryController.text = data['country'] as String? ?? '';
             _companyNameController.text = data['company_name'] as String? ?? '';
-            _companyCodeController.text = data['company_code'] as String? ?? '';
             _avatarUrl = data['avatar_url'] as String?;
 
             // Prefer DB role, fallback to metadata, fallback to Driver
@@ -152,7 +235,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               fileOptions: const FileOptions(upsert: true),
             );
 
-        avatarUrl = await Supabase.instance.client.storage
+        avatarUrl = Supabase.instance.client.storage
             .from('avatars')
             .getPublicUrl(fileName);
         debugPrint('Avatar uploaded: $avatarUrl');
@@ -165,7 +248,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         'address': _addressController.text,
         'country': _countryController.text,
         'company_name': _companyNameController.text,
-        'company_code': _companyCodeController.text,
         'role': _isAdmin ? _selectedRole : _role, // Only save selected if admin
         'updated_at': DateTime.now().toIso8601String(),
         if (avatarUrl != null) 'avatar_url': avatarUrl,
@@ -247,14 +329,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     final borderColor = isLight
         ? const Color(0xFFE0E0E0)
         : const Color(0xFF333333);
-    final avatarPlaceholderColor = isLight
-        ? const Color(0xFFF3F3F3)
-        : const Color(0xFF3C3C3C);
-    final iconColor = isLight
-        ? const Color(0xFF616161)
-        : const Color(0xFFCCCCCC);
 
-    return ScaffoldPage.scrollable(
+    return ScaffoldPage(
       header: PageHeader(
         title: Text(
           'My Profile',
@@ -289,227 +365,553 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
       ),
-      children: [
-        Center(
-          child: Container(
-            constraints: const BoxConstraints(maxWidth: 600),
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: cardColor,
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: borderColor),
-              boxShadow: isLight
-                  ? [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
-            ),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Avatar Section
-                  Center(
-                    child: Stack(
-                      children: [
-                        Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: avatarPlaceholderColor,
-                            image: _profileImage != null
-                                ? DecorationImage(
-                                    image: FileImage(File(_profileImage!.path)),
-                                    fit: BoxFit.cover,
-                                  )
-                                : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                                ? DecorationImage(
-                                    image: NetworkImage(_avatarUrl!),
-                                    fit: BoxFit.cover,
-                                  )
-                                : null,
-                          ),
-                          child:
-                              (_profileImage == null &&
-                                  (_avatarUrl == null || _avatarUrl!.isEmpty))
-                              ? Icon(
-                                  FluentIcons.contact,
-                                  size: 48,
-                                  color: iconColor,
-                                )
-                              : null,
-                        ),
-                        if (_isEditing)
-                          Positioned(
-                            bottom: 0,
-                            right: 0,
-                            child: IconButton(
-                              icon: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: theme.accentColor,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  FluentIcons.edit,
-                                  size: 14,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              onPressed: _pickImage,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 32),
+      content: LayoutBuilder(
+        builder: (context, constraints) {
+          final isWide = constraints.maxWidth > 900;
+          final double contentWidth = isWide ? 1000 : 600;
 
-                  // Read-Only Info (Email)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
+          return SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+            child: Center(
+              child: SizedBox(
+                width: contentWidth,
+                child: Form(
+                  key: _formKey,
+                  child: isWide
+                      ? Row(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _buildLabel('Email Account'),
-                            TextFormBox(
-                              initialValue: _email,
-                              readOnly: true,
-                              enabled: false,
-                              prefix: const Padding(
-                                padding: EdgeInsets.only(left: 8),
-                                child: Icon(FluentIcons.mail, size: 16),
+                            // Left Panel (Identity)
+                            SizedBox(
+                              width: 300,
+                              child: _buildIdentityCard(
+                                theme,
+                                cardColor,
+                                borderColor,
                               ),
                             ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Role Field
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Role'),
-                            if (_isEditing && _isAdmin)
-                              ComboBox<String>(
-                                value: _selectedRole,
-                                items: _roles
-                                    .map(
-                                      (e) => ComboBoxItem(
-                                        value: e,
-                                        child: Text(e),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (v) => setState(
-                                  () => _selectedRole = v ?? 'Driver',
-                                ),
-                                isExpanded: true,
-                              )
-                            else
-                              TextFormBox(
-                                key: ValueKey(_role),
-                                initialValue: _role.toUpperCase(),
-                                readOnly: true,
-                                enabled: false,
-                                prefix: const Padding(
-                                  padding: EdgeInsets.only(left: 8),
-                                  child: Icon(
-                                    FluentIcons.contact_lock,
-                                    size: 16,
+                            const SizedBox(width: 24),
+                            // Right Panel (Details)
+                            Expanded(
+                              child: Column(
+                                children: [
+                                  _buildDetailsCard(
+                                    theme,
+                                    cardColor,
+                                    borderColor,
                                   ),
-                                ),
+                                  if (_isAdmin) ...[
+                                    const SizedBox(height: 24),
+                                    _buildAdminSection(
+                                      theme,
+                                      cardColor,
+                                      borderColor,
+                                    ),
+                                  ],
+                                ],
                               ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 24),
-
-                  const Divider(),
-                  const SizedBox(height: 24),
-
-                  _buildLabel('Full Name'),
-                  TextFormBox(
-                    controller: _nameController,
-                    readOnly: !_isEditing,
-                    validator: (v) => v?.isEmpty == true ? 'Required' : null,
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildLabel('Phone Number'),
-                  TextFormBox(
-                    controller: _phoneController,
-                    readOnly: !_isEditing,
-                    placeholder: 'Add phone number',
-                  ),
-                  const SizedBox(height: 16),
-
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('Country'),
-                            TextFormBox(
-                              controller: _countryController,
-                              readOnly: !_isEditing,
-                              placeholder: 'Country',
                             ),
                           ],
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        )
+                      : Column(
                           children: [
-                            _buildLabel('Address'),
-                            TextFormBox(
-                              controller: _addressController,
-                              readOnly: !_isEditing,
-                              placeholder: 'Full address',
-                            ),
+                            _buildIdentityCard(theme, cardColor, borderColor),
+                            const SizedBox(height: 24),
+                            _buildDetailsCard(theme, cardColor, borderColor),
+                            if (_isAdmin) ...[
+                              const SizedBox(height: 24),
+                              _buildAdminSection(theme, cardColor, borderColor),
+                            ],
                           ],
                         ),
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildIdentityCard(
+    FluentThemeData theme,
+    Color cardColor,
+    Color borderColor,
+  ) {
+    final avatarPlaceholderColor = theme.brightness == Brightness.light
+        ? const Color(0xFFF3F3F3)
+        : const Color(0xFF3C3C3C);
+    final iconColor = theme.brightness == Brightness.light
+        ? const Color(0xFF616161)
+        : const Color(0xFFCCCCCC);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+        boxShadow: theme.brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        children: [
+          Stack(
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: avatarPlaceholderColor,
+                  image: _profileImage != null
+                      ? DecorationImage(
+                          image: FileImage(File(_profileImage!.path)),
+                          fit: BoxFit.cover,
+                        )
+                      : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
+                      ? DecorationImage(
+                          image: NetworkImage(_avatarUrl!),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child:
+                    (_profileImage == null &&
+                        (_avatarUrl == null || _avatarUrl!.isEmpty))
+                    ? Icon(FluentIcons.contact, size: 64, color: iconColor)
+                    : null,
+              ),
+              if (_isEditing)
+                Positioned(
+                  bottom: 0,
+                  right: 0,
+                  child: IconButton(
+                    icon: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.accentColor,
+                        shape: BoxShape.circle,
                       ),
-                    ],
+                      child: const Icon(
+                        FluentIcons.edit,
+                        size: 16,
+                        color: Colors.white,
+                      ),
+                    ),
+                    onPressed: _pickImage,
                   ),
-                  const SizedBox(height: 16),
-
-                  const Divider(),
-                  const SizedBox(height: 16),
-
-                  _buildLabel('Company Name'),
-                  TextFormBox(
-                    controller: _companyNameController,
-                    readOnly: !_isEditing,
-                    placeholder: 'Company Name',
-                  ),
-                  const SizedBox(height: 16),
-
-                  _buildLabel('Company Code'),
-                  TextFormBox(
-                    controller: _companyCodeController,
-                    readOnly: !_isEditing,
-                    placeholder: 'CODE',
-                  ),
-                ],
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Text(
+            _nameController.text.isNotEmpty
+                ? _nameController.text
+                : 'Your Name',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: theme.accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(100),
+              border: Border.all(
+                color: theme.accentColor.withValues(alpha: 0.2),
+              ),
+            ),
+            child: Text(
+              _role.toUpperCase(),
+              style: GoogleFonts.inter(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: theme.accentColor,
+                letterSpacing: 0.5,
               ),
             ),
           ),
-        ),
-      ],
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildLabel('Email Account'),
+                TextFormBox(
+                  initialValue: _email,
+                  readOnly: true,
+                  enabled: false, // Visual only
+                  prefix: const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Icon(FluentIcons.mail, size: 16),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                _buildLabel('Assigned Role'),
+                if (_isEditing && _isAdmin)
+                  ComboBox<String>(
+                    value: _selectedRole,
+                    items: _roles
+                        .map((e) => ComboBoxItem(value: e, child: Text(e)))
+                        .toList(),
+                    onChanged: (v) =>
+                        setState(() => _selectedRole = v ?? 'Driver'),
+                    isExpanded: true,
+                  )
+                else
+                  TextFormBox(
+                    key: ValueKey(_role),
+                    initialValue: _role.toUpperCase(),
+                    readOnly: true,
+                    enabled: false,
+                    prefix: const Padding(
+                      padding: EdgeInsets.only(left: 8),
+                      child: Icon(FluentIcons.contact_lock, size: 16),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
+  }
+
+  Widget _buildDetailsCard(
+    FluentThemeData theme,
+    Color cardColor,
+    Color borderColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+        boxShadow: theme.brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(FluentIcons.contact_info, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Personal Details',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildLabel('Full Name'),
+          TextFormBox(
+            controller: _nameController,
+            readOnly: !_isEditing,
+            validator: (v) => v?.isEmpty == true ? 'Required' : null,
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('Phone Number'),
+                    TextFormBox(
+                      controller: _phoneController,
+                      readOnly: !_isEditing,
+                      placeholder: '+1 234 567 8900',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('Country'),
+                    TextFormBox(
+                      controller: _countryController,
+                      readOnly: !_isEditing,
+                      placeholder: 'Country',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildLabel('Address'),
+          TextFormBox(
+            controller: _addressController,
+            readOnly: !_isEditing,
+            placeholder: 'Full address',
+          ),
+          const SizedBox(height: 16),
+          const Divider(),
+          const SizedBox(height: 16),
+          _buildLabel('Company Name'),
+          TextFormBox(
+            controller: _companyNameController,
+            readOnly: !_isEditing || !_isAdmin,
+            enabled: _isAdmin,
+            placeholder: 'Company Name',
+            prefix: const Padding(
+              padding: EdgeInsets.only(left: 8),
+              child: Icon(FluentIcons.group, size: 16),
+            ),
+          ),
+          if (!_isAdmin)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text(
+                'Managed by your administrator',
+                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAdminSection(
+    FluentThemeData theme,
+    Color cardColor,
+    Color borderColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.red.withValues(alpha: 0.2)),
+        boxShadow: theme.brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.red.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(FluentIcons.shield, size: 20, color: Colors.red),
+              const SizedBox(width: 8),
+              Text(
+                'Admin Console',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.red,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildLabel('Manually Approve User'),
+          Row(
+            children: [
+              Expanded(
+                child: TextFormBox(
+                  controller: _manualApprovalEmailController,
+                  placeholder: 'Enter requester email',
+                  prefix: Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Icon(FluentIcons.add_friend, size: 16),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _manualApproveUser,
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.all(theme.accentColor),
+                ),
+                child: const Text('Approve'),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Approving a user will verify them and auto-assign the Dispatcher role.',
+            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          _buildLabel('Active Users (Non-Admin)'),
+          if (_verifiedUsers.isEmpty)
+            Container(
+              padding: const EdgeInsets.all(16),
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: theme.scaffoldBackgroundColor,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Text('No active users found.'),
+            )
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: _verifiedUsers.length,
+              itemBuilder: (context, index) {
+                final u = _verifiedUsers[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: theme.accentColor.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        FluentIcons.contact,
+                        color: theme.accentColor,
+                      ),
+                    ),
+                    title: Text(
+                      u['full_name'] ?? 'No Name',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    subtitle: Text(
+                      '${u['email']}\n${u['role']}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.withValues(alpha: 0.5),
+                      ),
+                    ),
+                    trailing: Button(
+                      onPressed: () => _revokeUser(u['id'], u['email'] ?? ''),
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(
+                          Colors.red.withValues(alpha: 0.1),
+                        ),
+                        foregroundColor: WidgetStateProperty.all(Colors.red),
+                      ),
+                      child: const Text('Revoke'),
+                    ),
+                  ),
+                );
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  // List of verified users for management
+  List<Map<String, dynamic>> _verifiedUsers = [];
+
+  Future<void> _loadVerifiedUsers() async {
+    if (!_isAdmin) return;
+
+    try {
+      final data = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('is_verified', true)
+          .neq(
+            'role',
+            'admin',
+          ) // Don't allow revoking other admins here for safety
+          .order('updated_at', ascending: false)
+          .limit(50); // Limit to recent 50 for performance
+
+      if (mounted) {
+        setState(() {
+          _verifiedUsers = List<Map<String, dynamic>>.from(data);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading verified users: $e');
+    }
+  }
+
+  Future<void> _revokeUser(String userId, String email) async {
+    try {
+      await Supabase.instance.client
+          .from('profiles')
+          .update({
+            'is_verified': false,
+            'role': 'pending', // Reset role to pending
+          })
+          .eq('id', userId);
+
+      // Refresh list
+      await _loadVerifiedUsers();
+
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Access Revoked'),
+              content: Text('User $email has been revoked and set to pending.'),
+              severity: InfoBarSeverity.success,
+              action: IconButton(
+                icon: const Icon(FluentIcons.clear),
+                onPressed: close,
+              ),
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Error'),
+              content: Text('Failed to revoke user: $e'),
+              severity: InfoBarSeverity.error,
+              action: IconButton(
+                icon: const Icon(FluentIcons.clear),
+                onPressed: close,
+              ),
+            );
+          },
+        );
+      }
+    }
   }
 
   Widget _buildLabel(String text) {

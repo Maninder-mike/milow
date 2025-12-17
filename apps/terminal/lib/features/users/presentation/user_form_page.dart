@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 import 'dart:io';
+import '../data/user_repository_provider.dart';
 
 class UserFormPage extends ConsumerStatefulWidget {
   const UserFormPage({super.key});
@@ -47,21 +48,49 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
 
     setState(() => _isLoading = true);
 
-    // Simulate submission flow
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      await ref
+          .read(userRepositoryProvider)
+          .createUser(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+            firstName: _nameController.text.trim().split(' ').first,
+            lastName: _nameController.text.trim().split(' ').skip(1).join(' '),
+            role: _selectedRole,
+          );
 
-    // TODO: Connect to UserRepository to create/update user
-    // ref.read(userRepositoryProvider).createUser(...)
-
-    if (mounted) {
+      if (!mounted) return;
       setState(() => _isLoading = false);
+
       displayInfoBar(
         context,
         builder: (context, close) {
           return InfoBar(
             title: const Text('Success'),
-            content: const Text('User saved successfully (Simulation)'),
+            content: Text('User ${_emailController.text} created successfully'),
             severity: InfoBarSeverity.success,
+            action: IconButton(
+              icon: const Icon(FluentIcons.clear),
+              onPressed: close,
+            ),
+          );
+        },
+      );
+
+      // Delay before closing to show success
+      await Future.delayed(const Duration(milliseconds: 1500));
+      if (!mounted) return;
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      displayInfoBar(
+        context,
+        builder: (context, close) {
+          return InfoBar(
+            title: const Text('Error'),
+            content: Text(e.toString()),
+            severity: InfoBarSeverity.error,
             action: IconButton(
               icon: const Icon(FluentIcons.clear),
               onPressed: close,

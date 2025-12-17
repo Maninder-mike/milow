@@ -48,7 +48,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _companyNameController = TextEditingController();
-  final _companyCodeController = TextEditingController();
 
   String? _avatarUrl;
   XFile? _pickedImage;
@@ -85,7 +84,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _selectedCountryCode = parsedCountry ?? countryCodes[0];
         _emailController.text = profile['email'] ?? '';
         _companyNameController.text = profile['company_name'] ?? '';
-        _companyCodeController.text = profile['company_code'] ?? '';
         _avatarUrl = profile['avatar_url'] as String?;
         _loading = false;
       });
@@ -116,7 +114,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         _selectedCountryCode = parsedCountry ?? countryCodes[0];
         _emailController.text = fresh['email'] ?? '';
         _companyNameController.text = fresh['company_name'] ?? '';
-        _companyCodeController.text = fresh['company_code'] ?? '';
         _avatarUrl = fresh['avatar_url'] as String?;
       });
     }
@@ -238,8 +235,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'country': _countryController.text.trim(),
         'phone': fullPhone,
         'email': _emailController.text.trim(),
-        'company_name': _companyNameController.text.trim(),
-        'company_code': _companyCodeController.text.trim(),
         'avatar_url': newAvatarUrl,
       });
       if (mounted) {
@@ -519,14 +514,8 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                       controller: _companyNameController,
                                       label: 'Company Name',
                                       icon: Icons.business,
-                                      hintText: 'Optional',
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _companyCodeController,
-                                      label: 'Company Code',
-                                      icon: Icons.badge_outlined,
-                                      hintText: 'Optional',
+                                      hintText: 'Set by Admin',
+                                      enabled: false,
                                     ),
                                   ],
                                 ),
@@ -745,6 +734,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     String? hintText,
     TextInputType? keyboardType,
     String? Function(String?)? validator,
+    bool enabled = true,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
@@ -763,6 +753,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
+          enabled: enabled,
           keyboardType: keyboardType,
           validator: validator,
           style: GoogleFonts.inter(fontSize: 15, color: textColor),

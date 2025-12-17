@@ -31,7 +31,7 @@ class CustomAboutDialog extends StatelessWidget {
                   gradient: LinearGradient(
                     colors: [
                       theme.accentColor,
-                      theme.accentColor.withOpacity(0.8),
+                      theme.accentColor.withValues(alpha: 0.8),
                     ],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
@@ -39,7 +39,7 @@ class CustomAboutDialog extends StatelessWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
@@ -71,9 +71,11 @@ class CustomAboutDialog extends StatelessWidget {
                   vertical: 4,
                 ),
                 decoration: BoxDecoration(
-                  color: theme.accentColor.withOpacity(0.1),
+                  color: theme.accentColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: theme.accentColor.withOpacity(0.2)),
+                  border: Border.all(
+                    color: theme.accentColor.withValues(alpha: 0.2),
+                  ),
                 ),
                 child: Text(
                   'v${info.version} (Build ${info.buildNumber})',
@@ -91,7 +93,7 @@ class CustomAboutDialog extends StatelessWidget {
                 'Advanced terminal management system for modern logistics operations.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: theme.typography.body?.color?.withOpacity(0.8),
+                  color: theme.typography.body?.color?.withValues(alpha: 0.8),
                 ),
               ),
               const SizedBox(height: 24),
@@ -102,7 +104,9 @@ class CustomAboutDialog extends StatelessWidget {
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 11,
-                  color: theme.typography.caption?.color?.withOpacity(0.6),
+                  color: theme.typography.caption?.color?.withValues(
+                    alpha: 0.6,
+                  ),
                 ),
               ),
               const SizedBox(height: 8),

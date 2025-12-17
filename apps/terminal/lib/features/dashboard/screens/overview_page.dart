@@ -1,5 +1,4 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 class OverviewPage extends StatelessWidget {
   const OverviewPage({super.key});
@@ -10,7 +9,7 @@ class OverviewPage extends StatelessWidget {
       header: PageHeader(
         title: Text(
           'Dashboard Overview',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+          style: FluentTheme.of(context).typography.title,
         ),
       ),
       children: [
@@ -18,6 +17,7 @@ class OverviewPage extends StatelessWidget {
         Row(
           children: [
             _buildStatCard(
+              context,
               title: 'Total Users',
               value: '1,234',
               icon: FluentIcons.people,
@@ -25,6 +25,7 @@ class OverviewPage extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             _buildStatCard(
+              context,
               title: 'Active Trips',
               value: '42',
               icon: FluentIcons.delivery_truck,
@@ -32,6 +33,7 @@ class OverviewPage extends StatelessWidget {
             ),
             const SizedBox(width: 16),
             _buildStatCard(
+              context,
               title: 'Revenue',
               value: '\$12,345',
               icon: FluentIcons.money,
@@ -73,7 +75,8 @@ class OverviewPage extends StatelessWidget {
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(
+    BuildContext context, {
     required String title,
     required String value,
     required IconData icon,
@@ -90,10 +93,9 @@ class OverviewPage extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               value,
-              style: GoogleFonts.outfit(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-              ),
+              style: FluentTheme.of(
+                context,
+              ).typography.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             Text(
               title,

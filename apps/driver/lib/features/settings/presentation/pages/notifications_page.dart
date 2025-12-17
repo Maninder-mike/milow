@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milow/core/services/notification_service.dart';
-import 'dart:convert';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
@@ -12,64 +11,11 @@ class NotificationsPage extends StatefulWidget {
 }
 
 class _NotificationsPageState extends State<NotificationsPage> {
-  Future<void> _deleteNotification(String id) async {
-    setState(() {
-      _notifications.removeWhere((n) => n.id == id);
-    });
-    await _saveNotifications();
-    // Update notification service count
-    await NotificationService.instance.refreshUnreadCount();
-  }
-
   String _selectedFilter = 'All';
-
   List<NotificationItem> _notifications = [];
+  final Set<String> _locallyDeletedIds = {};
 
-  @override
-  void initState() {
-    super.initState();
-    _loadNotifications();
-  }
-
-  Future<void> _loadNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-
-    // Check if we've migrated (cleared old dummy data)
-    final hasMigrated = prefs.getBool('notifications_migrated_v2') ?? false;
-    if (!hasMigrated) {
-      // Clear old dummy data from previous versions
-      await prefs.remove('notifications');
-      await prefs.setBool('notifications_migrated_v2', true);
-      setState(() {
-        _notifications = [];
-      });
-      return;
-    }
-
-    final String? notificationsJson = prefs.getString('notifications');
-    if (notificationsJson != null) {
-      final List<dynamic> decoded = jsonDecode(notificationsJson);
-      setState(() {
-        _notifications = decoded
-            .map((e) => NotificationItem.fromJson(e))
-            .toList();
-      });
-    } else {
-      // Start with empty notifications - no dummy data
-      setState(() {
-        _notifications = [];
-      });
-    }
-  }
-
-  Future<void> _saveNotifications() async {
-    final prefs = await SharedPreferences.getInstance();
-    final String encoded = jsonEncode(
-      _notifications.map((e) => e.toJson()).toList(),
-    );
-    await prefs.setString('notifications', encoded);
-  }
-
+  // Used for filtering locally after fetching
   List<NotificationItem> get _filteredNotifications {
     if (_selectedFilter == 'All') {
       return _notifications;
@@ -81,6 +27,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
       return _notifications
           .where((n) => n.type == NotificationType.company)
           .toList();
+    } else if (_selectedFilter == 'Messages') {
+      return _notifications
+          .where((n) => n.type == NotificationType.message)
+          .toList();
     } else {
       return _notifications
           .where((n) => n.type == NotificationType.news)
@@ -88,24 +38,32 @@ class _NotificationsPageState extends State<NotificationsPage> {
     }
   }
 
-  void _markAsRead(String id) async {
-    setState(() {
-      final notification = _notifications.firstWhere((n) => n.id == id);
-      notification.isRead = true;
-    });
-    await _saveNotifications();
-    // Update notification service count
+  Future<void> _markAsRead(String id) async {
+    await Supabase.instance.client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('id', id);
+    // Optimistic update handled by StreamBuilder usually, but local state might lag slightly
+    // NotificationService count update:
     await NotificationService.instance.refreshUnreadCount();
   }
 
-  void _markAllAsRead() async {
-    setState(() {
-      for (var notification in _notifications) {
-        notification.isRead = true;
-      }
-    });
-    await _saveNotifications();
-    // Update notification service count
+  Future<void> _markAllAsRead() async {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await Supabase.instance.client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('user_id', userId)
+        .eq('is_read', false);
+
+    await NotificationService.instance.refreshUnreadCount();
+  }
+
+  // Clean up notification delete if needed
+  Future<void> _deleteNotification(String id) async {
+    await Supabase.instance.client.from('notifications').delete().eq('id', id);
     await NotificationService.instance.refreshUnreadCount();
   }
 
@@ -117,6 +75,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.business;
       case NotificationType.news:
         return Icons.newspaper;
+      case NotificationType.message:
+        return Icons.chat_bubble_outline;
     }
   }
 
@@ -128,6 +88,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return const Color(0xFF007AFF); // Blue for company
       case NotificationType.news:
         return const Color(0xFF10B981); // Green for news
+      case NotificationType.message:
+        return const Color(0xFF8B5CF6); // Violet for messages
     }
   }
 
@@ -139,6 +101,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return 'Company';
       case NotificationType.news:
         return 'News';
+      case NotificationType.message:
+        return 'Message';
     }
   }
 
@@ -148,8 +112,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final backgroundColor = isDark
         ? const Color(0xFF121212)
         : const Color(0xFFF9FAFB);
-
-    final unreadCount = _notifications.where((n) => !n.isRead).length;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -163,107 +125,196 @@ class _NotificationsPageState extends State<NotificationsPage> {
           ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Notifications',
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).textTheme.bodyLarge?.color,
-              ),
-            ),
-            if (unreadCount > 0)
-              Text(
-                '$unreadCount unread',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: const Color(0xFF98A2B3),
+        title: StreamBuilder<List<Map<String, dynamic>>>(
+          stream: Supabase.instance.client
+              .from('notifications')
+              .stream(primaryKey: ['id'])
+              .eq('user_id', Supabase.instance.client.auth.currentUser!.id),
+          builder: (context, snapshot) {
+            int unread = 0;
+            if (snapshot.hasData) {
+              unread = snapshot.data!
+                  .where((e) => e['is_read'] == false)
+                  .length;
+            }
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Notifications',
+                  style: GoogleFonts.inter(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w600,
+                    color: Theme.of(context).textTheme.bodyLarge?.color,
+                  ),
                 ),
-              ),
-          ],
+                if (unread > 0)
+                  Text(
+                    '$unread unread',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: const Color(0xFF98A2B3),
+                    ),
+                  ),
+              ],
+            );
+          },
         ),
         actions: [
-          if (unreadCount > 0)
-            TextButton(
-              onPressed: _markAllAsRead,
-              child: Text(
-                'Mark all read',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF007AFF),
-                ),
+          TextButton(
+            onPressed: _markAllAsRead,
+            child: Text(
+              'Mark all read',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: const Color(0xFF007AFF),
               ),
             ),
+          ),
         ],
       ),
-      body: Column(
-        children: [
-          // Filter Chips
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Row(
-                children: [
-                  _buildFilterChip('All', _notifications.length),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    'Reminders',
-                    _notifications
-                        .where((n) => n.type == NotificationType.reminder)
-                        .length,
+      body: StreamBuilder<List<Map<String, dynamic>>>(
+        stream: Supabase.instance.client
+            .from('notifications')
+            .stream(primaryKey: ['id'])
+            .eq('user_id', Supabase.instance.client.auth.currentUser!.id)
+            .order('created_at', ascending: false),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          }
+          if (!snapshot.hasData) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          final notifications = snapshot.data!
+              .where((e) => !_locallyDeletedIds.contains(e['id']))
+              .map((e) => NotificationItem.fromJson(e))
+              .toList();
+
+          // Update local state for filtering
+          // Note: Avoid setting state in build, but for this simple filter logic it's okay to just reuse variable
+          // or we can use a separate variable in build.
+          // Better: just use `notifications` local var and filter it.
+          // But `_filteredNotifications` depends on `_notifications`.
+          // I'll assign it here but wrapped in a check to avoid rebuild loops if I was calling setState (I am not).
+          _notifications = notifications;
+
+          return Column(
+            children: [
+              // Filter Chips
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: Row(
+                    children: [
+                      _buildFilterChip('All', notifications.length),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        'Reminders',
+                        notifications
+                            .where((n) => n.type == NotificationType.reminder)
+                            .length,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        'Company',
+                        notifications
+                            .where((n) => n.type == NotificationType.company)
+                            .length,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        'News',
+                        notifications
+                            .where((n) => n.type == NotificationType.news)
+                            .length,
+                      ),
+                      const SizedBox(width: 8),
+                      _buildFilterChip(
+                        'Messages',
+                        notifications
+                            .where((n) => n.type == NotificationType.message)
+                            .length,
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    'Company',
-                    _notifications
-                        .where((n) => n.type == NotificationType.company)
-                        .length,
-                  ),
-                  const SizedBox(width: 8),
-                  _buildFilterChip(
-                    'News',
-                    _notifications
-                        .where((n) => n.type == NotificationType.news)
-                        .length,
-                  ),
-                ],
+                ),
               ),
-            ),
-          ),
-          // Notifications List
-          Expanded(
-            child: _filteredNotifications.isEmpty
-                ? _buildEmptyState()
-                : ListView.builder(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _filteredNotifications.length,
-                    itemBuilder: (context, index) {
-                      final notification = _filteredNotifications[index];
-                      return Dismissible(
-                        key: Key(notification.id),
-                        direction: DismissDirection.endToStart,
-                        background: Container(
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.symmetric(horizontal: 24),
-                          color: const Color(0xFFEF4444),
-                          child: const Icon(
-                            Icons.delete_outline,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                        ),
-                        onDismissed: (_) =>
-                            _deleteNotification(notification.id),
-                        child: _buildNotificationCard(notification),
-                      );
-                    },
-                  ),
-          ),
-        ],
+              // Notifications List
+              Expanded(
+                child: _filteredNotifications.isEmpty
+                    ? _buildEmptyState()
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        itemCount: _filteredNotifications.length,
+                        itemBuilder: (context, index) {
+                          final notification = _filteredNotifications[index];
+                          return Dismissible(
+                            key: Key(notification.id),
+                            direction: DismissDirection.endToStart,
+                            background: Container(
+                              alignment: Alignment.centerRight,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                              ),
+                              color: const Color(0xFFEF4444),
+                              child: const Icon(
+                                Icons.delete_outline,
+                                color: Colors.white,
+                                size: 28,
+                              ),
+                            ),
+                            confirmDismiss: (_) async {
+                              final shouldDelete = await showDialog<bool>(
+                                context: context,
+                                builder: (context) => AlertDialog(
+                                  title: const Text('Delete Notification?'),
+                                  content: const Text(
+                                    'Are you sure you want to delete this notification?',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, false),
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.pop(context, true),
+                                      style: TextButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                      ),
+                                      child: const Text('Delete'),
+                                    ),
+                                  ],
+                                ),
+                              );
+
+                              if (shouldDelete == true) {
+                                await _deleteNotification(notification.id);
+                                return true;
+                              }
+                              return false;
+                            },
+                            onDismissed: (_) {
+                              setState(() {
+                                _locallyDeletedIds.add(notification.id);
+                              });
+                            },
+                            child: _buildNotificationCard(notification),
+                          );
+                        },
+                      ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -337,9 +388,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
     return GestureDetector(
-      onTap: () {
-        _markAsRead(notification.id);
-      },
+      onTap: () => _markAsRead(notification.id),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
@@ -360,113 +409,249 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
           ],
         ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Column(
           children: [
-            // Icon
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: _getNotificationColor(
-                  notification.type,
-                ).withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                _getNotificationIcon(notification.type),
-                color: _getNotificationColor(notification.type),
-                size: 20,
-              ),
-            ),
-            const SizedBox(width: 12),
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          notification.title,
-                          style: GoogleFonts.inter(
-                            fontSize: 15,
-                            fontWeight: notification.isRead
-                                ? FontWeight.w600
-                                : FontWeight.w700,
-                            color: Theme.of(context).textTheme.bodyLarge?.color,
-                          ),
-                        ),
-                      ),
-                      if (!notification.isRead)
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Color(0xFF007AFF),
-                            shape: BoxShape.circle,
-                          ),
-                        ),
-                      // Removed delete icon button for swipe-to-delete only
-                    ],
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _getNotificationColor(
+                      notification.type,
+                    ).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    notification.message,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      color: const Color(0xFF667085),
-                      height: 1.5,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  child: Icon(
+                    _getNotificationIcon(notification.type),
+                    color: _getNotificationColor(notification.type),
+                    size: 20,
                   ),
-                  const SizedBox(height: 8),
-                  Row(
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(
-                        Icons.access_time,
-                        size: 14,
-                        color: Color(0xFF98A2B3),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              notification.title,
+                              style: GoogleFonts.inter(
+                                fontSize: 15,
+                                fontWeight: notification.isRead
+                                    ? FontWeight.w600
+                                    : FontWeight.w700,
+                                color: Theme.of(
+                                  context,
+                                ).textTheme.bodyLarge?.color,
+                              ),
+                            ),
+                          ),
+                          if (!notification.isRead)
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Color(0xFF007AFF),
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                        ],
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(height: 6),
                       Text(
-                        _formatTimestamp(notification.timestamp),
+                        notification.message,
                         style: GoogleFonts.inter(
-                          fontSize: 12,
-                          color: const Color(0xFF98A2B3),
+                          fontSize: 14,
+                          color: const Color(0xFF667085),
+                          height: 1.5,
                         ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(width: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 3,
-                        ),
-                        decoration: BoxDecoration(
-                          color: _getNotificationColor(
-                            notification.type,
-                          ).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          _getNotificationLabel(notification.type),
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: _getNotificationColor(notification.type),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.access_time,
+                            size: 14,
+                            color: Color(0xFF98A2B3),
                           ),
-                        ),
+                          const SizedBox(width: 4),
+                          Text(
+                            _formatTimestamp(notification.timestamp),
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: const Color(0xFF98A2B3),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 3,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _getNotificationColor(
+                                notification.type,
+                              ).withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              _getNotificationLabel(notification.type),
+                              style: GoogleFonts.inter(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: _getNotificationColor(notification.type),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ],
+                  ),
+                ),
+              ],
+            ),
+            if (notification.type == NotificationType.company &&
+                !notification.isRead) ...[
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                      ),
+                      onPressed: () => _rejectInvite(notification.id),
+                      child: const Text('Decline'),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        elevation: 0,
+                      ),
+                      onPressed: () {
+                        final adminId =
+                            notification.data?['admin_id'] as String?;
+                        if (adminId != null) {
+                          _approveInvite(notification.id, adminId);
+                        }
+                      },
+                      child: const Text('Approve'),
+                    ),
                   ),
                 ],
               ),
-            ),
+            ],
           ],
         ),
       ),
     );
+  }
+
+  Future<void> _approveInvite(String notificationId, String adminId) async {
+    try {
+      await _markAsRead(notificationId);
+
+      // Notify the admin that driver accepted
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final userProfile = await Supabase.instance.client
+          .from('profiles')
+          .select('full_name')
+          .eq('id', userId)
+          .single();
+
+      final driverName = userProfile['full_name'] ?? 'A driver';
+
+      await Supabase.instance.client.from('notifications').insert({
+        'user_id': adminId,
+        'type': 'company_invite',
+        'title': 'Verification Accepted',
+        'body':
+            '$driverName has accepted your verification request and granted data access.',
+        'data': {'driver_id': userId, 'driver_name': driverName},
+        'is_read': false,
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invitation accepted. Data sharing enabled.'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
+      }
+    }
+  }
+
+  Future<void> _rejectInvite(String notificationId) async {
+    try {
+      // Get admin info from notification data before marking as read
+      final notification = _filteredNotifications.firstWhere(
+        (n) => n.id == notificationId,
+      );
+      final adminId = notification.data?['admin_id'] as String?;
+
+      await Supabase.instance.client.rpc('reject_company_invite');
+      await _markAsRead(notificationId);
+
+      // Notify the admin that driver declined
+      if (adminId != null) {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId == null) return;
+
+        final userProfile = await Supabase.instance.client
+            .from('profiles')
+            .select('full_name')
+            .eq('id', userId)
+            .single();
+
+        final driverName = userProfile['full_name'] ?? 'A driver';
+
+        await Supabase.instance.client.from('notifications').insert({
+          'user_id': adminId,
+          'type': 'company_invite',
+          'title': 'Verification Declined',
+          'body':
+              '$driverName has declined your verification request. Data access has been revoked.',
+          'data': {'driver_id': userId, 'driver_name': driverName},
+          'is_read': false,
+        });
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Invitation declined. Admin access revoked.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error declining invite: $e')));
+      }
+    }
   }
 
   Widget _buildEmptyState() {
@@ -524,8 +709,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 }
 
-enum NotificationType { reminder, company, news }
-
 class NotificationItem {
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -538,25 +721,27 @@ class NotificationItem {
 
   static NotificationItem fromJson(Map<String, dynamic> json) {
     NotificationType type;
-    switch (json['type']) {
-      case 'reminder':
-        type = NotificationType.reminder;
-        break;
-      case 'company':
-        type = NotificationType.company;
-        break;
-      case 'news':
-      default:
-        type = NotificationType.news;
-        break;
+    final typeStr = json['type'] as String?;
+    if (typeStr == 'reminder') {
+      type = NotificationType.reminder;
+    } else if (typeStr == 'company' || typeStr == 'company_invite') {
+      type = NotificationType.company;
+    } else if (typeStr == 'message') {
+      type = NotificationType.message;
+    } else {
+      type = NotificationType.news;
     }
+
     return NotificationItem(
       id: json['id'],
       type: type,
-      title: json['title'],
-      message: json['message'],
-      timestamp: DateTime.parse(json['timestamp']),
-      isRead: json['isRead'],
+      title: json['title'] ?? 'Notification',
+      message: json['message'] ?? json['body'] ?? '',
+      timestamp:
+          DateTime.tryParse(json['timestamp'] ?? json['created_at'] ?? '') ??
+          DateTime.now(),
+      isRead: json['isRead'] ?? json['is_read'] ?? false,
+      data: json['data'],
     );
   }
 
@@ -566,6 +751,7 @@ class NotificationItem {
   final String message;
   final DateTime timestamp;
   bool isRead;
+  final Map<String, dynamic>? data;
 
   NotificationItem({
     required this.id,
@@ -574,5 +760,6 @@ class NotificationItem {
     required this.message,
     required this.timestamp,
     required this.isRead,
+    this.data,
   });
 }

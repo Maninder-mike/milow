@@ -50,6 +50,8 @@ class SecondarySidebar extends StatelessWidget {
                 _buildMenuItem('CUSTOMER', FluentIcons.chevron_right, isLight),
                 _buildMenuItem('PICK UP', FluentIcons.chevron_right, isLight),
                 _buildMenuItem('DELIVER', FluentIcons.chevron_right, isLight),
+                _buildMenuItem('TRUCKS', FluentIcons.chevron_right, isLight),
+                _buildMenuItem('TRAILERS', FluentIcons.chevron_right, isLight),
                 _buildMenuItem(
                   'HIGHWAY DISPATCH',
                   FluentIcons.chevron_right,

@@ -82,6 +82,12 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     } else if (location.startsWith('/deliver')) {
       title = 'Deliver';
       icon = FluentIcons.delivery_truck;
+    } else if (location.startsWith('/trucks')) {
+      title = 'Trucks';
+      icon = FluentIcons.processing;
+    } else if (location.startsWith('/trailers')) {
+      title = 'Trailers';
+      icon = FluentIcons.processing;
     } else if (location.startsWith('/highway-dispatch')) {
       title = 'Dispatch';
       icon = FluentIcons.map_layers;
@@ -166,6 +172,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                   PrimarySidebar(
                     onAddRecordTap: () => _toggleSidebar('add_records'),
                     onDriversTap: () => _toggleSidebar('drivers'),
+                    onInboxTap: () => _navigateTo('/inbox'),
                     onSettingsTap: () => _navigateTo('/settings'),
                     onProfileTap: () => _navigateTo('/profile'),
                     activePane: _activeSidebarPane,
@@ -187,6 +194,12 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                                     break;
                                   case 'DELIVER':
                                     _navigateTo('/deliver');
+                                    break;
+                                  case 'TRUCKS':
+                                    _navigateTo('/trucks');
+                                    break;
+                                  case 'TRAILERS':
+                                    _navigateTo('/trailers');
                                     break;
                                   case 'HIGHWAY DISPATCH':
                                     _navigateTo('/highway-dispatch');
@@ -238,7 +251,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                                   color: _isResizing
                                       ? FluentTheme.of(
                                           context,
-                                        ).accentColor.withOpacity(0.3)
+                                        ).cardColor.withValues(alpha: 0.95)
                                       : Colors.transparent,
                                 ),
                               ),

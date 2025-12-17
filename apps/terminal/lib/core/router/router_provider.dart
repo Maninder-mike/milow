@@ -1,0 +1,182 @@
+import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:terminal/core/providers/profile_provider.dart';
+import 'package:terminal/features/auth/login_page.dart';
+import 'package:terminal/features/auth/sign_up_page.dart';
+import 'package:terminal/features/auth/terms_page.dart';
+import 'package:terminal/features/auth/privacy_policy_page.dart';
+import 'package:terminal/features/auth/presentation/pending_verification_page.dart';
+import 'package:terminal/features/dashboard/dashboard_shell.dart';
+import 'package:terminal/features/inbox/inbox_view.dart';
+import 'package:terminal/features/users/presentation/users_page.dart';
+import 'package:terminal/features/users/presentation/user_form_page.dart';
+import 'package:terminal/features/drivers/presentation/drivers_page.dart';
+import 'package:terminal/features/settings/settings_page.dart';
+import 'package:terminal/features/settings/profile_page.dart';
+import 'package:terminal/features/dashboard/screens/overview_page.dart';
+import 'package:terminal/features/dashboard/screens/entity_placeholder_page.dart';
+import 'package:terminal/features/dashboard/screens/customer/customer_page.dart';
+import 'package:terminal/features/dashboard/screens/pickup/pickup_page.dart';
+import 'package:terminal/features/dashboard/screens/deliver/deliver_page.dart';
+import 'package:terminal/features/dashboard/screens/trucks/trucks_page.dart';
+import 'package:terminal/features/dashboard/screens/trailers/trailers_page.dart';
+import 'package:flutter/material.dart'; // Added for ChangeNotifier
+
+final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _shellNavigatorKey = GlobalKey<NavigatorState>();
+
+final routerProvider = Provider<GoRouter>((ref) {
+  final notifier = ref.watch(routerNotifierProvider);
+
+  return GoRouter(
+    navigatorKey: _rootNavigatorKey,
+    initialLocation: '/dashboard',
+    refreshListenable: notifier,
+    redirect: notifier.redirect,
+    routes: [
+      GoRoute(
+        path: '/pending-verification',
+        builder: (context, state) => const PendingVerificationPage(),
+      ),
+      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
+      GoRoute(path: '/terms', builder: (context, state) => const TermsPage()),
+      GoRoute(
+        path: '/privacy',
+        builder: (context, state) => const PrivacyPolicyPage(),
+      ),
+      ShellRoute(
+        navigatorKey: _shellNavigatorKey,
+        builder: (context, state, child) {
+          return DashboardShell(child: child);
+        },
+        routes: [
+          GoRoute(
+            path: '/dashboard',
+            builder: (context, state) => const OverviewPage(),
+          ),
+          GoRoute(
+            path: '/inbox',
+            builder: (context, state) => const InboxView(),
+          ),
+          GoRoute(
+            path: '/users',
+            builder: (context, state) => const UsersPage(),
+            routes: [
+              GoRoute(
+                path: 'new',
+                builder: (context, state) => const UserFormPage(),
+              ),
+            ],
+          ),
+          GoRoute(
+            path: '/settings',
+            builder: (context, state) => const SettingsPage(),
+          ),
+          GoRoute(
+            path: '/profile',
+            builder: (context, state) => const ProfilePage(),
+          ),
+          GoRoute(
+            path: '/customer',
+            builder: (context, state) => const CustomerPage(),
+          ),
+          GoRoute(
+            path: '/pickup',
+            builder: (context, state) => const PickUpPage(),
+          ),
+          GoRoute(
+            path: '/deliver',
+            builder: (context, state) => const DeliverPage(),
+          ),
+          GoRoute(
+            path: '/trucks',
+            builder: (context, state) => const TrucksPage(),
+          ),
+          GoRoute(
+            path: '/trailers',
+            builder: (context, state) => const TrailersPage(),
+          ),
+          GoRoute(
+            path: '/highway-dispatch',
+            builder: (context, state) =>
+                const EntityPlaceholderPage(title: 'Highway Dispatch'),
+          ),
+          GoRoute(
+            path: '/driver-hos',
+            builder: (context, state) =>
+                const EntityPlaceholderPage(title: 'Driver HOS'),
+          ),
+          GoRoute(
+            path: '/location',
+            builder: (context, state) =>
+                const EntityPlaceholderPage(title: 'Location'),
+          ),
+          GoRoute(
+            path: '/drivers',
+            builder: (context, state) => const DriversPage(),
+          ),
+        ],
+      ),
+    ],
+  );
+});
+
+final routerNotifierProvider = Provider<RouterNotifier>((ref) {
+  return RouterNotifier(ref);
+});
+
+class RouterNotifier extends ChangeNotifier {
+  final Ref _ref;
+
+  RouterNotifier(this._ref) {
+    _ref.listen(profileProvider, (_, __) => notifyListeners());
+    Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+      notifyListeners();
+    });
+  }
+
+  String? redirect(BuildContext context, GoRouterState state) {
+    final session = Supabase.instance.client.auth.currentSession;
+    final isLoggedIn = session != null;
+    final location = state.matchedLocation;
+
+    final isPublicPage =
+        location == '/login' ||
+        location == '/signup' ||
+        location == '/terms' ||
+        location == '/privacy';
+
+    if (!isLoggedIn && !isPublicPage) return '/login';
+
+    if (isLoggedIn) {
+      if (location == '/login') return '/dashboard';
+
+      final profileState = _ref.read(profileProvider);
+
+      // If profile is loading, simply return null and wait for the listener to trigger again
+      // when loading completes.
+      if (profileState.isLoading) return null;
+
+      final profile = profileState.value;
+      if (profile != null) {
+        final isVerified = profile['is_verified'] as bool? ?? false;
+        final role = profile['role'] as String? ?? 'pending';
+
+        if ((!isVerified || role == 'pending') &&
+            location != '/pending-verification') {
+          return '/pending-verification';
+        }
+
+        if (isVerified &&
+            role != 'pending' &&
+            location == '/pending-verification') {
+          return '/dashboard';
+        }
+      }
+    }
+    return null;
+  }
+}

@@ -1,10 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../core/providers/theme_provider.dart';
 
 class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onAddRecordTap;
   final VoidCallback onDriversTap;
+  final VoidCallback onInboxTap;
   final VoidCallback onSettingsTap;
   final VoidCallback onProfileTap;
   final String? activePane; // 'add_records' or 'drivers'
@@ -13,6 +16,7 @@ class PrimarySidebar extends ConsumerWidget {
     super.key,
     required this.onAddRecordTap,
     required this.onDriversTap,
+    required this.onInboxTap,
     required this.onSettingsTap,
     required this.onProfileTap,
     this.activePane,
@@ -39,6 +43,13 @@ class PrimarySidebar extends ConsumerWidget {
             onTap: onDriversTap,
             tooltip: 'Drivers',
             isActive: activePane == 'drivers',
+            iconSize: 20,
+          ),
+          const SizedBox(height: 10),
+          _buildIcon(
+            FluentIcons.mail,
+            onTap: onInboxTap,
+            tooltip: 'Inbox',
             iconSize: 20,
           ),
           const Spacer(),
@@ -119,6 +130,17 @@ class PrimarySidebar extends ConsumerWidget {
                     text: const Text('Check for Updates...'),
                     leading: const Icon(FluentIcons.sync),
                     onPressed: () {},
+                  ),
+                  const MenuFlyoutSeparator(),
+                  MenuFlyoutItem(
+                    text: Text('Sign Out', style: TextStyle(color: Colors.red)),
+                    leading: Icon(FluentIcons.sign_out, color: Colors.red),
+                    onPressed: () async {
+                      await Supabase.instance.client.auth.signOut();
+                      if (context.mounted) {
+                        context.go('/login');
+                      }
+                    },
                   ),
                 ],
               );

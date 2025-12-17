@@ -69,6 +69,7 @@ class _DashboardPageState extends State<DashboardPage>
   // Notification state
   int _unreadNotificationCount = 0;
   StreamSubscription<int>? _notificationSubscription;
+  StreamSubscription<ServiceNotificationItem>? _incomingSubscription;
 
   // Bell icon animation
   late AnimationController _bellAnimationController;
@@ -128,6 +129,7 @@ class _DashboardPageState extends State<DashboardPage>
     WidgetsBinding.instance.removeObserver(this);
     _borderRefreshTimer?.cancel();
     _notificationSubscription?.cancel();
+    _incomingSubscription?.cancel();
 
     _bellAnimationController.dispose();
     super.dispose();
@@ -167,8 +169,54 @@ class _DashboardPageState extends State<DashboardPage>
               _unreadNotificationCount = count;
             });
             _updateBellAnimation(count);
+            _updateBellAnimation(count);
           }
         });
+
+    // Listen for incoming notifications to show Snackbar
+    _incomingSubscription = NotificationService.instance.incomingStream.listen((
+      notification,
+    ) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(_getIconForType(notification.type), color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        notification.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        notification.body,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF1F2937),
+            action: SnackBarAction(
+              label: 'VIEW',
+              textColor: const Color(0xFF60A5FA),
+              onPressed: () {
+                context.push('/notifications');
+              },
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    });
     if (mounted) {
       setState(() {});
     }
@@ -1383,5 +1431,18 @@ class _DashboardPageState extends State<DashboardPage>
         ],
       ),
     );
+  }
+
+  IconData _getIconForType(NotificationType type) {
+    switch (type) {
+      case NotificationType.reminder:
+        return Icons.notification_important;
+      case NotificationType.company:
+        return Icons.business;
+      case NotificationType.news:
+        return Icons.newspaper;
+      case NotificationType.message:
+        return Icons.chat_bubble_outline;
+    }
   }
 }

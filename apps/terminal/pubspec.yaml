@@ -69,6 +69,16 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   riverpod_generator: ^3.0.3
   build_runner: ^2.10.4
+  flutter_launcher_icons: ^0.14.4
+
+flutter_launcher_icons:
+  image_path: "assets/images/terminal_icon.png"
+  android: false
+  ios: false
+  macos:
+    generate: true
+  windows:
+    generate: true
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

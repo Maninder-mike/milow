@@ -5,27 +5,13 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
-import 'package:go_router/go_router.dart';
-import 'features/auth/login_page.dart';
-import 'features/auth/sign_up_page.dart';
-import 'features/auth/terms_page.dart';
-import 'features/auth/privacy_policy_page.dart';
+import 'package:window_manager/window_manager.dart'; // Ensure window_manager is imported
+import 'dart:io';
+
 import 'core/providers/theme_provider.dart';
-import 'features/dashboard/dashboard_shell.dart';
-import 'features/inbox/inbox_view.dart';
-import 'features/users/presentation/users_page.dart';
-import 'features/users/presentation/user_form_page.dart';
-import 'features/drivers/presentation/drivers_page.dart';
-import 'features/settings/settings_page.dart';
-import 'features/settings/profile_page.dart';
-import 'features/dashboard/screens/overview_page.dart';
-import 'features/dashboard/screens/entity_placeholder_page.dart';
+import 'core/router/router_provider.dart';
 import 'features/settings/widgets/custom_about_dialog.dart';
 import 'features/settings/utils/update_checker.dart';
-
-import 'dart:io';
-import 'package:window_manager/window_manager.dart';
-import 'core/router/router_refresh_stream.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -54,112 +40,14 @@ Future<void> main() async {
   runApp(const ProviderScope(child: AdminApp()));
 }
 
-final _rootNavigatorKey = GlobalKey<NavigatorState>();
-final _shellNavigatorKey = GlobalKey<NavigatorState>();
-
-final GoRouter _router = GoRouter(
-  navigatorKey: _rootNavigatorKey,
-  initialLocation: '/dashboard',
-  refreshListenable: GoRouterRefreshStream(
-    Supabase.instance.client.auth.onAuthStateChange,
-  ),
-  redirect: (context, state) {
-    final session = Supabase.instance.client.auth.currentSession;
-    final isLoggedIn = session != null;
-    final location = state.matchedLocation;
-
-    final isPublicPage =
-        location == '/login' ||
-        location == '/signup' ||
-        location == '/terms' ||
-        location == '/privacy';
-
-    if (!isLoggedIn && !isPublicPage) return '/login';
-    if (isLoggedIn && location == '/login') return '/dashboard';
-    return null;
-  },
-  routes: [
-    GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
-    GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
-    GoRoute(path: '/terms', builder: (context, state) => const TermsPage()),
-    GoRoute(
-      path: '/privacy',
-      builder: (context, state) => const PrivacyPolicyPage(),
-    ),
-    ShellRoute(
-      navigatorKey: _shellNavigatorKey,
-      builder: (context, state, child) {
-        return DashboardShell(child: child);
-      },
-      routes: [
-        GoRoute(
-          path: '/dashboard',
-          builder: (context, state) => const OverviewPage(),
-        ),
-        GoRoute(path: '/inbox', builder: (context, state) => const InboxView()),
-        GoRoute(
-          path: '/users',
-          builder: (context, state) => const UsersPage(),
-          routes: [
-            GoRoute(
-              path: 'new',
-              builder: (context, state) => const UserFormPage(),
-            ),
-          ],
-        ),
-        GoRoute(
-          path: '/settings',
-          builder: (context, state) => const SettingsPage(),
-        ),
-        GoRoute(
-          path: '/profile',
-          builder: (context, state) => const ProfilePage(),
-        ),
-        // New Entity Routes
-        GoRoute(
-          path: '/customer',
-          builder: (context, state) =>
-              const EntityPlaceholderPage(title: 'Customer'),
-        ),
-        GoRoute(
-          path: '/pickup',
-          builder: (context, state) =>
-              const EntityPlaceholderPage(title: 'Pick Up'),
-        ),
-        GoRoute(
-          path: '/deliver',
-          builder: (context, state) =>
-              const EntityPlaceholderPage(title: 'Deliver'),
-        ),
-        GoRoute(
-          path: '/highway-dispatch',
-          builder: (context, state) =>
-              const EntityPlaceholderPage(title: 'Highway Dispatch'),
-        ),
-        GoRoute(
-          path: '/driver-hos',
-          builder: (context, state) =>
-              const EntityPlaceholderPage(title: 'Driver HOS'),
-        ),
-        GoRoute(
-          path: '/location',
-          builder: (context, state) =>
-              const EntityPlaceholderPage(title: 'Location'),
-        ),
-        GoRoute(
-          path: '/drivers',
-          builder: (context, state) => const DriversPage(),
-        ),
-      ],
-    ),
-  ],
-);
-
 class AdminApp extends ConsumerWidget {
   const AdminApp({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
+    final themeMode = ref.watch(themeProvider);
+
     return PlatformMenuBar(
       menus: [
         PlatformMenu(
@@ -168,7 +56,13 @@ class AdminApp extends ConsumerWidget {
             PlatformMenuItem(
               label: 'About Milow Terminal',
               onSelected: () {
-                final context = _rootNavigatorKey.currentContext;
+                // We need a context. Since we are using router, we use its navigator key context
+                // But router.routerDelegate.navigatorKey.currentContext might be null if not built?
+                // Actually GoRouter exposes it.
+                // We don't have direct access to the global key here easily unless we export it or access it via router.
+                // router.routerDelegate.navigatorKey is available.
+                final context =
+                    router.routerDelegate.navigatorKey.currentContext;
                 if (context != null) {
                   showCustomAboutDialog(context);
                 }
@@ -177,7 +71,8 @@ class AdminApp extends ConsumerWidget {
             PlatformMenuItem(
               label: 'Check for Updates...',
               onSelected: () {
-                final context = _rootNavigatorKey.currentContext;
+                final context =
+                    router.routerDelegate.navigatorKey.currentContext;
                 if (context != null) {
                   checkForUpdates(context);
                 }
@@ -328,8 +223,8 @@ class AdminApp extends ConsumerWidget {
           brightness: Brightness.dark,
           fontFamily: 'Segoe UI Variable',
         ),
-        themeMode: ref.watch(themeProvider),
-        routerConfig: _router,
+        themeMode: themeMode,
+        routerConfig: router,
         debugShowCheckedModeBanner: false,
       ),
     );
