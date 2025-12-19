@@ -229,7 +229,7 @@ class _PickUpPageState extends State<PickUpPage> {
               padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
               color: isLight
                   ? Colors.grey.withValues(alpha: 0.1)
-                  : Colors.grey.withOpacity(0.2),
+                  : Colors.grey.withValues(alpha: 0.1),
               child: const Row(
                 children: [
                   Expanded(

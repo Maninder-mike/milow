@@ -82,11 +82,8 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     } else if (location.startsWith('/deliver')) {
       title = 'Deliver';
       icon = FluentIcons.delivery_truck;
-    } else if (location.startsWith('/trucks')) {
-      title = 'Trucks';
-      icon = FluentIcons.processing;
-    } else if (location.startsWith('/trailers')) {
-      title = 'Trailers';
+    } else if (location.startsWith('/vehicles')) {
+      title = 'Vehicles';
       icon = FluentIcons.processing;
     } else if (location.startsWith('/highway-dispatch')) {
       title = 'Dispatch';
@@ -175,6 +172,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                     onInboxTap: () => _navigateTo('/inbox'),
                     onSettingsTap: () => _navigateTo('/settings'),
                     onProfileTap: () => _navigateTo('/profile'),
+                    onDashboardTap: () => _navigateTo('/dashboard'),
                     activePane: _activeSidebarPane,
                   ),
 
@@ -195,11 +193,8 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                                   case 'DELIVER':
                                     _navigateTo('/deliver');
                                     break;
-                                  case 'TRUCKS':
-                                    _navigateTo('/trucks');
-                                    break;
-                                  case 'TRAILERS':
-                                    _navigateTo('/trailers');
+                                  case 'VEHICLES':
+                                    _navigateTo('/vehicles');
                                     break;
                                   case 'HIGHWAY DISPATCH':
                                     _navigateTo('/highway-dispatch');

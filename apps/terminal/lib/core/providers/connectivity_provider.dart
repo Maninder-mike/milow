@@ -15,10 +15,10 @@ final isConnectedProvider = Provider<bool>((ref) {
   return connectivityAsync.when(
     data: (results) {
       // If any result is not none, we are connected to some network.
-      final _isConnected = !results.contains(ConnectivityResult.none);
-      return _isConnected;
+      final isConnected = !results.contains(ConnectivityResult.none);
+      return isConnected;
     },
     loading: () => true, // Assume connected while loading
-    error: (_, __) => false, // Assume connected on error
+    error: (error, stack) => false, // Assume connected on error
   );
 });

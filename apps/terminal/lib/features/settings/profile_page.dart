@@ -182,6 +182,33 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               orElse: () => 'Driver',
             );
           });
+
+          // Fetch Company Details
+          try {
+            final comp = await Supabase.instance.client
+                .from('companies') // Updated table name
+                .select()
+                .limit(1)
+                .maybeSingle();
+
+            if (comp != null && mounted) {
+              setState(() {
+                // _companyDetailsId was unused
+                _compNameController.text =
+                    comp['company_name'] as String? ?? '';
+                _compAddressController.text = comp['address'] as String? ?? '';
+                _compCityController.text = comp['city'] as String? ?? '';
+                _compStateController.text = comp['state'] as String? ?? '';
+                _compZipController.text = comp['zip_code'] as String? ?? '';
+                _compDotController.text = comp['dot_number'] as String? ?? '';
+                _compMcController.text = comp['mc_number'] as String? ?? '';
+                _compPhoneController.text = comp['phone'] as String? ?? '';
+                _compEmailController.text = comp['email'] as String? ?? '';
+              });
+            }
+          } catch (e) {
+            debugPrint('Error fetching company details: $e');
+          }
         }
       } catch (e) {
         debugPrint('Error loading profile: $e');
@@ -248,7 +275,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         'address': _addressController.text,
         'country': _countryController.text,
         'company_name': _companyNameController.text,
-        'role': _isAdmin ? _selectedRole : _role, // Only save selected if admin
+        'role': _isAdmin
+            ? _selectedRole.toLowerCase()
+            : _role.toLowerCase(), // Ensure lowercase for DB constraint
         'updated_at': DateTime.now().toIso8601String(),
         if (avatarUrl != null) 'avatar_url': avatarUrl,
       };
@@ -264,7 +293,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             'full_name': _nameController.text,
             'phone': _phoneController.text,
             // Also sync role to metadata if changed
-            if (_isAdmin) 'role': _selectedRole,
+            if (_isAdmin) 'role': _selectedRole.toLowerCase(),
           },
         ),
       );
@@ -400,6 +429,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                                     cardColor,
                                     borderColor,
                                   ),
+                                  const SizedBox(height: 24),
+                                  _buildCompanyDetailsCard(
+                                    theme,
+                                    cardColor,
+                                    borderColor,
+                                  ),
                                   if (_isAdmin) ...[
                                     const SizedBox(height: 24),
                                     _buildAdminSection(
@@ -418,6 +453,12 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                             _buildIdentityCard(theme, cardColor, borderColor),
                             const SizedBox(height: 24),
                             _buildDetailsCard(theme, cardColor, borderColor),
+                            const SizedBox(height: 24),
+                            _buildCompanyDetailsCard(
+                              theme,
+                              cardColor,
+                              borderColor,
+                            ),
                             if (_isAdmin) ...[
                               const SizedBox(height: 24),
                               _buildAdminSection(theme, cardColor, borderColor),
@@ -429,6 +470,205 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
           );
         },
+      ),
+    );
+  }
+
+  // Company Details Controllers
+  final _compNameController = TextEditingController();
+  final _compAddressController = TextEditingController();
+  final _compCityController = TextEditingController();
+  final _compStateController = TextEditingController();
+  final _compZipController = TextEditingController();
+  final _compDotController = TextEditingController();
+  final _compMcController = TextEditingController();
+  final _compPhoneController = TextEditingController();
+  final _compEmailController = TextEditingController();
+
+  Widget _buildCompanyDetailsCard(
+    FluentThemeData theme,
+    Color cardColor,
+    Color borderColor,
+  ) {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+        boxShadow: theme.brightness == Brightness.light
+            ? [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ]
+            : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(FluentIcons.entitlement_policy, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Company Details',
+                style: GoogleFonts.outfit(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (_isAdmin) ...[
+                const Spacer(),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: theme.accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    'Admin Edit',
+                    style: TextStyle(
+                      fontSize: 10,
+                      color: theme.accentColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 24),
+          _buildLabel('Company Name'),
+          TextFormBox(
+            controller: _compNameController,
+            readOnly: !_isEditing || !_isAdmin,
+            placeholder: 'Company Legal Name',
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('DOT Number'),
+                    TextFormBox(
+                      controller: _compDotController,
+                      readOnly: !_isEditing || !_isAdmin,
+                      placeholder: 'USDOT#',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('MC Number'),
+                    TextFormBox(
+                      controller: _compMcController,
+                      readOnly: !_isEditing || !_isAdmin,
+                      placeholder: 'MC#',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildLabel('Address'),
+          TextFormBox(
+            controller: _compAddressController,
+            readOnly: !_isEditing || !_isAdmin,
+            placeholder: 'Street Address',
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('City'),
+                    TextFormBox(
+                      controller: _compCityController,
+                      readOnly: !_isEditing || !_isAdmin,
+                      placeholder: 'City',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('State'),
+                    TextFormBox(
+                      controller: _compStateController,
+                      readOnly: !_isEditing || !_isAdmin,
+                      placeholder: 'XX',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('Zip'),
+                    TextFormBox(
+                      controller: _compZipController,
+                      readOnly: !_isEditing || !_isAdmin,
+                      placeholder: '00000',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('Phone'),
+                    TextFormBox(
+                      controller: _compPhoneController,
+                      readOnly: !_isEditing || !_isAdmin,
+                      placeholder: 'Office Phone',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('Email'),
+                    TextFormBox(
+                      controller: _compEmailController,
+                      readOnly: !_isEditing || !_isAdmin,
+                      placeholder: 'Support Email',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -674,28 +914,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             readOnly: !_isEditing,
             placeholder: 'Full address',
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 16),
-          _buildLabel('Company Name'),
-          TextFormBox(
-            controller: _companyNameController,
-            readOnly: !_isEditing || !_isAdmin,
-            enabled: _isAdmin,
-            placeholder: 'Company Name',
-            prefix: const Padding(
-              padding: EdgeInsets.only(left: 8),
-              child: Icon(FluentIcons.group, size: 16),
-            ),
-          ),
-          if (!_isAdmin)
-            Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'Managed by your administrator',
-                style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
-              ),
-            ),
         ],
       ),
     );

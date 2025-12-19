@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/driver_selection_provider.dart';
+import 'widgets/driver_chat_widget.dart';
 
 class DriversPage extends ConsumerStatefulWidget {
   const DriversPage({super.key});
@@ -171,110 +172,140 @@ class _OverviewTab extends StatelessWidget {
     final dateFormat = DateFormat('MMMM d, yyyy');
 
     return Card(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Row(
-            children: [
-              _buildAvatar(context, driver, 64),
-              const SizedBox(width: 24),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      driver.fullName ?? 'Unknown Driver',
-                      style: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: theme.accentColor,
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        driver.role.label,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
+      padding: EdgeInsets.zero, // Padding moved to container inside scroll
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              children: [
+                _buildAvatar(context, driver, 64),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        driver.fullName ?? 'Unknown Driver',
+                        style: GoogleFonts.outfit(
+                          fontSize: 24,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: theme.accentColor,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Text(
+                          driver.role.label,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 32),
-
-          // Details Grid
-          Text(
-            'Contact Information',
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          _buildDetailRow(
-            context,
-            FluentIcons.mail,
-            'Email Address',
-            driver.email ?? '-',
-          ),
+            const SizedBox(height: 32),
+            const Divider(),
+            const SizedBox(height: 32),
 
-          const SizedBox(height: 32),
-          Text(
-            'Account Details',
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildDetailRow(
-            context,
-            FluentIcons.calendar,
-            'Joined Date',
-            driver.createdAt != null
-                ? dateFormat.format(driver.createdAt!)
-                : '-',
-          ),
-          const SizedBox(height: 16),
-          _buildDetailRow(
-            context,
-            FluentIcons.verified_brand,
-            'Verification Status',
-            driver.isVerified ? 'Verified' : 'Pending',
-            valueColor: driver.isVerified ? Colors.green : Colors.orange,
-          ),
-          const SizedBox(height: 32),
-          const Divider(),
-          const SizedBox(height: 32),
+            // Main Body: Row with Details (Left) and Chat (Right)
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Left Column: Details
+                Expanded(
+                  flex: 4, // 40% width
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Contact Information',
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        context,
+                        FluentIcons.mail,
+                        'Email Address',
+                        driver.email ?? '-',
+                      ),
+                      const SizedBox(height: 32),
+                      Text(
+                        'Account Details',
+                        style: GoogleFonts.outfit(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        context,
+                        FluentIcons.calendar,
+                        'Joined Date',
+                        driver.createdAt != null
+                            ? dateFormat.format(driver.createdAt!)
+                            : '-',
+                      ),
+                      const SizedBox(height: 16),
+                      _buildDetailRow(
+                        context,
+                        FluentIcons.verified_brand,
+                        'Verification Status',
+                        driver.isVerified ? 'Verified' : 'Pending',
+                        valueColor: driver.isVerified
+                            ? Colors.green
+                            : Colors.orange,
+                      ),
+                    ],
+                  ),
+                ),
 
-          // Send Message Section
-          Text(
-            'Message Driver',
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
+                // Vertical Divider
+                Container(
+                  width: 1,
+                  height: 400, // Roughly matching chat height or flexible?
+                  // Better to let it flexible but Row crossAxia is start.
+                  // Let's us a simple SizedBox or Divider.
+                  // Or let layout handle it.
+                  margin: const EdgeInsets.symmetric(horizontal: 32),
+                  color: theme.resources.dividerStrokeColorDefault,
+                ),
+
+                // Right Column: Chat
+                Expanded(
+                  flex: 6, // 60% width
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // No title needed really as Chat Widget has header, but user wants clear separation.
+                      DriverChatWidget(
+                        driverId: driver.id,
+                        driverName: driver.fullName ?? 'Driver',
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ),
-          const SizedBox(height: 16),
-          _SendMessageCard(driverId: driver.id),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -919,7 +950,7 @@ class _SendMessageCardState extends State<_SendMessageCard> {
             child: FilledButton(
               onPressed: _isSending ? null : _sendMessage,
               style: ButtonStyle(
-                padding: ButtonState.all(
+                padding: WidgetStateProperty.all(
                   const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),

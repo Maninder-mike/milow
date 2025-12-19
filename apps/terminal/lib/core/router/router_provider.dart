@@ -20,8 +20,7 @@ import 'package:terminal/features/dashboard/screens/entity_placeholder_page.dart
 import 'package:terminal/features/dashboard/screens/customer/customer_page.dart';
 import 'package:terminal/features/dashboard/screens/pickup/pickup_page.dart';
 import 'package:terminal/features/dashboard/screens/deliver/deliver_page.dart';
-import 'package:terminal/features/dashboard/screens/trucks/trucks_page.dart';
-import 'package:terminal/features/dashboard/screens/trailers/trailers_page.dart';
+import 'package:terminal/features/dashboard/screens/vehicles/vehicles_page.dart';
 import 'package:flutter/material.dart'; // Added for ChangeNotifier
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -92,12 +91,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             builder: (context, state) => const DeliverPage(),
           ),
           GoRoute(
-            path: '/trucks',
-            builder: (context, state) => const TrucksPage(),
-          ),
-          GoRoute(
-            path: '/trailers',
-            builder: (context, state) => const TrailersPage(),
+            path: '/vehicles',
+            builder: (context, state) => const VehiclesPage(),
           ),
           GoRoute(
             path: '/highway-dispatch',
@@ -132,7 +127,7 @@ class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
 
   RouterNotifier(this._ref) {
-    _ref.listen(profileProvider, (_, __) => notifyListeners());
+    _ref.listen(profileProvider, (previous, next) => notifyListeners());
     Supabase.instance.client.auth.onAuthStateChange.listen((_) {
       notifyListeners();
     });

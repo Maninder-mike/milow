@@ -50,8 +50,7 @@ class SecondarySidebar extends StatelessWidget {
                 _buildMenuItem('CUSTOMER', FluentIcons.chevron_right, isLight),
                 _buildMenuItem('PICK UP', FluentIcons.chevron_right, isLight),
                 _buildMenuItem('DELIVER', FluentIcons.chevron_right, isLight),
-                _buildMenuItem('TRUCKS', FluentIcons.chevron_right, isLight),
-                _buildMenuItem('TRAILERS', FluentIcons.chevron_right, isLight),
+                _buildMenuItem('VEHICLES', FluentIcons.chevron_right, isLight),
                 _buildMenuItem(
                   'HIGHWAY DISPATCH',
                   FluentIcons.chevron_right,
@@ -97,12 +96,16 @@ class SecondarySidebar extends StatelessWidget {
                 color: textColor,
               ),
               const SizedBox(width: 6),
-              Text(
-                title,
-                style: GoogleFonts.inter(
-                  fontSize: 13,
-                  color: textColor,
-                  fontWeight: FontWeight.w400,
+              Expanded(
+                child: Text(
+                  title,
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: textColor,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
             ],

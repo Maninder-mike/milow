@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
@@ -79,7 +80,7 @@ class _InboxPageState extends State<InboxPage>
                       style: GoogleFonts.inter(
                         fontSize: 14,
                         color: isDark
-                            ? Colors.white.withOpacity(0.6)
+                            ? Colors.white.withValues(alpha: 0.6)
                             : const Color(0xFF667085),
                       ),
                     ),
@@ -343,14 +344,16 @@ class _InboxPageState extends State<InboxPage>
     }
 
     // 2. Server delete (best effort, don't block UI)
-    Supabase.instance.client
-        .from('messages')
-        .delete()
-        .eq('id', messageId)
-        .then((_) => debugPrint('Single message server delete success'))
-        .catchError(
-          (e) => debugPrint('Single message server delete failed: $e'),
-        );
+    unawaited(
+      Supabase.instance.client
+          .from('messages')
+          .delete()
+          .eq('id', messageId)
+          .then((_) => debugPrint('Single message server delete success'))
+          .catchError(
+            (e) => debugPrint('Single message server delete failed: $e'),
+          ),
+    );
 
     // 3. Refresh UI
     if (mounted) {
@@ -376,9 +379,6 @@ class _InboxPageState extends State<InboxPage>
   Future<void> _deleteChat() async {
     final myId = Supabase.instance.client.auth.currentUser?.id;
     if (myId == null) return;
-
-    // Track errors to show user
-    List<String> errors = [];
 
     try {
       debugPrint('Deleting chat for user: $myId');

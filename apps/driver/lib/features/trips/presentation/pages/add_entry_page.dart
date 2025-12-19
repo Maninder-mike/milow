@@ -65,9 +65,6 @@ class _AddEntryPageState extends State<AddEntryPage>
   List<String> _borderCrossings = [];
   String? _selectedBorderCrossing;
 
-  // Multiple trailers
-  final List<TextEditingController> _trailerControllers = [];
-
   // Multiple pickup locations (start locations)
   final List<TextEditingController> _pickupControllers = [];
 
@@ -101,7 +98,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   // FocusNodes for Autocomplete
   final _tripTruckFocusNode = FocusNode();
-  final List<FocusNode> _trailerFocusNodes = [];
+
   final List<FocusNode> _pickupFocusNodes = [];
   final List<FocusNode> _deliveryFocusNodes = [];
   final _truckFocusNode = FocusNode(); // For Fuel
@@ -142,7 +139,6 @@ class _AddEntryPageState extends State<AddEntryPage>
     // Initialize with one pickup and one delivery location
     _addPickupLocation();
     _addDeliveryLocation();
-    _addTrailer();
 
     // Handle edit mode for Trip
     if (widget.editingTrip != null) {
@@ -157,12 +153,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       _tripNumberController.text = widget.initialData!['tripNumber'] ?? '';
       _tripTruckNumberController.text =
           widget.initialData!['truckNumber'] ?? '';
-      // Set first trailer from initialData
-      if (widget.initialData!['trailerNumber'] != null &&
-          _trailerControllers.isNotEmpty) {
-        _trailerControllers[0].text =
-            widget.initialData!['trailerNumber'] ?? '';
-      }
+
       // Set first pickup location from initialData
       if (widget.initialData!['startLocation'] != null &&
           _pickupControllers.isNotEmpty) {
@@ -242,15 +233,6 @@ class _AddEntryPageState extends State<AddEntryPage>
     _borderCrossingController.text = trip.borderCrossing ?? '';
     _selectedBorderCrossing = trip.borderCrossing;
     _tripDateController.text = _formatDateTime(trip.tripDate);
-
-    // Fill trailers
-    if (trip.trailers.isNotEmpty) {
-      _trailerControllers[0].text = trip.trailers[0];
-      for (int i = 1; i < trip.trailers.length; i++) {
-        _addTrailer();
-        _trailerControllers[i].text = trip.trailers[i];
-      }
-    }
 
     // Fill pickup locations
     if (trip.pickupLocations.isNotEmpty) {
@@ -510,9 +492,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       controller.dispose();
     }
     // Dispose trailer controllers
-    for (final controller in _trailerControllers) {
-      controller.dispose();
-    }
+
     _tripStartOdometerController.dispose();
     _tripEndOdometerController.dispose();
     _tripNotesController.dispose();
@@ -529,9 +509,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     _tripTruckFocusNode.dispose();
     _truckFocusNode.dispose();
     _locationFocusNode.dispose();
-    for (var node in _trailerFocusNodes) {
-      node.dispose();
-    }
+
     for (var node in _pickupFocusNodes) {
       node.dispose();
     }
@@ -582,28 +560,6 @@ class _AddEntryPageState extends State<AddEntryPage>
         _deliveryControllers.removeAt(index);
         _deliveryFocusNodes[index].dispose();
         _deliveryFocusNodes.removeAt(index);
-      });
-    }
-  }
-
-  // Methods to manage trailers
-  void _addTrailer([String? trailerNumber]) {
-    if (_trailerControllers.length < _maxLocations) {
-      setState(() {
-        final controller = TextEditingController(text: trailerNumber);
-        _trailerControllers.add(controller);
-        _trailerFocusNodes.add(FocusNode());
-      });
-    }
-  }
-
-  void _removeTrailer(int index) {
-    if (_trailerControllers.length > 1) {
-      setState(() {
-        _trailerControllers[index].dispose();
-        _trailerControllers.removeAt(index);
-        _trailerFocusNodes[index].dispose();
-        _trailerFocusNodes.removeAt(index);
       });
     }
   }
@@ -820,85 +776,6 @@ class _AddEntryPageState extends State<AddEntryPage>
         );
       },
     );
-  }
-
-  // Build trailer fields with add/remove buttons
-  List<Widget> _buildTrailerFields() {
-    final fields = <Widget>[];
-    for (int i = 0; i < _trailerControllers.length; i++) {
-      final isLast = i == _trailerControllers.length - 1;
-      final canAdd = _trailerControllers.length < _maxLocations;
-      final canRemove = _trailerControllers.length > 1;
-
-      fields.add(
-        Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildAutocompleteField(
-                  controller: _trailerControllers[i],
-                  focusNode: _trailerFocusNodes[i],
-                  textCapitalization: TextCapitalization.characters,
-                  hint: i == 0 ? 'e.g., TL-202' : 'Trailer ${i + 1}',
-                  prefixIcon: Icons.rv_hookup,
-                  optionsBuilder:
-                      PredictionService.instance.getTrailerSuggestions,
-                ),
-              ),
-              if (canRemove) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: InkWell(
-                    onTap: () => _removeTrailer(i),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Icon(
-                        Icons.remove,
-                        size: 20,
-                        color: Colors.red.shade600,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (isLast && canAdd) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: InkWell(
-                    onTap: _addTrailer,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF81C784)),
-                      ),
-                      child: const Icon(
-                        Icons.add,
-                        size: 20,
-                        color: Color(0xFF43A047),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-    }
-    return fields;
   }
 
   // Build pickup location fields with add/remove buttons
@@ -1387,12 +1264,8 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(height: 8),
                 _buildBorderCrossingDropdown(),
                 const SizedBox(height: 16),
-                _buildLabel(
-                  'Trailer${_trailerControllers.length > 1 ? 's' : ''} (Optional)',
-                ),
-                const SizedBox(height: 8),
-                ..._buildTrailerFields(),
-                const SizedBox(height: 16),
+
+                // Trailers section removed
                 _buildLabel('Date & Time'),
                 const SizedBox(height: 8),
                 TextField(
@@ -1637,12 +1510,6 @@ class _AddEntryPageState extends State<AddEntryPage>
         tripDate = DateTime.now();
       }
 
-      // Collect trailers (filter empty)
-      final trailers = _trailerControllers
-          .map((c) => c.text.trim().toUpperCase())
-          .where((t) => t.isNotEmpty)
-          .toList();
-
       // Collect pickup locations
       final pickupLocations = _pickupControllers
           .map((c) => c.text.trim())
@@ -1670,7 +1537,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         borderCrossing: _borderCrossingController.text.trim().isNotEmpty
             ? _borderCrossingController.text.trim()
             : null,
-        trailers: trailers,
+        trailers: [],
         tripDate: tripDate,
         pickupLocations: pickupLocations,
         deliveryLocations: deliveryLocations,

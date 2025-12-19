@@ -10,6 +10,7 @@ class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onInboxTap;
   final VoidCallback onSettingsTap;
   final VoidCallback onProfileTap;
+  final VoidCallback onDashboardTap;
   final String? activePane; // 'add_records' or 'drivers'
 
   const PrimarySidebar({
@@ -19,6 +20,7 @@ class PrimarySidebar extends ConsumerWidget {
     required this.onInboxTap,
     required this.onSettingsTap,
     required this.onProfileTap,
+    required this.onDashboardTap,
     this.activePane,
   });
 
@@ -26,38 +28,55 @@ class PrimarySidebar extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Container(
       width: 48,
-      color: const Color(0xFF333333),
+      color: const Color(0xFF202020), // Slightly darker for depth
       child: Column(
         children: [
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
+          // Dashboard / Home
+          _buildIcon(
+            FluentIcons.view_dashboard,
+            onTap: onDashboardTap,
+            tooltip: 'Dashboard',
+            isActive:
+                activePane ==
+                null, // activePane is null on dashboard main view (usually)
+            // Actually DashboardShell logic needs review for active state.
+            // activePane is sidebar pane ('add_records', 'drivers').
+            // Navigation to /dashboard is independent of pane?
+            // Let's assume we highlight Home if not in a specific pane and route is /dashboard.
+            // But activePane is passed from parent. Parent needs to handle this logic.
+            // For now, let's just add the callback and icon.
+            iconSize: 24,
+          ),
+          const SizedBox(height: 16),
           _buildIcon(
             FluentIcons.add,
             onTap: onAddRecordTap,
-            tooltip: 'Insert Info',
+            tooltip: 'Add New',
             isActive: activePane == 'add_records',
             iconSize: 24,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           _buildIcon(
-            FluentIcons.delivery_truck,
+            FluentIcons.contact_list, // Changed to ContactList for Drivers
             onTap: onDriversTap,
-            tooltip: 'Drivers',
+            tooltip: 'Drivers Directory',
             isActive: activePane == 'drivers',
-            iconSize: 20,
+            iconSize: 24,
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 16),
           _buildIcon(
             FluentIcons.mail,
             onTap: onInboxTap,
             tooltip: 'Inbox',
-            iconSize: 20,
+            isActive: false, // Inbox is a route, not a pane?
+            iconSize: 24,
           ),
           const Spacer(),
 
           const SizedBox(height: 10),
-          const SizedBox(height: 10),
           _buildSettingsIcon(context, ref),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
         ],
       ),
     );

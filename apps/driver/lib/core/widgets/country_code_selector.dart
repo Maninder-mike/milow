@@ -5,9 +5,15 @@ import 'package:milow/core/models/country_code.dart';
 class CountryCodeSelector extends StatefulWidget {
   final CountryCode selectedCountry;
   final ValueChanged<CountryCode> onCountryChanged;
+  final bool showCountryName;
+  final bool showDialCode;
 
   const CountryCodeSelector({
-    required this.selectedCountry, required this.onCountryChanged, super.key,
+    required this.selectedCountry,
+    required this.onCountryChanged,
+    this.showCountryName = false,
+    this.showDialCode = true,
+    super.key,
   });
 
   @override
@@ -59,15 +65,31 @@ class _CountryCodeSelectorState extends State<CountryCodeSelector> {
               widget.selectedCountry.flag,
               style: const TextStyle(fontSize: 20),
             ),
-            const SizedBox(width: 6),
-            Text(
-              widget.selectedCountry.dialCode,
-              style: GoogleFonts.inter(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-                color: isDark ? Colors.white : const Color(0xFF101828),
+            if (widget.showCountryName) ...[
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  widget.selectedCountry.name,
+                  style: GoogleFonts.inter(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white : const Color(0xFF101828),
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-            ),
+            ],
+            if (widget.showDialCode) ...[
+              const SizedBox(width: 6),
+              Text(
+                widget.selectedCountry.dialCode,
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white : const Color(0xFF101828),
+                ),
+              ),
+            ],
             const SizedBox(width: 4),
             Icon(
               Icons.arrow_drop_down,

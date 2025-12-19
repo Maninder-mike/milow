@@ -15,7 +15,7 @@ class ProfileService {
     if (uid == null) return null;
     final res = await _client
         .from(_profilesTable)
-        .select()
+        .select('*, companies(*)')
         .eq('id', uid)
         .maybeSingle();
     return res;

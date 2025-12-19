@@ -84,8 +84,10 @@ class FuelEntry {
     return FuelEntry(
       id: json['id'] as String?,
       userId: json['user_id'] as String?,
-      fuelDate: DateTime.parse(json['fuel_date'] as String),
-      fuelType: json['fuel_type'] as String,
+      fuelDate:
+          DateTime.tryParse(json['fuel_date']?.toString() ?? '') ??
+          DateTime.now(),
+      fuelType: json['fuel_type'] as String? ?? 'truck',
       truckNumber: json['truck_number'] as String?,
       reeferNumber: json['reefer_number'] as String?,
       location: json['location'] as String?,
@@ -95,8 +97,8 @@ class FuelEntry {
       reeferHours: json['reefer_hours'] != null
           ? (json['reefer_hours'] as num).toDouble()
           : null,
-      fuelQuantity: (json['fuel_quantity'] as num).toDouble(),
-      pricePerUnit: (json['price_per_unit'] as num).toDouble(),
+      fuelQuantity: (json['fuel_quantity'] as num?)?.toDouble() ?? 0.0,
+      pricePerUnit: (json['price_per_unit'] as num?)?.toDouble() ?? 0.0,
       fuelUnit: json['fuel_unit'] as String? ?? 'gal',
       distanceUnit: json['distance_unit'] as String? ?? 'mi',
       currency: json['currency'] as String? ?? 'USD',

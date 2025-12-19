@@ -177,6 +177,9 @@ class _DashboardPageState extends State<DashboardPage>
     _incomingSubscription = NotificationService.instance.incomingStream.listen((
       notification,
     ) {
+      // Suppress SnackBar for messages (only show badge)
+      if (notification.type == NotificationType.message) return;
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
