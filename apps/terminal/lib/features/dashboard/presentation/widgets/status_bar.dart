@@ -34,6 +34,16 @@ class _StatusBarState extends ConsumerState<StatusBar> {
       orElse: () => 0,
     );
 
+    // Watch driver_left notifications
+    final driverLeftAsync = ref.watch(driverLeftNotificationsProvider);
+    final driverLeftCount = driverLeftAsync.maybeWhen(
+      data: (notifications) => notifications.length,
+      orElse: () => 0,
+    );
+
+    // Combined notification count
+    final totalNotificationCount = pendingCount + driverLeftCount;
+
     // Listen for new pending users to show toast
     ref.listen<AsyncValue<List<UserProfile>>>(pendingUsersProvider, (
       previous,
@@ -89,7 +99,28 @@ class _StatusBarState extends ConsumerState<StatusBar> {
           }
         }
       });
-    });
+    }); // This was the missing closing bracket
+
+    // Listen for new driver_left notifications to show toast
+    ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
+      driverLeftNotificationsProvider,
+      (previous, next) {
+        next.whenData((nextNotifs) {
+          previous?.whenData((prevNotifs) {
+            if (nextNotifs.length > prevNotifs.length) {
+              // Find new notifications
+              final prevIds = prevNotifs.map((n) => n['id']).toSet();
+              final newNotifs = nextNotifs.where(
+                (n) => !prevIds.contains(n['id']),
+              );
+              for (var notif in newNotifs) {
+                _showDriverLeftToast(context, notif);
+              }
+            }
+          });
+        });
+      },
+    );
 
     return Container(
       height: 22,
@@ -107,7 +138,10 @@ class _StatusBarState extends ConsumerState<StatusBar> {
                   builder: (context) {
                     return FlyoutContent(
                       constraints: const BoxConstraints(maxWidth: 350),
-                      child: _buildNotificationList(pendingUsersAsync),
+                      child: _buildCombinedNotificationList(
+                        pendingUsersAsync,
+                        driverLeftAsync,
+                      ),
                     );
                   },
                 );
@@ -116,7 +150,7 @@ class _StatusBarState extends ConsumerState<StatusBar> {
                 alignment: Alignment.topRight,
                 children: [
                   _buildItem(FluentIcons.ringer, '', marginRight: 8),
-                  if (pendingCount > 0)
+                  if (totalNotificationCount > 0)
                     Positioned(
                       top: 0,
                       right: 4,
@@ -217,81 +251,186 @@ class _StatusBarState extends ConsumerState<StatusBar> {
     );
   }
 
-  Widget _buildNotificationList(AsyncValue<List<UserProfile>> usersAsync) {
-    return usersAsync.when(
-      data: (users) {
-        if (users.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(16.0),
-            child: Text('No pending approvals'),
-          );
-        }
-        return ListView.separated(
-          shrinkWrap: true,
-          itemCount: users.length,
-          separatorBuilder: (context, index) => const Divider(),
-          itemBuilder: (context, index) {
-            final user = users[index];
-            return ListTile(
-              title: Text(
-                user.fullName ?? 'Unknown User',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              subtitle: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(user.email ?? 'No email'),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.blue.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                    child: Text(
-                      'Requested: ${user.role.label}',
-                      style: const TextStyle(fontSize: 10),
-                    ),
-                  ),
-                ],
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: Icon(FluentIcons.check_mark, color: Colors.green),
-                    onPressed: () {
-                      ref
-                          .read(notificationActionsProvider)
-                          .approveUser(user.id, user.role);
-                      Navigator.of(context).pop(); // Close flyout or keep open?
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: Icon(FluentIcons.clear, color: Colors.red),
-                    onPressed: () {
-                      ref.read(notificationActionsProvider).rejectUser(user.id);
-                      Navigator.of(context).pop();
-                    },
-                  ),
-                ],
-              ),
-            );
-          },
+  /// Show toast notification when a driver leaves the company
+  void _showDriverLeftToast(
+    BuildContext context,
+    Map<String, dynamic> notification,
+  ) {
+    final driverName = notification['data']?['driver_name'] ?? 'A driver';
+    displayInfoBar(
+      context,
+      duration: const Duration(seconds: 10),
+      alignment: Alignment.bottomRight,
+      builder: (context, close) {
+        return InfoBar(
+          title: const Text('Driver Left Company'),
+          content: Text('$driverName has left the company.'),
+          severity: InfoBarSeverity.warning,
+          action: Button(
+            onPressed: () {
+              ref
+                  .read(notificationActionsProvider)
+                  .dismissNotification(notification['id']);
+              close();
+            },
+            child: const Text('Dismiss'),
+          ),
+          onClose: close,
         );
       },
-      loading: () =>
-          const SizedBox(height: 50, child: Center(child: ProgressRing())),
-      error: (err, stack) => Padding(
-        padding: const EdgeInsets.all(8.0),
-        child: Text(
-          'Error: $err\nStack: $stack',
-          style: TextStyle(color: Colors.red),
-        ),
+    );
+  }
+
+  /// Builds combined notification list with pending users and driver_left notifications
+  Widget _buildCombinedNotificationList(
+    AsyncValue<List<UserProfile>> pendingUsersAsync,
+    AsyncValue<List<Map<String, dynamic>>> driverLeftAsync,
+  ) {
+    final pendingUsers = pendingUsersAsync.maybeWhen(
+      data: (users) => users,
+      orElse: () => <UserProfile>[],
+    );
+    final driverLeftNotifs = driverLeftAsync.maybeWhen(
+      data: (notifs) => notifs,
+      orElse: () => <Map<String, dynamic>>[],
+    );
+
+    final isEmpty = pendingUsers.isEmpty && driverLeftNotifs.isEmpty;
+
+    if (isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16.0),
+        child: Text('No notifications'),
+      );
+    }
+
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Driver Left Section
+          if (driverLeftNotifs.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                'DRIVER UPDATES',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            ...driverLeftNotifs.map((notif) {
+              final driverName = notif['data']?['driver_name'] ?? 'Unknown';
+              final driverEmail = notif['data']?['driver_email'] ?? '';
+              return ListTile(
+                title: Text(
+                  driverName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (driverEmail.isNotEmpty) Text(driverEmail),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Left Company',
+                        style: TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: IconButton(
+                  icon: Icon(FluentIcons.clear, color: Colors.grey),
+                  onPressed: () {
+                    ref
+                        .read(notificationActionsProvider)
+                        .dismissNotification(notif['id']);
+                  },
+                ),
+              );
+            }),
+            if (pendingUsers.isNotEmpty) const Divider(),
+          ],
+          // Pending Users Section
+          if (pendingUsers.isNotEmpty) ...[
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                'PENDING APPROVALS',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            ...pendingUsers.map((user) {
+              return ListTile(
+                title: Text(
+                  user.fullName ?? 'Unknown User',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(user.email ?? 'No email'),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        'Requested: ${user.role.label}',
+                        style: const TextStyle(fontSize: 10),
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: Icon(FluentIcons.check_mark, color: Colors.green),
+                      onPressed: () {
+                        ref
+                            .read(notificationActionsProvider)
+                            .approveUser(user.id, user.role);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    IconButton(
+                      icon: Icon(FluentIcons.clear, color: Colors.red),
+                      onPressed: () {
+                        ref
+                            .read(notificationActionsProvider)
+                            .rejectUser(user.id);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ],
+                ),
+              );
+            }),
+          ],
+        ],
       ),
     );
   }

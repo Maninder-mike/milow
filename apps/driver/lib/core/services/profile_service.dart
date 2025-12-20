@@ -45,4 +45,16 @@ class ProfileService {
     final payload = {'id': uid, ...values};
     await _client.from(_profilesTable).upsert(payload).eq('id', uid);
   }
+
+  /// Revoke company association - driver leaves their current company.
+  /// This sets company_id and company_name to null, preventing the company
+  /// from accessing the driver's data.
+  static Future<void> revokeCompany() async {
+    final uid = currentUserId;
+    if (uid == null) return;
+    await _client
+        .from(_profilesTable)
+        .update({'company_id': null, 'company_name': null})
+        .eq('id', uid);
+  }
 }

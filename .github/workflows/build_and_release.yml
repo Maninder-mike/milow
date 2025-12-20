@@ -99,7 +99,7 @@ jobs:
           echo "📝 Creating key.properties..."
           echo "storePassword=$KEYSTORE_PASSWORD" > apps/driver/android/key.properties
           echo "keyPassword=$KEY_PASSWORD" >> apps/driver/android/key.properties
-          echo "keyAlias=$KEY_ALIAS" >> apps/driver/android/key.properties
+          echo "keyAlias=$(echo $KEY_ALIAS | xargs)" >> apps/driver/android/key.properties
           echo "storeFile=$GITHUB_WORKSPACE/release.jks" >> apps/driver/android/key.properties
 
       # Create .env file from secrets

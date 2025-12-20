@@ -346,6 +346,109 @@ class _EditProfilePageState extends State<EditProfilePage> {
     }
   }
 
+  /// Show confirmation dialog to leave the company
+  Future<void> _showLeaveCompanyDialog() async {
+    final companyName = _companyInfo?['name'] ?? 'this company';
+    final messenger = ScaffoldMessenger.of(context);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        title: Text(
+          'Leave Company?',
+          style: GoogleFonts.inter(
+            fontWeight: FontWeight.w600,
+            color: isDark ? Colors.white : const Color(0xFF101828),
+          ),
+        ),
+        content: Text(
+          'Are you sure you want to leave "$companyName"?\n\n'
+          'The company will no longer see your data. '
+          'If you want to rejoin, they will need to send you a new invitation.',
+          style: GoogleFonts.inter(
+            color: isDark ? Colors.white70 : Colors.grey[700],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(
+                color: isDark ? Colors.white60 : Colors.grey[600],
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+            child: Text(
+              'Leave Company',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ProfileService.revokeCompany();
+        // Clear local company info and refresh
+        setState(() {
+          _companyInfo = null;
+        });
+        // Invalidate cache to ensure dashboard updates
+        await ProfileRepository.refresh();
+
+        if (mounted) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text('You have left $companyName')),
+                ],
+              ),
+              backgroundColor: const Color(0xFF10B981),
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          messenger.showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(child: Text(ErrorHandler.getErrorMessage(e))),
+                ],
+              ),
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -596,6 +699,39 @@ class _EditProfilePageState extends State<EditProfilePage> {
                                             Icons.contact_phone_outlined,
                                             isDark,
                                             textColor,
+                                          ),
+                                          const SizedBox(height: 24),
+                                          // Leave Company Button
+                                          SizedBox(
+                                            width: double.infinity,
+                                            child: OutlinedButton.icon(
+                                              onPressed:
+                                                  _showLeaveCompanyDialog,
+                                              icon: const Icon(
+                                                Icons.exit_to_app,
+                                                color: Colors.redAccent,
+                                              ),
+                                              label: Text(
+                                                'Leave Company',
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.redAccent,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                              style: OutlinedButton.styleFrom(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      vertical: 14,
+                                                    ),
+                                                side: const BorderSide(
+                                                  color: Colors.redAccent,
+                                                ),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
+                                            ),
                                           ),
                                         ],
                                       ),

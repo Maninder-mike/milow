@@ -45,6 +45,31 @@ final pendingUsersProvider = StreamProvider<List<UserProfile>>((ref) {
       });
 });
 
+/// Provider that streams driver_left notifications for the current admin.
+/// These notifications are created when a driver leaves a company.
+final driverLeftNotificationsProvider =
+    StreamProvider<List<Map<String, dynamic>>>((ref) {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+
+      if (userId == null) return Stream.value([]);
+
+      return supabase
+          .from('notifications')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .map((data) {
+            // Filter to only driver_left type notifications that are unread
+            return data
+                .where(
+                  (n) => n['type'] == 'driver_left' && n['is_read'] != true,
+                )
+                .toList()
+                .cast<Map<String, dynamic>>();
+          });
+    });
+
 /// Provider for notification actions
 final notificationActionsProvider = Provider((ref) => NotificationActions());
 
@@ -90,5 +115,13 @@ class NotificationActions {
     // Note: This only deletes the profile. The Auth user remains but has no profile data.
     // In a real app we'd want a specialized Edge Function to delete the Auth User too.
     // For this MVP, deleting the profile clears the notification.
+  }
+
+  /// Mark a notification as read/dismissed
+  Future<void> dismissNotification(String notificationId) async {
+    await Supabase.instance.client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('id', notificationId);
   }
 }
