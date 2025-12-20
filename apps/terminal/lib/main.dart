@@ -12,6 +12,7 @@ import 'core/providers/theme_provider.dart';
 import 'core/router/router_provider.dart';
 import 'features/settings/widgets/custom_about_dialog.dart';
 import 'features/settings/utils/update_checker.dart';
+import 'core/services/app_links_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +22,8 @@ Future<void> main() async {
     url: SupabaseConstants.supabaseUrl,
     anonKey: SupabaseConstants.supabaseAnonKey,
   );
+
+  await AppLinksService().initialize();
 
   if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
     await windowManager.ensureInitialized();

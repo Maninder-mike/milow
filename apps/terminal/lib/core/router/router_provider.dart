@@ -7,6 +7,7 @@ import 'package:terminal/features/auth/login_page.dart';
 import 'package:terminal/features/auth/sign_up_page.dart';
 import 'package:terminal/features/auth/terms_page.dart';
 import 'package:terminal/features/auth/privacy_policy_page.dart';
+import 'package:terminal/features/auth/reset_password_page.dart';
 import 'package:terminal/features/auth/presentation/pending_verification_page.dart';
 import 'package:terminal/features/dashboard/dashboard_shell.dart';
 import 'package:terminal/features/inbox/inbox_view.dart';
@@ -41,6 +42,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
       GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
+      GoRoute(
+        path: '/reset-password',
+        builder: (context, state) => const ResetPasswordPage(),
+      ),
       GoRoute(path: '/terms', builder: (context, state) => const TermsPage()),
       GoRoute(
         path: '/privacy',
@@ -125,10 +130,17 @@ final routerNotifierProvider = Provider<RouterNotifier>((ref) {
 
 class RouterNotifier extends ChangeNotifier {
   final Ref _ref;
+  bool _isPasswordRecovery = false;
 
   RouterNotifier(this._ref) {
     _ref.listen(profileProvider, (previous, next) => notifyListeners());
-    Supabase.instance.client.auth.onAuthStateChange.listen((_) {
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      final event = data.event;
+      if (event == AuthChangeEvent.passwordRecovery) {
+        _isPasswordRecovery = true;
+      } else if (event == AuthChangeEvent.signedOut) {
+        _isPasswordRecovery = false;
+      }
       notifyListeners();
     });
   }
@@ -138,9 +150,12 @@ class RouterNotifier extends ChangeNotifier {
     final isLoggedIn = session != null;
     final location = state.matchedLocation;
 
+    if (_isPasswordRecovery) return '/reset-password';
+
     final isPublicPage =
         location == '/login' ||
         location == '/signup' ||
+        location == '/reset-password' ||
         location == '/terms' ||
         location == '/privacy';
 

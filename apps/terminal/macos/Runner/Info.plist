@@ -34,10 +34,10 @@
 			<key>CFBundleTypeRole</key>
 			<string>Editor</string>
 			<key>CFBundleURLName</key>
-			<string>milow-admin</string>
+			<string>milow-terminal</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>milow-admin</string>
+				<string>milow-terminal</string>
 			</array>
 		</dict>
 	</array>

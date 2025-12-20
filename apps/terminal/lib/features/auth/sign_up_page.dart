@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'auth_theme.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -20,6 +22,9 @@ class _SignUpPageState extends State<SignUpPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+  final _flyoutController = FlyoutController();
+
+  late AuthTheme _theme;
 
   bool _isLoading = false;
   bool _obscurePassword = true;
@@ -27,13 +32,22 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _acceptedTerms = false;
 
   @override
+  void initState() {
+    super.initState();
+    _theme = AuthTheme.getRandom();
+  }
+
+  @override
   void dispose() {
+    _flyoutController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
   }
+
+  // ... (build methods)
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
@@ -49,7 +63,7 @@ class _SignUpPageState extends State<SignUpPage> {
       await Supabase.instance.client.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
-        emailRedirectTo: 'milow-admin://login',
+        emailRedirectTo: 'milow-terminal://login',
         data: {
           'full_name': _nameController.text.trim(),
           'role': _selectedRole.name,
@@ -103,14 +117,12 @@ class _SignUpPageState extends State<SignUpPage> {
 
   @override
   Widget build(BuildContext context) {
+    Color buttonTextCol(Color bg) {
+      return bg.computeLuminance() > 0.5 ? Colors.black : Colors.white;
+    }
+
     return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF6C5CE7), Color(0xFFA29BFE)],
-        ),
-      ),
+      decoration: BoxDecoration(gradient: _theme.gradient),
       child: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
@@ -122,23 +134,19 @@ class _SignUpPageState extends State<SignUpPage> {
                 width: 400,
                 padding: const EdgeInsets.all(40),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(
-                    alpha: 0.1,
-                  ), // Fluent Colors.white
+                  color: _theme.glassColor,
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.7),
-                  ),
+                  border: Border.all(color: _theme.glassBorderColor),
                 ),
                 child: Form(
                   key: _formKey,
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
+                      Icon(
                         FluentIcons.add_friend,
                         size: 64,
-                        color: Colors.white,
+                        color: _theme.primaryContentColor,
                       ),
                       const SizedBox(height: 24),
                       Text(
@@ -146,7 +154,7 @@ class _SignUpPageState extends State<SignUpPage> {
                         style: GoogleFonts.outfit(
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: _theme.primaryContentColor,
                           decoration: TextDecoration.none,
                         ),
                       ),
@@ -155,58 +163,52 @@ class _SignUpPageState extends State<SignUpPage> {
                         'Join the admin team',
                         style: GoogleFonts.inter(
                           fontSize: 16,
-                          color: Colors.white.withValues(alpha: 0.7),
+                          color: _theme.secondaryContentColor,
                           decoration: TextDecoration.none,
                         ),
                       ),
                       const SizedBox(height: 32),
 
                       // Role Selection
-                      Container(
-                        padding: const EdgeInsets.only(left: 8, right: 12),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: ComboBox<UserRole>(
-                          value: _selectedRole,
-                          items: UserRole.values
-                              .where(
-                                (role) =>
-                                    role != UserRole.driver &&
-                                    role != UserRole.pending,
-                              )
-                              .map((role) {
-                                // Format role name nicely
-                                final label = role.name
-                                    .replaceAllMapped(
-                                      RegExp(r'([A-Z])'),
-                                      (match) => ' ${match.group(0)}',
-                                    )
-                                    .replaceFirstMapped(
-                                      RegExp(r'^[a-z]'),
-                                      (match) => match.group(0)!.toUpperCase(),
-                                    );
-
-                                return ComboBoxItem(
-                                  value: role,
-                                  child: Text(
-                                    label,
-                                    style: const TextStyle(color: Colors.black),
+                      SizedBox(
+                        width: double.infinity,
+                        child: FlyoutTarget(
+                          controller: _flyoutController,
+                          child: Button(
+                            style: ButtonStyle(
+                              backgroundColor: WidgetStateProperty.all(
+                                _theme.inputFillColor,
+                              ),
+                              shape: WidgetStateProperty.all(
+                                RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                  side: BorderSide.none,
+                                ),
+                              ),
+                              padding: WidgetStateProperty.all(
+                                const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 10,
+                                ),
+                              ),
+                            ),
+                            onPressed: _showRolePicker,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  _formatRole(_selectedRole),
+                                  style: TextStyle(
+                                    color: _theme.primaryContentColor,
+                                    fontSize: 14,
                                   ),
-                                );
-                              })
-                              .toList(),
-                          onChanged: (role) {
-                            if (role != null) {
-                              setState(() => _selectedRole = role);
-                            }
-                          },
-                          isExpanded: true,
-                          placeholder: Text(
-                            'Select Role',
-                            style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.7),
+                                ),
+                                Icon(
+                                  FluentIcons.chevron_down,
+                                  size: 10,
+                                  color: _theme.primaryContentColor,
+                                ),
+                              ],
                             ),
                           ),
                         ),
@@ -248,7 +250,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             _obscurePassword
                                 ? FluentIcons.red_eye
                                 : FluentIcons.hide,
-                            color: Colors.white,
+                            color: _theme.primaryContentColor,
                           ),
                           onPressed: () => setState(
                             () => _obscurePassword = !_obscurePassword,
@@ -273,7 +275,7 @@ class _SignUpPageState extends State<SignUpPage> {
                             _obscureConfirmPassword
                                 ? FluentIcons.red_eye
                                 : FluentIcons.hide,
-                            color: Colors.white,
+                            color: _theme.primaryContentColor,
                           ),
                           onPressed: () => setState(
                             () => _obscureConfirmPassword =
@@ -306,10 +308,10 @@ class _SignUpPageState extends State<SignUpPage> {
                               ),
                               uncheckedDecoration: WidgetStateProperty.all(
                                 BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.1),
+                                  color: _theme.inputFillColor,
                                   borderRadius: BorderRadius.circular(4),
                                   border: Border.all(
-                                    color: Colors.white.withValues(alpha: 0.7),
+                                    color: _theme.glassBorderColor,
                                   ),
                                 ),
                               ),
@@ -321,30 +323,42 @@ class _SignUpPageState extends State<SignUpPage> {
                               text: TextSpan(
                                 style: GoogleFonts.inter(
                                   fontSize: 14,
-                                  color: Colors.white.withValues(alpha: 0.7),
+                                  color: _theme.secondaryContentColor,
                                 ),
                                 children: [
                                   const TextSpan(text: 'I agree to the '),
                                   TextSpan(
                                     text: 'Terms',
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: _theme.primaryContentColor,
                                       fontWeight: FontWeight.bold,
                                       decoration: TextDecoration.underline,
                                     ),
                                     recognizer: TapGestureRecognizer()
-                                      ..onTap = () => context.push('/terms'),
+                                      ..onTap = () {
+                                        launchUrl(
+                                          Uri.parse(
+                                            'https://www.maninder.co.in/milow/TermsandConditions',
+                                          ),
+                                        );
+                                      },
                                   ),
                                   const TextSpan(text: ' & '),
                                   TextSpan(
                                     text: 'Privacy Policy',
-                                    style: const TextStyle(
-                                      color: Colors.white,
+                                    style: TextStyle(
+                                      color: _theme.primaryContentColor,
                                       fontWeight: FontWeight.bold,
                                       decoration: TextDecoration.underline,
                                     ),
                                     recognizer: TapGestureRecognizer()
-                                      ..onTap = () => context.push('/privacy'),
+                                      ..onTap = () {
+                                        launchUrl(
+                                          Uri.parse(
+                                            'https://www.maninder.co.in/milow/privacypolicy',
+                                          ),
+                                        );
+                                      },
                                   ),
                                 ],
                               ),
@@ -362,10 +376,10 @@ class _SignUpPageState extends State<SignUpPage> {
                           onPressed: _isLoading ? null : _signUp,
                           style: ButtonStyle(
                             backgroundColor: WidgetStateProperty.all(
-                              Colors.white,
+                              _theme.primaryContentColor,
                             ),
                             foregroundColor: WidgetStateProperty.all(
-                              const Color(0xFF6C5CE7),
+                              buttonTextCol(_theme.primaryContentColor),
                             ),
                           ),
                           child: _isLoading
@@ -390,7 +404,7 @@ class _SignUpPageState extends State<SignUpPage> {
                           Text(
                             'Already have an account? ',
                             style: GoogleFonts.inter(
-                              color: Colors.white.withValues(alpha: 0.9),
+                              color: _theme.secondaryContentColor,
                               fontSize: 14,
                               decoration: TextDecoration.none,
                             ),
@@ -402,7 +416,7 @@ class _SignUpPageState extends State<SignUpPage> {
                               style: GoogleFonts.inter(
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
-                                color: Colors.white,
+                                color: _theme.primaryContentColor,
                               ),
                             ),
                           ),
@@ -430,23 +444,105 @@ class _SignUpPageState extends State<SignUpPage> {
   }) {
     return TextFormBox(
       controller: controller,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: _theme.primaryContentColor),
       obscureText: obscureText,
       keyboardType: keyboardType,
       validator: validator,
       prefix: Padding(
         padding: const EdgeInsets.only(left: 8.0),
-        child: Icon(icon, color: Colors.white),
+        child: Icon(icon, color: _theme.primaryContentColor),
       ),
       suffix: suffixIcon,
       placeholder: hint,
-      placeholderStyle: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
+      placeholderStyle: TextStyle(color: _theme.secondaryContentColor),
       decoration: WidgetStateProperty.all(
         BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.1),
+          color: _theme.inputFillColor,
           borderRadius: BorderRadius.circular(4),
         ),
       ),
     );
+  }
+
+  void _showRolePicker() {
+    _flyoutController.showFlyout(
+      builder: (context) {
+        return FlyoutContent(
+          padding: EdgeInsets.zero,
+          color: Colors.transparent,
+          child: Container(
+            width: 320, // Matches form width (400 - 40*2 padding)
+            decoration: BoxDecoration(
+              color: _theme.glassColor, // Background similar to other inputs
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: _theme.glassBorderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: UserRole.values
+                  .where(
+                    (role) =>
+                        role != UserRole.driver && role != UserRole.pending,
+                  )
+                  .map((role) {
+                    final isSelected = _selectedRole == role;
+                    return HoverButton(
+                      onPressed: () {
+                        setState(() => _selectedRole = role);
+                        Navigator.of(context).pop();
+                      },
+                      builder: (context, states) {
+                        final isHovering = states.isHovered;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                          color: isSelected
+                              ? _theme.primaryContentColor.withValues(
+                                  alpha: 0.1,
+                                )
+                              : isHovering
+                              ? _theme.secondaryContentColor.withValues(
+                                  alpha: 0.1,
+                                )
+                              : Colors.transparent,
+                          child: Text(
+                            _formatRole(role),
+                            style: TextStyle(
+                              color: _theme.primaryContentColor,
+                              fontSize: 14,
+                              fontWeight: isSelected
+                                  ? FontWeight.bold
+                                  : FontWeight.normal,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  })
+                  .toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  String _formatRole(UserRole role) {
+    return role.name
+        .replaceAllMapped(RegExp(r'([A-Z])'), (match) => ' ${match.group(0)}')
+        .replaceFirstMapped(
+          RegExp(r'^[a-z]'),
+          (match) => match.group(0)!.toUpperCase(),
+        );
   }
 }

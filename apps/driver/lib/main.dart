@@ -136,6 +136,10 @@ final GoRouter _router = GoRouter(
       path: '/reset-password',
       builder: (context, state) => const ResetPasswordPage(),
     ),
+    GoRoute(
+      path: '/UpdatePassword',
+      builder: (context, state) => const ResetPasswordPage(),
+    ),
 
     GoRoute(
       path: '/dashboard',

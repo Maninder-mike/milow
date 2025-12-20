@@ -2,7 +2,7 @@ name: Build, Sign, Release, Update Supabase
 
 on:
   push:
-    branches: [ release ]
+    branches: [ beta ]
     paths:
       - "apps/driver/pubspec.yaml"
       - "apps/driver/lib/**"
@@ -146,15 +146,15 @@ jobs:
           echo "✅ Build complete!"
 
       # Upload to Play Store
-      - name: Upload to Play Store
+      - name: Upload to Play Store (Alpha/Closed Testing)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
           packageName: maninder.co.in.milow
           releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
-          track: beta
+          track: alpha
           status: completed
-          changesNotSentForReview: true # Optional, helps with some updates
+          changesNotSentForReview: true # Avoids review requirement for closed testing
 
       # Prepare build output (APK only for GitHub Release, AAB went to Play Store)
       - name: Prepare APK for release
@@ -192,7 +192,7 @@ jobs:
           ## 🗄️ Database & Backend
           
           - **Supabase Catalog**: Version entry updated automatically.
-          - **Google Play**: Uploaded to Beta track.
+          - **Google Play**: Uploaded to Alpha track (Closed Testing).
           
           ## 📝 What's Changed
           
@@ -316,5 +316,5 @@ jobs:
           echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **APK Size**: ${{ steps.prepare_apk.outputs.apk_size }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Play Store**: Beta Track Upload Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Play Store**: Alpha Track (Closed Testing) Upload Completed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
