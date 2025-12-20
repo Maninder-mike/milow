@@ -641,7 +641,19 @@ class _DashboardPageState extends State<DashboardPage>
     } else {
       formattedMiles = _totalMiles.toStringAsFixed(0);
     }
-    final milesTitle = _distanceUnit == 'km' ? 'Km Driven' : 'Miles Driven';
+
+    // Get time period label for card titles
+    final timePeriodLabels = {
+      'weekly': 'Weekly',
+      'biweekly': 'Bi-Weekly',
+      'monthly': 'Monthly',
+      'yearly': 'Yearly',
+    };
+    final periodLabel = timePeriodLabels[_timePeriod] ?? 'Bi-Weekly';
+
+    final distanceLabel = _distanceUnit == 'km' ? 'KM' : 'Miles';
+    final tripsTitle = '$periodLabel Trips';
+    final milesTitle = '$periodLabel $distanceLabel';
 
     Widget statsGrid() => Padding(
       padding: EdgeInsets.symmetric(horizontal: margin),
@@ -653,7 +665,7 @@ class _DashboardPageState extends State<DashboardPage>
                     onLongPress: _showTimePeriodDialog,
                     child: DashboardCard(
                       value: '$_totalTrips',
-                      title: 'Total Trips',
+                      title: tripsTitle,
                       icon: Icons.local_shipping,
                       color: const Color(0xFF3B82F6),
                       trend: _tripsTrend,
@@ -684,7 +696,7 @@ class _DashboardPageState extends State<DashboardPage>
                         onLongPress: _showTimePeriodDialog,
                         child: DashboardCard(
                           value: '$_totalTrips',
-                          title: 'Total Trips',
+                          title: tripsTitle,
                           icon: Icons.local_shipping,
                           color: const Color(0xFF3B82F6),
                           trend: _tripsTrend,
