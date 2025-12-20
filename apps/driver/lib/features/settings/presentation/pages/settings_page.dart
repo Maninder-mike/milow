@@ -601,7 +601,12 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.help_outline,
                   title: 'Help Center',
                   iconColor: const Color(0xFF00CEC9),
-                  onTap: () {},
+                  // TODO: Implement Help Center navigation
+                  onTap: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Help Center coming soon')),
+                    );
+                  },
                   isDark: isDark,
                 ),
                 _buildGlassyDivider(isDark),

@@ -132,7 +132,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (data['date_of_birth'] != null) {
       try {
         _dob = DateTime.parse(data['date_of_birth']);
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error parsing date_of_birth: $e');
+      }
     }
 
     final citizenshipCode = data['citizenship'];
@@ -155,7 +157,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
         } catch (_) {
           _citizenship = null;
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error parsing citizenship: $e');
+      }
     }
 
     if (data['companies'] != null) {

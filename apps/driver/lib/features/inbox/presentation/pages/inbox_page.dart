@@ -221,7 +221,12 @@ class _InboxPageState extends State<InboxPage>
           ),
           child: IconButton(
             icon: Icon(icon, color: textColor),
-            onPressed: () {},
+            // TODO: Implement search functionality
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Search coming soon')),
+              );
+            },
           ),
         ),
       ),
