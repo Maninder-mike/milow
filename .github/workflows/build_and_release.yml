@@ -152,7 +152,6 @@ jobs:
           releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
           track: alpha
           status: completed
-          changesNotSentForReview: true # Avoids review requirement for closed testing
 
       # Prepare build output (APK only for GitHub Release, AAB went to Play Store)
       - name: Prepare APK for release
