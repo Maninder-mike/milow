@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -1012,155 +1013,200 @@ class _DashboardPageState extends State<DashboardPage>
                       const SizedBox(height: 12),
                       Container(
                         decoration: BoxDecoration(
-                          color: cardColor,
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: borderColor),
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark
+                                  ? Colors.black.withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 24,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
-                        child: _isLoadingEntries
-                            ? const ShimmerLoading(
-                                isLoading: true,
-                                child: Column(
-                                  children: [
-                                    ShimmerEntryItem(),
-                                    ShimmerEntryItem(),
-                                    ShimmerEntryItem(),
-                                    ShimmerEntryItem(showDivider: false),
-                                  ],
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: isDark
+                                      ? [
+                                          Colors.white.withValues(alpha: 0.15),
+                                          Colors.white.withValues(alpha: 0.05),
+                                        ]
+                                      : [
+                                          Colors.white.withValues(alpha: 0.9),
+                                          Colors.white.withValues(alpha: 0.7),
+                                        ],
                                 ),
-                              )
-                            : _recentEntries.isEmpty
-                            ? Padding(
-                                padding: const EdgeInsets.all(32),
-                                child: Center(
-                                  child: Column(
-                                    children: [
-                                      Icon(
-                                        Icons.inbox_outlined,
-                                        size: 48,
-                                        color: secondaryTextColor,
-                                      ),
-                                      const SizedBox(height: 12),
-                                      Text(
-                                        'No entries yet',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 14,
-                                          color: secondaryTextColor,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        'Add your first trip or fuel entry',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          color: secondaryTextColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.2)
+                                      : Colors.white.withValues(alpha: 0.8),
+                                  width: 1.5,
                                 ),
-                              )
-                            : Column(
-                                children: [
-                                  ..._recentEntries.asMap().entries.map((
-                                    entry,
-                                  ) {
-                                    final index = entry.key;
-                                    final item = entry.value;
-                                    final isTrip = item['type'] == 'trip';
-
-                                    Widget entryWidget;
-                                    if (isTrip) {
-                                      final trip = item['data'] as Trip;
-                                      final pickups = trip.pickupLocations;
-                                      final deliveries = trip.deliveryLocations;
-                                      final route =
-                                          pickups.isNotEmpty &&
-                                              deliveries.isNotEmpty
-                                          ? '${AddressUtils.extractCityState(pickups.first)} -> ${AddressUtils.extractCityState(deliveries.last)}'
-                                          : 'No route';
-                                      final distance = trip.totalDistance;
-                                      final distanceStr = distance != null
-                                          ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
-                                          : '-';
-
-                                      entryWidget = _buildRecordEntry(
-                                        textColor,
-                                        secondaryTextColor,
-                                        'trip',
-                                        'Trip #${trip.tripNumber}',
-                                        route,
-                                        DateFormat(
-                                          'MMM d, yyyy',
-                                        ).format(trip.tripDate),
-                                        distanceStr,
-                                      );
-                                    } else {
-                                      final fuel = item['data'] as FuelEntry;
-                                      final location = fuel.location != null
-                                          ? AddressUtils.extractCityState(
-                                              fuel.location!,
-                                            )
-                                          : 'Unknown location';
-                                      final quantity =
-                                          '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
-                                      final identifier = fuel.isTruckFuel
-                                          ? fuel.truckNumber ?? 'Truck'
-                                          : fuel.reeferNumber ?? 'Reefer';
-
-                                      entryWidget = _buildRecordEntry(
-                                        textColor,
-                                        secondaryTextColor,
-                                        'fuel',
-                                        '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
-                                        location,
-                                        DateFormat(
-                                          'MMM d, yyyy',
-                                        ).format(fuel.fuelDate),
-                                        quantity,
-                                      );
-                                    }
-
-                                    return Column(
-                                      children: [
-                                        entryWidget,
-                                        if (index < _recentEntries.length - 1)
-                                          Divider(
-                                            height: 1,
-                                            color: borderColor,
-                                          ),
-                                      ],
-                                    );
-                                  }),
-                                  Divider(height: 1, color: borderColor),
-                                  // See more button
-                                  InkWell(
-                                    onTap: () {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const RecordsListPage(),
-                                        ),
-                                      );
-                                    },
-                                    child: Padding(
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 14,
-                                      ),
-                                      child: Center(
-                                        child: Text(
-                                          'See more',
-                                          style: GoogleFonts.inter(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color: const Color(0xFF007AFF),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
                               ),
+                              child: _isLoadingEntries
+                                  ? const ShimmerLoading(
+                                      isLoading: true,
+                                      child: Column(
+                                        children: [
+                                          ShimmerEntryItem(),
+                                          ShimmerEntryItem(),
+                                          ShimmerEntryItem(),
+                                          ShimmerEntryItem(showDivider: false),
+                                        ],
+                                      ),
+                                    )
+                                  : _recentEntries.isEmpty
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(32),
+                                      child: Center(
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.inbox_outlined,
+                                              size: 48,
+                                              color: secondaryTextColor,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'No entries yet',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                color: secondaryTextColor,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Add your first trip or fuel entry',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                color: secondaryTextColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : Column(
+                                      children: [
+                                        ..._recentEntries.asMap().entries.map((
+                                          entry,
+                                        ) {
+                                          final index = entry.key;
+                                          final item = entry.value;
+                                          final isTrip = item['type'] == 'trip';
+
+                                          Widget entryWidget;
+                                          if (isTrip) {
+                                            final trip = item['data'] as Trip;
+                                            final pickups =
+                                                trip.pickupLocations;
+                                            final deliveries =
+                                                trip.deliveryLocations;
+                                            final route =
+                                                pickups.isNotEmpty &&
+                                                    deliveries.isNotEmpty
+                                                ? '${AddressUtils.extractCityState(pickups.first)} -> ${AddressUtils.extractCityState(deliveries.last)}'
+                                                : 'No route';
+                                            final distance = trip.totalDistance;
+                                            final distanceStr = distance != null
+                                                ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
+                                                : '-';
+
+                                            entryWidget = _buildRecordEntry(
+                                              textColor,
+                                              secondaryTextColor,
+                                              'trip',
+                                              'Trip #${trip.tripNumber}',
+                                              route,
+                                              DateFormat(
+                                                'MMM d, yyyy',
+                                              ).format(trip.tripDate),
+                                              distanceStr,
+                                            );
+                                          } else {
+                                            final fuel =
+                                                item['data'] as FuelEntry;
+                                            final location =
+                                                fuel.location != null
+                                                ? AddressUtils.extractCityState(
+                                                    fuel.location!,
+                                                  )
+                                                : 'Unknown location';
+                                            final quantity =
+                                                '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
+                                            final identifier = fuel.isTruckFuel
+                                                ? fuel.truckNumber ?? 'Truck'
+                                                : fuel.reeferNumber ?? 'Reefer';
+
+                                            entryWidget = _buildRecordEntry(
+                                              textColor,
+                                              secondaryTextColor,
+                                              'fuel',
+                                              '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
+                                              location,
+                                              DateFormat(
+                                                'MMM d, yyyy',
+                                              ).format(fuel.fuelDate),
+                                              quantity,
+                                            );
+                                          }
+
+                                          return Column(
+                                            children: [
+                                              entryWidget,
+                                              if (index <
+                                                  _recentEntries.length - 1)
+                                                Divider(
+                                                  height: 1,
+                                                  color: borderColor,
+                                                ),
+                                            ],
+                                          );
+                                        }),
+                                        Divider(height: 1, color: borderColor),
+                                        // See more button
+                                        InkWell(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const RecordsListPage(),
+                                              ),
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                'See more',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: const Color(
+                                                    0xFF007AFF,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
