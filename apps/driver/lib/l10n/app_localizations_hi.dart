@@ -39,19 +39,19 @@ class AppLocalizationsHi extends AppLocalizations {
   String get dashboard => 'डैशबोर्ड';
 
   @override
-  String get categories => 'Categories';
+  String get categories => 'श्रेणियाँ';
 
   @override
-  String get popularDestinations => 'Popular Destinations';
+  String get popularDestinations => 'लोकप्रिय गंतव्य';
 
   @override
-  String get recentActivity => 'Recent Activity';
+  String get recentActivity => 'हाल की गतिविधि';
 
   @override
-  String get logs => 'Logs';
+  String get logs => 'लॉग्स';
 
   @override
-  String get totalDrivenMiles => 'Miles';
+  String get totalDrivenMiles => 'कुल मील';
 
   @override
   String get trips => 'यात्राएं';
@@ -63,10 +63,10 @@ class AppLocalizationsHi extends AppLocalizations {
   String get inbox => 'इनबॉक्स';
 
   @override
-  String get home => 'Home';
+  String get home => 'होम';
 
   @override
-  String get support => 'Support';
+  String get support => 'सहायता';
 
   @override
   String get addEntry => 'एंट्री जोड़ें';
@@ -282,41 +282,42 @@ class AppLocalizationsHi extends AppLocalizations {
   String get no => 'नहीं';
 
   @override
-  String get signInSubtitle => 'Sign in to continue your journey';
+  String get signInSubtitle => 'अपनी यात्रा जारी रखने के लिए साइन इन करें';
 
   @override
-  String get emailAddress => 'Email Address';
+  String get emailAddress => 'ईमेल पता';
 
   @override
-  String get enterPasswordHint => 'Enter your password';
+  String get enterPasswordHint => 'अपना पासवर्ड दर्ज करें';
 
   @override
-  String get orContinueWith => 'or continue with';
+  String get orContinueWith => 'या इसके साथ जारी रखें';
 
   @override
-  String get continueWithGoogle => 'Continue with Google';
+  String get continueWithGoogle => 'Google के साथ जारी रखें';
 
   @override
   String get emailHint => 'name@email.com';
 
   @override
-  String get pleaseEnterEmail => 'Please enter your email';
+  String get pleaseEnterEmail => 'कृपया अपना ईमेल दर्ज करें';
 
   @override
-  String get pleaseEnterValidEmail => 'Please enter a valid email';
+  String get pleaseEnterValidEmail => 'कृपया एक मान्य ईमेल दर्ज करें';
 
   @override
-  String get pleaseEnterPassword => 'Please enter your password';
+  String get pleaseEnterPassword => 'कृपया अपना पासवर्ड दर्ज करें';
 
   @override
-  String get invalidCredentials => 'Invalid credentials';
+  String get invalidCredentials => 'अमान्य क्रेडेंशियल्स';
 
   @override
-  String get signInFailed => 'Sign-in failed. Please try again.';
+  String get signInFailed => 'साइन-इन विफल रहा। कृपया पुन: प्रयास करें।';
 
   @override
-  String get googleSignInFailed => 'Google sign-in failed. Please try again.';
+  String get googleSignInFailed =>
+      'Google साइन-इन विफल रहा। कृपया पुन: प्रयास करें।';
 
   @override
-  String get signedInWithGoogle => 'Signed in with Google!';
+  String get signedInWithGoogle => 'Google के साथ साइन इन किया गया!';
 }

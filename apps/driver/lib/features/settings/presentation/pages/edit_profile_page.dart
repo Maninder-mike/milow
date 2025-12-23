@@ -652,91 +652,81 @@ class _EditProfilePageState extends State<EditProfilePage> {
                             ),
 
                             const SizedBox(height: 24),
-                            /* Company Info Card */
-                            _buildSectionHeader('COMPANY INFORMATION', isDark),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
+                            /* Company Info Card - Only show if user has a company */
+                            if (_companyInfo != null) ...[
+                              _buildSectionHeader(
+                                'COMPANY INFORMATION',
+                                isDark,
                               ),
-                              child: GlassyCard(
-                                padding: const EdgeInsets.all(20),
-                                child: _companyInfo == null
-                                    ? Center(
-                                        child: Text(
-                                          'No Company Information',
-                                          style: GoogleFonts.inter(
-                                            color: isDark
-                                                ? Colors.white60
-                                                : Colors.grey[600],
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                ),
+                                child: GlassyCard(
+                                  padding: const EdgeInsets.all(20),
+                                  child: Column(
+                                    children: [
+                                      _buildReadOnlyField(
+                                        'Company Name',
+                                        _companyInfo!['name'] ?? '',
+                                        Icons.business,
+                                        isDark,
+                                        textColor,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _buildReadOnlyField(
+                                        'Address',
+                                        _formatCompanyAddress(_companyInfo!),
+                                        Icons.location_on_outlined,
+                                        isDark,
+                                        textColor,
+                                      ),
+                                      const SizedBox(height: 16),
+                                      _buildReadOnlyField(
+                                        'Contact',
+                                        _companyInfo!['phone'] ??
+                                            _companyInfo!['email'] ??
+                                            '-',
+                                        Icons.contact_phone_outlined,
+                                        isDark,
+                                        textColor,
+                                      ),
+                                      const SizedBox(height: 24),
+                                      // Leave Company Button
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton.icon(
+                                          onPressed: _showLeaveCompanyDialog,
+                                          icon: const Icon(
+                                            Icons.exit_to_app,
+                                            color: Colors.redAccent,
+                                          ),
+                                          label: Text(
+                                            'Leave Company',
+                                            style: GoogleFonts.inter(
+                                              color: Colors.redAccent,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                          style: OutlinedButton.styleFrom(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            side: const BorderSide(
+                                              color: Colors.redAccent,
+                                            ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(12),
+                                            ),
                                           ),
                                         ),
-                                      )
-                                    : Column(
-                                        children: [
-                                          _buildReadOnlyField(
-                                            'Company Name',
-                                            _companyInfo!['name'] ?? '',
-                                            Icons.business,
-                                            isDark,
-                                            textColor,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          _buildReadOnlyField(
-                                            'Address',
-                                            _formatCompanyAddress(
-                                              _companyInfo!,
-                                            ),
-                                            Icons.location_on_outlined,
-                                            isDark,
-                                            textColor,
-                                          ),
-                                          const SizedBox(height: 16),
-                                          _buildReadOnlyField(
-                                            'Contact',
-                                            _companyInfo!['phone'] ??
-                                                _companyInfo!['email'] ??
-                                                '-',
-                                            Icons.contact_phone_outlined,
-                                            isDark,
-                                            textColor,
-                                          ),
-                                          const SizedBox(height: 24),
-                                          // Leave Company Button
-                                          SizedBox(
-                                            width: double.infinity,
-                                            child: OutlinedButton.icon(
-                                              onPressed:
-                                                  _showLeaveCompanyDialog,
-                                              icon: const Icon(
-                                                Icons.exit_to_app,
-                                                color: Colors.redAccent,
-                                              ),
-                                              label: Text(
-                                                'Leave Company',
-                                                style: GoogleFonts.inter(
-                                                  color: Colors.redAccent,
-                                                  fontWeight: FontWeight.w600,
-                                                ),
-                                              ),
-                                              style: OutlinedButton.styleFrom(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      vertical: 14,
-                                                    ),
-                                                side: const BorderSide(
-                                                  color: Colors.redAccent,
-                                                ),
-                                                shape: RoundedRectangleBorder(
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                ),
-                                              ),
-                                            ),
-                                          ),
-                                        ],
                                       ),
+                                    ],
+                                  ),
+                                ),
                               ),
-                            ),
+                            ],
 
                             const SizedBox(height: 32),
                             _buildActionButtons(context, isDark, textColor),

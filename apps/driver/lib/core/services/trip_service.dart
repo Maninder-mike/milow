@@ -197,16 +197,22 @@ class TripService {
     }
   }
 
-  /// Get total distance for all trips (in user's preferred unit)
+  /// Get total distance for all trips (calculated on server)
   static Future<double> getTotalDistance() async {
-    final trips = await getTrips();
-    double total = 0;
-    for (final trip in trips) {
-      if (trip.totalDistance != null) {
-        total += trip.totalDistance!;
-      }
+    final userId = _userId;
+    if (userId == null) {
+      throw Exception('User not authenticated');
     }
-    return total;
+
+    try {
+      final response = await _client.rpc(
+        'get_total_trip_distance',
+        params: {'user_uuid': userId},
+      );
+      return (response as num?)?.toDouble() ?? 0.0;
+    } catch (e) {
+      throw Exception('Failed to get total distance: $e');
+    }
   }
 
   /// Search trips by trip number or truck number

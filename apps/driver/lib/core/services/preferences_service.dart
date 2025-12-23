@@ -3,10 +3,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 enum UnitSystem { metric, imperial }
 
 class PreferencesService {
-  static const String _showWeatherKey = 'show_weather_on_dashboard';
   static const String _unitSystemKey = 'unit_system';
-  static const String _showTruckingNewsKey = 'show_trucking_news';
-
   // Unit System preference (Metric/Imperial)
   static Future<UnitSystem> getUnitSystem() async {
     final prefs = await SharedPreferences.getInstance();
@@ -57,25 +54,4 @@ class PreferencesService {
   }
 
   // Weather display preference
-  static Future<bool> getShowWeather() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_showWeatherKey) ?? true; // Default: show weather
-  }
-
-  static Future<void> setShowWeather(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_showWeatherKey, value);
-  }
-
-  // Trucking News display preference
-  static Future<bool> getShowTruckingNews() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_showTruckingNewsKey) ??
-        false; // Default: OFF for new users
-  }
-
-  static Future<void> setShowTruckingNews(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_showTruckingNewsKey, value);
-  }
 }

@@ -7,20 +7,14 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 // TabsShell provides navigation; this page returns content only
 import 'package:milow/core/widgets/dashboard_card.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:milow/core/widgets/section_header.dart';
-import 'package:milow/core/widgets/news_card.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/utils/address_utils.dart';
-import 'package:milow/features/dashboard/presentation/pages/news_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
-import 'package:milow/core/services/weather_service.dart';
-import 'package:milow/core/services/news_service.dart';
-import 'package:milow/core/models/news_article.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
 import 'package:milow/core/services/trip_service.dart';
@@ -38,21 +32,11 @@ class DashboardPage extends StatefulWidget {
 }
 
 class _DashboardPageState extends State<DashboardPage>
-    with WidgetsBindingObserver, TickerProviderStateMixin {
-  final WeatherService _weatherService = WeatherService();
-  Map<String, dynamic>? _weatherData;
-  bool _isLoadingWeather = true;
-  bool _showWeather = true; // User preference
-  String _temperatureUnit = 'C'; // C or F
-  String? _weatherError;
-
+    with TickerProviderStateMixin {
   // Border wait times
   List<BorderWaitTime> _borderWaitTimes = [];
   bool _isLoadingBorders = true;
   String? _borderError;
-  List<NewsArticle> _newsArticles = [];
-  bool _isLoadingNews = true;
-  bool _showTruckingNews = false; // User preference
   Timer? _borderRefreshTimer;
 
   // Recent entries (trips and fuel)
@@ -80,7 +64,6 @@ class _DashboardPageState extends State<DashboardPage>
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
 
     // Initialize bell animation controller
     _bellAnimationController = AnimationController(
@@ -108,9 +91,6 @@ class _DashboardPageState extends State<DashboardPage>
       ),
     );
 
-    _loadPreferences();
-    _loadWeather();
-    _loadNews();
     _loadBorderWaitTimes(
       forceRefresh: false,
     ); // Use prefetched data if available
@@ -127,7 +107,6 @@ class _DashboardPageState extends State<DashboardPage>
 
   @override
   void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
     _borderRefreshTimer?.cancel();
     _notificationSubscription?.cancel();
     _incomingSubscription?.cancel();
@@ -143,20 +122,10 @@ class _DashboardPageState extends State<DashboardPage>
 
     // Refresh all data in parallel
     await Future.wait([
-      _loadWeather(),
       _loadBorderWaitTimes(forceRefresh: true),
       _loadRecentEntries(),
       _loadDashboardStats(),
     ]);
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    super.didChangeAppLifecycleState(state);
-    // Reload news when app resumes (e.g., returning from Settings)
-    if (state == AppLifecycleState.resumed) {
-      _loadNews();
-    }
   }
 
   Future<void> _loadNotificationCount() async {
@@ -254,11 +223,15 @@ class _DashboardPageState extends State<DashboardPage>
         distanceUnit = await PreferencesService.getDistanceUnit();
       }
 
-      double totalMiles = 0;
+      double totalDistance = 0;
       for (final trip in trips) {
         if (trip.totalDistance != null) {
-          totalMiles += trip.totalDistance!;
+          totalDistance += trip.totalDistance!;
         }
+      }
+
+      if (distanceUnit == 'km') {
+        totalDistance *= 1.60934;
       }
 
       // Calculate trends based on time period
@@ -267,7 +240,7 @@ class _DashboardPageState extends State<DashboardPage>
       if (mounted) {
         setState(() {
           _totalTrips = trips.length;
-          _totalMiles = totalMiles;
+          _totalMiles = totalDistance;
           _distanceUnit = distanceUnit;
           _tripsTrend = trends['tripsTrend']!;
           _milesTrend = trends['milesTrend']!;
@@ -398,13 +371,6 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  Future<void> _loadPreferences() async {
-    final showWeather = await PreferencesService.getShowWeather();
-    setState(() {
-      _showWeather = showWeather;
-    });
-  }
-
   Future<void> _loadBorderWaitTimes({bool forceRefresh = false}) async {
     final prefetch = DataPrefetchService.instance;
 
@@ -446,34 +412,6 @@ class _DashboardPageState extends State<DashboardPage>
         setState(() {
           _isLoadingBorders = false;
           _borderError = _getErrorMessage(e);
-        });
-      }
-    }
-  }
-
-  Future<void> _loadWeather() async {
-    final showWeather = await PreferencesService.getShowWeather();
-    if (!showWeather) {
-      setState(() {
-        _isLoadingWeather = false;
-      });
-      return;
-    }
-
-    try {
-      final weather = await _weatherService.getCurrentWeather();
-      if (mounted) {
-        setState(() {
-          _weatherData = weather;
-          _isLoadingWeather = false;
-          _weatherError = weather == null ? 'Unable to get weather data' : null;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoadingWeather = false;
-          _weatherError = _getErrorMessage(e);
         });
       }
     }
@@ -531,59 +469,6 @@ class _DashboardPageState extends State<DashboardPage>
     }
   }
 
-  Future<void> _loadNews() async {
-    // Check if trucking news is enabled
-    final showNews = await PreferencesService.getShowTruckingNews();
-
-    if (mounted) {
-      setState(() {
-        _showTruckingNews = showNews;
-      });
-    }
-
-    if (!showNews) {
-      // User has disabled trucking news, keep the list empty
-      if (mounted) {
-        setState(() {
-          _newsArticles = [];
-          _isLoadingNews = false;
-        });
-      }
-      return;
-    }
-
-    try {
-      final news = await NewsService.getTruckingNews();
-      if (mounted) {
-        setState(() {
-          _newsArticles = news;
-          _isLoadingNews = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          // Keep empty list if failed, maybe show cached if available logic is in service
-          _isLoadingNews = false;
-        });
-      }
-    }
-  }
-
-  Future<void> _launchUrl(String urlString) async {
-    if (urlString.isEmpty) return;
-    try {
-      final uri = Uri.parse(urlString);
-      // Try launching in in-app browser first
-      if (!await launchUrl(uri, mode: LaunchMode.inAppWebView)) {
-        // Fallback to external application (browser) if in-app fails
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
-    } catch (e) {
-      // Handle error safely
-    }
-  }
-
   String _getErrorMessage(dynamic error) {
     final errorStr = error.toString().toLowerCase();
     if (errorStr.contains('socketexception') ||
@@ -600,21 +485,6 @@ class _DashboardPageState extends State<DashboardPage>
       return 'Server error. Please try again later.';
     }
     return 'Something went wrong. Please try again.';
-  }
-
-  void _toggleTemperatureUnit() {
-    setState(() {
-      _temperatureUnit = _temperatureUnit == 'C' ? 'F' : 'C';
-    });
-  }
-
-  double _getDisplayTemperature() {
-    if (_weatherData == null) return 0;
-    final celsius = _weatherData!['temperature'] as double;
-    if (_temperatureUnit == 'F') {
-      return (celsius * 9 / 5) + 32;
-    }
-    return celsius;
   }
 
   @override
@@ -723,24 +593,6 @@ class _DashboardPageState extends State<DashboardPage>
             ),
     );
 
-    Widget newsStrip(List<NewsArticle> items) => SizedBox(
-      height: 180,
-      child: ListView.separated(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(horizontal: margin),
-        itemBuilder: (c, i) => SizedBox(
-          width: context.responsive(xs: 180.0, sm: 200.0, md: 220.0),
-          child: NewsCard(
-            title: items[i].title,
-            source: items[i].source,
-            onTap: () => _launchUrl(items[i].url ?? ''),
-          ),
-        ),
-        separatorBuilder: (_, _) => SizedBox(width: gutter),
-        itemCount: items.length,
-      ),
-    );
-
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
@@ -792,70 +644,7 @@ class _DashboardPageState extends State<DashboardPage>
                         },
                       ),
                       const SizedBox(width: 8),
-                      // Weather widget
-                      if (_showWeather && _weatherData != null)
-                        GestureDetector(
-                          onTap: _toggleTemperatureUnit,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  _weatherService.getWeatherIcon(
-                                    _weatherData!['weatherCode'],
-                                    isDay: _weatherData!['isDay'] ?? true,
-                                  ),
-                                  style: const TextStyle(fontSize: 20),
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  '${_getDisplayTemperature().round()}°$_temperatureUnit',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: secondaryTextColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      // Weather loads silently in background, only show when ready
-                      if (_showWeather &&
-                          !_isLoadingWeather &&
-                          _weatherData == null &&
-                          _weatherError != null)
-                        GestureDetector(
-                          onTap: _loadWeather,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 8,
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.cloud_off,
-                                  size: 20,
-                                  color: secondaryTextColor,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Tap to retry',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: secondaryTextColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+
                       const Spacer(),
                       // Notification bell icon with red dot indicator
                       _buildNotificationBell(
@@ -1212,57 +1001,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 ),
                 const SizedBox(height: 16),
-                // Only show Trucking News section if enabled in settings
-                if (_showTruckingNews) ...[
-                  SectionHeader(
-                    title: 'Trucking News',
-                    onAction: () => Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => NewsListPage(
-                          title: 'Trucking News',
-                          // Pass real articles if possible, or let NewsListPage fetch them too?
-                          // Simplified: Pass the current _newsArticles list
-                          items: _newsArticles
-                              .map(
-                                (article) => {
-                                  'title': article.title,
-                                  'source': article.source,
-                                  'url': article.url ?? '',
-                                  'date': article.publishedAt != null
-                                      ? DateFormat(
-                                          'MMM d',
-                                        ).format(article.publishedAt!)
-                                      : '',
-                                  'description': article.description ?? '',
-                                },
-                              )
-                              .toList(),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  if (_isLoadingNews)
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 20),
-                      child: Center(child: CircularProgressIndicator()),
-                    )
-                  else if (_newsArticles.isEmpty)
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: margin),
-                      child: Text(
-                        'No news available',
-                        style: GoogleFonts.inter(
-                          color: secondaryTextColor,
-                          fontSize: 14,
-                        ),
-                      ),
-                    )
-                  else
-                    newsStrip(_newsArticles),
-                  const SizedBox(height: 16),
-                ],
+
                 const SectionHeader(title: 'Learning Pages'),
                 const SizedBox(height: 12),
                 Container(

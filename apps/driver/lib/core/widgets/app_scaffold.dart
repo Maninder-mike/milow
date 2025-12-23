@@ -40,12 +40,12 @@ class AppScaffold extends StatelessWidget {
         showUnselectedLabels: true,
         items: [
           BottomNavigationBarItem(
-            icon: const Icon(Icons.explore_outlined),
-            label: AppLocalizations.of(context)?.explore ?? 'Explore',
-          ),
-          BottomNavigationBarItem(
             icon: const Icon(Icons.home),
             label: AppLocalizations.of(context)?.dashboard ?? 'Dashboard',
+          ),
+          BottomNavigationBarItem(
+            icon: const Icon(Icons.explore_outlined),
+            label: AppLocalizations.of(context)?.explore ?? 'Explore',
           ),
           BottomNavigationBarItem(
             icon: const Icon(Icons.mail_outline),
@@ -57,8 +57,8 @@ class AppScaffold extends StatelessWidget {
           ),
         ],
         onTap: (index) {
-          if (index == 0) context.go('/explore');
-          if (index == 1) context.go('/dashboard');
+          if (index == 0) context.go('/dashboard');
+          if (index == 1) context.go('/explore');
           if (index == 2) context.go('/inbox');
           if (index == 3) context.go('/settings');
         },

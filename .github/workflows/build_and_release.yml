@@ -3,10 +3,12 @@ name: Build, Sign, Release, Update Supabase
 on:
   push:
     branches: [ beta ]
+    tags: [ 'v*' ]
     paths:
       - "apps/driver/pubspec.yaml"
       - "apps/driver/lib/**"
       - "apps/driver/android/**"
+      - "apps/driver/fastlane/**"  # Play Store metadata
   workflow_dispatch:  # Allow manual triggering
       
 jobs:
@@ -152,6 +154,16 @@ jobs:
           releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
           track: alpha
           status: completed
+          whatsNewDirectory: apps/driver/fastlane/metadata/android
+
+      # Update Play Store listing metadata (title, description)
+      - name: Update Play Store Metadata
+        run: |
+          echo "📝 Updating Play Store listing..."
+          cd apps/driver
+          gem install fastlane
+          ANDROID_SERVICE_ACCOUNT_JSON='${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' fastlane update_metadata
+          echo "✅ Play Store metadata updated!"
 
       # Prepare build output (APK only for GitHub Release, AAB went to Play Store)
       - name: Prepare APK for release

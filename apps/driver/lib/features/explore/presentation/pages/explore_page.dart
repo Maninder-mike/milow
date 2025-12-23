@@ -14,7 +14,7 @@ import 'package:milow/features/explore/presentation/utils/explore_map_helper.dar
 import 'package:milow/features/explore/presentation/widgets/stats_overview_card.dart';
 import 'package:milow/features/explore/presentation/widgets/state_collector_card.dart';
 import 'package:milow/features/explore/presentation/widgets/smart_suggestions_card.dart';
-import 'package:milow/core/constants/design_tokens.dart';
+
 import 'package:milow/core/services/geo_service.dart';
 
 import 'package:intl/intl.dart';
@@ -626,55 +626,14 @@ class _ExplorePageState extends State<ExplorePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            _SectionLabel(
-                              label: AppLocalizations.of(context)!.categories,
-                            ),
-                            const SizedBox(height: 12),
-                            SingleChildScrollView(
-                              scrollDirection: Axis.horizontal,
-                              child: Row(
-                                children: [
-                                  _buildCategoryChip(
-                                    'All Routes',
-                                    Icons.route,
-                                    _selectedCategory == 'All Routes',
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _buildCategoryChip(
-                                    'Long Haul',
-                                    Icons.local_shipping,
-                                    _selectedCategory == 'Long Haul',
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _buildCategoryChip(
-                                    'Regional',
-                                    Icons.map_outlined,
-                                    _selectedCategory == 'Regional',
-                                  ),
-                                  const SizedBox(width: 8),
-                                  _buildCategoryChip(
-                                    'Local',
-                                    Icons.location_on_outlined,
-                                    _selectedCategory == 'Local',
-                                  ),
-                                ],
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
+                            // Interactive Map Preview
 
                             // Interactive Map Preview
                             if (_selectedCategory == 'All Routes' ||
                                 _selectedCategory == 'Long Haul' ||
                                 _selectedCategory == 'Regional' ||
                                 _selectedCategory == 'Local') ...[
-                              _SectionHeaderRow(
-                                title: 'Activity Map',
-                                onAction: () {
-                                  // Navigation to full screen map to be implemented
-                                  debugPrint('Navigate to full screen map');
-                                },
-                              ),
+                              const _SectionHeaderRow(title: 'Activity Map'),
                               const SizedBox(height: 12),
                               if (_isMapLoading)
                                 const Center(child: CircularProgressIndicator())
@@ -817,56 +776,6 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  Widget _buildCategoryChip(String label, IconData icon, bool isSelected) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GestureDetector(
-      onTap: () {
-        setState(() {
-          _selectedCategory = label;
-        });
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).primaryColor
-              : (isDark ? Colors.white10 : Colors.grey.shade100),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            if (isSelected)
-              BoxShadow(
-                color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 4),
-              ),
-          ],
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: isSelected
-                  ? Colors.white
-                  : (isDark ? Colors.white70 : Colors.black54),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: GoogleFonts.inter(
-                color: isSelected
-                    ? Colors.white
-                    : (isDark ? Colors.white70 : Colors.black87),
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   void _navigateToAllDestinations() {
     Navigator.push(
       context,
@@ -896,25 +805,6 @@ class _ExplorePageState extends State<ExplorePage> {
 }
 
 // ============== Helper Widgets ==============
-
-class _SectionLabel extends StatelessWidget {
-  final String label;
-  const _SectionLabel({required this.label});
-  @override
-  Widget build(BuildContext context) {
-    final tokens =
-        Theme.of(context).extension<DesignTokens>() ?? DesignTokens.light;
-    return Text(
-      label.toUpperCase(),
-      style: GoogleFonts.inter(
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
-        color: tokens.sectionLabelColor,
-        letterSpacing: 0.5,
-      ),
-    );
-  }
-}
 
 class _SectionHeaderRow extends StatelessWidget {
   final String title;

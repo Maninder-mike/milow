@@ -11,7 +11,6 @@ import 'package:milow/core/services/theme_service.dart';
 import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/services/logging_service.dart';
 import 'package:milow/core/services/locale_service.dart';
-import 'package:milow/core/services/version_checker_service.dart';
 
 import 'package:flutter/services.dart';
 import 'package:milow/core/services/trip_parser_service.dart';
@@ -144,7 +143,7 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/dashboard',
       builder: (context, state) =>
-          const AuthWrapper(child: TabsShell(initialIndex: 1)),
+          const AuthWrapper(child: TabsShell(initialIndex: 0)),
     ),
     GoRoute(
       path: '/settings',
@@ -184,7 +183,7 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/explore',
       builder: (context, state) =>
-          const AuthWrapper(child: TabsShell(initialIndex: 0)),
+          const AuthWrapper(child: TabsShell(initialIndex: 1)),
     ),
     GoRoute(
       path: '/inbox',
@@ -220,32 +219,6 @@ class _MyAppState extends State<MyApp> {
     _setupMethodChannelListener();
     _checkForSharedText();
     _setupDeepLinkListener();
-    _checkForUpdates();
-  }
-
-  /// Check for app updates on startup
-  void _checkForUpdates() async {
-    // Wait a bit for app to fully initialize
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Only check if user is logged in
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session == null) return;
-
-    final result = await VersionCheckerService.checkForUpdates();
-
-    if (result.updateAvailable && mounted) {
-      unawaited(
-        AppDialogs.showUpdateAvailable(
-          context,
-          currentVersion: result.currentVersion ?? 'Unknown',
-          latestVersion: result.versionInfo?.latestVersion ?? 'Unknown',
-          downloadUrl: result.versionInfo?.downloadUrl ?? '',
-          changelog: result.versionInfo?.changelog,
-          isCritical: result.isCriticalUpdate,
-        ),
-      );
-    }
   }
 
   void _setupMethodChannelListener() {

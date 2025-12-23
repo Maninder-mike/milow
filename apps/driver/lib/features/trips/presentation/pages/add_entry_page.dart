@@ -58,6 +58,8 @@ class _AddEntryPageState extends State<AddEntryPage>
   // Trip fields
   final _tripNumberController = TextEditingController();
   final _tripTruckNumberController = TextEditingController();
+  final List<TextEditingController> _trailerControllers =
+      []; // Multiple trailers
   final _borderCrossingController = TextEditingController();
   final _tripDateController = TextEditingController();
 
@@ -72,6 +74,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   final List<TextEditingController> _deliveryControllers = [];
 
   static const int _maxLocations = 20;
+  static const int _maxTrailers = 3;
 
   final _tripStartOdometerController = TextEditingController();
   final _tripEndOdometerController = TextEditingController();
@@ -98,6 +101,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   // FocusNodes for Autocomplete
   final _tripTruckFocusNode = FocusNode();
+  final List<FocusNode> _trailerFocusNodes = []; // Multiple trailers
 
   final List<FocusNode> _pickupFocusNodes = [];
   final List<FocusNode> _deliveryFocusNodes = [];
@@ -139,6 +143,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     // Initialize with one pickup and one delivery location
     _addPickupLocation();
     _addDeliveryLocation();
+    _addTrailer();
 
     // Handle edit mode for Trip
     if (widget.editingTrip != null) {
@@ -233,6 +238,26 @@ class _AddEntryPageState extends State<AddEntryPage>
     _borderCrossingController.text = trip.borderCrossing ?? '';
     _selectedBorderCrossing = trip.borderCrossing;
     _tripDateController.text = _formatDateTime(trip.tripDate);
+
+    // Restored trailer prefill
+    if (trip.trailers.isNotEmpty) {
+      // Clear initial empty trailer if present
+      if (_trailerControllers.isNotEmpty &&
+          _trailerControllers[0].text.isEmpty) {
+        _trailerControllers[0].dispose();
+        _trailerControllers.removeAt(0);
+        _trailerFocusNodes[0].dispose();
+        _trailerFocusNodes.removeAt(0);
+      }
+
+      for (final trailer in trip.trailers) {
+        _addTrailer(trailer);
+      }
+    }
+    // Ensure at least one field exists
+    if (_trailerControllers.isEmpty) {
+      _addTrailer();
+    }
 
     // Fill pickup locations
     if (trip.pickupLocations.isNotEmpty) {
@@ -481,6 +506,9 @@ class _AddEntryPageState extends State<AddEntryPage>
     _fuelScrollController.dispose();
     _tabController.dispose();
     _tripNumberController.dispose();
+    for (final controller in _trailerControllers) {
+      controller.dispose();
+    }
     _borderCrossingController.dispose();
     _tripDateController.dispose();
     // Dispose pickup controllers
@@ -507,6 +535,9 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Dispose FocusNodes
     _tripTruckFocusNode.dispose();
+    for (final node in _trailerFocusNodes) {
+      node.dispose();
+    }
     _truckFocusNode.dispose();
     _locationFocusNode.dispose();
 
@@ -1260,12 +1291,17 @@ class _AddEntryPageState extends State<AddEntryPage>
                   ],
                 ),
                 const SizedBox(height: 16),
+                const SizedBox(height: 16),
+                _buildLabel('Trailer Number'),
+                const SizedBox(height: 8),
+                ..._buildTrailerFields(),
+                const SizedBox(height: 16),
                 _buildLabel('Border Crossing (Optional)'),
                 const SizedBox(height: 8),
                 _buildBorderCrossingDropdown(),
                 const SizedBox(height: 16),
 
-                // Trailers section removed
+                // Trailers section restored above
                 _buildLabel('Date & Time'),
                 const SizedBox(height: 8),
                 TextField(
@@ -1537,7 +1573,10 @@ class _AddEntryPageState extends State<AddEntryPage>
         borderCrossing: _borderCrossingController.text.trim().isNotEmpty
             ? _borderCrossingController.text.trim()
             : null,
-        trailers: [],
+        trailers: _trailerControllers
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
         tripDate: tripDate,
         pickupLocations: pickupLocations,
         deliveryLocations: deliveryLocations,
@@ -1880,6 +1919,13 @@ class _AddEntryPageState extends State<AddEntryPage>
                               if (value != null && value != _currency) {
                                 setState(() {
                                   _currency = value;
+                                  if (value == 'USD') {
+                                    _fuelUnit = 'gal';
+                                    _distanceUnit = 'mi';
+                                  } else if (value == 'CAD') {
+                                    _fuelUnit = 'L';
+                                    _distanceUnit = 'km';
+                                  }
                                 });
                               }
                             },
@@ -2458,5 +2504,103 @@ class _AddEntryPageState extends State<AddEntryPage>
         ],
       ),
     );
+  }
+
+  // Methods to manage trailers
+  void _addTrailer([String? customTrailer]) {
+    if (_trailerControllers.length < _maxTrailers) {
+      setState(() {
+        _trailerControllers.add(TextEditingController(text: customTrailer));
+        _trailerFocusNodes.add(FocusNode());
+      });
+    }
+  }
+
+  void _removeTrailer(int index) {
+    if (_trailerControllers.length > 1) {
+      setState(() {
+        _trailerControllers[index].dispose();
+        _trailerControllers.removeAt(index);
+        _trailerFocusNodes[index].dispose();
+        _trailerFocusNodes.removeAt(index);
+      });
+    }
+  }
+
+  List<Widget> _buildTrailerFields() {
+    final fields = <Widget>[];
+    for (int i = 0; i < _trailerControllers.length; i++) {
+      final isLast = i == _trailerControllers.length - 1;
+      final canAdd = _trailerControllers.length < _maxTrailers;
+      final canRemove = _trailerControllers.length > 1;
+
+      fields.add(
+        Padding(
+          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _trailerControllers[i],
+                  focusNode: _trailerFocusNodes[i],
+                  textCapitalization: TextCapitalization.characters,
+                  decoration: _inputDecoration(
+                    hint: 'e.g., 5301',
+                    prefixIcon: Icons.grid_3x3,
+                  ),
+                ),
+              ),
+              if (canRemove) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: () => _removeTrailer(i),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.red.shade200),
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        size: 20,
+                        color: Colors.red.shade600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+              if (isLast && canAdd) ...[
+                const SizedBox(width: 8),
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: InkWell(
+                    onTap: () => _addTrailer(),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE8F5E9),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFF81C784)),
+                      ),
+                      child: const Icon(
+                        Icons.add,
+                        size: 20,
+                        color: Color(0xFF43A047),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+    return fields;
   }
 }

@@ -41,10 +41,10 @@ class _TabsShellState extends State<TabsShell> {
     );
     switch (i) {
       case 0:
-        context.go('/explore');
+        context.go('/dashboard');
         break;
       case 1:
-        context.go('/dashboard');
+        context.go('/explore');
         break;
       case 2:
         context.go('/inbox');
@@ -76,8 +76,8 @@ class _TabsShellState extends State<TabsShell> {
           physics: const BouncingScrollPhysics(),
           onPageChanged: (i) => setState(() => _index = i),
           children: const [
-            ExplorePage(),
             DashboardPage(),
+            ExplorePage(),
             InboxPage(),
             SettingsPage(),
           ],
@@ -87,14 +87,14 @@ class _TabsShellState extends State<TabsShell> {
         currentIndex: _index,
         items: [
           CurvedBottomNavItem(
-            icon: Icons.explore_outlined,
-            activeIcon: Icons.explore,
-            label: AppLocalizations.of(context)!.explore,
-          ),
-          CurvedBottomNavItem(
             icon: Icons.home_outlined,
             activeIcon: Icons.home,
             label: AppLocalizations.of(context)!.home,
+          ),
+          CurvedBottomNavItem(
+            icon: Icons.explore_outlined,
+            activeIcon: Icons.explore,
+            label: AppLocalizations.of(context)!.explore,
           ),
           CurvedBottomNavItem(
             icon: Icons.inbox_outlined,

@@ -402,16 +402,39 @@ create policy "Allow public read access" on app_version for select using (true);
 
 
 -- ============================================
--- 6. INDEXES
+-- 6. INDEXES & OPTIMIZATIONS
 -- ============================================
 create index if not exists idx_messages_sender_id on public.messages(sender_id);
 create index if not exists idx_messages_receiver_id on public.messages(receiver_id);
+
+-- Performance Indexes (Scaling to Millions)
 create index if not exists idx_notifications_user_id on public.notifications(user_id);
 create index if not exists idx_notifications_is_read on public.notifications(is_read);
+
 create index if not exists trips_user_id_idx on trips(user_id);
+create index if not exists trips_company_id_idx on trips(company_id);
 create index if not exists trips_trip_date_idx on trips(trip_date desc);
+create index if not exists trips_truck_number_idx on trips(truck_number);
+
 create index if not exists fuel_entries_user_id_idx on fuel_entries(user_id);
+create index if not exists fuel_entries_company_id_idx on fuel_entries(company_id);
 create index if not exists fuel_entries_fuel_date_idx on fuel_entries(fuel_date desc);
+
+create index if not exists profiles_role_idx on profiles(role);
+create index if not exists profiles_company_id_idx on profiles(company_id);
+create index if not exists profiles_email_idx on profiles(email);
+
+create index if not exists trucks_company_id_idx on trucks(company_id);
+
+-- 6.1 Server-side Aggregations
+create or replace function public.get_total_trip_distance(user_uuid uuid)
+returns numeric as $$
+  select coalesce(sum(end_odometer - start_odometer), 0)
+  from trips
+  where user_id = user_uuid
+  and end_odometer is not null 
+  and start_odometer is not null;
+$$ language sql stable security definer;
 
 
 -- ============================================

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/l10n/app_localizations.dart';
 
 class LoginPage extends StatefulWidget {
@@ -114,9 +115,13 @@ class _LoginPageState extends State<LoginPage>
 
       await GoogleSignIn.instance.initialize(serverClientId: webClientId);
       final googleUser = await GoogleSignIn.instance.authenticate();
-      // googleUser is supposedly non-nullable here per linter
 
-      final googleAuth = googleUser.authentication;
+      if (googleUser == null) {
+        if (mounted) setState(() => _isGoogleLoading = false);
+        return;
+      }
+
+      final googleAuth = await googleUser.authentication;
       final idToken = googleAuth.idToken;
 
       if (idToken == null) {
@@ -130,11 +135,24 @@ class _LoginPageState extends State<LoginPage>
       );
 
       if (response.session != null && mounted) {
-        AppDialogs.showSuccess(
-          context,
-          AppLocalizations.of(context)!.signedInWithGoogle,
-        );
-        context.go('/dashboard');
+        // Explicitly sync profile data for first-time Google users
+        try {
+          await ProfileService.upsertProfile({
+            'email': googleUser.email,
+            'full_name': googleUser.displayName,
+            'avatar_url': googleUser.photoUrl,
+          });
+        } catch (e) {
+          debugPrint('Profile sync error: $e');
+        }
+
+        if (mounted) {
+          AppDialogs.showSuccess(
+            context,
+            AppLocalizations.of(context)!.signedInWithGoogle,
+          );
+          context.go('/dashboard');
+        }
       } else {
         throw Exception('Failed to create session');
       }

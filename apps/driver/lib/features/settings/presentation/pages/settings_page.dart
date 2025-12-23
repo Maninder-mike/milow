@@ -7,8 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/auth_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
-import 'package:milow/core/services/version_checker_service.dart';
-import 'package:milow_core/milow_core.dart';
+
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
 import 'package:milow/features/settings/presentation/pages/about_page.dart';
@@ -27,8 +26,6 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _email;
   String? _avatarUrl;
   bool _loading = true;
-  bool _showWeather = true;
-  bool _showTruckingNews = false;
   UnitSystem _unitSystem = UnitSystem.metric;
   int _tripCount = 0;
   double _totalMiles = 0;
@@ -47,26 +44,30 @@ class _SettingsPageState extends State<SettingsPage> {
       final tripCount = await TripService.getTripsCount();
       final totalDistance = await TripService.getTotalDistance();
 
+      // Calculate distance based on unit system preference
+      final isMetric = _unitSystem == UnitSystem.metric;
+      final displayDistance = isMetric
+          ? totalDistance * 1.60934
+          : totalDistance;
+
       if (mounted) {
         setState(() {
           _tripCount = tripCount;
-          _totalMiles = totalDistance;
+          _totalMiles = displayDistance;
         });
       }
     } catch (e) {
-      // Silently fail
+      debugPrint('Error loading profile stats: $e');
     }
   }
 
   Future<void> _loadPreferences() async {
-    final showWeather = await PreferencesService.getShowWeather();
-    final showTruckingNews = await PreferencesService.getShowTruckingNews();
     final unitSystem = await PreferencesService.getUnitSystem();
     setState(() {
-      _showWeather = showWeather;
-      _showTruckingNews = showTruckingNews;
       _unitSystem = unitSystem;
     });
+    // Reload stats after preference change to ensure correct units
+    _loadStats();
   }
 
   Future<void> _loadProfile() async {
@@ -250,9 +251,9 @@ class _SettingsPageState extends State<SettingsPage> {
                                   _totalMiles >= 1000
                                       ? '${(_totalMiles / 1000).toStringAsFixed(1)}K'
                                       : _totalMiles.toStringAsFixed(0),
-                                  AppLocalizations.of(
-                                    context,
-                                  )!.totalDrivenMiles,
+                                  _unitSystem == UnitSystem.metric
+                                      ? 'km'
+                                      : 'miles',
                                   isDark,
                                 ),
                                 const SizedBox(width: 16),
@@ -519,8 +520,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 _buildGlassyDivider(isDark),
                 _buildGlassyUnitSystemItem(isDark),
-                _buildGlassyDivider(isDark),
-                _buildGlassySwitchItem(isDark),
               ],
             ),
           ),
@@ -553,20 +552,6 @@ class _SettingsPageState extends State<SettingsPage> {
                         builder: (context) => const BorderCrossingSelector(),
                       ),
                     );
-                  },
-                  isDark: isDark,
-                ),
-                _buildGlassyDivider(isDark),
-                _buildGlassyToggleItem(
-                  icon: Icons.article_outlined,
-                  title: 'Trucking News',
-                  iconColor: const Color(0xFF6C5CE7),
-                  value: _showTruckingNews,
-                  onChanged: (value) async {
-                    await PreferencesService.setShowTruckingNews(value);
-                    setState(() {
-                      _showTruckingNews = value;
-                    });
                   },
                   isDark: isDark,
                 ),
@@ -609,43 +594,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   },
                   isDark: isDark,
                 ),
-                _buildGlassyDivider(isDark),
-                _buildGlassyMenuItem(
-                  icon: Icons.system_update_outlined,
-                  title: 'Check for Updates',
-                  iconColor: const Color(0xFF6C5CE7),
-                  onTap: () async {
-                    AppDialogs.showLoading(
-                      context,
-                      message: 'Checking for updates...',
-                    );
-                    final result = await VersionCheckerService.checkForUpdates(
-                      forceCheck: true,
-                    );
-                    if (!context.mounted) return;
-                    AppDialogs.hideLoading(context);
 
-                    if (result.updateAvailable) {
-                      unawaited(
-                        AppDialogs.showUpdateAvailable(
-                          context,
-                          currentVersion: result.currentVersion ?? 'Unknown',
-                          latestVersion:
-                              result.versionInfo?.latestVersion ?? 'Unknown',
-                          downloadUrl: result.versionInfo?.downloadUrl ?? '',
-                          changelog: result.versionInfo?.changelog,
-                          isCritical: result.isCriticalUpdate,
-                        ),
-                      );
-                    } else {
-                      AppDialogs.showSuccess(
-                        context,
-                        'You\'re on the latest version!',
-                      );
-                    }
-                  },
-                  isDark: isDark,
-                ),
                 _buildGlassyDivider(isDark),
                 _buildGlassyMenuItem(
                   icon: Icons.info_outline,
@@ -932,124 +881,6 @@ class _SettingsPageState extends State<SettingsPage> {
                 : (isDark ? Colors.white60 : const Color(0xFF667085)),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGlassySwitchItem(bool isDark) {
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF74B9FF).withValues(alpha: 0.2),
-                  const Color(0xFF74B9FF).withValues(alpha: 0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.cloud_outlined,
-              size: 22,
-              color: Color(0xFF74B9FF),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              AppLocalizations.of(context)?.showWeather ?? 'Show Weather',
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: textColor,
-              ),
-            ),
-          ),
-          Transform.scale(
-            scale: 0.85,
-            child: Switch(
-              value: _showWeather,
-              onChanged: (value) async {
-                await PreferencesService.setShowWeather(value);
-                setState(() => _showWeather = value);
-              },
-              activeThumbColor: Colors.white,
-              activeTrackColor: const Color(0xFF6C5CE7),
-              inactiveThumbColor: Colors.white,
-              inactiveTrackColor: isDark
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : Colors.black.withValues(alpha: 0.1),
-              trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildGlassyToggleItem({
-    required IconData icon,
-    required String title,
-    required Color iconColor,
-    required bool value,
-    required Function(bool) onChanged,
-    required bool isDark,
-  }) {
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  iconColor.withValues(alpha: 0.2),
-                  iconColor.withValues(alpha: 0.1),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, size: 22, color: iconColor),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              title,
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: textColor,
-              ),
-            ),
-          ),
-          Transform.scale(
-            scale: 0.85,
-            child: Switch(
-              value: value,
-              onChanged: (val) => onChanged(val),
-              activeThumbColor: Colors.white,
-              activeTrackColor: const Color(0xFF6C5CE7),
-              inactiveThumbColor: Colors.white,
-              inactiveTrackColor: isDark
-                  ? Colors.white.withValues(alpha: 0.2)
-                  : Colors.black.withValues(alpha: 0.1),
-              trackOutlineColor: WidgetStateProperty.all(Colors.transparent),
-            ),
-          ),
-        ],
       ),
     );
   }
