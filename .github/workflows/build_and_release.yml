@@ -27,6 +27,7 @@ jobs:
       SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
       SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
       SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GRADLE_OPTS: '-Dorg.gradle.vfs.watch=false'
 
     steps:
       - name: Checkout code
