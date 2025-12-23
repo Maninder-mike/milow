@@ -116,12 +116,10 @@ class _LoginPageState extends State<LoginPage>
       await GoogleSignIn.instance.initialize(serverClientId: webClientId);
       final googleUser = await GoogleSignIn.instance.authenticate();
 
-      if (googleUser == null) {
-        if (mounted) setState(() => _isGoogleLoading = false);
-        return;
-      }
+      // In google_sign_in v7, authenticate returns non-nullable.
+      // If user cancels, it likely throws, so we rely on the outer try-catch.
 
-      final googleAuth = await googleUser.authentication;
+      final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
 
       if (idToken == null) {

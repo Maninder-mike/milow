@@ -137,13 +137,22 @@ jobs:
           cd apps/driver
           flutter analyze || echo "::warning::Analysis found issues but continuing build"
 
+      # Dependency Vulnerability Audit
+      - name: Dependency Vulnerability Audit
+        continue-on-error: true
+        run: |
+          echo "🛡️ Checking for dependency vulnerabilities..."
+          cd apps/driver
+          flutter pub outdated --no-dev-dependencies --transitive || echo "::warning::Found outdated dependencies"
+
       # Build signed APK and App Bundle
       - name: Build Release Artifacts
         run: |
           echo "🏗️ Building release APK & App Bundle..."
+          echo "🔢 Build Number: ${{ github.run_number }}"
           cd apps/driver
-          flutter build apk --release --verbose
-          flutter build appbundle --release --verbose
+          flutter build apk --release --build-number=${{ github.run_number }} --verbose
+          flutter build appbundle --release --build-number=${{ github.run_number }} --verbose
           echo "✅ Build complete!"
 
       # Upload to Play Store

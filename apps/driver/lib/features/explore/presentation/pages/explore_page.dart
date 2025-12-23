@@ -30,7 +30,7 @@ class _ExplorePageState extends State<ExplorePage> {
   List<Trip> _allTrips = [];
   List<FuelEntry> _allFuelEntries = [];
   bool _isLoading = true;
-  String _selectedCategory = 'All Routes';
+  final String _selectedCategory = 'All Routes';
 
   @override
   void initState() {

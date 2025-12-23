@@ -67,7 +67,7 @@ class _SettingsPageState extends State<SettingsPage> {
       _unitSystem = unitSystem;
     });
     // Reload stats after preference change to ensure correct units
-    _loadStats();
+    await _loadStats();
   }
 
   Future<void> _loadProfile() async {
