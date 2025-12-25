@@ -10,6 +10,7 @@
 .svn/
 .swiftpm/
 build_log.txt
+build_and_release.yml
 
 
 # IntelliJ related
