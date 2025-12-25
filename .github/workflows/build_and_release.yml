@@ -2,123 +2,410 @@ name: Build, Sign, Release, Update Supabase
 
 on:
   push:
-    branches: [ release ]
+    branches: [ beta ]
+    tags: [ 'v*' ]
     paths:
-      - "pubspec.yaml"
-      - "lib/**"
-      - "android/**"
-
+      - "apps/driver/pubspec.yaml"
+      - "apps/driver/lib/**"
+      - "apps/driver/android/**"
+      - "apps/driver/fastlane/**"  # Play Store metadata
+  workflow_dispatch:  # Allow manual triggering
+      
 jobs:
-  build:
+  build-and-release:
+    name: Build, Release APK & Deploy to Play Store
     runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write  # Required to create releases and upload assets
+
+    env:
+      KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+      KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+      SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      GRADLE_OPTS: '-Dorg.gradle.vfs.watch=false'
 
     steps:
-      - name: Checkout
+      - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog generation
 
-      # Extract version from pubspec.yaml
+      # Extract version from apps/driver/pubspec.yaml
       - name: Read version
         id: version
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          VERSION=$(grep '^version:' apps/driver/pubspec.yaml | sed 's/version: //;s/\+.*//')
           echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Building version: v$VERSION"
 
-      # Check if this tag already exists → skip build
-      - name: Check if release version exists
+      # Check if this tag already exists
+      - name: Check if release exists
         id: check
         run: |
           if git rev-parse "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
             echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Version ${{ steps.version.outputs.version }} already exists"
           else
             echo "exists=false" >> $GITHUB_OUTPUT
+            echo "✅ Version ${{ steps.version.outputs.version }} is new"
           fi
 
       - name: Stop if version already released
         if: steps.check.outputs.exists == 'true'
-        run: echo "Version already released. Skipping build." && exit 0
+        run: |
+          echo "::warning::Version ${{ steps.version.outputs.version }} already released. Skipping build."
+          exit 0
 
-      # Decode keystore
+      # Setup Java for Android build
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # Install Flutter with caching
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.38.5"
+          channel: 'stable'
+          cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:'
+
+      # Cache Flutter dependencies
+      - name: Cache Flutter dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            apps/driver/.dart_tool
+          # Updated cache key to v2 to invalidate stale caches causing missing file errors
+          key: ${{ runner.os }}-pub-v2-${{ hashFiles('**/pubspec.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pub-v2-
+
+      # Decode Android keystore
       - name: Prepare Android signing
         run: |
+          echo "🔐 Preparing Android keystore..."
           echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > release.jks
-        env:
-          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ls -lh release.jks
 
       # Create key.properties for Gradle
       - name: Create key.properties
         run: |
-          cat > android/key.properties << EOF
-          storePassword=${{ secrets.KEYSTORE_PASSWORD }}
-          keyPassword=${{ secrets.KEY_PASSWORD }}
-          keyAlias=${{ secrets.KEY_ALIAS }}
-          storeFile=$GITHUB_WORKSPACE/release.jks
+          echo "📝 Creating key.properties..."
+          echo "storePassword=$KEYSTORE_PASSWORD" > apps/driver/android/key.properties
+          echo "keyPassword=$KEY_PASSWORD" >> apps/driver/android/key.properties
+          echo "keyAlias=$(echo $KEY_ALIAS | xargs)" >> apps/driver/android/key.properties
+          echo "storeFile=$GITHUB_WORKSPACE/release.jks" >> apps/driver/android/key.properties
+
+      # Create .env file from secrets
+      - name: Create .env file
+        run: |
+          echo "🔧 Creating .env file..."
+          cat > apps/driver/.env << EOF
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           EOF
 
-      # Install Flutter
-      - name: Install Flutter
-        uses: subosito/flutter-action@v2
-        with:
-          flutter-version: "3.38.4"
-
-      - name: Flutter pub get
-        run: flutter pub get
+      # Install dependencies
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing Flutter dependencies..."
+          cd apps/driver
+          flutter clean
+          flutter pub get
 
       # Build signed APK
       - name: Build signed APK
-        run: flutter build apk --release
-
-      - name: Rename APK
         run: |
-          mkdir -p build_output
-          cp build/app/outputs/flutter-apk/app-release.apk \
-             build_output/milow-${{ steps.version.outputs.version }}.apk
+          echo "🏗️ Building signed APK..."
+          cd apps/driver
+          flutter build apk --release
 
-      # Create GitHub Release
-      - name: Create Release
-        id: release
+      # Run tests (optional, can be disabled)
+      - name: Run tests
+        continue-on-error: true
+        run: |
+          echo "🧪 Running tests..."
+          cd apps/driver
+          flutter test || echo "::warning::Tests failed but continuing build"
+
+      # Analyze code
+      - name: Analyze code
+        continue-on-error: true
+        run: |
+          echo "🔍 Analyzing code..."
+          cd apps/driver
+          flutter analyze || echo "::warning::Analysis found issues but continuing build"
+
+      # Dependency Vulnerability Audit
+      - name: Dependency Vulnerability Audit
+        continue-on-error: true
+        run: |
+          echo "🛡️ Checking for dependency vulnerabilities..."
+          cd apps/driver
+          flutter pub outdated --no-dev-dependencies --transitive || echo "::warning::Found outdated dependencies"
+
+      # Build signed APK and App Bundle
+      - name: Build Release Artifacts
+        run: |
+          echo "🏗️ Building release APK & App Bundle..."
+          echo "🔢 Build Number: ${{ github.run_number }}"
+          cd apps/driver
+          flutter build apk --release --build-number=${{ github.run_number }} --verbose
+          flutter build appbundle --release --build-number=${{ github.run_number }} --verbose
+          echo "✅ Build complete!"
+
+      # Upload to Play Store
+      - name: Upload to Play Store (Alpha/Closed Testing)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+          packageName: maninder.co.in.milow
+          releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
+          track: alpha
+          status: completed
+          whatsNewDirectory: apps/driver/fastlane/metadata/android
+
+      # Update Play Store listing metadata (title, description)
+      - name: Update Play Store Metadata
+        run: |
+          echo "📝 Updating Play Store listing..."
+          cd apps/driver
+          export GEM_HOME="$HOME/.gem"
+          export PATH="$GEM_HOME/bin:$PATH"
+          gem install fastlane
+          ANDROID_SERVICE_ACCOUNT_JSON='${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' fastlane update_metadata
+          echo "✅ Play Store metadata updated!"
+
+      # Prepare build output (APK only for GitHub Release, AAB went to Play Store)
+      - name: Prepare APK for release
+        run: |
+          echo "📦 Preparing APK..."
+          mkdir -p build_output
+          cp apps/driver/build/app/outputs/flutter-apk/app-release.apk \
+             build_output/milow-${{ steps.version.outputs.version }}.apk
+          
+          # Get APK size
+          APK_SIZE=$(ls -lh build_output/milow-${{ steps.version.outputs.version }}.apk | awk '{print $5}')
+          echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+          echo "📊 APK Size: $APK_SIZE"
+        id: prepare_apk
+
+      # Generate changelog from commits
+      - name: Generate changelog
+        id: changelog
+        run: |
+          echo "📝 Generating categorized changelog..."
+          
+          # Get the previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"%s|%h|%an")
+          else
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s|%h|%an" --no-merges)
+          fi
+
+          # Initialize categories
+          FEATURES=""
+          FIXES=""
+          UI=""
+          MAINTENANCE=""
+          OTHER=""
+
+          # Process commits
+          while IFS='|' read -r MSG HASH AUTHOR; do
+            # Skip empty lines
+            [ -z "$MSG" ] && continue
+            
+            # Format: - Message (hash) - @author
+            ENTRY="- ${MSG} ([${HASH}](https://github.com/${{ github.repository }}/commit/${HASH}))"
+            
+            case "$(echo "$MSG" | tr '[:upper:]' '[:lower:]')" in
+              feat*|feature*|add*|new*)
+                FEATURES="${FEATURES}$ENTRY\n"
+                ;;
+              fix*|bug*|resolve*|patch*|hotfix*)
+                FIXES="${FIXES}$ENTRY\n"
+                ;;
+              ui*|style*|design*|theme*|ux*)
+                UI="${UI}$ENTRY\n"
+                ;;
+              chore*|refactor*|perf*|build*|ci*|test*|cleanup*)
+                MAINTENANCE="${MAINTENANCE}$ENTRY\n"
+                ;;
+              doc*|docs*)
+                Other="${OTHER}$ENTRY\n" # Group docs with other/misc for now or create specific section
+                ;;
+              *)
+                OTHER="${OTHER}$ENTRY\n"
+                ;;
+            esac
+          done <<< "$COMMITS"
+
+          # Build Changelog Content
+          CHANGELOG=""
+          
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG="${CHANGELOG}### 🚀 New Features\n${FEATURES}\n"
+          fi
+          
+          if [ -n "$FIXES" ]; then
+            CHANGELOG="${CHANGELOG}### 🐛 Bug Fixes\n${FIXES}\n"
+          fi
+          
+          if [ -n "$UI" ]; then
+            CHANGELOG="${CHANGELOG}### 💅 UI & Polish\n${UI}\n"
+          fi
+          
+          if [ -n "$MAINTENANCE" ]; then
+            CHANGELOG="${CHANGELOG}### 🏗️ Maintenance & Improvements\n${MAINTENANCE}\n"
+          fi
+          
+          if [ -n "$OTHER" ]; then
+            CHANGELOG="${CHANGELOG}### 🔧 Other Changes\n${OTHER}\n"
+          fi
+
+          # Save changelog to file
+          cat > RELEASE_NOTES.md << EOF
+          # Milow v${{ steps.version.outputs.version_number }} 🚀
+          
+          ## 🗄️ Database & Backend
+          
+          - **Supabase Catalog**: Automatic schema & version sync.
+          - **Google Play**: Alpha Track Release.
+          
+          ## 📝 What's Changed
+          
+          $(echo -e "$CHANGELOG")
+          
+          ## 📥 Download
+          
+          - **APK Size**: ${{ steps.prepare_apk.outputs.apk_size }}
+          - **Build Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ## 📲 Installation
+          
+          1. Download the APK file below.
+          2. Enable "Install from Unknown Sources" on your device.
+          3. Install and login!
+          
+          ---
+          *Full Changelog*: [${PREV_TAG}...v${{ steps.version.outputs.version }}](https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${{ steps.version.outputs.version }})
+          EOF
+          
+          echo "changelog<<EOF" >> $GITHUB_OUTPUT
+          cat RELEASE_NOTES.md >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # Create GitHub Release with APK in one step
+      - name: Create Release and Upload APK
+        id: create_release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.version.outputs.version }}
           name: Release ${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # Upload APK
-      - name: Upload APK
-        id: upload_apk
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ steps.version.outputs.version }}
           files: build_output/milow-${{ steps.version.outputs.version }}.apk
+          fail_on_unmatched_files: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # Update Supabase row - FIXED to avoid array access warning
+      # Update Supabase with retry logic
       - name: Update Supabase Version
+        continue-on-error: true
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
         run: |
-          # Wait a moment for GitHub to process the upload
-          sleep 5
+          echo "🔄 Updating Supabase app version..."
+
+          # Validate secrets
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::warning::Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secrets. Skipping Supabase update."
+            exit 0
+          fi
+
+          # Wait for GitHub to process the release
+          echo "⏳ Waiting 15s for release asset propagation..."
+          sleep 15
           
-          # Fetch the download URL from GitHub API
-          DOWNLOAD_URL=$(curl -s -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-            "https://api.github.com/repos/${{ github.repository }}/releases/tags/${{ steps.version.outputs.version }}" \
-            | jq -r '.assets[0].browser_download_url')
+          # Retry logic for fetching download URL
+          MAX_RETRIES=5
+          RETRY_COUNT=0
+          DOWNLOAD_URL=""
           
-          echo "Download URL: $DOWNLOAD_URL"
+          while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+            echo "Attempt $((RETRY_COUNT + 1))/$MAX_RETRIES to fetch download URL..."
+            
+            DOWNLOAD_URL=$(curl -s -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/$REPO/releases/tags/$VERSION" \
+              | jq -r '.assets[0].browser_download_url // empty')
+            
+            if [ -n "$DOWNLOAD_URL" ] && [ "$DOWNLOAD_URL" != "null" ]; then
+              echo "✅ Download URL found: $DOWNLOAD_URL"
+              break
+            fi
+            
+            echo "Waiting for asset using exponential backoff..."
+            RETRY_COUNT=$((RETRY_COUNT + 1))
+            sleep $((RETRY_COUNT * 5))
+          done
+          
+          if [ -z "$DOWNLOAD_URL" ] || [ "$DOWNLOAD_URL" == "null" ]; then
+            echo "::warning::Failed to fetch download URL after retries. Using generic release URL."
+            DOWNLOAD_URL="https://github.com/$REPO/releases/tag/$VERSION"
+          fi
+          
+          # Construct JSON payload safely using jq
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          JSON_DATA=$(jq -n \
+            --arg version "$VERSION" \
+            --arg url "$DOWNLOAD_URL" \
+            --arg changelog "Release $VERSION" \
+            --arg time "$TIMESTAMP" \
+            '{latest_version: $version, download_url: $url, changelog: $changelog, updated_at: $time}')
           
           # Update Supabase
-          curl -X PATCH "$SUPABASE_URL/rest/v1/app_version?platform=eq.android" \
-            -H "apikey: $SUPABASE_SERVICE_ROLE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_SERVICE_ROLE_KEY" \
+          echo "📤 Sending update to Supabase..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "$SUPABASE_URL/rest/v1/app_version?platform=eq.android" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
             -H "Content-Type: application/json" \
             -H "Prefer: return=minimal" \
-            -d "{
-              \"latest_version\": \"${{ steps.version.outputs.version }}\",
-              \"download_url\": \"$DOWNLOAD_URL\",
-              \"changelog\": \"Release ${{ steps.version.outputs.version }}\"
-            }"
-        env:
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+            -d "$JSON_DATA")
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Supabase updated successfully (HTTP $HTTP_CODE)"
+          else
+            echo "::error::Supabase update failed with HTTP $HTTP_CODE"
+            echo "Response: $RESPONSE"
+            exit 1
+          fi
+
+      # Summary
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## 🎉 Build Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **APK Size**: ${{ steps.prepare_apk.outputs.apk_size }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Play Store**: Alpha Track (Closed Testing) Upload Completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY

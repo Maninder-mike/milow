@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Splash screen background matching Flutter's loading screen -->
+    <color name="splash_background_light">#F9FAFB</color>
+    <color name="splash_background_dark">#121212</color>
+	<color name="ic_launcher_background">#007AFF</color>
+</resources>

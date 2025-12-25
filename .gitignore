@@ -5,13 +5,13 @@
 *.swp
 .DS_Store
 .atom/
-.build/
 .buildlog/
 .history
 .svn/
 .swiftpm/
-migrate_working_dir/
-WARP.md
+build_log.txt
+build_and_release.yml
+
 
 # IntelliJ related
 *.iml
@@ -19,44 +19,47 @@ WARP.md
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# VS Code related
+.vscode/
 
 # Flutter/Dart/Pub related
 **/doc/api/
-**/ios/Flutter/.last_build_id
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
+build/
+coverage/
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Environment files
+# Secrets
 .env
-*.env
+*.pem
+*.key
+*.keystore
+*.jks
 
-# IDE
-.vscode/
+# Android
+**/android/**/*.gradle
+**/android/**/gradlew
+**/android/**/gradlew.bat
+**/android/local.properties
+**/android/app/google-services.json
+**/android/key.properties
+**/android/.gradle
 
-# Generated files
-*.g.dart
-*.freezed.dart
+# iOS / macOS
+**/ios/Flutter/Generated.xcconfig
+**/ios/Flutter/flutter_export_environment.sh
+**/macos/Flutter/Generated.xcconfig
+**/macos/Flutter/flutter_export_environment.sh
+**/ios/*.mode1v3
+**/ios/*.mode2v3
+**/ios/*.moved-aside
+**/ios/*.nb
+**/ios/*.perspectivev3
+**/ios/*.xcuserstate
+**/Pods/
 
-# Firebase
-google-services.json
-GoogleService-Info.plist
-firebase_options.dart
+# Supabase / Cloud
+supabase/functions/**/.env

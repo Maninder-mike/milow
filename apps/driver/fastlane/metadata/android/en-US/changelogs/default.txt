@@ -1,0 +1,5 @@
+• Interactive Smart Suggestions: Tap tiles to take action instantly.
+• Profile Stats Fix: Accurate trip counts and distance tracking (Miles/KM).
+• Localization: Improved Hindi and Urdu translations.
+• UI Polish: Cleaner layout and easier navigation.
+• Bug fixes and performance improvements.

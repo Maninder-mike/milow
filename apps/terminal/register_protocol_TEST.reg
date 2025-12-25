@@ -1,0 +1,15 @@
+Windows Registry Editor Version 5.00
+
+[HKEY_CLASSES_ROOT\milow-admin]
+"URL Protocol"=""
+@="URL:Milow Admin Protocol"
+
+[HKEY_CLASSES_ROOT\milow-admin\DefaultIcon]
+@="\"C:\\path\\to\\your\\milow_admin.exe\",1"
+
+[HKEY_CLASSES_ROOT\milow-admin\shell]
+
+[HKEY_CLASSES_ROOT\milow-admin\shell\open]
+
+[HKEY_CLASSES_ROOT\milow-admin\shell\open\command]
+@="\"C:\\path\\to\\your\\milow_admin.exe\" \"%1\""

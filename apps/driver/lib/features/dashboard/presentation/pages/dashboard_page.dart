@@ -1,0 +1,1248 @@
+// ignore_for_file: deprecated_member_use
+import 'dart:async';
+import 'dart:ui';
+
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+// TabsShell provides navigation; this page returns content only
+import 'package:milow/core/widgets/dashboard_card.dart';
+import 'package:milow/core/widgets/section_header.dart';
+import 'package:milow/core/widgets/border_wait_time_card.dart';
+import 'package:milow/core/widgets/shimmer_loading.dart';
+import 'package:milow/core/models/border_wait_time.dart';
+import 'package:milow_core/milow_core.dart';
+import 'package:milow/core/utils/address_utils.dart';
+import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
+import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
+import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/services/border_wait_time_service.dart';
+import 'package:milow/core/services/trip_service.dart';
+import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/services/data_prefetch_service.dart';
+import 'package:milow/core/services/notification_service.dart';
+import 'package:milow/core/utils/responsive_layout.dart';
+import 'package:intl/intl.dart';
+
+class DashboardPage extends StatefulWidget {
+  const DashboardPage({super.key});
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage>
+    with TickerProviderStateMixin {
+  // Border wait times
+  List<BorderWaitTime> _borderWaitTimes = [];
+  bool _isLoadingBorders = true;
+  String? _borderError;
+  Timer? _borderRefreshTimer;
+
+  // Recent entries (trips and fuel)
+  List<Map<String, dynamic>> _recentEntries = [];
+  bool _isLoadingEntries = true;
+
+  // Dashboard stats
+  int _totalTrips = 0;
+  double _totalMiles = 0;
+  String _distanceUnit = 'mi';
+  String _tripsTrend = '+0%';
+  String _milesTrend = '+0%';
+  String _timePeriod = 'biweekly'; // weekly, biweekly, monthly, yearly
+
+  // Notification state
+  int _unreadNotificationCount = 0;
+  StreamSubscription<int>? _notificationSubscription;
+  StreamSubscription<ServiceNotificationItem>? _incomingSubscription;
+
+  // Bell icon animation
+  late AnimationController _bellAnimationController;
+  late Animation<double> _bellRotationAnimation;
+  late Animation<double> _bellScaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize bell animation controller
+    _bellAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    // Create rotation animation (-15° to +15°)
+    _bellRotationAnimation =
+        Tween<double>(
+          begin: -0.26, // -15 degrees in radians
+          end: 0.26, // +15 degrees in radians
+        ).animate(
+          CurvedAnimation(
+            parent: _bellAnimationController,
+            curve: Curves.easeInOut,
+          ),
+        );
+
+    // Create scale animation (1.0 to 1.1)
+    _bellScaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
+      CurvedAnimation(
+        parent: _bellAnimationController,
+        curve: Curves.easeInOut,
+      ),
+    );
+
+    _loadBorderWaitTimes(
+      forceRefresh: false,
+    ); // Use prefetched data if available
+    _loadRecentEntries();
+    _loadDashboardStats();
+    _loadNotificationCount();
+
+    // Refresh border wait times every 5 minutes
+    _borderRefreshTimer = Timer.periodic(
+      const Duration(minutes: 5),
+      (_) => _loadBorderWaitTimes(forceRefresh: true),
+    );
+  }
+
+  @override
+  void dispose() {
+    _borderRefreshTimer?.cancel();
+    _notificationSubscription?.cancel();
+    _incomingSubscription?.cancel();
+
+    _bellAnimationController.dispose();
+    super.dispose();
+  }
+
+  /// Pull-to-refresh handler - refreshes all dashboard data
+  Future<void> _onRefresh() async {
+    // Invalidate cache to force fresh data
+    DataPrefetchService.instance.invalidateCache();
+
+    // Refresh all data in parallel
+    await Future.wait([
+      _loadBorderWaitTimes(forceRefresh: true),
+      _loadRecentEntries(),
+      _loadDashboardStats(),
+    ]);
+  }
+
+  Future<void> _loadNotificationCount() async {
+    await NotificationService.instance.init();
+    _unreadNotificationCount = NotificationService.instance.unreadCount;
+    _updateBellAnimation(_unreadNotificationCount);
+    _notificationSubscription = NotificationService.instance.unreadCountStream
+        .listen((count) {
+          if (mounted) {
+            setState(() {
+              _unreadNotificationCount = count;
+            });
+            _updateBellAnimation(count);
+            _updateBellAnimation(count);
+          }
+        });
+
+    // Listen for incoming notifications to show Snackbar
+    _incomingSubscription = NotificationService.instance.incomingStream.listen((
+      notification,
+    ) {
+      // Suppress SnackBar for messages (only show badge)
+      if (notification.type == NotificationType.message) return;
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(_getIconForType(notification.type), color: Colors.white),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        notification.title,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      Text(
+                        notification.body,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: const Color(0xFF1F2937),
+            action: SnackBarAction(
+              label: 'VIEW',
+              textColor: const Color(0xFF60A5FA),
+              onPressed: () {
+                context.push('/notifications');
+              },
+            ),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+      }
+    });
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  void _updateBellAnimation(int count) {
+    if (count > 0) {
+      // Start animation if not already running
+      if (!_bellAnimationController.isAnimating) {
+        _bellAnimationController.repeat(reverse: true);
+      }
+    } else {
+      // Stop animation when no unread notifications
+      _bellAnimationController.stop();
+      _bellAnimationController.reset();
+    }
+  }
+
+  Future<void> _loadDashboardStats() async {
+    try {
+      // Use prefetched data if available
+      final prefetch = DataPrefetchService.instance;
+      List<Trip> trips;
+      String distanceUnit;
+
+      if (prefetch.isPrefetchComplete && prefetch.cachedTrips != null) {
+        trips = prefetch.cachedTrips!;
+        distanceUnit = prefetch.cachedDistanceUnit;
+      } else {
+        trips = await TripService.getTrips();
+        distanceUnit = await PreferencesService.getDistanceUnit();
+      }
+
+      double totalDistance = 0;
+      for (final trip in trips) {
+        if (trip.totalDistance != null) {
+          totalDistance += trip.totalDistance!;
+        }
+      }
+
+      if (distanceUnit == 'km') {
+        totalDistance *= 1.60934;
+      }
+
+      // Calculate trends based on time period
+      final trends = _calculateTrends(trips);
+
+      if (mounted) {
+        setState(() {
+          _totalTrips = trips.length;
+          _totalMiles = totalDistance;
+          _distanceUnit = distanceUnit;
+          _tripsTrend = trends['tripsTrend']!;
+          _milesTrend = trends['milesTrend']!;
+        });
+      }
+    } catch (e) {
+      // Handle error silently
+    }
+  }
+
+  /// Calculate trend percentages based on selected time period
+  Map<String, String> _calculateTrends(List<Trip> allTrips) {
+    final now = DateTime.now();
+    DateTime compareDate;
+
+    switch (_timePeriod) {
+      case 'weekly':
+        compareDate = now.subtract(const Duration(days: 7));
+        break;
+      case 'biweekly':
+        compareDate = now.subtract(const Duration(days: 14));
+        break;
+      case 'monthly':
+        compareDate = DateTime(now.year, now.month - 1, now.day);
+        break;
+      case 'yearly':
+        compareDate = DateTime(now.year - 1, now.month, now.day);
+        break;
+      default:
+        compareDate = now.subtract(const Duration(days: 7));
+    }
+
+    // Split trips into current period and previous period
+    final currentPeriodTrips = allTrips
+        .where((trip) => trip.tripDate.isAfter(compareDate))
+        .toList();
+    final previousPeriodStart = compareDate.subtract(
+      now.difference(compareDate),
+    );
+    final previousPeriodTrips = allTrips
+        .where(
+          (trip) =>
+              trip.tripDate.isAfter(previousPeriodStart) &&
+              trip.tripDate.isBefore(compareDate),
+        )
+        .toList();
+
+    // Calculate trip count trend
+    final currentTripsCount = currentPeriodTrips.length;
+    final previousTripsCount = previousPeriodTrips.length;
+    String tripsTrend;
+    if (previousTripsCount == 0) {
+      tripsTrend = currentTripsCount > 0 ? '+100%' : '0%';
+    } else {
+      final tripPercentChange =
+          ((currentTripsCount - previousTripsCount) / previousTripsCount * 100)
+              .round();
+      tripsTrend = tripPercentChange >= 0
+          ? '+$tripPercentChange%'
+          : '$tripPercentChange%';
+    }
+
+    // Calculate miles trend
+    double currentMiles = 0;
+    double previousMiles = 0;
+    for (final trip in currentPeriodTrips) {
+      if (trip.totalDistance != null) currentMiles += trip.totalDistance!;
+    }
+    for (final trip in previousPeriodTrips) {
+      if (trip.totalDistance != null) previousMiles += trip.totalDistance!;
+    }
+
+    String milesTrend;
+    if (previousMiles == 0) {
+      milesTrend = currentMiles > 0 ? '+100%' : '0%';
+    } else {
+      final milesPercentChange =
+          ((currentMiles - previousMiles) / previousMiles * 100).round();
+      milesTrend = milesPercentChange >= 0
+          ? '+$milesPercentChange%'
+          : '$milesPercentChange%';
+    }
+
+    return {'tripsTrend': tripsTrend, 'milesTrend': milesTrend};
+  }
+
+  /// Show dialog to change time period
+  Future<void> _showTimePeriodDialog() async {
+    final periods = {
+      'weekly': 'Weekly',
+      'biweekly': 'Bi-Weekly',
+      'monthly': 'Monthly',
+      'yearly': 'Yearly',
+    };
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text(
+            'Select Time Period',
+            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: periods.entries.map((entry) {
+                return RadioListTile<String>(
+                  title: Text(entry.value, style: GoogleFonts.inter()),
+                  value: entry.key,
+                  groupValue: _timePeriod,
+                  activeColor: const Color(0xFF007AFF),
+                  onChanged: (value) {
+                    if (value != null) {
+                      Navigator.pop(context);
+                      setState(() {
+                        _timePeriod = value;
+                      });
+                      _loadDashboardStats();
+                    }
+                  },
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _loadBorderWaitTimes({bool forceRefresh = false}) async {
+    final prefetch = DataPrefetchService.instance;
+
+    // Try to use prefetched data first
+    if (!forceRefresh &&
+        prefetch.isPrefetchComplete &&
+        prefetch.cachedBorderWaitTimes != null) {
+      if (mounted) {
+        setState(() {
+          _borderWaitTimes = prefetch.cachedBorderWaitTimes!;
+          _isLoadingBorders = false;
+          _borderError = null;
+        });
+      }
+      return;
+    }
+
+    if (forceRefresh) {
+      setState(() {
+        _isLoadingBorders = true;
+        _borderError = null;
+      });
+    }
+    try {
+      // Force refresh the API data first if requested
+      if (forceRefresh) {
+        await BorderWaitTimeService.fetchAllWaitTimes(forceRefresh: true);
+      }
+      final waitTimes = await BorderWaitTimeService.getSavedBorderWaitTimes();
+      if (mounted) {
+        setState(() {
+          _borderWaitTimes = waitTimes;
+          _isLoadingBorders = false;
+          _borderError = null;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingBorders = false;
+          _borderError = _getErrorMessage(e);
+        });
+      }
+    }
+  }
+
+  Future<void> _loadRecentEntries() async {
+    try {
+      final prefetch = DataPrefetchService.instance;
+      List<Trip> trips;
+      List<FuelEntry> fuelEntries;
+
+      // Use prefetched data if available, otherwise fetch
+      if (prefetch.isPrefetchComplete &&
+          prefetch.cachedTrips != null &&
+          prefetch.cachedFuelEntries != null) {
+        // Take first 5 from cached data
+        trips = prefetch.cachedTrips!.take(5).toList();
+        fuelEntries = prefetch.cachedFuelEntries!.take(5).toList();
+      } else {
+        trips = await TripService.getTrips(limit: 5);
+        fuelEntries = await FuelService.getFuelEntries(limit: 5);
+      }
+
+      // Combine and sort by date
+      final List<Map<String, dynamic>> combined = [];
+
+      for (final trip in trips) {
+        combined.add({'type': 'trip', 'data': trip, 'date': trip.tripDate});
+      }
+
+      for (final fuel in fuelEntries) {
+        combined.add({'type': 'fuel', 'data': fuel, 'date': fuel.fuelDate});
+      }
+
+      // Sort by date descending
+      combined.sort(
+        (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
+      );
+
+      // Take only first 5
+      final recent = combined.take(5).toList();
+
+      if (mounted) {
+        setState(() {
+          _recentEntries = List<Map<String, dynamic>>.from(recent);
+          _isLoadingEntries = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingEntries = false;
+        });
+      }
+    }
+  }
+
+  String _getErrorMessage(dynamic error) {
+    final errorStr = error.toString().toLowerCase();
+    if (errorStr.contains('socketexception') ||
+        errorStr.contains('connection') ||
+        errorStr.contains('network')) {
+      return 'No internet connection';
+    } else if (errorStr.contains('timeout')) {
+      return 'Request timed out. Please try again.';
+    } else if (errorStr.contains('permission') || errorStr.contains('denied')) {
+      return 'Permission denied';
+    } else if (errorStr.contains('404')) {
+      return 'Data not available';
+    } else if (errorStr.contains('500') || errorStr.contains('server')) {
+      return 'Server error. Please try again later.';
+    }
+    return 'Something went wrong. Please try again.';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+    final textColor = isDark
+        ? Colors.white
+        : const Color(0xFF101828); // retained for subsequent widgets
+    final secondaryTextColor = isDark
+        ? const Color(0xFF9CA3AF)
+        : const Color(0xFF667085);
+    final borderColor = isDark
+        ? const Color(0xFF3A3A3A)
+        : const Color(0xFFD0D5DD);
+
+    final margin = ResponsiveLayout.getMargin(context);
+    final gutter = ResponsiveLayout.getGutter(context);
+    final isTabletOrLarger = !ResponsiveLayout.isMobile(context);
+
+    // Format total miles for display
+    String formattedMiles;
+    if (_totalMiles >= 1000) {
+      formattedMiles = '${(_totalMiles / 1000).toStringAsFixed(1)}K';
+    } else {
+      formattedMiles = _totalMiles.toStringAsFixed(0);
+    }
+
+    // Get time period label for card titles
+    final timePeriodLabels = {
+      'weekly': 'Weekly',
+      'biweekly': 'Bi-Weekly',
+      'monthly': 'Monthly',
+      'yearly': 'Yearly',
+    };
+    final periodLabel = timePeriodLabels[_timePeriod] ?? 'Bi-Weekly';
+
+    final distanceLabel = _distanceUnit == 'km' ? 'KM' : 'Miles';
+    final tripsTitle = '$periodLabel Trips';
+    final milesTitle = '$periodLabel $distanceLabel';
+
+    Widget statsGrid() => Padding(
+      padding: EdgeInsets.symmetric(horizontal: margin),
+      child: isTabletOrLarger
+          ? Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onLongPress: _showTimePeriodDialog,
+                    child: DashboardCard(
+                      value: '$_totalTrips',
+                      title: tripsTitle,
+                      icon: Icons.local_shipping,
+                      color: const Color(0xFF3B82F6),
+                      trend: _tripsTrend,
+                    ),
+                  ),
+                ),
+                SizedBox(width: gutter),
+                Expanded(
+                  child: GestureDetector(
+                    onLongPress: _showTimePeriodDialog,
+                    child: DashboardCard(
+                      value: formattedMiles,
+                      title: milesTitle,
+                      icon: Icons.route,
+                      color: const Color(0xFF10B981),
+                      trend: _milesTrend,
+                    ),
+                  ),
+                ),
+              ],
+            )
+          : Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onLongPress: _showTimePeriodDialog,
+                        child: DashboardCard(
+                          value: '$_totalTrips',
+                          title: tripsTitle,
+                          icon: Icons.local_shipping,
+                          color: const Color(0xFF3B82F6),
+                          trend: _tripsTrend,
+                        ),
+                      ),
+                    ),
+                    SizedBox(width: gutter),
+                    Expanded(
+                      child: GestureDetector(
+                        onLongPress: _showTimePeriodDialog,
+                        child: DashboardCard(
+                          value: formattedMiles,
+                          title: milesTitle,
+                          icon: Icons.route,
+                          color: const Color(0xFF10B981),
+                          trend: _milesTrend,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+    );
+
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isDark
+              ? [
+                  const Color(0xFF1a1a2e),
+                  const Color(0xFF16213e),
+                  const Color(0xFF0f0f23),
+                ]
+              : [
+                  const Color(0xFFe8f4f8),
+                  const Color(0xFFfce4ec),
+                  const Color(0xFFe8f5e9),
+                ],
+        ),
+      ),
+      child: Shimmer(
+        child: RefreshIndicator(
+          onRefresh: _onRefresh,
+          displacement: 60,
+          strokeWidth: 3.0,
+          color: const Color(0xFF007AFF),
+          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Reduced top spacing after removing title
+                const SizedBox(height: 8),
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: margin),
+                  child: Row(
+                    children: [
+                      _quickAction(
+                        cardColor,
+                        borderColor,
+                        secondaryTextColor,
+                        Icons.search,
+                        () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const GlobalSearchPage(),
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(width: 8),
+
+                      const Spacer(),
+                      // Notification bell icon with red dot indicator
+                      _buildNotificationBell(
+                        cardColor,
+                        borderColor,
+                        secondaryTextColor,
+                      ),
+                      const SizedBox(width: 8),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                statsGrid(),
+                const SizedBox(height: 16),
+                // Border Wait Times Section
+                if (_isLoadingBorders) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: const ShimmerLoading(
+                      isLoading: true,
+                      child: Column(
+                        children: [
+                          ShimmerBorderWaitCard(),
+                          ShimmerBorderWaitCard(),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ] else if (_borderError != null &&
+                    _borderWaitTimes.isEmpty) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: cardColor,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: borderColor),
+                      ),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEE2E2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.error_outline,
+                              color: Color(0xFFDC2626),
+                              size: 20,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Border Wait Times Unavailable',
+                                  style: GoogleFonts.inter(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: textColor,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  _borderError!,
+                                  style: GoogleFonts.inter(
+                                    fontSize: 12,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () =>
+                                _loadBorderWaitTimes(forceRefresh: true),
+                            child: Text(
+                              'Retry',
+                              style: GoogleFonts.inter(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF007AFF),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ] else if (_borderWaitTimes.isNotEmpty) ...[
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          'Border Wait Times',
+                          style: GoogleFonts.inter(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w600,
+                            color: textColor,
+                          ),
+                        ),
+                        TextButton.icon(
+                          onPressed: () =>
+                              _loadBorderWaitTimes(forceRefresh: true),
+                          icon: const Icon(
+                            Icons.refresh,
+                            size: 16,
+                            color: Color(0xFF007AFF),
+                          ),
+                          label: Text(
+                            'Refresh',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              color: const Color(0xFF007AFF),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Padding(
+                    padding: EdgeInsets.symmetric(horizontal: margin),
+                    child: Column(
+                      children: _borderWaitTimes
+                          .map((bwt) => BorderWaitTimeCard(waitTime: bwt))
+                          .toList(),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Last Record Entries
+                Padding(
+                  padding: EdgeInsets.symmetric(horizontal: margin),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Last Record Entries',
+                        style: GoogleFonts.inter(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(24),
+                          boxShadow: [
+                            BoxShadow(
+                              color: isDark
+                                  ? Colors.black.withValues(alpha: 0.3)
+                                  : Colors.black.withValues(alpha: 0.08),
+                              blurRadius: 24,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
+                            child: Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(24),
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: isDark
+                                      ? [
+                                          Colors.white.withValues(alpha: 0.15),
+                                          Colors.white.withValues(alpha: 0.05),
+                                        ]
+                                      : [
+                                          Colors.white.withValues(alpha: 0.9),
+                                          Colors.white.withValues(alpha: 0.7),
+                                        ],
+                                ),
+                                border: Border.all(
+                                  color: isDark
+                                      ? Colors.white.withValues(alpha: 0.2)
+                                      : Colors.white.withValues(alpha: 0.8),
+                                  width: 1.5,
+                                ),
+                              ),
+                              child: _isLoadingEntries
+                                  ? const ShimmerLoading(
+                                      isLoading: true,
+                                      child: Column(
+                                        children: [
+                                          ShimmerEntryItem(),
+                                          ShimmerEntryItem(),
+                                          ShimmerEntryItem(),
+                                          ShimmerEntryItem(showDivider: false),
+                                        ],
+                                      ),
+                                    )
+                                  : _recentEntries.isEmpty
+                                  ? Padding(
+                                      padding: const EdgeInsets.all(32),
+                                      child: Center(
+                                        child: Column(
+                                          children: [
+                                            Icon(
+                                              Icons.inbox_outlined,
+                                              size: 48,
+                                              color: secondaryTextColor,
+                                            ),
+                                            const SizedBox(height: 12),
+                                            Text(
+                                              'No entries yet',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                color: secondaryTextColor,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 4),
+                                            Text(
+                                              'Add your first trip or fuel entry',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 12,
+                                                color: secondaryTextColor,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    )
+                                  : Column(
+                                      children: [
+                                        ..._recentEntries.asMap().entries.map((
+                                          entry,
+                                        ) {
+                                          final index = entry.key;
+                                          final item = entry.value;
+                                          final isTrip = item['type'] == 'trip';
+
+                                          Widget entryWidget;
+                                          if (isTrip) {
+                                            final trip = item['data'] as Trip;
+                                            final pickups =
+                                                trip.pickupLocations;
+                                            final deliveries =
+                                                trip.deliveryLocations;
+                                            final route =
+                                                pickups.isNotEmpty &&
+                                                    deliveries.isNotEmpty
+                                                ? '${AddressUtils.extractCityState(pickups.first)} -> ${AddressUtils.extractCityState(deliveries.last)}'
+                                                : 'No route';
+                                            final distance = trip.totalDistance;
+                                            final distanceStr = distance != null
+                                                ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
+                                                : '-';
+
+                                            entryWidget = _buildRecordEntry(
+                                              textColor,
+                                              secondaryTextColor,
+                                              'trip',
+                                              'Trip #${trip.tripNumber}',
+                                              route,
+                                              DateFormat(
+                                                'MMM d, yyyy',
+                                              ).format(trip.tripDate),
+                                              distanceStr,
+                                            );
+                                          } else {
+                                            final fuel =
+                                                item['data'] as FuelEntry;
+                                            final location =
+                                                fuel.location != null
+                                                ? AddressUtils.extractCityState(
+                                                    fuel.location!,
+                                                  )
+                                                : 'Unknown location';
+                                            final quantity =
+                                                '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
+                                            final identifier = fuel.isTruckFuel
+                                                ? fuel.truckNumber ?? 'Truck'
+                                                : fuel.reeferNumber ?? 'Reefer';
+
+                                            entryWidget = _buildRecordEntry(
+                                              textColor,
+                                              secondaryTextColor,
+                                              'fuel',
+                                              '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
+                                              location,
+                                              DateFormat(
+                                                'MMM d, yyyy',
+                                              ).format(fuel.fuelDate),
+                                              quantity,
+                                            );
+                                          }
+
+                                          return Column(
+                                            children: [
+                                              entryWidget,
+                                              if (index <
+                                                  _recentEntries.length - 1)
+                                                Divider(
+                                                  height: 1,
+                                                  color: borderColor,
+                                                ),
+                                            ],
+                                          );
+                                        }),
+                                        Divider(height: 1, color: borderColor),
+                                        // See more button
+                                        InkWell(
+                                          onTap: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (context) =>
+                                                    const RecordsListPage(),
+                                              ),
+                                            );
+                                          },
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 14,
+                                            ),
+                                            child: Center(
+                                              child: Text(
+                                                'See more',
+                                                style: GoogleFonts.inter(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: const Color(
+                                                    0xFF007AFF,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                const SectionHeader(title: 'Learning Pages'),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  margin: EdgeInsets.symmetric(horizontal: margin),
+                  padding: const EdgeInsets.symmetric(
+                    vertical: 24,
+                    horizontal: 16,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.1)
+                          : Colors.black.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.school_outlined,
+                        size: 32,
+                        color: secondaryTextColor,
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        'Learning Resources Coming Soon',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'We are working on great educational content for you.',
+                        style: GoogleFonts.inter(
+                          fontSize: 14,
+                          color: secondaryTextColor,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+                // Extra padding for floating bottom nav bar
+                const SizedBox(height: 120),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _quickAction(
+    Color bg,
+    Color border,
+    Color iconColor,
+    IconData icon,
+    VoidCallback onTap,
+  ) {
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+        border: bg == border ? null : Border.all(color: border),
+      ),
+      child: IconButton(
+        icon: Icon(icon, color: iconColor),
+        onPressed: onTap,
+      ),
+    );
+  }
+
+  Widget _buildNotificationBell(
+    Color cardColor,
+    Color borderColor,
+    Color iconColor,
+  ) {
+    return GestureDetector(
+      onTap: () async {
+        await context.push('/notifications');
+        // Refresh notification count after returning from notifications page
+        await NotificationService.instance.refreshUnreadCount();
+      },
+      child: Container(
+        width: 48,
+        height: 48,
+        decoration: BoxDecoration(
+          color: cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: borderColor),
+        ),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            // Animated bell icon
+            AnimatedBuilder(
+              animation: _bellAnimationController,
+              builder: (context, child) {
+                return Transform.rotate(
+                  angle: _unreadNotificationCount > 0
+                      ? _bellRotationAnimation.value
+                      : 0.0,
+                  child: Transform.scale(
+                    scale: _unreadNotificationCount > 0
+                        ? _bellScaleAnimation.value
+                        : 1.0,
+                    child: Icon(
+                      Icons.notifications_outlined,
+                      color: iconColor,
+                      size: 24,
+                    ),
+                  ),
+                );
+              },
+            ),
+            // Red dot indicator for unread notifications
+            if (_unreadNotificationCount > 0)
+              Positioned(
+                top: 8,
+                right: 8,
+                child: Container(
+                  width: 12,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    shape: BoxShape.circle,
+                    border: Border.all(color: cardColor, width: 2),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRecordEntry(
+    Color textColor,
+    Color secondaryTextColor,
+    String type,
+    String entryId,
+    String description,
+    String date,
+    String value,
+  ) {
+    final isTrip = type == 'trip';
+    final iconColor = isTrip
+        ? const Color(0xFF3B82F6)
+        : const Color(0xFFF59E0B);
+    final icon = isTrip ? Icons.local_shipping : Icons.local_gas_station;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: iconColor, size: 24),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              children: [
+                // Top row: Entry ID left, Value right
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(
+                      entryId,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      value,
+                      style: GoogleFonts.inter(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF3B82F6),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                // Bottom row: Description left, Date right
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Text(
+                        description,
+                        style: GoogleFonts.inter(
+                          fontSize: 13,
+                          color: secondaryTextColor,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      date,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getIconForType(NotificationType type) {
+    switch (type) {
+      case NotificationType.reminder:
+        return Icons.notification_important;
+      case NotificationType.company:
+        return Icons.business;
+      case NotificationType.news:
+        return Icons.newspaper;
+      case NotificationType.message:
+        return Icons.chat_bubble_outline;
+    }
+  }
+}
