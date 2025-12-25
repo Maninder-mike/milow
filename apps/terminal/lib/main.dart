@@ -16,17 +16,34 @@ import 'core/services/app_links_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await dotenv.load(fileName: ".env");
+  await windowManager.ensureInitialized();
 
-  await Supabase.initialize(
-    url: SupabaseConstants.supabaseUrl,
-    anonKey: SupabaseConstants.supabaseAnonKey,
-  );
+  try {
+    await dotenv.load(fileName: ".env");
 
-  await AppLinksService().initialize();
+    final supabaseUrl = SupabaseConstants.supabaseUrl;
+    final supabaseAnonKey = SupabaseConstants.supabaseAnonKey;
+
+    if (supabaseUrl.contains('your-project-id') ||
+        supabaseAnonKey.contains('your_anon_key')) {
+      runApp(
+        const ConfigurationErrorApp(
+          error:
+              'Please configure apps/terminal/.env with valid Supabase credentials.',
+        ),
+      );
+      return;
+    }
+
+    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+
+    await AppLinksService().initialize();
+  } catch (e) {
+    runApp(ConfigurationErrorApp(error: 'Initialization failed: $e'));
+    return;
+  }
 
   if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    await windowManager.ensureInitialized();
     WindowOptions windowOptions = const WindowOptions(
       center: true,
       backgroundColor: Colors.transparent,
@@ -41,6 +58,28 @@ Future<void> main() async {
   }
 
   runApp(const ProviderScope(child: AdminApp()));
+}
+
+class ConfigurationErrorApp extends StatelessWidget {
+  final String error;
+  const ConfigurationErrorApp({super.key, required this.error});
+
+  @override
+  Widget build(BuildContext context) {
+    return FluentApp(
+      home: ScaffoldPage(
+        content: Center(
+          child: ContentDialog(
+            title: const Text('Configuration Error'),
+            content: Text(error),
+            actions: [
+              Button(child: const Text('Exit'), onPressed: () => exit(1)),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class AdminApp extends ConsumerWidget {
