@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -44,12 +45,12 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
                       height: 28,
                       child: AutoSuggestBox<String>(
                         focusNode: widget.searchFocusNode,
-                        placeholder: 'Search files, trips, customer, etc.',
-                        leadingIcon: Padding(
+                        placeholder: 'Search loads, drivers...',
+                        trailingIcon: Padding(
                           padding: const EdgeInsets.all(8.0),
                           child: Icon(
-                            FluentIcons.search,
-                            size: 12,
+                            FluentIcons.search_24_regular,
+                            size: 16,
                             color: iconColor,
                           ),
                         ),

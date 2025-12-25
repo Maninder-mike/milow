@@ -85,9 +85,10 @@ jobs:
           path: |
             ~/.pub-cache
             apps/driver/.dart_tool
-          key: ${{ runner.os }}-pub-${{ hashFiles('**/pubspec.lock') }}
+          # Updated cache key to v2 to invalidate stale caches causing missing file errors
+          key: ${{ runner.os }}-pub-v2-${{ hashFiles('**/pubspec.lock') }}
           restore-keys: |
-            ${{ runner.os }}-pub-
+            ${{ runner.os }}-pub-v2-
 
       # Decode Android keystore
       - name: Prepare Android signing
@@ -119,6 +120,7 @@ jobs:
         run: |
           echo "📦 Installing Flutter dependencies..."
           cd apps/driver
+          flutter clean
           flutter pub get
 
       # Run tests (optional, can be disabled)
@@ -171,6 +173,8 @@ jobs:
         run: |
           echo "📝 Updating Play Store listing..."
           cd apps/driver
+          export GEM_HOME="$HOME/.gem"
+          export PATH="$GEM_HOME/bin:$PATH"
           gem install fastlane
           ANDROID_SERVICE_ACCOUNT_JSON='${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}' fastlane update_metadata
           echo "✅ Play Store metadata updated!"
@@ -193,29 +197,89 @@ jobs:
       - name: Generate changelog
         id: changelog
         run: |
-          echo "📝 Generating changelog..."
+          echo "📝 Generating categorized changelog..."
           
           # Get the previous tag
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           
           if [ -z "$PREV_TAG" ]; then
-            CHANGELOG="Initial release"
+            COMMITS=$(git log --pretty=format:"%s|%h|%an")
           else
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --no-merges)
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s|%h|%an" --no-merges)
+          fi
+
+          # Initialize categories
+          FEATURES=""
+          FIXES=""
+          UI=""
+          MAINTENANCE=""
+          OTHER=""
+
+          # Process commits
+          while IFS='|' read -r MSG HASH AUTHOR; do
+            # Skip empty lines
+            [ -z "$MSG" ] && continue
+            
+            # Format: - Message (hash) - @author
+            ENTRY="- ${MSG} ([${HASH}](https://github.com/${{ github.repository }}/commit/${HASH}))"
+            
+            case "$(echo "$MSG" | tr '[:upper:]' '[:lower:]')" in
+              feat*|feature*|add*|new*)
+                FEATURES="${FEATURES}$ENTRY\n"
+                ;;
+              fix*|bug*|resolve*|patch*|hotfix*)
+                FIXES="${FIXES}$ENTRY\n"
+                ;;
+              ui*|style*|design*|theme*|ux*)
+                UI="${UI}$ENTRY\n"
+                ;;
+              chore*|refactor*|perf*|build*|ci*|test*|cleanup*)
+                MAINTENANCE="${MAINTENANCE}$ENTRY\n"
+                ;;
+              doc*|docs*)
+                Other="${OTHER}$ENTRY\n" # Group docs with other/misc for now or create specific section
+                ;;
+              *)
+                OTHER="${OTHER}$ENTRY\n"
+                ;;
+            esac
+          done <<< "$COMMITS"
+
+          # Build Changelog Content
+          CHANGELOG=""
+          
+          if [ -n "$FEATURES" ]; then
+            CHANGELOG="${CHANGELOG}### 🚀 New Features\n${FEATURES}\n"
           fi
           
+          if [ -n "$FIXES" ]; then
+            CHANGELOG="${CHANGELOG}### 🐛 Bug Fixes\n${FIXES}\n"
+          fi
+          
+          if [ -n "$UI" ]; then
+            CHANGELOG="${CHANGELOG}### 💅 UI & Polish\n${UI}\n"
+          fi
+          
+          if [ -n "$MAINTENANCE" ]; then
+            CHANGELOG="${CHANGELOG}### 🏗️ Maintenance & Improvements\n${MAINTENANCE}\n"
+          fi
+          
+          if [ -n "$OTHER" ]; then
+            CHANGELOG="${CHANGELOG}### 🔧 Other Changes\n${OTHER}\n"
+          fi
+
           # Save changelog to file
           cat > RELEASE_NOTES.md << EOF
           # Milow v${{ steps.version.outputs.version_number }} 🚀
           
           ## 🗄️ Database & Backend
           
-          - **Supabase Catalog**: Version entry updated automatically.
-          - **Google Play**: Uploaded to Alpha track (Closed Testing).
+          - **Supabase Catalog**: Automatic schema & version sync.
+          - **Google Play**: Alpha Track Release.
           
           ## 📝 What's Changed
           
-          $CHANGELOG
+          $(echo -e "$CHANGELOG")
           
           ## 📥 Download
           
@@ -224,11 +288,12 @@ jobs:
           
           ## 📲 Installation
           
-          1. Download the APK file below
-          2. Enable "Install from Unknown Sources" on your Android device
-          3. Install the APK
+          1. Download the APK file below.
+          2. Enable "Install from Unknown Sources" on your device.
+          3. Install and login!
           
-          For more information, visit the [Wiki](https://github.com/${{ github.repository }}/wiki).
+          ---
+          *Full Changelog*: [${PREV_TAG}...v${{ steps.version.outputs.version }}](https://github.com/${{ github.repository }}/compare/${PREV_TAG}...v${{ steps.version.outputs.version }})
           EOF
           
           echo "changelog<<EOF" >> $GITHUB_OUTPUT

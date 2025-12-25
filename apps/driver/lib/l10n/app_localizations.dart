@@ -102,619 +102,619 @@ abstract class AppLocalizations {
     Locale('ur'),
   ];
 
-  /// No description provided for @appName.
+  /// The name of the application
   ///
   /// In en, this message translates to:
   /// **'Milow'**
   String get appName;
 
-  /// No description provided for @profile.
+  /// Label for the profile section
   ///
   /// In en, this message translates to:
   /// **'Profile'**
   String get profile;
 
-  /// No description provided for @editProfile.
+  /// Label for the edit profile button or screen
   ///
   /// In en, this message translates to:
   /// **'Edit Profile'**
   String get editProfile;
 
-  /// No description provided for @notifications.
+  /// Label for the notifications section
   ///
   /// In en, this message translates to:
   /// **'Notifications'**
   String get notifications;
 
-  /// No description provided for @appearance.
+  /// Label for the appearance settings section
   ///
   /// In en, this message translates to:
   /// **'Appearance'**
   String get appearance;
 
-  /// No description provided for @language.
+  /// Label for the language settings section
   ///
   /// In en, this message translates to:
   /// **'Language'**
   String get language;
 
-  /// No description provided for @privacySecurity.
+  /// Label for the privacy and security settings section
   ///
   /// In en, this message translates to:
   /// **'Privacy & Security'**
   String get privacySecurity;
 
-  /// No description provided for @signOut.
+  /// Label for the sign out button
   ///
   /// In en, this message translates to:
   /// **'Sign out'**
   String get signOut;
 
-  /// No description provided for @settings.
+  /// Label for the settings screen
   ///
   /// In en, this message translates to:
   /// **'Settings'**
   String get settings;
 
-  /// No description provided for @dashboard.
+  /// Label for the dashboard screen
   ///
   /// In en, this message translates to:
   /// **'Dashboard'**
   String get dashboard;
 
-  /// No description provided for @categories.
+  /// Label for categories section
   ///
   /// In en, this message translates to:
   /// **'Categories'**
   String get categories;
 
-  /// No description provided for @popularDestinations.
+  /// Label for popular destinations section
   ///
   /// In en, this message translates to:
   /// **'Popular Destinations'**
   String get popularDestinations;
 
-  /// No description provided for @recentActivity.
+  /// Label for recent activity section
   ///
   /// In en, this message translates to:
   /// **'Recent Activity'**
   String get recentActivity;
 
-  /// No description provided for @logs.
+  /// Label for logs section
   ///
   /// In en, this message translates to:
   /// **'Logs'**
   String get logs;
 
-  /// No description provided for @totalDrivenMiles.
+  /// Label for total driven miles statistic
   ///
   /// In en, this message translates to:
   /// **'Miles'**
   String get totalDrivenMiles;
 
-  /// No description provided for @trips.
+  /// Label for the trips section
   ///
   /// In en, this message translates to:
   /// **'Trips'**
   String get trips;
 
-  /// No description provided for @explore.
+  /// Label for the explore section
   ///
   /// In en, this message translates to:
   /// **'Explore'**
   String get explore;
 
-  /// No description provided for @inbox.
+  /// Label for the inbox section
   ///
   /// In en, this message translates to:
   /// **'Inbox'**
   String get inbox;
 
-  /// No description provided for @home.
+  /// Label for the home section
   ///
   /// In en, this message translates to:
   /// **'Home'**
   String get home;
 
-  /// No description provided for @support.
+  /// Label for the support section
   ///
   /// In en, this message translates to:
   /// **'Support'**
   String get support;
 
-  /// No description provided for @addEntry.
+  /// Label for add entry button
   ///
   /// In en, this message translates to:
   /// **'Add Entry'**
   String get addEntry;
 
-  /// No description provided for @save.
+  /// Label for save button
   ///
   /// In en, this message translates to:
   /// **'Save'**
   String get save;
 
-  /// No description provided for @cancel.
+  /// Label for cancel button
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get cancel;
 
-  /// No description provided for @delete.
+  /// Label for delete button
   ///
   /// In en, this message translates to:
   /// **'Delete'**
   String get delete;
 
-  /// No description provided for @edit.
+  /// Label for edit button
   ///
   /// In en, this message translates to:
   /// **'Edit'**
   String get edit;
 
-  /// No description provided for @loading.
+  /// Text displayed while content is loading
   ///
   /// In en, this message translates to:
   /// **'Loading...'**
   String get loading;
 
-  /// No description provided for @error.
+  /// Label for error state
   ///
   /// In en, this message translates to:
   /// **'Error'**
   String get error;
 
-  /// No description provided for @success.
+  /// Label for success state
   ///
   /// In en, this message translates to:
   /// **'Success'**
   String get success;
 
-  /// No description provided for @email.
+  /// Label for email field
   ///
   /// In en, this message translates to:
   /// **'Email'**
   String get email;
 
-  /// No description provided for @password.
+  /// Label for password field
   ///
   /// In en, this message translates to:
   /// **'Password'**
   String get password;
 
-  /// No description provided for @signIn.
+  /// Label for sign in button
   ///
   /// In en, this message translates to:
   /// **'Sign In'**
   String get signIn;
 
-  /// No description provided for @signUp.
+  /// Label for sign up button
   ///
   /// In en, this message translates to:
   /// **'Sign Up'**
   String get signUp;
 
-  /// No description provided for @forgotPassword.
+  /// Label for forgot password link
   ///
   /// In en, this message translates to:
   /// **'Forgot Password?'**
   String get forgotPassword;
 
-  /// No description provided for @createAccount.
+  /// Label for create account button
   ///
   /// In en, this message translates to:
   /// **'Create Account'**
   String get createAccount;
 
-  /// No description provided for @alreadyHaveAccount.
+  /// Text asking if user already has an account
   ///
   /// In en, this message translates to:
   /// **'Already have an account?'**
   String get alreadyHaveAccount;
 
-  /// No description provided for @dontHaveAccount.
+  /// Text asking if user doesn't have an account
   ///
   /// In en, this message translates to:
   /// **'Don\'t have an account?'**
   String get dontHaveAccount;
 
-  /// No description provided for @fullName.
+  /// Label for full name field
   ///
   /// In en, this message translates to:
   /// **'Full Name'**
   String get fullName;
 
-  /// No description provided for @phone.
+  /// Label for phone number field
   ///
   /// In en, this message translates to:
   /// **'Phone'**
   String get phone;
 
-  /// No description provided for @address.
+  /// Label for address field
   ///
   /// In en, this message translates to:
   /// **'Address'**
   String get address;
 
-  /// No description provided for @country.
+  /// Label for country field
   ///
   /// In en, this message translates to:
   /// **'Country'**
   String get country;
 
-  /// No description provided for @companyName.
+  /// Label for company name field
   ///
   /// In en, this message translates to:
   /// **'Company Name'**
   String get companyName;
 
-  /// No description provided for @companyCode.
+  /// Label for company code field
   ///
   /// In en, this message translates to:
   /// **'Company Code'**
   String get companyCode;
 
-  /// No description provided for @unitSystem.
+  /// Label for unit system selection
   ///
   /// In en, this message translates to:
   /// **'Unit System'**
   String get unitSystem;
 
-  /// No description provided for @metric.
+  /// Label for metric unit system
   ///
   /// In en, this message translates to:
   /// **'Metric'**
   String get metric;
 
-  /// No description provided for @imperial.
+  /// Label for imperial unit system
   ///
   /// In en, this message translates to:
   /// **'Imperial'**
   String get imperial;
 
-  /// No description provided for @showWeather.
+  /// Label for toggle to show weather on dashboard
   ///
   /// In en, this message translates to:
   /// **'Show Weather on Dashboard'**
   String get showWeather;
 
-  /// No description provided for @borderWaitTimes.
+  /// Label for border wait times section
   ///
   /// In en, this message translates to:
   /// **'Border Wait Times'**
   String get borderWaitTimes;
 
-  /// No description provided for @darkMode.
+  /// Label for dark mode option
   ///
   /// In en, this message translates to:
   /// **'Dark Mode'**
   String get darkMode;
 
-  /// No description provided for @lightMode.
+  /// Label for light mode option
   ///
   /// In en, this message translates to:
   /// **'Light Mode'**
   String get lightMode;
 
-  /// No description provided for @systemDefault.
+  /// Label for system default theme option
   ///
   /// In en, this message translates to:
   /// **'System Default'**
   String get systemDefault;
 
-  /// No description provided for @selectLanguage.
+  /// Title for language selection screen
   ///
   /// In en, this message translates to:
   /// **'Select your preferred language'**
   String get selectLanguage;
 
-  /// No description provided for @languageChangedTo.
+  /// Message displayed when language is changed
   ///
   /// In en, this message translates to:
   /// **'Language changed to {language}'**
   String languageChangedTo(String language);
 
-  /// No description provided for @languageComingSoon.
+  /// Message displayed for incomplete translations
   ///
   /// In en, this message translates to:
   /// **'Language support is coming soon. The app will be fully translated in future updates.'**
   String get languageComingSoon;
 
-  /// No description provided for @truck.
+  /// Label for truck
   ///
   /// In en, this message translates to:
   /// **'Truck'**
   String get truck;
 
-  /// No description provided for @trailer.
+  /// Label for trailer
   ///
   /// In en, this message translates to:
   /// **'Trailer'**
   String get trailer;
 
-  /// No description provided for @origin.
+  /// Label for origin location
   ///
   /// In en, this message translates to:
   /// **'Origin'**
   String get origin;
 
-  /// No description provided for @destination.
+  /// Label for destination location
   ///
   /// In en, this message translates to:
   /// **'Destination'**
   String get destination;
 
-  /// No description provided for @distance.
+  /// Label for distance
   ///
   /// In en, this message translates to:
   /// **'Distance'**
   String get distance;
 
-  /// No description provided for @messagesAndNotifications.
+  /// Label for messages and notifications
   ///
   /// In en, this message translates to:
   /// **'Messages and notifications'**
   String get messagesAndNotifications;
 
-  /// No description provided for @fuel.
+  /// Label for fuel
   ///
   /// In en, this message translates to:
   /// **'Fuel'**
   String get fuel;
 
-  /// No description provided for @date.
+  /// Label for date
   ///
   /// In en, this message translates to:
   /// **'Date'**
   String get date;
 
-  /// No description provided for @time.
+  /// Label for time
   ///
   /// In en, this message translates to:
   /// **'Time'**
   String get time;
 
-  /// No description provided for @notes.
+  /// Label for notes
   ///
   /// In en, this message translates to:
   /// **'Notes'**
   String get notes;
 
-  /// No description provided for @total.
+  /// Label for total
   ///
   /// In en, this message translates to:
   /// **'Total'**
   String get total;
 
-  /// No description provided for @today.
+  /// Label for today
   ///
   /// In en, this message translates to:
   /// **'Today'**
   String get today;
 
-  /// No description provided for @yesterday.
+  /// Label for yesterday
   ///
   /// In en, this message translates to:
   /// **'Yesterday'**
   String get yesterday;
 
-  /// No description provided for @thisWeek.
+  /// Label for this week
   ///
   /// In en, this message translates to:
   /// **'This Week'**
   String get thisWeek;
 
-  /// No description provided for @thisMonth.
+  /// Label for this month
   ///
   /// In en, this message translates to:
   /// **'This Month'**
   String get thisMonth;
 
-  /// No description provided for @allTime.
+  /// Label for all time
   ///
   /// In en, this message translates to:
   /// **'All Time'**
   String get allTime;
 
-  /// No description provided for @noTripsFound.
+  /// Message when no trips are found
   ///
   /// In en, this message translates to:
   /// **'No trips found'**
   String get noTripsFound;
 
-  /// No description provided for @addYourFirstTrip.
+  /// Message encouraging user to add their first trip
   ///
   /// In en, this message translates to:
   /// **'Add your first trip to get started'**
   String get addYourFirstTrip;
 
-  /// No description provided for @welcome.
+  /// Welcome message
   ///
   /// In en, this message translates to:
   /// **'Welcome'**
   String get welcome;
 
-  /// No description provided for @welcomeBack.
+  /// Welcome back message
   ///
   /// In en, this message translates to:
   /// **'Welcome Back'**
   String get welcomeBack;
 
-  /// No description provided for @getStarted.
+  /// Button label to get started
   ///
   /// In en, this message translates to:
   /// **'Get Started'**
   String get getStarted;
 
-  /// No description provided for @continueText.
+  /// Button label to continue
   ///
   /// In en, this message translates to:
   /// **'Continue'**
   String get continueText;
 
-  /// No description provided for @skip.
+  /// Button label to skip
   ///
   /// In en, this message translates to:
   /// **'Skip'**
   String get skip;
 
-  /// No description provided for @next.
+  /// Button label for next
   ///
   /// In en, this message translates to:
   /// **'Next'**
   String get next;
 
-  /// No description provided for @back.
+  /// Button label for back
   ///
   /// In en, this message translates to:
   /// **'Back'**
   String get back;
 
-  /// No description provided for @done.
+  /// Button label for done
   ///
   /// In en, this message translates to:
   /// **'Done'**
   String get done;
 
-  /// No description provided for @close.
+  /// Button label to close
   ///
   /// In en, this message translates to:
   /// **'Close'**
   String get close;
 
-  /// No description provided for @search.
+  /// Label for search
   ///
   /// In en, this message translates to:
   /// **'Search'**
   String get search;
 
-  /// No description provided for @filter.
+  /// Label for filter
   ///
   /// In en, this message translates to:
   /// **'Filter'**
   String get filter;
 
-  /// No description provided for @sort.
+  /// Label for sort
   ///
   /// In en, this message translates to:
   /// **'Sort'**
   String get sort;
 
-  /// No description provided for @refresh.
+  /// Label for refresh
   ///
   /// In en, this message translates to:
   /// **'Refresh'**
   String get refresh;
 
-  /// No description provided for @retry.
+  /// Label to retry an action
   ///
   /// In en, this message translates to:
   /// **'Retry'**
   String get retry;
 
-  /// No description provided for @noData.
+  /// Message when no data is available
   ///
   /// In en, this message translates to:
   /// **'No data available'**
   String get noData;
 
-  /// No description provided for @noResults.
+  /// Message when no search results are found
   ///
   /// In en, this message translates to:
   /// **'No results found'**
   String get noResults;
 
-  /// No description provided for @confirmDelete.
+  /// Confirmation message before deletion
   ///
   /// In en, this message translates to:
   /// **'Are you sure you want to delete this?'**
   String get confirmDelete;
 
-  /// No description provided for @yes.
+  /// Yes option
   ///
   /// In en, this message translates to:
   /// **'Yes'**
   String get yes;
 
-  /// No description provided for @no.
+  /// No option
   ///
   /// In en, this message translates to:
   /// **'No'**
   String get no;
 
-  /// No description provided for @signInSubtitle.
+  /// Subtitle on the sign in screen
   ///
   /// In en, this message translates to:
   /// **'Sign in to continue your journey'**
   String get signInSubtitle;
 
-  /// No description provided for @emailAddress.
+  /// Label for email address field
   ///
   /// In en, this message translates to:
   /// **'Email Address'**
   String get emailAddress;
 
-  /// No description provided for @enterPasswordHint.
+  /// Hint text for password entry
   ///
   /// In en, this message translates to:
   /// **'Enter your password'**
   String get enterPasswordHint;
 
-  /// No description provided for @orContinueWith.
+  /// Separator text for social sign in
   ///
   /// In en, this message translates to:
   /// **'or continue with'**
   String get orContinueWith;
 
-  /// No description provided for @continueWithGoogle.
+  /// Button label for Google sign in
   ///
   /// In en, this message translates to:
   /// **'Continue with Google'**
   String get continueWithGoogle;
 
-  /// No description provided for @emailHint.
+  /// Placeholder hint for email field
   ///
   /// In en, this message translates to:
   /// **'name@email.com'**
   String get emailHint;
 
-  /// No description provided for @pleaseEnterEmail.
+  /// Validation error message for missing email
   ///
   /// In en, this message translates to:
   /// **'Please enter your email'**
   String get pleaseEnterEmail;
 
-  /// No description provided for @pleaseEnterValidEmail.
+  /// Validation error message for invalid email format
   ///
   /// In en, this message translates to:
   /// **'Please enter a valid email'**
   String get pleaseEnterValidEmail;
 
-  /// No description provided for @pleaseEnterPassword.
+  /// Validation error message for missing password
   ///
   /// In en, this message translates to:
   /// **'Please enter your password'**
   String get pleaseEnterPassword;
 
-  /// No description provided for @invalidCredentials.
+  /// Error message for invalid login credentials
   ///
   /// In en, this message translates to:
   /// **'Invalid credentials'**
   String get invalidCredentials;
 
-  /// No description provided for @signInFailed.
+  /// Generic sign in failure message
   ///
   /// In en, this message translates to:
   /// **'Sign-in failed. Please try again.'**
   String get signInFailed;
 
-  /// No description provided for @googleSignInFailed.
+  /// Error message for Google sign in failure
   ///
   /// In en, this message translates to:
   /// **'Google sign-in failed. Please try again.'**
   String get googleSignInFailed;
 
-  /// No description provided for @signedInWithGoogle.
+  /// Success message for Google sign in
   ///
   /// In en, this message translates to:
   /// **'Signed in with Google!'**

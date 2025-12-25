@@ -1,114 +1,422 @@
 {
   "@@locale": "en",
   "appName": "Milow",
+  "@appName": {
+    "description": "The name of the application"
+  },
   "profile": "Profile",
+  "@profile": {
+    "description": "Label for the profile section"
+  },
   "editProfile": "Edit Profile",
+  "@editProfile": {
+    "description": "Label for the edit profile button or screen"
+  },
   "notifications": "Notifications",
+  "@notifications": {
+    "description": "Label for the notifications section"
+  },
   "appearance": "Appearance",
+  "@appearance": {
+    "description": "Label for the appearance settings section"
+  },
   "language": "Language",
+  "@language": {
+    "description": "Label for the language settings section"
+  },
   "privacySecurity": "Privacy & Security",
+  "@privacySecurity": {
+    "description": "Label for the privacy and security settings section"
+  },
   "signOut": "Sign out",
+  "@signOut": {
+    "description": "Label for the sign out button"
+  },
   "settings": "Settings",
+  "@settings": {
+    "description": "Label for the settings screen"
+  },
   "dashboard": "Dashboard",
+  "@dashboard": {
+    "description": "Label for the dashboard screen"
+  },
   "categories": "Categories",
+  "@categories": {
+    "description": "Label for categories section"
+  },
   "popularDestinations": "Popular Destinations",
+  "@popularDestinations": {
+    "description": "Label for popular destinations section"
+  },
   "recentActivity": "Recent Activity",
+  "@recentActivity": {
+    "description": "Label for recent activity section"
+  },
   "logs": "Logs",
+  "@logs": {
+    "description": "Label for logs section"
+  },
   "totalDrivenMiles": "Miles",
+  "@totalDrivenMiles": {
+    "description": "Label for total driven miles statistic"
+  },
   "trips": "Trips",
+  "@trips": {
+    "description": "Label for the trips section"
+  },
   "explore": "Explore",
+  "@explore": {
+    "description": "Label for the explore section"
+  },
   "inbox": "Inbox",
+  "@inbox": {
+    "description": "Label for the inbox section"
+  },
   "home": "Home",
+  "@home": {
+    "description": "Label for the home section"
+  },
   "support": "Support",
-  "trips": "Trips",
+  "@support": {
+    "description": "Label for the support section"
+  },
   "addEntry": "Add Entry",
+  "@addEntry": {
+    "description": "Label for add entry button"
+  },
   "save": "Save",
+  "@save": {
+    "description": "Label for save button"
+  },
   "cancel": "Cancel",
+  "@cancel": {
+    "description": "Label for cancel button"
+  },
   "delete": "Delete",
+  "@delete": {
+    "description": "Label for delete button"
+  },
   "edit": "Edit",
+  "@edit": {
+    "description": "Label for edit button"
+  },
   "loading": "Loading...",
+  "@loading": {
+    "description": "Text displayed while content is loading"
+  },
   "error": "Error",
+  "@error": {
+    "description": "Label for error state"
+  },
   "success": "Success",
+  "@success": {
+    "description": "Label for success state"
+  },
   "email": "Email",
+  "@email": {
+    "description": "Label for email field"
+  },
   "password": "Password",
+  "@password": {
+    "description": "Label for password field"
+  },
   "signIn": "Sign In",
+  "@signIn": {
+    "description": "Label for sign in button"
+  },
   "signUp": "Sign Up",
+  "@signUp": {
+    "description": "Label for sign up button"
+  },
   "forgotPassword": "Forgot Password?",
+  "@forgotPassword": {
+    "description": "Label for forgot password link"
+  },
   "createAccount": "Create Account",
+  "@createAccount": {
+    "description": "Label for create account button"
+  },
   "alreadyHaveAccount": "Already have an account?",
+  "@alreadyHaveAccount": {
+    "description": "Text asking if user already has an account"
+  },
   "dontHaveAccount": "Don't have an account?",
+  "@dontHaveAccount": {
+    "description": "Text asking if user doesn't have an account"
+  },
   "fullName": "Full Name",
+  "@fullName": {
+    "description": "Label for full name field"
+  },
   "phone": "Phone",
+  "@phone": {
+    "description": "Label for phone number field"
+  },
   "address": "Address",
+  "@address": {
+    "description": "Label for address field"
+  },
   "country": "Country",
+  "@country": {
+    "description": "Label for country field"
+  },
   "companyName": "Company Name",
+  "@companyName": {
+    "description": "Label for company name field"
+  },
   "companyCode": "Company Code",
+  "@companyCode": {
+    "description": "Label for company code field"
+  },
   "unitSystem": "Unit System",
+  "@unitSystem": {
+    "description": "Label for unit system selection"
+  },
   "metric": "Metric",
+  "@metric": {
+    "description": "Label for metric unit system"
+  },
   "imperial": "Imperial",
+  "@imperial": {
+    "description": "Label for imperial unit system"
+  },
   "showWeather": "Show Weather on Dashboard",
+  "@showWeather": {
+    "description": "Label for toggle to show weather on dashboard"
+  },
   "borderWaitTimes": "Border Wait Times",
+  "@borderWaitTimes": {
+    "description": "Label for border wait times section"
+  },
   "darkMode": "Dark Mode",
+  "@darkMode": {
+    "description": "Label for dark mode option"
+  },
   "lightMode": "Light Mode",
+  "@lightMode": {
+    "description": "Label for light mode option"
+  },
   "systemDefault": "System Default",
+  "@systemDefault": {
+    "description": "Label for system default theme option"
+  },
   "selectLanguage": "Select your preferred language",
+  "@selectLanguage": {
+    "description": "Title for language selection screen"
+  },
   "languageChangedTo": "Language changed to {language}",
   "@languageChangedTo": {
+    "description": "Message displayed when language is changed",
     "placeholders": {
       "language": {
-        "type": "String"
+        "type": "String",
+        "example": "English"
       }
     }
   },
   "languageComingSoon": "Language support is coming soon. The app will be fully translated in future updates.",
+  "@languageComingSoon": {
+    "description": "Message displayed for incomplete translations"
+  },
   "truck": "Truck",
+  "@truck": {
+    "description": "Label for truck"
+  },
   "trailer": "Trailer",
+  "@trailer": {
+    "description": "Label for trailer"
+  },
   "origin": "Origin",
+  "@origin": {
+    "description": "Label for origin location"
+  },
   "destination": "Destination",
+  "@destination": {
+    "description": "Label for destination location"
+  },
   "distance": "Distance",
+  "@distance": {
+    "description": "Label for distance"
+  },
   "messagesAndNotifications": "Messages and notifications",
+  "@messagesAndNotifications": {
+    "description": "Label for messages and notifications"
+  },
   "fuel": "Fuel",
+  "@fuel": {
+    "description": "Label for fuel"
+  },
   "date": "Date",
+  "@date": {
+    "description": "Label for date"
+  },
   "time": "Time",
+  "@time": {
+    "description": "Label for time"
+  },
   "notes": "Notes",
+  "@notes": {
+    "description": "Label for notes"
+  },
   "total": "Total",
+  "@total": {
+    "description": "Label for total"
+  },
   "today": "Today",
+  "@today": {
+    "description": "Label for today"
+  },
   "yesterday": "Yesterday",
+  "@yesterday": {
+    "description": "Label for yesterday"
+  },
   "thisWeek": "This Week",
+  "@thisWeek": {
+    "description": "Label for this week"
+  },
   "thisMonth": "This Month",
+  "@thisMonth": {
+    "description": "Label for this month"
+  },
   "allTime": "All Time",
+  "@allTime": {
+    "description": "Label for all time"
+  },
   "noTripsFound": "No trips found",
+  "@noTripsFound": {
+    "description": "Message when no trips are found"
+  },
   "addYourFirstTrip": "Add your first trip to get started",
+  "@addYourFirstTrip": {
+    "description": "Message encouraging user to add their first trip"
+  },
   "welcome": "Welcome",
+  "@welcome": {
+    "description": "Welcome message"
+  },
   "welcomeBack": "Welcome Back",
+  "@welcomeBack": {
+    "description": "Welcome back message"
+  },
   "getStarted": "Get Started",
+  "@getStarted": {
+    "description": "Button label to get started"
+  },
   "continueText": "Continue",
+  "@continueText": {
+    "description": "Button label to continue",
+    "type": "text"
+  },
   "skip": "Skip",
+  "@skip": {
+    "description": "Button label to skip"
+  },
   "next": "Next",
+  "@next": {
+    "description": "Button label for next"
+  },
   "back": "Back",
+  "@back": {
+    "description": "Button label for back"
+  },
   "done": "Done",
+  "@done": {
+    "description": "Button label for done"
+  },
   "close": "Close",
+  "@close": {
+    "description": "Button label to close"
+  },
   "search": "Search",
+  "@search": {
+    "description": "Label for search"
+  },
   "filter": "Filter",
+  "@filter": {
+    "description": "Label for filter"
+  },
   "sort": "Sort",
+  "@sort": {
+    "description": "Label for sort"
+  },
   "refresh": "Refresh",
+  "@refresh": {
+    "description": "Label for refresh"
+  },
   "retry": "Retry",
+  "@retry": {
+    "description": "Label to retry an action"
+  },
   "noData": "No data available",
+  "@noData": {
+    "description": "Message when no data is available"
+  },
   "noResults": "No results found",
+  "@noResults": {
+    "description": "Message when no search results are found"
+  },
   "confirmDelete": "Are you sure you want to delete this?",
+  "@confirmDelete": {
+    "description": "Confirmation message before deletion"
+  },
   "yes": "Yes",
+  "@yes": {
+    "description": "Yes option"
+  },
   "no": "No",
+  "@no": {
+    "description": "No option"
+  },
   "signInSubtitle": "Sign in to continue your journey",
+  "@signInSubtitle": {
+    "description": "Subtitle on the sign in screen"
+  },
   "emailAddress": "Email Address",
+  "@emailAddress": {
+    "description": "Label for email address field"
+  },
   "enterPasswordHint": "Enter your password",
+  "@enterPasswordHint": {
+    "description": "Hint text for password entry"
+  },
   "orContinueWith": "or continue with",
+  "@orContinueWith": {
+    "description": "Separator text for social sign in"
+  },
   "continueWithGoogle": "Continue with Google",
+  "@continueWithGoogle": {
+    "description": "Button label for Google sign in"
+  },
   "emailHint": "name@email.com",
+  "@emailHint": {
+    "description": "Placeholder hint for email field"
+  },
   "pleaseEnterEmail": "Please enter your email",
+  "@pleaseEnterEmail": {
+    "description": "Validation error message for missing email"
+  },
   "pleaseEnterValidEmail": "Please enter a valid email",
+  "@pleaseEnterValidEmail": {
+    "description": "Validation error message for invalid email format"
+  },
   "pleaseEnterPassword": "Please enter your password",
+  "@pleaseEnterPassword": {
+    "description": "Validation error message for missing password"
+  },
   "invalidCredentials": "Invalid credentials",
+  "@invalidCredentials": {
+    "description": "Error message for invalid login credentials"
+  },
   "signInFailed": "Sign-in failed. Please try again.",
+  "@signInFailed": {
+    "description": "Generic sign in failure message"
+  },
   "googleSignInFailed": "Google sign-in failed. Please try again.",
-  "signedInWithGoogle": "Signed in with Google!"
+  "@googleSignInFailed": {
+    "description": "Error message for Google sign in failure"
+  },
+  "signedInWithGoogle": "Signed in with Google!",
+  "@signedInWithGoogle": {
+    "description": "Success message for Google sign in"
+  }
 }

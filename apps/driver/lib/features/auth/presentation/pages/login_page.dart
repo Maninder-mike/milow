@@ -139,6 +139,7 @@ class _LoginPageState extends State<LoginPage>
             'email': googleUser.email,
             'full_name': googleUser.displayName,
             'avatar_url': googleUser.photoUrl,
+            'role': 'driver', // Auto-assign driver role for mobile app users
           });
         } catch (e) {
           debugPrint('Profile sync error: $e');

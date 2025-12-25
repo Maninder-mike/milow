@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -69,7 +70,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                         content: const Text('Message sent successfully'),
                         severity: InfoBarSeverity.success,
                         action: IconButton(
-                          icon: const Icon(FluentIcons.clear),
+                          icon: const Icon(FluentIcons.dismiss_24_regular),
                           onPressed: close,
                         ),
                       ),
@@ -84,7 +85,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                         content: Text(e.toString()),
                         severity: InfoBarSeverity.error,
                         action: IconButton(
-                          icon: const Icon(FluentIcons.clear),
+                          icon: const Icon(FluentIcons.dismiss_24_regular),
                           onPressed: close,
                         ),
                       ),
@@ -132,7 +133,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             content: Text('Status updated for ${user.fullName ?? 'User'}'),
             severity: InfoBarSeverity.success,
             action: IconButton(
-              icon: const Icon(FluentIcons.clear),
+              icon: const Icon(FluentIcons.dismiss_24_regular),
               onPressed: close,
             ),
           );
@@ -149,7 +150,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             content: Text(e.toString()),
             severity: InfoBarSeverity.error,
             action: IconButton(
-              icon: const Icon(FluentIcons.clear),
+              icon: const Icon(FluentIcons.dismiss_24_regular),
               onPressed: close,
             ),
           );
@@ -181,7 +182,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                 placeholder: 'Search users...',
                 prefix: const Padding(
                   padding: EdgeInsets.only(left: 8.0),
-                  child: Icon(FluentIcons.search),
+                  child: Icon(FluentIcons.search_24_regular),
                 ),
                 onChanged: _onSearchChanged,
               ),
@@ -197,7 +198,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
               child: const Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(FluentIcons.refresh),
+                  Icon(FluentIcons.arrow_clockwise_24_regular),
                   SizedBox(width: 8),
                   Text('Refresh'),
                 ],
@@ -355,11 +356,12 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                   child: isSelf
                                       ? (user.isVerified
                                             ? Icon(
-                                                FluentIcons.check_mark,
+                                                FluentIcons
+                                                    .checkmark_24_regular,
                                                 color: Colors.green,
                                               )
                                             : Icon(
-                                                FluentIcons.warning,
+                                                FluentIcons.warning_24_regular,
                                                 color:
                                                     Colors.warningPrimaryColor,
                                               ))
@@ -388,7 +390,9 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                       Tooltip(
                                         message: 'Send Message',
                                         child: IconButton(
-                                          icon: const Icon(FluentIcons.mail),
+                                          icon: const Icon(
+                                            FluentIcons.mail_24_regular,
+                                          ),
                                           onPressed: () => _sendMessage(user),
                                         ),
                                       ),
@@ -434,7 +438,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                 const Text('Page: '),
                 const SizedBox(width: 8),
                 IconButton(
-                  icon: const Icon(FluentIcons.chevron_left),
+                  icon: const Icon(FluentIcons.chevron_left_24_regular),
                   onPressed:
                       (ref.watch(usersProvider).asData?.value.isNotEmpty ==
                               true &&
@@ -456,7 +460,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   child: Text('${ref.watch(usersProvider.notifier).page + 1}'),
                 ),
                 IconButton(
-                  icon: const Icon(FluentIcons.chevron_right),
+                  icon: const Icon(FluentIcons.chevron_right_24_regular),
                   onPressed:
                       (ref.watch(usersProvider).asData?.value.length ==
                           ref.read(usersProvider.notifier).pageSize)
@@ -547,6 +551,9 @@ class _UsersPageState extends ConsumerState<UsersPage> {
         break;
       case UserRole.pending:
         color = Colors.grey;
+        break;
+      case UserRole.accountant:
+        color = Colors.teal;
         break;
     }
 

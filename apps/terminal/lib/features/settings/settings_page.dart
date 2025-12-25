@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:package_info_plus/package_info_plus.dart';
@@ -28,8 +29,8 @@ class SettingsPage extends StatelessWidget {
               ListTile(
                 title: const Text('My Profile'),
                 subtitle: const Text('Manage your account details'),
-                leading: const Icon(FluentIcons.contact),
-                trailing: const Icon(FluentIcons.chevron_right),
+                leading: const Icon(FluentIcons.person_24_regular),
+                trailing: const Icon(FluentIcons.chevron_right_24_regular),
                 onPressed: () {
                   context.go('/profile');
                 },
@@ -37,15 +38,18 @@ class SettingsPage extends StatelessWidget {
               const Divider(),
               ListTile(
                 title: const Text('Security'),
-                leading: const Icon(FluentIcons.lock),
-                trailing: const Icon(FluentIcons.chevron_right),
+                leading: const Icon(FluentIcons.lock_closed_24_regular),
+                trailing: const Icon(FluentIcons.chevron_right_24_regular),
                 onPressed: () {},
               ),
               const Divider(),
               ListTile(
                 title: Text('Sign Out', style: TextStyle(color: Colors.red)),
-                leading: Icon(FluentIcons.sign_out, color: Colors.red),
-                trailing: const Icon(FluentIcons.chevron_right),
+                leading: Icon(
+                  FluentIcons.sign_out_24_regular,
+                  color: Colors.red,
+                ),
+                trailing: const Icon(FluentIcons.chevron_right_24_regular),
                 onPressed: () async {
                   await Supabase.instance.client.auth.signOut();
                   if (context.mounted) {
@@ -302,7 +306,7 @@ class SettingsPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  FluentIcons.robot,
+                  FluentIcons.bot_24_regular,
                   size: 32,
                   color: Colors.white,
                 ),

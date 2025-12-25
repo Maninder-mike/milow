@@ -22,6 +22,7 @@ import 'package:terminal/features/dashboard/screens/customer/customer_page.dart'
 import 'package:terminal/features/dashboard/screens/pickup/pickup_page.dart';
 import 'package:terminal/features/dashboard/screens/deliver/deliver_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicles_page.dart';
+import 'package:terminal/features/dispatch/presentation/pages/dispatch_dashboard.dart'; // [NEW] import
 import 'package:flutter/material.dart'; // Added for ChangeNotifier
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -117,6 +118,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/drivers',
             builder: (context, state) => const DriversPage(),
+          ),
+          GoRoute(
+            path: '/dispatch',
+            builder: (context, state) => const DispatchDashboard(),
           ),
         ],
       ),

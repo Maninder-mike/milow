@@ -4,6 +4,7 @@ enum UserRole {
   driver,
   safetyOfficer,
   assistant,
+  accountant,
   pending;
 
   String get label {
@@ -18,6 +19,8 @@ enum UserRole {
         return 'Safety Officer';
       case UserRole.assistant:
         return 'Assistant';
+      case UserRole.accountant:
+        return 'Accountant';
       case UserRole.pending:
         return 'Pending';
     }

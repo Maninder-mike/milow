@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -57,46 +58,46 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
 
     if (location.startsWith('/dashboard')) {
       title = 'Dashboard';
-      icon = FluentIcons.home;
+      icon = FluentIcons.home_24_regular;
     } else if (location.startsWith('/inbox')) {
       title = 'Inbox';
-      icon = FluentIcons.mail;
+      icon = FluentIcons.mail_24_regular;
     } else if (location.startsWith('/users/new')) {
       title = 'Add User';
-      icon = FluentIcons.add_friend;
+      icon = FluentIcons.person_add_24_regular;
     } else if (location.startsWith('/users')) {
       title = 'Users';
-      icon = FluentIcons.people;
+      icon = FluentIcons.people_24_regular;
     } else if (location.startsWith('/profile')) {
       title = 'My Profile';
-      icon = FluentIcons.contact;
+      icon = FluentIcons.person_24_regular;
     } else if (location.startsWith('/settings')) {
       title = 'Settings';
-      icon = FluentIcons.settings;
+      icon = FluentIcons.settings_24_regular;
     } else if (location.startsWith('/customer')) {
       title = 'Customer';
-      icon = FluentIcons.contact;
+      icon = FluentIcons.person_24_regular;
     } else if (location.startsWith('/pickup')) {
       title = 'Pick Up';
-      icon = FluentIcons.package;
+      icon = FluentIcons.box_24_regular;
     } else if (location.startsWith('/deliver')) {
       title = 'Deliver';
-      icon = FluentIcons.delivery_truck;
+      icon = FluentIcons.vehicle_truck_24_regular;
     } else if (location.startsWith('/vehicles')) {
       title = 'Vehicles';
-      icon = FluentIcons.processing;
+      icon = FluentIcons.vehicle_car_24_regular;
     } else if (location.startsWith('/highway-dispatch')) {
       title = 'Dispatch';
-      icon = FluentIcons.map_layers;
+      icon = FluentIcons.layer_24_regular;
     } else if (location.startsWith('/driver-hos')) {
       title = 'Driver HOS';
-      icon = FluentIcons.clock;
+      icon = FluentIcons.clock_24_regular;
     } else if (location.startsWith('/location')) {
       title = 'Location';
-      icon = FluentIcons.location;
+      icon = FluentIcons.location_24_regular;
     } else if (location.startsWith('/drivers')) {
       title = 'Drivers';
-      icon = FluentIcons.delivery_truck;
+      icon = FluentIcons.vehicle_truck_24_regular;
     }
 
     final tab = TabInfo(

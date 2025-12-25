@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -70,7 +71,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 content: Text('No user found with email: $email'),
                 severity: InfoBarSeverity.warning,
                 action: IconButton(
-                  icon: const Icon(FluentIcons.clear),
+                  icon: const Icon(FluentIcons.dismiss_24_regular),
                   onPressed: close,
                 ),
               );
@@ -100,7 +101,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               content: Text('User $email has been approved.'),
               severity: InfoBarSeverity.success,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );
@@ -117,7 +118,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               content: Text('Failed to approve user: $e'),
               severity: InfoBarSeverity.error,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );
@@ -309,7 +310,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               content: const Text('Profile updated successfully'),
               severity: InfoBarSeverity.success,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );
@@ -327,7 +328,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               content: Text('Failed to update profile: $e'),
               severity: InfoBarSeverity.error,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );
@@ -387,7 +388,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(FluentIcons.edit),
+                    Icon(FluentIcons.edit_24_regular),
                     SizedBox(width: 8),
                     Text('Edit Profile'),
                   ],
@@ -511,7 +512,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         children: [
           Row(
             children: [
-              const Icon(FluentIcons.entitlement_policy, size: 20),
+              const Icon(FluentIcons.building_24_regular, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Company Details',
@@ -726,7 +727,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 child:
                     (_profileImage == null &&
                         (_avatarUrl == null || _avatarUrl!.isEmpty))
-                    ? Icon(FluentIcons.contact, size: 64, color: iconColor)
+                    ? Icon(
+                        FluentIcons.person_24_regular,
+                        size: 64,
+                        color: iconColor,
+                      )
                     : null,
               ),
               if (_isEditing)
@@ -741,7 +746,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         shape: BoxShape.circle,
                       ),
                       child: const Icon(
-                        FluentIcons.edit,
+                        FluentIcons.edit_24_regular,
                         size: 16,
                         color: Colors.white,
                       ),
@@ -797,7 +802,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   enabled: false, // Visual only
                   prefix: const Padding(
                     padding: EdgeInsets.only(left: 8),
-                    child: Icon(FluentIcons.mail, size: 16),
+                    child: Icon(FluentIcons.mail_24_regular, size: 16),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -820,7 +825,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     enabled: false,
                     prefix: const Padding(
                       padding: EdgeInsets.only(left: 8),
-                      child: Icon(FluentIcons.contact_lock, size: 16),
+                      child: Icon(FluentIcons.lock_closed_24_regular, size: 16),
                     ),
                   ),
               ],
@@ -857,7 +862,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         children: [
           Row(
             children: [
-              const Icon(FluentIcons.contact_info, size: 20),
+              const Icon(FluentIcons.contact_card_24_regular, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Personal Details',
@@ -945,7 +950,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         children: [
           Row(
             children: [
-              Icon(FluentIcons.shield, size: 20, color: Colors.red),
+              Icon(FluentIcons.shield_24_regular, size: 20, color: Colors.red),
               const SizedBox(width: 8),
               Text(
                 'Admin Console',
@@ -967,7 +972,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   placeholder: 'Enter requester email',
                   prefix: Padding(
                     padding: const EdgeInsets.only(left: 8),
-                    child: Icon(FluentIcons.add_friend, size: 16),
+                    child: Icon(FluentIcons.person_add_24_regular, size: 16),
                   ),
                 ),
               ),
@@ -1021,7 +1026,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                         shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        FluentIcons.contact,
+                        FluentIcons.person_24_regular,
                         color: theme.accentColor,
                       ),
                     ),
@@ -1105,7 +1110,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               content: Text('User $email has been revoked and set to pending.'),
               severity: InfoBarSeverity.success,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );
@@ -1122,7 +1127,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               content: Text('Failed to revoke user: $e'),
               severity: InfoBarSeverity.error,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );

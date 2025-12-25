@@ -1,22 +1,25 @@
 import 'dart:ui';
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
+import 'package:terminal/core/providers/biometric_provider.dart';
+import 'package:terminal/core/providers/supabase_provider.dart';
 import 'services/biometric_service.dart';
 import 'auth_theme.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _biometricService = BiometricService();
 
   late AuthTheme _theme;
 
@@ -28,12 +31,17 @@ class _LoginPageState extends State<LoginPage> {
 
   bool _isResettingPassword = false;
 
+  BiometricService get _biometricService => ref.read(biometricServiceProvider);
+
   @override
   void initState() {
     super.initState();
     _theme = AuthTheme.getRandom();
-    _checkBiometricAvailability();
-    _checkPinAvailability();
+    // Defer initialization to after build to access ref safely or use post-frame callback
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkBiometricAvailability();
+      _checkPinAvailability();
+    });
   }
 
   Future<void> _checkPinAvailability() async {
@@ -54,16 +62,15 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  SupabaseClient get _supabase => ref.read(supabaseClientProvider);
+
   Future<void> _login() async {
     setState(() => _isLoading = true);
     try {
       final email = _emailController.text.trim();
       final password = _passwordController.text;
 
-      await Supabase.instance.client.auth.signInWithPassword(
-        email: email,
-        password: password,
-      );
+      await _supabase.auth.signInWithPassword(email: email, password: password);
 
       // Save credentials on successful login
       await _biometricService.saveCredentials(email, password);
@@ -179,7 +186,7 @@ class _LoginPageState extends State<LoginPage> {
       try {
         final credentials = await _biometricService.getCredentials();
         if (credentials != null) {
-          await Supabase.instance.client.auth.signInWithPassword(
+          await _supabase.auth.signInWithPassword(
             email: credentials['email']!,
             password: credentials['password']!,
           );
@@ -212,7 +219,7 @@ class _LoginPageState extends State<LoginPage> {
       if (authenticated) {
         final credentials = await _biometricService.getCredentials();
         if (credentials != null) {
-          await Supabase.instance.client.auth.signInWithPassword(
+          await _supabase.auth.signInWithPassword(
             email: credentials['email']!,
             password: credentials['password']!,
           );
@@ -251,7 +258,7 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isLoading = true);
     try {
-      await Supabase.instance.client.auth.resetPasswordForEmail(
+      await _supabase.auth.resetPasswordForEmail(
         email,
         redirectTo: 'milow-terminal://reset-password',
       );
@@ -264,7 +271,7 @@ class _LoginPageState extends State<LoginPage> {
               content: Text('Password reset instructions sent to $email'),
               severity: InfoBarSeverity.success,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );
@@ -290,7 +297,7 @@ class _LoginPageState extends State<LoginPage> {
           content: Text(message),
           severity: InfoBarSeverity.error,
           action: IconButton(
-            icon: const Icon(FluentIcons.clear),
+            icon: const Icon(FluentIcons.dismiss_24_regular),
             onPressed: close,
           ),
         );
@@ -327,7 +334,7 @@ class _LoginPageState extends State<LoginPage> {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            FluentIcons.lock,
+                            FluentIcons.lock_closed_24_regular,
                             size: 64,
                             color: _theme.primaryContentColor,
                           ),
@@ -359,7 +366,7 @@ class _LoginPageState extends State<LoginPage> {
                             prefix: Padding(
                               padding: const EdgeInsets.only(left: 8.0),
                               child: Icon(
-                                FluentIcons.mail,
+                                FluentIcons.mail_24_regular,
                                 color: _theme.primaryContentColor,
                               ),
                             ),
@@ -474,7 +481,7 @@ class _LoginPageState extends State<LoginPage> {
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
                                       const Icon(
-                                        FluentIcons.fingerprint,
+                                        FluentIcons.fingerprint_24_regular,
                                         size: 20,
                                       ),
                                       const SizedBox(width: 8),
@@ -508,7 +515,10 @@ class _LoginPageState extends State<LoginPage> {
                                   child: Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      const Icon(FluentIcons.lock, size: 20),
+                                      const Icon(
+                                        FluentIcons.lock_closed_24_regular,
+                                        size: 20,
+                                      ),
                                       const SizedBox(width: 8),
                                       Text(
                                         'Login with PIN',
@@ -568,7 +578,7 @@ class _LoginPageState extends State<LoginPage> {
                             prefix: Padding(
                               padding: const EdgeInsets.only(left: 8.0),
                               child: Icon(
-                                FluentIcons.mail,
+                                FluentIcons.mail_24_regular,
                                 color: _theme.primaryContentColor,
                               ),
                             ),
@@ -592,15 +602,15 @@ class _LoginPageState extends State<LoginPage> {
                             prefix: Padding(
                               padding: const EdgeInsets.only(left: 8.0),
                               child: Icon(
-                                FluentIcons.lock,
+                                FluentIcons.lock_closed_24_regular,
                                 color: _theme.primaryContentColor,
                               ),
                             ),
                             suffix: IconButton(
                               icon: Icon(
                                 _obscurePassword
-                                    ? FluentIcons.red_eye
-                                    : FluentIcons.hide,
+                                    ? FluentIcons.eye_24_regular
+                                    : FluentIcons.eye_off_24_regular,
                                 color: _theme.primaryContentColor,
                               ),
                               onPressed: () => setState(

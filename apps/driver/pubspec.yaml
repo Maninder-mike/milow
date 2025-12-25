@@ -59,9 +59,9 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/images/milow_icon.png"
+  image_path: "assets/images/mipmap-xxxhdpi/milow_driver_icon.png"
   adaptive_icon_background: "#007AFF"
-  adaptive_icon_foreground: "assets/images/milow_icon.png"
+  adaptive_icon_foreground: "assets/images/mipmap-xxxhdpi/milow_driver_icon.png"
 
 # The following section is specific to Flutter packages.
 flutter:

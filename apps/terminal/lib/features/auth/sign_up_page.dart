@@ -1,5 +1,6 @@
 import 'dart:ui';
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -81,7 +82,7 @@ class _SignUpPageState extends State<SignUpPage> {
               ),
               severity: InfoBarSeverity.success,
               action: IconButton(
-                icon: const Icon(FluentIcons.clear),
+                icon: const Icon(FluentIcons.dismiss_24_regular),
                 onPressed: close,
               ),
             );
@@ -107,7 +108,7 @@ class _SignUpPageState extends State<SignUpPage> {
           content: Text(message),
           severity: InfoBarSeverity.error,
           action: IconButton(
-            icon: const Icon(FluentIcons.clear),
+            icon: const Icon(FluentIcons.dismiss_24_regular),
             onPressed: close,
           ),
         );
@@ -144,7 +145,7 @@ class _SignUpPageState extends State<SignUpPage> {
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       Icon(
-                        FluentIcons.add_friend,
+                        FluentIcons.person_add_24_regular,
                         size: 64,
                         color: _theme.primaryContentColor,
                       ),
@@ -204,7 +205,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                   ),
                                 ),
                                 Icon(
-                                  FluentIcons.chevron_down,
+                                  FluentIcons.chevron_down_24_regular,
                                   size: 10,
                                   color: _theme.primaryContentColor,
                                 ),
@@ -219,7 +220,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       _buildTextField(
                         controller: _nameController,
                         hint: 'Full Name',
-                        icon: FluentIcons.contact,
+                        icon: FluentIcons.person_24_regular,
                         validator: (v) =>
                             v?.isEmpty == true ? 'Required' : null,
                       ),
@@ -229,7 +230,7 @@ class _SignUpPageState extends State<SignUpPage> {
                       _buildTextField(
                         controller: _emailController,
                         hint: 'Email',
-                        icon: FluentIcons.mail,
+                        icon: FluentIcons.mail_24_regular,
                         keyboardType: TextInputType.emailAddress,
                         validator: (v) {
                           if (v == null || v.isEmpty) return 'Required';
@@ -243,13 +244,13 @@ class _SignUpPageState extends State<SignUpPage> {
                       _buildTextField(
                         controller: _passwordController,
                         hint: 'Password',
-                        icon: FluentIcons.lock,
+                        icon: FluentIcons.lock_closed_24_regular,
                         obscureText: _obscurePassword,
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscurePassword
-                                ? FluentIcons.red_eye
-                                : FluentIcons.hide,
+                                ? FluentIcons.eye_24_regular
+                                : FluentIcons.eye_off_24_regular,
                             color: _theme.primaryContentColor,
                           ),
                           onPressed: () => setState(
@@ -268,13 +269,13 @@ class _SignUpPageState extends State<SignUpPage> {
                       _buildTextField(
                         controller: _confirmPasswordController,
                         hint: 'Confirm Password',
-                        icon: FluentIcons.lock,
+                        icon: FluentIcons.lock_closed_24_regular,
                         obscureText: _obscureConfirmPassword,
                         suffixIcon: IconButton(
                           icon: Icon(
                             _obscureConfirmPassword
-                                ? FluentIcons.red_eye
-                                : FluentIcons.hide,
+                                ? FluentIcons.eye_24_regular
+                                : FluentIcons.eye_off_24_regular,
                             color: _theme.primaryContentColor,
                           ),
                           onPressed: () => setState(

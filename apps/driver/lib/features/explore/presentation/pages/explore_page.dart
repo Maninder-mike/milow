@@ -292,9 +292,10 @@ class _ExplorePageState extends State<ExplorePage> {
     final states = <String>{};
     // GeoService is static, no instance needed
 
-    // Process recent trips (take last 10 for performance)
-    final recentTrips = _allTrips.take(10).toList();
-    for (final trip in recentTrips) {
+    // Process all trips
+    // final recentTrips = _allTrips.take(10).toList(); // OLD: limit 10
+    final trips = _allTrips; // NEW: use all
+    for (final trip in trips) {
       if (trip.deliveryLocations.isNotEmpty) {
         final loc =
             trip.deliveryLocations.last; // Use last delivery as main point
@@ -323,9 +324,10 @@ class _ExplorePageState extends State<ExplorePage> {
       }
     }
 
-    // Process recent fuel (take last 10)
-    final recentFuel = _allFuelEntries.take(10).toList();
-    for (final fuel in recentFuel) {
+    // Process all fuel
+    // final recentFuel = _allFuelEntries.take(10).toList(); // OLD: limit 10
+    final fuelList = _allFuelEntries; // NEW: use all
+    for (final fuel in fuelList) {
       if (fuel.location != null) {
         // Extract state for collector
         final mainLoc = _extractCityState(fuel.location!);

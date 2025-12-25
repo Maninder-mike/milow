@@ -2,18 +2,18 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../services/admin_dashboard_service.dart';
 
-class OverviewPage extends StatefulWidget {
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:terminal/core/providers/dashboard_provider.dart';
+
+class OverviewPage extends ConsumerStatefulWidget {
   const OverviewPage({super.key});
 
   @override
-  State<OverviewPage> createState() => _OverviewPageState();
+  ConsumerState<OverviewPage> createState() => _OverviewPageState();
 }
 
-class _OverviewPageState extends State<OverviewPage> {
-  final _service = AdminDashboardService();
-
+class _OverviewPageState extends ConsumerState<OverviewPage> {
   // Future variables
   late Future<Map<String, dynamic>> _kpiFuture;
   late Future<List<FlSpot>> _cpmFuture;
@@ -22,14 +22,19 @@ class _OverviewPageState extends State<OverviewPage> {
   @override
   void initState() {
     super.initState();
+    // We can't use ref in initState directly for triggering logic that needs it immediately if it depends on context,
+    // but reading a provider is fine as long as we don't watch it.
+    // However, best practice often suggests doing it in didChangeDependencies or using a method.
+    // For simplicity given existing structure:
     _refresh();
   }
 
   void _refresh() {
+    final service = ref.read(adminDashboardServiceProvider);
     setState(() {
-      _kpiFuture = _service.getKPIData();
-      _cpmFuture = _service.getCPMData();
-      _trucksFuture = _service.getTopTrucksData();
+      _kpiFuture = service.getKPIData();
+      _cpmFuture = service.getCPMData();
+      _trucksFuture = service.getTopTrucksData();
     });
   }
 
