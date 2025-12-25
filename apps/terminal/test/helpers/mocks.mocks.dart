@@ -4,14 +4,17 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'dart:async' as _i3;
+import 'dart:io' as _i9;
+import 'dart:typed_data' as _i10;
 
-import 'package:fl_chart/fl_chart.dart' as _i7;
+import 'package:fl_chart/fl_chart.dart' as _i8;
 import 'package:mockito/mockito.dart' as _i1;
-import 'package:mockito/src/dummies.dart' as _i4;
+import 'package:mockito/src/dummies.dart' as _i5;
+import 'package:storage_client/src/fetch.dart' as _i4;
 import 'package:supabase/supabase.dart' as _i2;
-import 'package:terminal/features/auth/services/biometric_service.dart' as _i5;
+import 'package:terminal/features/auth/services/biometric_service.dart' as _i6;
 import 'package:terminal/features/dashboard/services/admin_dashboard_service.dart'
-    as _i6;
+    as _i7;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -182,6 +185,33 @@ class _FakeResponsePostgrestBuilder_26<T1, S, R> extends _i1.SmartFake
     : super(parent, parentInvocation);
 }
 
+class _FakeFetch_27 extends _i1.SmartFake implements _i4.Fetch {
+  _FakeFetch_27(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeStorageFileApi_28 extends _i1.SmartFake
+    implements _i2.StorageFileApi {
+  _FakeStorageFileApi_28(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeBucket_29 extends _i1.SmartFake implements _i2.Bucket {
+  _FakeBucket_29(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeSignedUploadURLResponse_30 extends _i1.SmartFake
+    implements _i2.SignedUploadURLResponse {
+  _FakeSignedUploadURLResponse_30(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeFileObjectV2_31 extends _i1.SmartFake implements _i2.FileObjectV2 {
+  _FakeFileObjectV2_31(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
 /// A class which mocks [SupabaseClient].
 ///
 /// See the documentation for Mockito's code generation for more information.
@@ -341,7 +371,7 @@ class MockSupabaseClient extends _i1.Mock implements _i2.SupabaseClient {
       (super.noSuchMethod(
             Invocation.method(#removeChannel, [channel]),
             returnValue: _i3.Future<String>.value(
-              _i4.dummyValue<String>(
+              _i5.dummyValue<String>(
                 this,
                 Invocation.method(#removeChannel, [channel]),
               ),
@@ -665,7 +695,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #captchaToken: captchaToken,
             }),
             returnValue: _i3.Future<String>.value(
-              _i4.dummyValue<String>(
+              _i5.dummyValue<String>(
                 this,
                 Invocation.method(#getSSOSignInUrl, [], {
                   #providerId: providerId,
@@ -1008,7 +1038,7 @@ class MockSession extends _i1.Mock implements _i2.Session {
   String get accessToken =>
       (super.noSuchMethod(
             Invocation.getter(#accessToken),
-            returnValue: _i4.dummyValue<String>(
+            returnValue: _i5.dummyValue<String>(
               this,
               Invocation.getter(#accessToken),
             ),
@@ -1019,7 +1049,7 @@ class MockSession extends _i1.Mock implements _i2.Session {
   String get tokenType =>
       (super.noSuchMethod(
             Invocation.getter(#tokenType),
-            returnValue: _i4.dummyValue<String>(
+            returnValue: _i5.dummyValue<String>(
               this,
               Invocation.getter(#tokenType),
             ),
@@ -1101,7 +1131,7 @@ class MockUser extends _i1.Mock implements _i2.User {
   String get id =>
       (super.noSuchMethod(
             Invocation.getter(#id),
-            returnValue: _i4.dummyValue<String>(this, Invocation.getter(#id)),
+            returnValue: _i5.dummyValue<String>(this, Invocation.getter(#id)),
           )
           as String);
 
@@ -1117,7 +1147,7 @@ class MockUser extends _i1.Mock implements _i2.User {
   String get aud =>
       (super.noSuchMethod(
             Invocation.getter(#aud),
-            returnValue: _i4.dummyValue<String>(this, Invocation.getter(#aud)),
+            returnValue: _i5.dummyValue<String>(this, Invocation.getter(#aud)),
           )
           as String);
 
@@ -1125,7 +1155,7 @@ class MockUser extends _i1.Mock implements _i2.User {
   String get createdAt =>
       (super.noSuchMethod(
             Invocation.getter(#createdAt),
-            returnValue: _i4.dummyValue<String>(
+            returnValue: _i5.dummyValue<String>(
               this,
               Invocation.getter(#createdAt),
             ),
@@ -1342,8 +1372,8 @@ class MockSupabaseQueryBuilder extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#then, [onValue], {#onError: onError}),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<U>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<U>(
                     this,
                     Invocation.method(#then, [onValue], {#onError: onError}),
                   ),
@@ -2046,8 +2076,8 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#catchError, [onError], {#test: test}),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<T>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<T>(
                     this,
                     Invocation.method(#catchError, [onError], {#test: test}),
                   ),
@@ -2068,8 +2098,8 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#then, [onValue], {#onError: onError}),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<U>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<U>(
                     this,
                     Invocation.method(#then, [onValue], {#onError: onError}),
                   ),
@@ -2090,8 +2120,8 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#timeout, [timeLimit], {#onTimeout: onTimeout}),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<T>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<T>(
                     this,
                     Invocation.method(
                       #timeout,
@@ -2117,8 +2147,8 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#whenComplete, [action]),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<T>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<T>(
                     this,
                     Invocation.method(#whenComplete, [action]),
                   ),
@@ -2425,8 +2455,8 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#catchError, [onError], {#test: test}),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<T>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<T>(
                     this,
                     Invocation.method(#catchError, [onError], {#test: test}),
                   ),
@@ -2447,8 +2477,8 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#then, [onValue], {#onError: onError}),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<U>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<U>(
                     this,
                     Invocation.method(#then, [onValue], {#onError: onError}),
                   ),
@@ -2469,8 +2499,8 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#timeout, [timeLimit], {#onTimeout: onTimeout}),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<T>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<T>(
                     this,
                     Invocation.method(
                       #timeout,
@@ -2496,8 +2526,8 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#whenComplete, [action]),
             returnValue:
-                _i4.ifNotNull(
-                  _i4.dummyValueOrNull<T>(
+                _i5.ifNotNull(
+                  _i5.dummyValueOrNull<T>(
                     this,
                     Invocation.method(#whenComplete, [action]),
                   ),
@@ -2514,7 +2544,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
 /// A class which mocks [BiometricService].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockBiometricService extends _i1.Mock implements _i5.BiometricService {
+class MockBiometricService extends _i1.Mock implements _i6.BiometricService {
   MockBiometricService() {
     _i1.throwOnMissingStub(this);
   }
@@ -2608,7 +2638,7 @@ class MockBiometricService extends _i1.Mock implements _i5.BiometricService {
 ///
 /// See the documentation for Mockito's code generation for more information.
 class MockAdminDashboardService extends _i1.Mock
-    implements _i6.AdminDashboardService {
+    implements _i7.AdminDashboardService {
   MockAdminDashboardService() {
     _i1.throwOnMissingStub(this);
   }
@@ -2624,12 +2654,12 @@ class MockAdminDashboardService extends _i1.Mock
           as _i3.Future<Map<String, dynamic>>);
 
   @override
-  _i3.Future<List<_i7.FlSpot>> getCPMData() =>
+  _i3.Future<List<_i8.FlSpot>> getCPMData() =>
       (super.noSuchMethod(
             Invocation.method(#getCPMData, []),
-            returnValue: _i3.Future<List<_i7.FlSpot>>.value(<_i7.FlSpot>[]),
+            returnValue: _i3.Future<List<_i8.FlSpot>>.value(<_i8.FlSpot>[]),
           )
-          as _i3.Future<List<_i7.FlSpot>>);
+          as _i3.Future<List<_i8.FlSpot>>);
 
   @override
   _i3.Future<List<Map<String, dynamic>>> getTopTrucksData() =>
@@ -2640,4 +2670,537 @@ class MockAdminDashboardService extends _i1.Mock
             ),
           )
           as _i3.Future<List<Map<String, dynamic>>>);
+}
+
+/// A class which mocks [SupabaseStorageClient].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockSupabaseStorageClient extends _i1.Mock
+    implements _i2.SupabaseStorageClient {
+  MockSupabaseStorageClient() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  String get url =>
+      (super.noSuchMethod(
+            Invocation.getter(#url),
+            returnValue: _i5.dummyValue<String>(this, Invocation.getter(#url)),
+          )
+          as String);
+
+  @override
+  Map<String, String> get headers =>
+      (super.noSuchMethod(
+            Invocation.getter(#headers),
+            returnValue: <String, String>{},
+          )
+          as Map<String, String>);
+
+  @override
+  _i4.Fetch get storageFetch =>
+      (super.noSuchMethod(
+            Invocation.getter(#storageFetch),
+            returnValue: _FakeFetch_27(this, Invocation.getter(#storageFetch)),
+          )
+          as _i4.Fetch);
+
+  @override
+  set storageFetch(_i4.Fetch? value) => super.noSuchMethod(
+    Invocation.setter(#storageFetch, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i2.StorageFileApi from(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#from, [id]),
+            returnValue: _FakeStorageFileApi_28(
+              this,
+              Invocation.method(#from, [id]),
+            ),
+          )
+          as _i2.StorageFileApi);
+
+  @override
+  void setAuth(String? jwt) => super.noSuchMethod(
+    Invocation.method(#setAuth, [jwt]),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i3.Future<List<_i2.Bucket>> listBuckets() =>
+      (super.noSuchMethod(
+            Invocation.method(#listBuckets, []),
+            returnValue: _i3.Future<List<_i2.Bucket>>.value(<_i2.Bucket>[]),
+          )
+          as _i3.Future<List<_i2.Bucket>>);
+
+  @override
+  _i3.Future<_i2.Bucket> getBucket(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#getBucket, [id]),
+            returnValue: _i3.Future<_i2.Bucket>.value(
+              _FakeBucket_29(this, Invocation.method(#getBucket, [id])),
+            ),
+          )
+          as _i3.Future<_i2.Bucket>);
+
+  @override
+  _i3.Future<String> createBucket(
+    String? id, [
+    _i2.BucketOptions? bucketOptions = const _i2.BucketOptions(public: false),
+  ]) =>
+      (super.noSuchMethod(
+            Invocation.method(#createBucket, [id, bucketOptions]),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(#createBucket, [id, bucketOptions]),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> updateBucket(
+    String? id,
+    _i2.BucketOptions? bucketOptions,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateBucket, [id, bucketOptions]),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(#updateBucket, [id, bucketOptions]),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> emptyBucket(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#emptyBucket, [id]),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(#emptyBucket, [id]),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> deleteBucket(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteBucket, [id]),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(#deleteBucket, [id]),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+}
+
+/// A class which mocks [StorageFileApi].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
+  MockStorageFileApi() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  String get url =>
+      (super.noSuchMethod(
+            Invocation.getter(#url),
+            returnValue: _i5.dummyValue<String>(this, Invocation.getter(#url)),
+          )
+          as String);
+
+  @override
+  Map<String, String> get headers =>
+      (super.noSuchMethod(
+            Invocation.getter(#headers),
+            returnValue: <String, String>{},
+          )
+          as Map<String, String>);
+
+  @override
+  _i3.Future<String> upload(
+    String? path,
+    _i9.File? file, {
+    _i2.FileOptions? fileOptions = const _i2.FileOptions(),
+    int? retryAttempts,
+    _i2.StorageRetryController? retryController,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #upload,
+              [path, file],
+              {
+                #fileOptions: fileOptions,
+                #retryAttempts: retryAttempts,
+                #retryController: retryController,
+              },
+            ),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #upload,
+                  [path, file],
+                  {
+                    #fileOptions: fileOptions,
+                    #retryAttempts: retryAttempts,
+                    #retryController: retryController,
+                  },
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> uploadBinary(
+    String? path,
+    _i10.Uint8List? data, {
+    _i2.FileOptions? fileOptions = const _i2.FileOptions(),
+    int? retryAttempts,
+    _i2.StorageRetryController? retryController,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #uploadBinary,
+              [path, data],
+              {
+                #fileOptions: fileOptions,
+                #retryAttempts: retryAttempts,
+                #retryController: retryController,
+              },
+            ),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #uploadBinary,
+                  [path, data],
+                  {
+                    #fileOptions: fileOptions,
+                    #retryAttempts: retryAttempts,
+                    #retryController: retryController,
+                  },
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> uploadToSignedUrl(
+    String? path,
+    String? token,
+    _i9.File? file, [
+    _i2.FileOptions? fileOptions = const _i2.FileOptions(),
+    int? retryAttempts,
+    _i2.StorageRetryController? retryController,
+  ]) =>
+      (super.noSuchMethod(
+            Invocation.method(#uploadToSignedUrl, [
+              path,
+              token,
+              file,
+              fileOptions,
+              retryAttempts,
+              retryController,
+            ]),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(#uploadToSignedUrl, [
+                  path,
+                  token,
+                  file,
+                  fileOptions,
+                  retryAttempts,
+                  retryController,
+                ]),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> uploadBinaryToSignedUrl(
+    String? path,
+    String? token,
+    _i10.Uint8List? data, [
+    _i2.FileOptions? fileOptions = const _i2.FileOptions(),
+    int? retryAttempts,
+    _i2.StorageRetryController? retryController,
+  ]) =>
+      (super.noSuchMethod(
+            Invocation.method(#uploadBinaryToSignedUrl, [
+              path,
+              token,
+              data,
+              fileOptions,
+              retryAttempts,
+              retryController,
+            ]),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(#uploadBinaryToSignedUrl, [
+                  path,
+                  token,
+                  data,
+                  fileOptions,
+                  retryAttempts,
+                  retryController,
+                ]),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<_i2.SignedUploadURLResponse> createSignedUploadUrl(String? path) =>
+      (super.noSuchMethod(
+            Invocation.method(#createSignedUploadUrl, [path]),
+            returnValue: _i3.Future<_i2.SignedUploadURLResponse>.value(
+              _FakeSignedUploadURLResponse_30(
+                this,
+                Invocation.method(#createSignedUploadUrl, [path]),
+              ),
+            ),
+          )
+          as _i3.Future<_i2.SignedUploadURLResponse>);
+
+  @override
+  _i3.Future<String> update(
+    String? path,
+    _i9.File? file, {
+    _i2.FileOptions? fileOptions = const _i2.FileOptions(),
+    int? retryAttempts,
+    _i2.StorageRetryController? retryController,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #update,
+              [path, file],
+              {
+                #fileOptions: fileOptions,
+                #retryAttempts: retryAttempts,
+                #retryController: retryController,
+              },
+            ),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #update,
+                  [path, file],
+                  {
+                    #fileOptions: fileOptions,
+                    #retryAttempts: retryAttempts,
+                    #retryController: retryController,
+                  },
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> updateBinary(
+    String? path,
+    _i10.Uint8List? data, {
+    _i2.FileOptions? fileOptions = const _i2.FileOptions(),
+    int? retryAttempts,
+    _i2.StorageRetryController? retryController,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #updateBinary,
+              [path, data],
+              {
+                #fileOptions: fileOptions,
+                #retryAttempts: retryAttempts,
+                #retryController: retryController,
+              },
+            ),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #updateBinary,
+                  [path, data],
+                  {
+                    #fileOptions: fileOptions,
+                    #retryAttempts: retryAttempts,
+                    #retryController: retryController,
+                  },
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> move(
+    String? fromPath,
+    String? toPath, {
+    String? destinationBucket,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #move,
+              [fromPath, toPath],
+              {#destinationBucket: destinationBucket},
+            ),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #move,
+                  [fromPath, toPath],
+                  {#destinationBucket: destinationBucket},
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> copy(
+    String? fromPath,
+    String? toPath, {
+    String? destinationBucket,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #copy,
+              [fromPath, toPath],
+              {#destinationBucket: destinationBucket},
+            ),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #copy,
+                  [fromPath, toPath],
+                  {#destinationBucket: destinationBucket},
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<String> createSignedUrl(
+    String? path,
+    int? expiresIn, {
+    _i2.TransformOptions? transform,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #createSignedUrl,
+              [path, expiresIn],
+              {#transform: transform},
+            ),
+            returnValue: _i3.Future<String>.value(
+              _i5.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #createSignedUrl,
+                  [path, expiresIn],
+                  {#transform: transform},
+                ),
+              ),
+            ),
+          )
+          as _i3.Future<String>);
+
+  @override
+  _i3.Future<List<_i2.SignedUrl>> createSignedUrls(
+    List<String>? paths,
+    int? expiresIn,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#createSignedUrls, [paths, expiresIn]),
+            returnValue: _i3.Future<List<_i2.SignedUrl>>.value(
+              <_i2.SignedUrl>[],
+            ),
+          )
+          as _i3.Future<List<_i2.SignedUrl>>);
+
+  @override
+  _i3.Future<_i10.Uint8List> download(
+    String? path, {
+    _i2.TransformOptions? transform,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#download, [path], {#transform: transform}),
+            returnValue: _i3.Future<_i10.Uint8List>.value(_i10.Uint8List(0)),
+          )
+          as _i3.Future<_i10.Uint8List>);
+
+  @override
+  _i3.Future<_i2.FileObjectV2> info(String? path) =>
+      (super.noSuchMethod(
+            Invocation.method(#info, [path]),
+            returnValue: _i3.Future<_i2.FileObjectV2>.value(
+              _FakeFileObjectV2_31(this, Invocation.method(#info, [path])),
+            ),
+          )
+          as _i3.Future<_i2.FileObjectV2>);
+
+  @override
+  _i3.Future<bool> exists(String? path) =>
+      (super.noSuchMethod(
+            Invocation.method(#exists, [path]),
+            returnValue: _i3.Future<bool>.value(false),
+          )
+          as _i3.Future<bool>);
+
+  @override
+  String getPublicUrl(String? path, {_i2.TransformOptions? transform}) =>
+      (super.noSuchMethod(
+            Invocation.method(#getPublicUrl, [path], {#transform: transform}),
+            returnValue: _i5.dummyValue<String>(
+              this,
+              Invocation.method(#getPublicUrl, [path], {#transform: transform}),
+            ),
+          )
+          as String);
+
+  @override
+  _i3.Future<List<_i2.FileObject>> remove(List<String>? paths) =>
+      (super.noSuchMethod(
+            Invocation.method(#remove, [paths]),
+            returnValue: _i3.Future<List<_i2.FileObject>>.value(
+              <_i2.FileObject>[],
+            ),
+          )
+          as _i3.Future<List<_i2.FileObject>>);
+
+  @override
+  _i3.Future<List<_i2.FileObject>> list({
+    String? path,
+    _i2.SearchOptions? searchOptions = const _i2.SearchOptions(),
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#list, [], {
+              #path: path,
+              #searchOptions: searchOptions,
+            }),
+            returnValue: _i3.Future<List<_i2.FileObject>>.value(
+              <_i2.FileObject>[],
+            ),
+          )
+          as _i3.Future<List<_i2.FileObject>>);
 }

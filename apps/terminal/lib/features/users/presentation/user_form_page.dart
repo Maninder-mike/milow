@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -70,7 +71,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
             content: Text('User ${_emailController.text} created successfully'),
             severity: InfoBarSeverity.success,
             action: IconButton(
-              icon: const Icon(FluentIcons.clear),
+              icon: const Icon(FluentIcons.dismiss_24_regular),
               onPressed: close,
             ),
           );
@@ -92,7 +93,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
             content: Text(e.toString()),
             severity: InfoBarSeverity.error,
             action: IconButton(
-              icon: const Icon(FluentIcons.clear),
+              icon: const Icon(FluentIcons.dismiss_24_regular),
               onPressed: close,
             ),
           );
@@ -143,7 +144,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
                           ),
                           child: _profileImage == null
                               ? const Icon(
-                                  FluentIcons.contact,
+                                  FluentIcons.person_48_regular,
                                   size: 48,
                                   color: Color(0xFFCCCCCC),
                                 )
@@ -160,7 +161,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
-                                FluentIcons.edit,
+                                FluentIcons.edit_24_regular,
                                 size: 14,
                                 color: Colors.white,
                               ),
@@ -224,8 +225,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
                     suffix: IconButton(
                       icon: Icon(
                         _obscurePassword
-                            ? FluentIcons.red_eye
-                            : FluentIcons.hide,
+                            ? FluentIcons.eye_24_regular
+                            : FluentIcons.eye_off_24_regular,
                       ),
                       onPressed: () =>
                           setState(() => _obscurePassword = !_obscurePassword),

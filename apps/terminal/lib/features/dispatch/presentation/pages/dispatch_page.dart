@@ -7,14 +7,14 @@ import '../widgets/load_entry_form.dart';
 import '../widgets/broker_entry_dialog.dart';
 import '../../domain/models/broker.dart';
 
-class DispatchDashboard extends ConsumerStatefulWidget {
-  const DispatchDashboard({super.key});
+class DispatchPage extends ConsumerStatefulWidget {
+  const DispatchPage({super.key});
 
   @override
-  ConsumerState<DispatchDashboard> createState() => _DispatchDashboardState();
+  ConsumerState<DispatchPage> createState() => _DispatchPageState();
 }
 
-class _DispatchDashboardState extends ConsumerState<DispatchDashboard> {
+class _DispatchPageState extends ConsumerState<DispatchPage> {
   final List<Load> _loads = [];
   final List<Broker> _brokers = [
     Broker.empty().copyWith(name: 'TQL'),

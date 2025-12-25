@@ -2,18 +2,20 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:file_selector/file_selector.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../services/vehicle_service.dart';
 
-class AddVehicleDialog extends StatefulWidget {
+class AddVehicleDialog extends ConsumerStatefulWidget {
   final Map<String, dynamic>? vehicle;
   final VoidCallback onSaved;
 
   const AddVehicleDialog({super.key, this.vehicle, required this.onSaved});
 
   @override
-  State<AddVehicleDialog> createState() => _AddVehicleDialogState();
+  ConsumerState<AddVehicleDialog> createState() => _AddVehicleDialogState();
 }
 
-class _AddVehicleDialogState extends State<AddVehicleDialog> {
+class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
   int _currentIndex = 0;
   bool _isLoading = false;
   String? _vehicleId; // Set if editing or after creation
@@ -271,13 +273,7 @@ class _AddVehicleDialogState extends State<AddVehicleDialog> {
   Future<void> _deleteDocument(String id, String path) async {
     setState(() => _isLoadingDocs = true);
     try {
-      await Supabase.instance.client.storage.from('vehicle_documents').remove([
-        path,
-      ]);
-      await Supabase.instance.client
-          .from('vehicle_documents')
-          .delete()
-          .eq('id', id);
+      await ref.read(vehicleServiceProvider).deleteDocument(id, path);
       _fetchDocuments();
     } catch (e) {
       debugPrint('Error deleting doc: $e');

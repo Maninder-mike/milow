@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class PendingVerificationPage extends StatefulWidget {
@@ -50,7 +51,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  FluentIcons.lock,
+                  FluentIcons.lock_closed_48_regular,
                   size: 48,
                   color: fluentTheme.accentColor,
                 ),
@@ -95,7 +96,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
                               'If approved, you will be redirected shortly.',
                             ),
                             action: IconButton(
-                              icon: const Icon(FluentIcons.clear),
+                              icon: const Icon(FluentIcons.dismiss_24_regular),
                               onPressed: close,
                             ),
                           );

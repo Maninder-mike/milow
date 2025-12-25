@@ -168,9 +168,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
               child: Row(
                 children: [
                   PrimarySidebar(
-                    onAddRecordTap: () => _toggleSidebar('add_records'),
+                    onFleetTap: () => _toggleSidebar('fleet'),
                     onDriversTap: () => _toggleSidebar('drivers'),
-                    onInboxTap: () => _navigateTo('/inbox'),
+                    onLoadsTap: () => _navigateTo('/highway-dispatch'),
                     onSettingsTap: () => _navigateTo('/settings'),
                     onProfileTap: () => _navigateTo('/profile'),
                     onDashboardTap: () => _navigateTo('/dashboard'),
@@ -181,7 +181,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                   if (_activeSidebarPane != null)
                     SizedBox(
                       width: _sidebarWidth,
-                      child: _activeSidebarPane == 'add_records'
+                      child: _activeSidebarPane == 'fleet'
                           ? SecondarySidebar(
                               onItemTap: (item) {
                                 switch (item) {

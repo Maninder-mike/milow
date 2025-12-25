@@ -1,5 +1,6 @@
 import 'dart:async';
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
@@ -28,30 +29,25 @@ class _StatusBarState extends ConsumerState<StatusBar> {
 
   @override
   Widget build(BuildContext context) {
+    // ... no changes to logic ...
     final pendingUsersAsync = ref.watch(pendingUsersProvider);
     final pendingCount = pendingUsersAsync.maybeWhen(
       data: (users) => users.length,
       orElse: () => 0,
     );
-
-    // Watch driver_left notifications
     final driverLeftAsync = ref.watch(driverLeftNotificationsProvider);
     final driverLeftCount = driverLeftAsync.maybeWhen(
       data: (notifications) => notifications.length,
       orElse: () => 0,
     );
-
-    // Combined notification count
     final totalNotificationCount = pendingCount + driverLeftCount;
-
-    // Listen for new pending users to show toast
+    // ... rest of listeners ...
     ref.listen<AsyncValue<List<UserProfile>>>(pendingUsersProvider, (
       previous,
       next,
     ) {
       next.whenData((nextUsers) {
         previous?.whenData((prevUsers) {
-          // If we have more users than before, find the new ones
           if (nextUsers.length > prevUsers.length) {
             final newUsers = nextUsers
                 .where((n) => !prevUsers.any((p) => p.id == n.id))
@@ -65,7 +61,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
       });
     });
 
-    // Listen to connectivity changes
     ref.listen<AsyncValue<List<ConnectivityResult>>>(connectivityProvider, (
       previous,
       next,
@@ -74,13 +69,8 @@ class _StatusBarState extends ConsumerState<StatusBar> {
         final isOffline = results.contains(ConnectivityResult.none);
 
         if (isOffline) {
-          // If already confirmed offline, nothing to do
           if (_confirmedOffline) return;
-
-          // If timer is already running, let it run
           if (_offlineDebounceTimer?.isActive ?? false) return;
-
-          // Start debounce timer (e.g. 2 seconds) to ignore transient states
           _offlineDebounceTimer = Timer(const Duration(seconds: 2), () {
             if (mounted) {
               _showOfflineNotification(context);
@@ -88,27 +78,21 @@ class _StatusBarState extends ConsumerState<StatusBar> {
             }
           });
         } else {
-          // We are online
-          // Cancel any pending offline timer
           _offlineDebounceTimer?.cancel();
-
           if (_confirmedOffline) {
-            // We were genuinely offline before, so show "Back Online"
             _showOnlineNotification(context);
             _confirmedOffline = false;
           }
         }
       });
-    }); // This was the missing closing bracket
+    });
 
-    // Listen for new driver_left notifications to show toast
     ref.listen<AsyncValue<List<Map<String, dynamic>>>>(
       driverLeftNotificationsProvider,
       (previous, next) {
         next.whenData((nextNotifs) {
           previous?.whenData((prevNotifs) {
             if (nextNotifs.length > prevNotifs.length) {
-              // Find new notifications
               final prevIds = prevNotifs.map((n) => n['id']).toSet();
               final newNotifs = nextNotifs.where(
                 (n) => !prevIds.contains(n['id']),
@@ -149,7 +133,7 @@ class _StatusBarState extends ConsumerState<StatusBar> {
               child: Stack(
                 alignment: Alignment.topRight,
                 children: [
-                  _buildItem(FluentIcons.ringer, '', marginRight: 8),
+                  _buildItem(FluentIcons.alert_24_regular, '', marginRight: 8),
                   if (totalNotificationCount > 0)
                     Positioned(
                       top: 0,
@@ -174,6 +158,7 @@ class _StatusBarState extends ConsumerState<StatusBar> {
       ),
     );
   }
+  // ... show methods same ...
 
   void _showNotificationToast(BuildContext context, UserProfile user) {
     displayInfoBar(
@@ -218,9 +203,7 @@ class _StatusBarState extends ConsumerState<StatusBar> {
   void _showOfflineNotification(BuildContext context) {
     displayInfoBar(
       context,
-      duration: const Duration(
-        seconds: 5,
-      ), // Auto dismiss after 5 seconds or keep?
+      duration: const Duration(seconds: 5),
       alignment: Alignment.bottomRight,
       builder: (context, close) {
         return InfoBar(
@@ -251,7 +234,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
     );
   }
 
-  /// Show toast notification when a driver leaves the company
   void _showDriverLeftToast(
     BuildContext context,
     Map<String, dynamic> notification,
@@ -281,7 +263,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
     );
   }
 
-  /// Builds combined notification list with pending users and driver_left notifications
   Widget _buildCombinedNotificationList(
     AsyncValue<List<UserProfile>> pendingUsersAsync,
     AsyncValue<List<Map<String, dynamic>>> driverLeftAsync,
@@ -309,7 +290,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Driver Left Section
           if (driverLeftNotifs.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -352,7 +332,10 @@ class _StatusBarState extends ConsumerState<StatusBar> {
                   ],
                 ),
                 trailing: IconButton(
-                  icon: Icon(FluentIcons.clear, color: Colors.grey),
+                  icon: Icon(
+                    FluentIcons.dismiss_24_regular,
+                    color: Colors.grey,
+                  ),
                   onPressed: () {
                     ref
                         .read(notificationActionsProvider)
@@ -363,7 +346,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
             }),
             if (pendingUsers.isNotEmpty) const Divider(),
           ],
-          // Pending Users Section
           if (pendingUsers.isNotEmpty) ...[
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
@@ -407,7 +389,10 @@ class _StatusBarState extends ConsumerState<StatusBar> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: Icon(FluentIcons.check_mark, color: Colors.green),
+                      icon: Icon(
+                        FluentIcons.checkmark_24_regular,
+                        color: Colors.green,
+                      ),
                       onPressed: () {
                         ref
                             .read(notificationActionsProvider)
@@ -417,7 +402,10 @@ class _StatusBarState extends ConsumerState<StatusBar> {
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      icon: Icon(FluentIcons.clear, color: Colors.red),
+                      icon: Icon(
+                        FluentIcons.dismiss_24_regular,
+                        color: Colors.red,
+                      ),
                       onPressed: () {
                         ref
                             .read(notificationActionsProvider)
