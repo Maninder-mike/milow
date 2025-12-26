@@ -1,10 +1,18 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-class SecondarySidebar extends StatelessWidget {
+class SecondarySidebar extends StatefulWidget {
   final Function(String) onItemTap;
 
   const SecondarySidebar({super.key, required this.onItemTap});
+
+  @override
+  State<SecondarySidebar> createState() => _SecondarySidebarState();
+}
+
+class _SecondarySidebarState extends State<SecondarySidebar> {
+  String? _hoveredItem;
 
   @override
   Widget build(BuildContext context) {
@@ -12,9 +20,8 @@ class SecondarySidebar extends StatelessWidget {
     final isLight = theme.brightness == Brightness.light;
 
     final backgroundColor = isLight
-        ? const Color(0xFFF3F3F3)
+        ? const Color(0xFFF5F5F5)
         : const Color(0xFF252526);
-    // textColor unused here, removed.
     final titleColor = isLight
         ? const Color(0xFF616161)
         : const Color(0xFFBBBBBB);
@@ -24,43 +31,91 @@ class SecondarySidebar extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            height: 35,
-            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  'ADD RECORDS',
+                  'Quick Actions',
                   style: GoogleFonts.inter(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
                     color: titleColor,
+                    letterSpacing: 0.5,
                   ),
                 ),
-                Icon(FluentIcons.more, size: 16, color: titleColor),
+                IconButton(
+                  icon: Icon(
+                    FluentIcons.more_horizontal_24_regular,
+                    size: 16,
+                    color: titleColor,
+                  ),
+                  onPressed: () {},
+                ),
               ],
             ),
           ),
+
+          // Quick action cards
           Expanded(
             child: ListView(
-              padding: EdgeInsets.zero,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               children: [
-                _buildMenuItem('CUSTOMER', FluentIcons.chevron_right, isLight),
-                _buildMenuItem('PICK UP', FluentIcons.chevron_right, isLight),
-                _buildMenuItem('DELIVER', FluentIcons.chevron_right, isLight),
-                _buildMenuItem(
-                  'HIGHWAY DISPATCH',
-                  FluentIcons.chevron_right,
+                _buildActionCard(
+                  context,
                   isLight,
+                  icon: FluentIcons.person_24_regular,
+                  title: 'Customer',
+                  description: 'Add new customer',
+                  color: const Color(0xFF0078D4),
                 ),
-                _buildMenuItem(
-                  'DRIVER HOS',
-                  FluentIcons.chevron_right,
+                const SizedBox(height: 8),
+                _buildActionCard(
+                  context,
                   isLight,
+                  icon: FluentIcons.arrow_upload_24_regular,
+                  title: 'Pick Up',
+                  description: 'Schedule pickup',
+                  color: const Color(0xFF107C10),
                 ),
-                _buildMenuItem('LOCATION', FluentIcons.chevron_right, isLight),
+                const SizedBox(height: 8),
+                _buildActionCard(
+                  context,
+                  isLight,
+                  icon: FluentIcons.arrow_download_24_regular,
+                  title: 'Deliver',
+                  description: 'Schedule delivery',
+                  color: const Color(0xFF5C2D91),
+                ),
+                const SizedBox(height: 8),
+                _buildActionCard(
+                  context,
+                  isLight,
+                  icon: FluentIcons.vehicle_truck_profile_24_regular,
+                  title: 'Dispatch',
+                  description: 'Create dispatch',
+                  color: const Color(0xFFD83B01),
+                ),
+                const SizedBox(height: 8),
+                _buildActionCard(
+                  context,
+                  isLight,
+                  icon: FluentIcons.clock_24_regular,
+                  title: 'Driver HOS',
+                  description: 'Hours of service',
+                  color: const Color(0xFF008272),
+                ),
+                const SizedBox(height: 8),
+                _buildActionCard(
+                  context,
+                  isLight,
+                  icon: FluentIcons.location_24_regular,
+                  title: 'Location',
+                  description: 'Add new location',
+                  color: const Color(0xFFC239B3),
+                ),
               ],
             ),
           ),
@@ -69,48 +124,100 @@ class SecondarySidebar extends StatelessWidget {
     );
   }
 
-  Widget _buildMenuItem(String title, IconData icon, bool isLight) {
+  Widget _buildActionCard(
+    BuildContext context,
+    bool isLight, {
+    required IconData icon,
+    required String title,
+    required String description,
+    required Color color,
+  }) {
+    final isHovered = _hoveredItem == title;
+    final cardColor = isLight ? Colors.white : const Color(0xFF2D2D2D);
     final textColor = isLight
         ? const Color(0xFF333333)
-        : const Color(0xFFCCCCCC);
-    final hoverColor = isLight
-        ? const Color(0xFFE8E8E8)
-        : const Color(0xFF2A2D2E);
+        : const Color(0xFFE5E5E5);
+    final subTextColor = isLight
+        ? const Color(0xFF666666)
+        : const Color(0xFF999999);
 
-    return HoverButton(
-      onPressed: () => onItemTap(title),
-      builder: (context, states) {
-        final isHovering = states.isHovered;
-        return Container(
-          height: 28, // VS Code list item height is usually small
-          padding: const EdgeInsets.symmetric(horizontal: 8),
-          color: isHovering ? hoverColor : Colors.transparent,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hoveredItem = title),
+      onExit: (_) => setState(() => _hoveredItem = null),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTap: () => widget.onItemTap(title.toUpperCase()),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 150),
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: isHovered
+                  ? color.withValues(alpha: 0.5)
+                  : (isLight
+                        ? const Color(0xFFE5E5E5)
+                        : const Color(0xFF3E3E42)),
+              width: isHovered ? 1.5 : 1,
+            ),
+            boxShadow: isHovered
+                ? [
+                    BoxShadow(
+                      color: color.withValues(alpha: 0.15),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
           child: Row(
             children: [
-              Icon(icon, size: 12, color: textColor),
-              const SizedBox(width: 6),
-              Icon(
-                FluentIcons.folder, // Folder icon for categories
-                size: 14,
-                color: textColor,
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    color: textColor,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                  maxLines: 1,
+              // Icon container
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
+                child: Icon(icon, size: 20, color: color),
+              ),
+              const SizedBox(width: 12),
+              // Text content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      description,
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        color: subTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Arrow
+              Icon(
+                FluentIcons.chevron_right_24_regular,
+                size: 16,
+                color: isHovered ? color : subTextColor,
               ),
             ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 }

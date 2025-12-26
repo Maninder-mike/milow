@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/providers/supabase_provider.dart';
+import '../../../core/providers/supabase_provider.dart';
 
 class VehicleService {
   final SupabaseClient _client;
@@ -104,4 +104,9 @@ class VehicleService {
 
 final vehicleServiceProvider = Provider<VehicleService>((ref) {
   return VehicleService(ref.read(supabaseClientProvider));
+});
+
+final vehiclesListProvider = FutureProvider<List<Map<String, dynamic>>>((ref) {
+  final service = ref.read(vehicleServiceProvider);
+  return service.getVehicles();
 });

@@ -33,8 +33,9 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
 
   // Dropdowns
   String _vehicleType = 'Truck'; // Default
-  String _licenseProvince = 'ON'; // Default
+  String _licenseProvince = 'Ontario'; // Default
   String _status = 'Active'; // Default
+  AutovalidateMode _autovalidateMode = AutovalidateMode.disabled;
 
   @override
   void initState() {
@@ -43,7 +44,18 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
       _vehicleId = widget.vehicle!['id'];
       _vehicleNumberController.text = widget.vehicle!['vehicle_number'] ?? '';
       _plateController.text = widget.vehicle!['license_plate'] ?? '';
-      _licenseProvince = widget.vehicle!['license_province'] ?? 'ON';
+      String prov = widget.vehicle!['license_province'] ?? 'Ontario';
+      // Attempt to map code to full name if it matches a key
+      if (prov.length == 2) {
+        final code = prov.toUpperCase();
+        if (_canadianProvinces.containsKey(code)) {
+          prov = _canadianProvinces[code]!;
+        } else if (_usStates.containsKey(code)) {
+          prov = _usStates[code]!;
+        }
+      }
+      _licenseProvince = prov;
+
       _vinController.text = widget.vehicle!['vin_number'] ?? '';
       _makeController.text = widget.vehicle!['make'] ?? '';
       _modelController.text = widget.vehicle!['model'] ?? '';
@@ -64,6 +76,76 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
     }
   }
 
+  static const _canadianProvinces = {
+    'AB': 'Alberta',
+    'BC': 'British Columbia',
+    'MB': 'Manitoba',
+    'NB': 'New Brunswick',
+    'NL': 'Newfoundland and Labrador',
+    'NS': 'Nova Scotia',
+    'NT': 'Northwest Territories',
+    'NU': 'Nunavut',
+    'ON': 'Ontario',
+    'PE': 'Prince Edward Island',
+    'QC': 'Quebec',
+    'SK': 'Saskatchewan',
+    'YT': 'Yukon',
+  };
+
+  static const _usStates = {
+    'AK': 'Alaska',
+    'AL': 'Alabama',
+    'AR': 'Arkansas',
+    'AZ': 'Arizona',
+    'CA': 'California',
+    'CO': 'Colorado',
+    'CT': 'Connecticut',
+    'DC': 'District of Columbia',
+    'DE': 'Delaware',
+    'FL': 'Florida',
+    'GA': 'Georgia',
+    'HI': 'Hawaii',
+    'IA': 'Iowa',
+    'ID': 'Idaho',
+    'IL': 'Illinois',
+    'IN': 'Indiana',
+    'KS': 'Kansas',
+    'KY': 'Kentucky',
+    'LA': 'Louisiana',
+    'MA': 'Massachusetts',
+    'MD': 'Maryland',
+    'ME': 'Maine',
+    'MI': 'Michigan',
+    'MN': 'Minnesota',
+    'MO': 'Missouri',
+    'MS': 'Mississippi',
+    'MT': 'Montana',
+    'NC': 'North Carolina',
+    'ND': 'North Dakota',
+    'NE': 'Nebraska',
+    'NH': 'New Hampshire',
+    'NJ': 'New Jersey',
+    'NM': 'New Mexico',
+    'NV': 'Nevada',
+    'NY': 'New York',
+    'OH': 'Ohio',
+    'OK': 'Oklahoma',
+    'OR': 'Oregon',
+    'PA': 'Pennsylvania',
+    'RI': 'Rhode Island',
+    'SC': 'South Carolina',
+    'SD': 'South Dakota',
+    'TN': 'Tennessee',
+    'TX': 'Texas',
+    'UT': 'Utah',
+    'VA': 'Virginia',
+    'VT': 'Vermont',
+    'WA': 'Washington',
+    'WI': 'Wisconsin',
+    'WV': 'West Virginia',
+    'WY': 'Wyoming',
+  };
+
   @override
   void dispose() {
     _vehicleNumberController.dispose();
@@ -80,6 +162,7 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
   }
 
   Future<void> _saveVehicle() async {
+    setState(() => _autovalidateMode = AutovalidateMode.onUserInteraction);
     if (!_formKey.currentState!.validate()) {
       return;
     }
@@ -206,7 +289,7 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
   Widget _buildDetailsForm() {
     return Form(
       key: _formKey,
-      autovalidateMode: AutovalidateMode.onUserInteraction,
+      autovalidateMode: _autovalidateMode,
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(24), // Standard Windows dialog padding
         child: Column(
@@ -314,6 +397,8 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
                       controller: _yearController,
                       placeholder: 'YYYY',
                       keyboardType: TextInputType.number,
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
                     ),
                   ),
                 ),
@@ -328,6 +413,8 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
                     child: _WindowsStyledInput(
                       controller: _makeController,
                       placeholder: 'e.g. Freightliner',
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
                     ),
                   ),
                 ),
@@ -367,6 +454,8 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
                     child: _WindowsStyledInput(
                       controller: _plateController,
                       placeholder: 'Plate Number',
+                      validator: (v) =>
+                          v == null || v.isEmpty ? 'Required' : null,
                     ),
                   ),
                 ),
@@ -380,9 +469,22 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
                     ),
                     child: ComboBox<String>(
                       value: _licenseProvince,
-                      items: ['ON', 'BC', 'AB', 'QC', 'NY', 'MI', 'TX', 'CA']
-                          .map((e) => ComboBoxItem(value: e, child: Text(e)))
-                          .toList(),
+                      items: [
+                        // Canada
+                        ..._canadianProvinces.entries.map(
+                          (e) => ComboBoxItem(
+                            value: e.value,
+                            child: Text('${e.key} - ${e.value}'),
+                          ),
+                        ),
+                        // USA
+                        ..._usStates.entries.map(
+                          (e) => ComboBoxItem(
+                            value: e.value,
+                            child: Text('${e.key} - ${e.value}'),
+                          ),
+                        ),
+                      ].toList(),
                       onChanged: (v) => setState(() => _licenseProvince = v!),
                       isExpanded: true,
                     ),
@@ -420,7 +522,7 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
                     ),
                     child: ComboBox<String>(
                       value: _status,
-                      items: ['Active', 'Maintenance', 'Inactive']
+                      items: ['Active', 'Maintenance', 'Idle', 'Breakdown']
                           .map((e) => ComboBoxItem(value: e, child: Text(e)))
                           .toList(),
                       onChanged: (v) => setState(() => _status = v!),
@@ -455,6 +557,7 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
               child: _WindowsStyledInput(
                 controller: _terminalController,
                 placeholder: 'Full garaging address',
+                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
               ),
             ),
           ],

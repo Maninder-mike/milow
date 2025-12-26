@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/driver_selection_provider.dart';
-import 'widgets/driver_chat_widget.dart';
 
 class DriversPage extends ConsumerStatefulWidget {
   const DriversPage({super.key});
@@ -169,197 +168,759 @@ class _OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final dateFormat = DateFormat('MMMM d, yyyy');
+    final isLight = theme.brightness == Brightness.light;
 
-    return Card(
-      padding: EdgeInsets.zero, // Padding moved to container inside scroll
-      child: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Page Title
+          Text(
+            'Driver Profile: ${driver.fullName ?? 'Unknown'}',
+            style: GoogleFonts.outfit(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Top Row: Photo + Contact Info + License | Recent Activity | Safety Score
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _buildAvatar(context, driver, 64),
-                const SizedBox(width: 24),
-                Expanded(
-                  child: Column(
+                // Left: Photo + Contact + License stacked
+                SizedBox(
+                  width: 400,
+                  child: Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        driver.fullName ?? 'Unknown Driver',
-                        style: GoogleFonts.outfit(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: theme.accentColor,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Text(
-                          driver.role.label,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
+                      // Photo with assign button below
+                      Column(
+                        children: [
+                          _buildPhotoCard(context, isLight),
+                          const SizedBox(height: 12),
+                          // Assign button
+                          SizedBox(
+                            width: 160,
+                            child: FilledButton(
+                              onPressed: () => _showAssignDialog(context),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  const Icon(FluentIcons.add, size: 14),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    'Assign',
+                                    style: GoogleFonts.inter(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
+                        ],
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _buildContactCard(context, isLight),
+                            const SizedBox(height: 16),
+                            _buildLicenseCard(context, isLight),
+                            const SizedBox(height: 16),
+                            _buildStatusCard(context, isLight),
+                          ],
                         ),
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 24),
+
+                // Center: Recent Activity
+                Expanded(
+                  flex: 2,
+                  child: _buildRecentActivityCard(context, isLight),
+                ),
+                const SizedBox(width: 24),
+
+                // Right: Safety Score
+                SizedBox(
+                  width: 220,
+                  child: _buildSafetyScoreCard(context, isLight),
                 ),
               ],
             ),
-            const SizedBox(height: 32),
-            const Divider(),
-            const SizedBox(height: 32),
+          ),
+          const SizedBox(height: 24),
 
-            // Main Body: Row with Details (Left) and Chat (Right)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Left Column: Details
-                Expanded(
-                  flex: 4, // 40% width
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Contact Information',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDetailRow(
-                        context,
-                        FluentIcons.mail,
-                        'Email Address',
-                        driver.email ?? '-',
-                      ),
-                      const SizedBox(height: 32),
-                      Text(
-                        'Account Details',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDetailRow(
-                        context,
-                        FluentIcons.calendar,
-                        'Joined Date',
-                        driver.createdAt != null
-                            ? dateFormat.format(driver.createdAt!)
-                            : '-',
-                      ),
-                      const SizedBox(height: 16),
-                      _buildDetailRow(
-                        context,
-                        FluentIcons.verified_brand,
-                        'Verification Status',
-                        driver.isVerified ? 'Verified' : 'Pending',
-                        valueColor: driver.isVerified
-                            ? Colors.green
-                            : Colors.orange,
-                      ),
-                    ],
-                  ),
+          // Bottom Row: Nationality & Visa + Performance Stats + Earnings
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left: Quick Actions
+              SizedBox(
+                width: 400,
+                child: Column(
+                  children: [
+                    _buildNationalityVisaCard(context, isLight),
+                    const SizedBox(height: 16),
+                    _buildQuickActionsRow(context, isLight),
+                  ],
                 ),
+              ),
+              const SizedBox(width: 24),
 
-                // Vertical Divider
-                Container(
-                  width: 1,
-                  height: 400, // Roughly matching chat height or flexible?
-                  // Better to let it flexible but Row crossAxia is start.
-                  // Let's us a simple SizedBox or Divider.
-                  // Or let layout handle it.
-                  margin: const EdgeInsets.symmetric(horizontal: 32),
-                  color: theme.resources.dividerStrokeColorDefault,
-                ),
+              // Center: Performance Stats
+              Expanded(child: _buildPerformanceStatsCard(context, isLight)),
+              const SizedBox(width: 24),
 
-                // Right Column: Chat
-                Expanded(
-                  flex: 6, // 60% width
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // No title needed really as Chat Widget has header, but user wants clear separation.
-                      DriverChatWidget(
-                        driverId: driver.id,
-                        driverName: driver.fullName ?? 'Driver',
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ],
+              // Right: Earnings
+              SizedBox(width: 220, child: _buildEarningsCard(context, isLight)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoCard(BuildContext context, bool isLight) {
+    return Container(
+      width: 160,
+      height: 200,
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty
+          ? Image.network(
+              driver.avatarUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(context),
+            )
+          : _buildAvatarPlaceholder(context),
+    );
+  }
+
+  Widget _buildAvatarPlaceholder(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    String initials = '?';
+    if (driver.fullName != null && driver.fullName!.isNotEmpty) {
+      final parts = driver.fullName!.trim().split(' ');
+      if (parts.length >= 2) {
+        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      } else if (parts.isNotEmpty) {
+        initials = parts[0][0].toUpperCase();
+      }
+    }
+    return Container(
+      color: theme.accentColor.defaultBrushFor(theme.brightness),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: GoogleFonts.outfit(
+          color: Colors.white,
+          fontSize: 48,
+          fontWeight: FontWeight.bold,
         ),
       ),
     );
   }
 
-  Widget _buildDetailRow(
-    BuildContext context,
-    IconData icon,
-    String label,
-    String value, {
-    Color? valueColor,
+  Widget _buildInfoCard({
+    required BuildContext context,
+    required bool isLight,
+    required String title,
+    required List<Widget> children,
+    Widget? trailing,
   }) {
-    return Row(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              if (trailing != null) trailing,
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactCard(BuildContext context, bool isLight) {
+    return _buildInfoCard(
+      context: context,
+      isLight: isLight,
+      title: 'Contact Info',
       children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: FluentTheme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: FluentTheme.of(
-                context,
-              ).resources.dividerStrokeColorDefault,
-            ),
-          ),
-          child: Icon(
-            icon,
-            size: 14,
-            color: FluentTheme.of(context).accentColor,
-          ),
+        _buildInfoRow('Phone', driver.phone ?? 'Not set'),
+        const SizedBox(height: 8),
+        _buildInfoRow('Email', driver.email ?? '-'),
+      ],
+    );
+  }
+
+  Widget _buildLicenseCard(BuildContext context, bool isLight) {
+    // TODO: Implement license fields in Supabase profiles table:
+    // - cdl_class (text)
+    // - license_number (text)
+    // - license_expiry (date)
+    // Then fetch from driver profile and display real data
+    final licenseExpiry = DateTime.now().add(
+      const Duration(days: 365),
+    ); // Placeholder - replace with driver.licenseExpiry
+    final isExpiringSoon = licenseExpiry.difference(DateTime.now()).inDays < 30;
+
+    return _buildInfoCard(
+      context: context,
+      isLight: isLight,
+      title: 'License Details',
+      trailing: isExpiringSoon
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.orange.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Expiring Soon',
+                style: TextStyle(fontSize: 10, color: Colors.orange),
+              ),
+            )
+          : null,
+      children: [
+        _buildInfoRow('CDL Class', 'Class A'), // TODO: Real data
+        const SizedBox(height: 8),
+        _buildInfoRow('Exp', DateFormat('MM/yyyy').format(licenseExpiry)),
+      ],
+    );
+  }
+
+  Widget _buildNationalityVisaCard(BuildContext context, bool isLight) {
+    // TODO: Add nationality and visa data from driver profile when available
+    final visaExpiry = DateTime.now().add(
+      const Duration(days: 45),
+    ); // Placeholder
+    final isExpiringSoon = visaExpiry.difference(DateTime.now()).inDays < 30;
+
+    return _buildInfoCard(
+      context: context,
+      isLight: isLight,
+      title: 'Nationality & Visa',
+      trailing: isExpiringSoon
+          ? Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: Text(
+                'Visa Expiring!',
+                style: TextStyle(fontSize: 10, color: Colors.red),
+              ),
+            )
+          : null,
+      children: [
+        _buildInfoRow('Nationality', 'Canadian'), // TODO: Real data
+        const SizedBox(height: 8),
+        _buildInfoRow('Visa Exp', DateFormat('MM/dd/yyyy').format(visaExpiry)),
+      ],
+    );
+  }
+
+  Widget _buildStatusCard(BuildContext context, bool isLight) {
+    return _buildInfoCard(
+      context: context,
+      isLight: isLight,
+      title: 'Current Status',
+      children: [
+        _buildInfoRow('Status', 'On Duty - Driving'), // TODO: Real data
+        const SizedBox(height: 8),
+        _buildInfoRow('Truck', '#4092'), // TODO: Real data
+      ],
+    );
+  }
+
+  Widget _buildInfoRow(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[100])),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
         ),
-        const SizedBox(width: 16),
-        Column(
+      ],
+    );
+  }
+
+  void _showAssignDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: Text('Assign to ${driver.fullName ?? 'Driver'}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 12,
-                color: FluentTheme.of(context).typography.caption?.color,
-              ),
+            const Text('Select what to assign:'),
+            const SizedBox(height: 16),
+            // TODO: Replace with actual trip/truck selection from backend
+            ListTile(
+              leading: Icon(FluentIcons.open_folder_horizontal),
+              title: const Text('Assign Trip'),
+              subtitle: const Text('Select an available trip'),
+              onPressed: () {
+                Navigator.pop(context);
+                // TODO: Show trip selection dialog
+              },
             ),
-            const SizedBox(height: 2),
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: valueColor,
-              ),
+            ListTile(
+              leading: Icon(FluentIcons.car),
+              title: const Text('Assign Truck'),
+              subtitle: const Text('Select an available truck'),
+              onPressed: () {
+                Navigator.pop(context);
+                // TODO: Show truck selection dialog
+              },
             ),
           ],
         ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionsRow(BuildContext context, bool isLight) {
+    return Row(
+      children: [
+        Expanded(
+          child: FilledButton(
+            onPressed: () {
+              // TODO: Implement call functionality
+            },
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(FluentIcons.phone, size: 16),
+                const SizedBox(width: 8),
+                const Text('Call Driver'),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Button(
+            onPressed: () => _showSendMessageDialog(context),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(FluentIcons.chat, size: 16),
+                const SizedBox(width: 8),
+                const Text('Send Message'),
+              ],
+            ),
+          ),
+        ),
       ],
+    );
+  }
+
+  void _showSendMessageDialog(BuildContext context) {
+    final messageController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: Text('Send Message to ${driver.fullName ?? 'Driver'}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextBox(
+              controller: messageController,
+              placeholder: 'Type your message...',
+              maxLines: 5,
+              minLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          FilledButton(
+            child: const Text('Send'),
+            onPressed: () async {
+              if (messageController.text.trim().isNotEmpty) {
+                // Send message via Supabase
+                await Supabase.instance.client.from('messages').insert({
+                  'receiver_id': driver.id,
+                  'content': messageController.text.trim(),
+                });
+                if (context.mounted) {
+                  Navigator.pop(context);
+                }
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRecentActivityCard(BuildContext context, bool isLight) {
+    return Container(
+      height: 400,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Recent Activity',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(FluentIcons.more, size: 16),
+                onPressed: () {},
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: FutureBuilder(
+              future: Supabase.instance.client
+                  .from('trips')
+                  .select()
+                  .eq('user_id', driver.id)
+                  .order('trip_date', ascending: false)
+                  .limit(5),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: ProgressRing());
+                }
+                final data = snapshot.data as List<dynamic>? ?? [];
+                if (data.isEmpty) {
+                  return const Center(child: Text('No recent activity'));
+                }
+                return ListView.separated(
+                  itemCount: data.length,
+                  separatorBuilder: (_, __) => const Divider(),
+                  itemBuilder: (context, index) {
+                    final trip = data[index];
+                    return _buildActivityItem(
+                      'Trip #${trip['trip_number'] ?? index + 1}',
+                      'Completed',
+                      _timeAgo(DateTime.tryParse(trip['trip_date'] ?? '')),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityItem(String title, String status, String timeAgo) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '$title: $status',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  timeAgo,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[100]),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(FluentIcons.more, size: 14),
+            onPressed: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _timeAgo(DateTime? date) {
+    if (date == null) return '-';
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'just now';
+  }
+
+  Widget _buildSafetyScoreCard(BuildContext context, bool isLight) {
+    // TODO: Implement real safety score data later
+    const score = 92;
+    final scoreColor = score >= 80
+        ? Colors.green
+        : (score >= 60 ? Colors.orange : Colors.red);
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Safety Score',
+                style: GoogleFonts.outfit(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              IconButton(
+                icon: const Icon(FluentIcons.more, size: 16),
+                onPressed: () {},
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Circular Gauge (Simple representation)
+          SizedBox(
+            width: 120,
+            height: 120,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: ProgressRing(
+                    value: score.toDouble(),
+                    strokeWidth: 10,
+                    backgroundColor: scoreColor.withValues(alpha: 0.2),
+                    activeColor: scoreColor,
+                  ),
+                ),
+                Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$score',
+                      style: GoogleFonts.outfit(
+                        fontSize: 28,
+                        fontWeight: FontWeight.bold,
+                        color: scoreColor,
+                      ),
+                    ),
+                    Text(
+                      '/100',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[100]),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Green',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: scoreColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPerformanceStatsCard(BuildContext context, bool isLight) {
+    // TODO: Implement real performance data later
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Performance Stats',
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          _buildStatRow('Miles Driven This Month', '8,450'),
+          const Divider(),
+          _buildStatRow('On-Time Delivery', '98%'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: TextStyle(fontSize: 11, color: Colors.grey[100]),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: const Icon(FluentIcons.more, size: 14),
+            onPressed: () {},
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEarningsCard(BuildContext context, bool isLight) {
+    // TODO: Implement real earnings data later
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Earnings Summary',
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '\$12,450',
+            style: GoogleFonts.outfit(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            'This Month',
+            style: TextStyle(fontSize: 11, color: Colors.grey[100]),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1339,57 +1900,4 @@ String _extractCityState(String address) {
     return '${parts[0].trim()}, ${parts[1].trim().split(' ')[0]}';
   }
   return address;
-}
-
-Widget _buildAvatar(BuildContext context, UserProfile driver, double size) {
-  if (driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty) {
-    return ClipOval(
-      child: Image.network(
-        driver.avatarUrl!,
-        width: size,
-        height: size,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) {
-          return _buildInitialsAvatar(context, driver, size);
-        },
-      ),
-    );
-  }
-  return _buildInitialsAvatar(context, driver, size);
-}
-
-Widget _buildInitialsAvatar(
-  BuildContext context,
-  UserProfile driver,
-  double size,
-) {
-  String initials = '?';
-  if (driver.fullName != null && driver.fullName!.isNotEmpty) {
-    final parts = driver.fullName!.trim().split(' ');
-    if (parts.length >= 2) {
-      initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-    } else if (parts.isNotEmpty) {
-      initials = parts[0][0].toUpperCase();
-    }
-  } else if (driver.email != null && driver.email!.isNotEmpty) {
-    initials = driver.email![0].toUpperCase();
-  }
-
-  return Container(
-    width: size,
-    height: size,
-    decoration: BoxDecoration(
-      color: FluentTheme.of(context).accentColor,
-      shape: BoxShape.circle,
-    ),
-    alignment: Alignment.center,
-    child: Text(
-      initials,
-      style: TextStyle(
-        color: Colors.white,
-        fontWeight: FontWeight.bold,
-        fontSize: size * 0.4,
-      ),
-    ),
-  );
 }

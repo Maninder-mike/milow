@@ -339,7 +339,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                       ..onTap = () {
                                         launchUrl(
                                           Uri.parse(
-                                            'https://www.maninder.co.in/milow/TermsandConditions',
+                                            'https://www.maninder.co.in/milow/termsandconditions',
                                           ),
                                         );
                                       },

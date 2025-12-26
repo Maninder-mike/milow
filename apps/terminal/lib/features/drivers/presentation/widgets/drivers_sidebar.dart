@@ -32,7 +32,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
     final theme = FluentTheme.of(context);
     final isLight = theme.brightness == Brightness.light;
     final backgroundColor = isLight
-        ? const Color(0xFFF3F3F3)
+        ? const Color(0xFFE5E5E5) // Slightly darker for contrast
         : const Color(0xFF252526);
     final titleColor = isLight
         ? const Color(0xFF616161)
@@ -258,17 +258,18 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
         ? const Color(0xFFE8E8E8)
         : const Color(0xFF2A2D2E);
     final selectedColor = isLight
-        ? const Color(0xFFE8E8E8) // Visual Studio Code selection style
+        ? const Color(0xFFE8E8E8)
         : const Color(0xFF37373D);
 
     final isSelected = selectedDriver?.id == driver.id;
 
-    // Build details string
-    String details = driver.email ?? 'No email';
-    // If we had trip info, we'd use it here. For now, use role or email.
-    if (driver.role.label.isNotEmpty) {
-      details = '${driver.role.label} • $details';
-    }
+    // TODO: Replace mock data with dynamic driver data from backend
+    // - tripNumber: from active trip assignment
+    // - currentTrip: pickup/delivery locations from trip
+    // - statusColor: based on driver's current duty status
+    final tripNumber = 'T-1042';
+    final currentTrip = 'Chicago, IL → Detroit, MI';
+    final statusColor = Colors.green; // Active status
 
     return HoverButton(
       onPressed: () {
@@ -277,67 +278,168 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
       },
       builder: (context, states) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          color: isSelected
-              ? selectedColor
-              : (states.isHovered ? hoverColor : Colors.transparent),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? selectedColor
+                : (states.isHovered ? hoverColor : Colors.transparent),
+            border: Border(
+              left: BorderSide(
+                color: isSelected
+                    ? FluentTheme.of(context).accentColor
+                    : Colors.transparent,
+                width: 3,
+              ),
+            ),
+          ),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Avatar
-              _buildAvatar(driver),
+              // Avatar with status indicator
+              Stack(
+                children: [
+                  _buildAvatar(driver),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isLight
+                              ? Colors.white
+                              : const Color(0xFF252526),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    // Name row
+                    Text(
+                      driver.fullName ?? 'Unknown',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // Trip info row
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          driver.fullName ?? 'Unknown',
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
+                        // Trip number badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 4,
+                            vertical: 1,
                           ),
-                        ),
-                        if (states.isHovered)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 4),
-                            child: IconButton(
-                              icon: Icon(
-                                FluentIcons.settings,
-                                size: 12,
-                                color: subTextColor,
-                              ),
-                              onPressed: () {
-                                ref
-                                    .read(selectedDriverProvider.notifier)
-                                    .select(driver);
-                                context.go('/drivers');
-                              },
+                          decoration: BoxDecoration(
+                            color: isLight
+                                ? const Color(0xFFE0E0E0)
+                                : const Color(0xFF4D4D4D),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                          child: Text(
+                            tripNumber,
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w600,
+                              color: subTextColor,
                             ),
                           ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            currentTrip,
+                            style: GoogleFonts.inter(
+                              fontSize: 11,
+                              color: subTextColor,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      details,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: subTextColor,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
               ),
+              // Assign button on hover
+              if (states.isHovered)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Tooltip(
+                    message: 'Assign Trip/Truck',
+                    child: IconButton(
+                      icon: Icon(
+                        FluentIcons.add,
+                        size: 18,
+                        color: FluentTheme.of(context).accentColor,
+                      ),
+                      onPressed: () {
+                        // TODO: Implement assignment dialog
+                        _showAssignDialog(context, driver);
+                      },
+                    ),
+                  ),
+                ),
             ],
           ),
         );
       },
+    );
+  }
+
+  void _showAssignDialog(BuildContext context, UserProfile driver) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: Text('Assign to ${driver.fullName ?? 'Driver'}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Select what to assign:'),
+            const SizedBox(height: 16),
+            // TODO: Replace with actual trip/truck selection
+            ListTile(
+              leading: Icon(FluentIcons.open_folder_horizontal),
+              title: const Text('Assign Trip'),
+              subtitle: const Text('Select an available trip'),
+              onPressed: () {
+                Navigator.pop(context);
+                // TODO: Show trip selection
+              },
+            ),
+            ListTile(
+              leading: Icon(FluentIcons.car),
+              title: const Text('Assign Truck'),
+              subtitle: const Text('Select an available truck'),
+              onPressed: () {
+                Navigator.pop(context);
+                // TODO: Show truck selection
+              },
+            ),
+          ],
+        ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
     );
   }
 

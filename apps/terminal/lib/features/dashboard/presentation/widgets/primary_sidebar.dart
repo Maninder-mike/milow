@@ -1,10 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/providers/theme_provider.dart';
 
 class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onAddRecordTap;
@@ -104,83 +101,12 @@ class PrimarySidebar extends ConsumerWidget {
   }
 
   Widget _buildSettingsIcon(BuildContext context, WidgetRef ref) {
-    final controller = FlyoutController();
-
-    return FlyoutTarget(
-      controller: controller,
-      child: _buildNavItem(
-        context,
-        FluentIcons.settings_24_regular,
-        label: 'Settings',
-        onTap: () {
-          controller.showFlyout(
-            autoModeConfiguration: FlyoutAutoConfiguration(
-              preferredMode: FlyoutPlacementMode.topRight,
-            ),
-            barrierDismissible: true,
-            dismissOnPointerMoveAway: false,
-            dismissWithEsc: true,
-            builder: (context) {
-              return MenuFlyout(
-                items: [
-                  MenuFlyoutItem(
-                    text: const Text('My Profile'),
-                    leading: const Icon(FluentIcons.person_24_regular),
-                    onPressed: onProfileTap,
-                  ),
-                  MenuFlyoutSubItem(
-                    text: const Text('Themes'),
-                    leading: const Icon(FluentIcons.color_24_regular),
-                    items: (context) {
-                      return [
-                        MenuFlyoutItem(
-                          text: const Text('System Default'),
-                          onPressed: () {
-                            ref
-                                .read(themeProvider.notifier)
-                                .setTheme(ThemeMode.system);
-                          },
-                        ),
-                        MenuFlyoutItem(
-                          text: const Text('Light'),
-                          onPressed: () {
-                            ref
-                                .read(themeProvider.notifier)
-                                .setTheme(ThemeMode.light);
-                          },
-                        ),
-                        MenuFlyoutItem(
-                          text: const Text('Dark'),
-                          onPressed: () {
-                            ref
-                                .read(themeProvider.notifier)
-                                .setTheme(ThemeMode.dark);
-                          },
-                        ),
-                      ];
-                    },
-                  ),
-                  const MenuFlyoutSeparator(),
-                  MenuFlyoutItem(
-                    text: Text('Sign Out', style: TextStyle(color: Colors.red)),
-                    leading: Icon(
-                      FluentIcons.sign_out_24_regular,
-                      color: Colors.red,
-                    ),
-                    onPressed: () async {
-                      await Supabase.instance.client.auth.signOut();
-                      if (context.mounted) {
-                        context.go('/login');
-                      }
-                    },
-                  ),
-                ],
-              );
-            },
-          );
-        },
-        isActive: false, // Settings usually opens flyout or navigates
-      ),
+    return _buildNavItem(
+      context,
+      FluentIcons.settings_24_regular,
+      label: 'Settings',
+      onTap: onSettingsTap,
+      isActive: activePane == 'settings',
     );
   }
 

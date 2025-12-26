@@ -63,6 +63,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
+            // TODO: Implement language switching with localization (flutter_localizations)
             _buildRow(
               'Language',
               ComboBox<String>(

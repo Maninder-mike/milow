@@ -26,7 +26,6 @@ class DashboardShell extends ConsumerStatefulWidget {
 class _DashboardShellState extends ConsumerState<DashboardShell> {
   String? _activeSidebarPane; // 'add_records', 'drivers', or null
   double _sidebarWidth = 300;
-  bool _isResizing = false;
 
   @override
   void didUpdateWidget(DashboardShell oldWidget) {
@@ -166,73 +165,66 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
             CustomTitleBar(searchFocusNode: _searchFocusNode),
 
             Expanded(
-              child: Row(
+              child: Stack(
                 children: [
-                  PrimarySidebar(
-                    onAddRecordTap: () => _toggleSidebar('add_record'),
-                    onDriversTap: () => _toggleSidebar('drivers'),
-                    onFleetTap: () => _toggleSidebar('fleet_list'),
-                    onLoadsTap: () => _navigateTo('/highway-dispatch'),
-                    onSettingsTap: () => _navigateTo('/settings'),
-                    onProfileTap: () => _navigateTo('/profile'),
-                    onDashboardTap: () => _navigateTo('/dashboard'),
-                    activePane: _activeSidebarPane,
+                  Row(
+                    children: [
+                      PrimarySidebar(
+                        onAddRecordTap: () => _toggleSidebar('add_record'),
+                        onDriversTap: () => _toggleSidebar('drivers'),
+                        onFleetTap: () => _toggleSidebar('fleet_list'),
+                        onLoadsTap: () => _navigateTo('/highway-dispatch'),
+                        onSettingsTap: () => _navigateTo('/settings'),
+                        onProfileTap: () => _navigateTo('/profile'),
+                        onDashboardTap: () => _navigateTo('/dashboard'),
+                        activePane: _activeSidebarPane,
+                      ),
+
+                      // Resizable Sidebar Area
+                      if (_activeSidebarPane != null)
+                        SizedBox(
+                          width: _sidebarWidth,
+                          child: _buildSecondarySidebar(_activeSidebarPane!),
+                        ),
+
+                      Expanded(
+                        child:
+                            _isFullPage(
+                              GoRouterState.of(context).matchedLocation,
+                            )
+                            ? widget.child
+                            : const MainContentArea(),
+                      ),
+                    ],
                   ),
 
-                  // Resizable Sidebar Area
+                  // Overlay Drag Handle (positioned at right edge of sidebar)
                   if (_activeSidebarPane != null)
-                    SizedBox(
-                      width: _sidebarWidth,
-                      child: _buildSecondarySidebar(_activeSidebarPane!),
-                    ),
-
-                  // Drag Handle (Invisible visual, wider hit target)
-                  if (_activeSidebarPane != null)
-                    SizedBox(
-                      width: 0,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Positioned(
-                            left: -4, // Center tap target
-                            top: 0,
-                            bottom: 0,
-                            width: 9,
-                            child: MouseRegion(
-                              cursor: SystemMouseCursors.resizeColumn,
-                              child: GestureDetector(
-                                behavior: HitTestBehavior.translucent,
-                                onHorizontalDragUpdate: (details) {
-                                  setState(() {
-                                    _sidebarWidth =
-                                        (_sidebarWidth + details.primaryDelta!)
-                                            .clamp(150.0, 600.0);
-                                    _isResizing = true;
-                                  });
-                                },
-                                onHorizontalDragEnd: (_) {
-                                  setState(() => _isResizing = false);
-                                },
-                                child: Container(
-                                  color: _isResizing
-                                      ? FluentTheme.of(
-                                          context,
-                                        ).cardColor.withValues(alpha: 0.95)
-                                      : Colors.transparent,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                    Positioned(
+                      left:
+                          72 +
+                          _sidebarWidth -
+                          4, // Primary sidebar width + secondary sidebar width - half handle width
+                      top: 0,
+                      bottom: 0,
+                      width: 8,
+                      child: MouseRegion(
+                        cursor: SystemMouseCursors.resizeColumn,
+                        child: GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onHorizontalDragUpdate: (details) {
+                            setState(() {
+                              _sidebarWidth =
+                                  (_sidebarWidth + details.primaryDelta!).clamp(
+                                    150.0,
+                                    600.0,
+                                  );
+                            });
+                          },
+                          child: Container(color: Colors.transparent),
+                        ),
                       ),
                     ),
-
-                  Expanded(
-                    child:
-                        _isFullPage(GoRouterState.of(context).matchedLocation)
-                        ? widget.child
-                        : const MainContentArea(),
-                  ),
                 ],
               ),
             ),

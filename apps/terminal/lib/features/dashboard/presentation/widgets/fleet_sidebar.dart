@@ -16,28 +16,11 @@ class FleetSidebar extends ConsumerStatefulWidget {
 class _FleetSidebarState extends ConsumerState<FleetSidebar> {
   String _selectedFilter = 'All'; // All, Active, Maintenance, Idle, Breakdown
   String _searchQuery = '';
-  List<Map<String, dynamic>> _allVehicles = [];
-  bool _isLoading = true;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadVehicles();
-  }
-
-  Future<void> _loadVehicles() async {
-    final service = ref.read(vehicleServiceProvider);
-    final vehicles = await service.getVehicles();
-    if (mounted) {
-      setState(() {
-        _allVehicles = vehicles;
-        _isLoading = false;
-      });
-    }
-  }
-
-  List<Map<String, dynamic>> get _filteredVehicles {
-    return _allVehicles.where((v) {
+  List<Map<String, dynamic>> _filterVehicles(
+    List<Map<String, dynamic>> allVehicles,
+  ) {
+    return allVehicles.where((v) {
       final matchesFilter =
           _selectedFilter == 'All' ||
           (v['status'] as String?)?.toLowerCase() ==
@@ -79,7 +62,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
       builder: (context) => AddVehicleDialog(
         onSaved: () {
           Navigator.pop(context);
-          _loadVehicles();
+          ref.invalidate(vehiclesListProvider);
         },
       ),
     );
@@ -91,11 +74,13 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
     final isLight = theme.brightness == Brightness.light;
     // Sidebar colors - matching the lighter terminal theme
     final backgroundColor = isLight
-        ? const Color(0xFFF3F3F3)
+        ? const Color(0xFFE5E5E5) // Slightly darker for contrast
         : const Color(0xFF252526);
     final titleColor = isLight
-        ? const Color(0xFF616161)
+        ? const Color(0xFFBBBBBB)
         : const Color(0xFFBBBBBB);
+
+    final vehiclesAsync = ref.watch(vehiclesListProvider);
 
     return Container(
       color: backgroundColor,
@@ -172,24 +157,36 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
           const Divider(),
 
           // List
+          // List
           Expanded(
-            child: _isLoading
-                ? const Center(child: ProgressRing())
-                : _filteredVehicles.isEmpty
-                ? Center(
+            child: vehiclesAsync.when(
+              data: (vehicles) {
+                final filtered = _filterVehicles(vehicles);
+                if (filtered.isEmpty) {
+                  return Center(
                     child: Text(
                       'No vehicles found',
                       style: TextStyle(color: titleColor),
                     ),
-                  )
-                : ListView.builder(
-                    padding: EdgeInsets.zero,
-                    itemCount: _filteredVehicles.length,
-                    itemBuilder: (context, index) {
-                      final vehicle = _filteredVehicles[index];
-                      return _buildVehicleItem(vehicle, isLight);
-                    },
-                  ),
+                  );
+                }
+                return ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: filtered.length,
+                  itemBuilder: (context, index) {
+                    final vehicle = filtered[index];
+                    return _buildVehicleItem(vehicle, isLight);
+                  },
+                );
+              },
+              loading: () => const Center(child: ProgressRing()),
+              error: (e, st) => Center(
+                child: Text(
+                  'Error loading vehicles',
+                  style: TextStyle(color: Colors.red),
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -233,6 +230,10 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
         ? const Color(0xFFE8E8E8)
         : const Color(0xFF2A2D2E);
 
+    final status = vehicle['status'] as String? ?? 'Unknown';
+    final statusColor = _getStatusColor(status);
+    final hasIssue = vehicle['mil_status'] == true;
+
     return HoverButton(
       onPressed: () {
         context.go('/vehicles/status', extra: vehicle);
@@ -240,48 +241,125 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
       builder: (context, states) {
         final isHovering = states.isHovered;
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          color: isHovering ? hoverColor : Colors.transparent,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: isHovering ? hoverColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+          ),
           child: Row(
             children: [
-              // Status Dot
+              // Icon Container
               Container(
-                width: 8,
-                height: 8,
+                width: 36,
+                height: 36,
                 decoration: BoxDecoration(
-                  color: _getStatusColor(vehicle['status']),
-                  shape: BoxShape.circle,
+                  color: isLight
+                      ? const Color(0xFFFFFFFF)
+                      : const Color(0xFF333333),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isLight
+                        ? const Color(0xFFE5E5E5)
+                        : const Color(0xFF404040),
+                  ),
+                ),
+                child: Icon(
+                  vehicle['vehicle_type'] == 'Trailer'
+                      ? FluentIcons.vehicle_truck_profile_24_regular
+                      : FluentIcons.vehicle_truck_24_regular,
+                  size: 18,
+                  color: isLight
+                      ? Colors.black.withValues(alpha: 0.87)
+                      : Colors.white.withValues(alpha: 0.7),
                 ),
               ),
               const SizedBox(width: 12),
-              // Icon
-              Icon(
-                vehicle['vehicle_type'] == 'Trailer'
-                    ? FluentIcons.vehicle_truck_profile_24_regular
-                    : FluentIcons.vehicle_truck_24_regular,
-                size: 16,
-                color: textColor,
-              ),
-              const SizedBox(width: 12),
-              // Text
+              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(
-                      vehicle['vehicle_number'] ?? 'Unknown',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: textColor,
-                        fontWeight: FontWeight.w500,
-                      ),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            vehicle['vehicle_number'] ?? 'Unknown',
+                            style: GoogleFonts.inter(
+                              fontSize: 14,
+                              color: textColor,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        // Status Badge
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: statusColor.withValues(alpha: 0.2),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 6,
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: statusColor,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                status,
+                                style: GoogleFonts.inter(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w600,
+                                  color: statusColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                    Text(
-                      vehicle['license_plate'] ?? '-',
-                      style: GoogleFonts.inter(
-                        fontSize: 11,
-                        color: textColor.withValues(alpha: 0.7),
-                      ),
+                    const SizedBox(height: 2),
+                    Row(
+                      children: [
+                        Text(
+                          vehicle['license_plate'] ?? '-',
+                          style: GoogleFonts.inter(
+                            fontSize: 11,
+                            color: textColor.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        if (hasIssue) ...[
+                          const SizedBox(width: 8),
+                          Icon(
+                            FluentIcons.warning_12_filled,
+                            size: 10,
+                            color: Colors.red,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Alert',
+                            style: GoogleFonts.inter(
+                              fontSize: 10,
+                              color: Colors.red,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),

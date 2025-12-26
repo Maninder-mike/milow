@@ -17,9 +17,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _addressController = TextEditingController();
   final _countryController = TextEditingController();
   final _companyNameController = TextEditingController();
+
+  // Address Controllers
+  final _streetController = TextEditingController();
+  final _cityController = TextEditingController();
+  final _stateController = TextEditingController();
+  final _zipController = TextEditingController();
 
   // Read-only fields
   String _email = '';
@@ -167,7 +172,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           setState(() {
             _nameController.text = data['full_name'] as String? ?? '';
             _phoneController.text = data['phone'] as String? ?? '';
-            _addressController.text = data['address'] as String? ?? '';
+
+            // Address Fields
+            _streetController.text =
+                data['street'] as String? ?? data['address'] as String? ?? '';
+            _cityController.text = data['city'] as String? ?? '';
+            _stateController.text = data['state_province'] as String? ?? '';
+            _zipController.text = data['postal_code'] as String? ?? '';
+
             _countryController.text = data['country'] as String? ?? '';
             _companyNameController.text = data['company_name'] as String? ?? '';
             _avatarUrl = data['avatar_url'] as String?;
@@ -273,7 +285,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         'id': user.id,
         'full_name': _nameController.text,
         'phone': _phoneController.text,
-        'address': _addressController.text,
+        'street': _streetController.text,
+        'city': _cityController.text,
+        'state_province': _stateController.text,
+        'postal_code': _zipController.text,
         'country': _countryController.text,
         'company_name': _companyNameController.text,
         'role': _isAdmin
@@ -881,22 +896,70 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             validator: (v) => v?.isEmpty == true ? 'Required' : null,
           ),
           const SizedBox(height: 16),
+          const SizedBox(height: 16),
+          _buildLabel('Phone Number'),
+          TextFormBox(
+            controller: _phoneController,
+            readOnly: !_isEditing,
+            placeholder: '+1 234 567 8900',
+          ),
+          const SizedBox(height: 16),
+          _buildLabel('Street Address'),
+          TextFormBox(
+            controller: _streetController,
+            readOnly: !_isEditing,
+            placeholder: '123 Main St',
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('City'),
+                    TextFormBox(
+                      controller: _cityController,
+                      readOnly: !_isEditing,
+                      placeholder: 'City',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildLabel('State'),
+                    TextFormBox(
+                      controller: _stateController,
+                      readOnly: !_isEditing,
+                      placeholder: 'State',
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildLabel('Phone Number'),
+                    _buildLabel('Zip Code'),
                     TextFormBox(
-                      controller: _phoneController,
+                      controller: _zipController,
                       readOnly: !_isEditing,
-                      placeholder: '+1 234 567 8900',
+                      placeholder: 'Zip',
                     ),
                   ],
                 ),
               ),
-              const SizedBox(width: 16),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -911,13 +974,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
               ),
             ],
-          ),
-          const SizedBox(height: 16),
-          _buildLabel('Address'),
-          TextFormBox(
-            controller: _addressController,
-            readOnly: !_isEditing,
-            placeholder: 'Full address',
           ),
         ],
       ),

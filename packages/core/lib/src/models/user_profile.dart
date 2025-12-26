@@ -33,6 +33,7 @@ class UserProfile {
   final String id;
   final String? email;
   final String? fullName;
+  final String? phone;
   final String? avatarUrl;
   final UserRole role; // Uses the updated UserRole enum
   final bool isVerified;
@@ -43,6 +44,7 @@ class UserProfile {
     required this.id,
     this.email,
     this.fullName,
+    this.phone,
     this.avatarUrl,
     required this.role,
     this.isVerified = false,
@@ -56,6 +58,7 @@ class UserProfile {
       id: json['id'] as String,
       email: json['email'] as String?,
       fullName: json['full_name'] as String?,
+      phone: json['phone'] as String?,
       avatarUrl: json['avatar_url'] as String?,
       role: _parseRole(json['role'] as String?),
       isVerified: json['is_verified'] as bool? ?? false,
@@ -74,6 +77,7 @@ class UserProfile {
       'id': id,
       'email': email,
       'full_name': fullName,
+      'phone': phone,
       'avatar_url': avatarUrl,
       'role': role.name, // Store as string in DB
       'is_verified': isVerified,
@@ -92,6 +96,7 @@ class UserProfile {
     String? id,
     String? email,
     String? fullName,
+    String? phone,
     String? avatarUrl,
     UserRole? role,
     bool? isVerified,
@@ -102,6 +107,7 @@ class UserProfile {
       id: id ?? this.id,
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
+      phone: phone ?? this.phone,
       avatarUrl: avatarUrl ?? this.avatarUrl,
       role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
