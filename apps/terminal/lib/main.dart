@@ -302,12 +302,12 @@ class AdminApp extends ConsumerWidget {
         theme: FluentThemeData(
           accentColor: SystemTheme.accentColor.accent.toAccentColor(),
           brightness: Brightness.light,
-          fontFamily: 'Segoe UI Variable',
+          fontFamily: 'Segoe UI',
         ),
         darkTheme: FluentThemeData(
           accentColor: SystemTheme.accentColor.accent.toAccentColor(),
           brightness: Brightness.dark,
-          fontFamily: 'Segoe UI Variable',
+          fontFamily: 'Segoe UI',
         ),
         themeMode: themeMode,
         routerConfig: router,

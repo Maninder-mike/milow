@@ -22,6 +22,7 @@ import 'package:terminal/features/dashboard/screens/customer/customer_page.dart'
 import 'package:terminal/features/dashboard/screens/pickup/pickup_page.dart';
 import 'package:terminal/features/dashboard/screens/deliver/deliver_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicles_page.dart';
+import 'package:terminal/features/dashboard/screens/vehicles/vehicle_status_page.dart';
 import 'package:terminal/features/dispatch/presentation/pages/dispatch_page.dart'; // [NEW] import
 import 'package:flutter/material.dart'; // Added for ChangeNotifier
 
@@ -99,6 +100,13 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/vehicles',
             builder: (context, state) => const VehiclesPage(),
+          ),
+          GoRoute(
+            path: '/vehicles/status',
+            builder: (context, state) {
+              final vehicle = state.extra as Map<String, dynamic>? ?? {};
+              return VehicleStatusPage(vehicle: vehicle);
+            },
           ),
           GoRoute(
             path: '/highway-dispatch',

@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'presentation/widgets/primary_sidebar.dart';
 import 'presentation/widgets/secondary_sidebar.dart';
 import '../drivers/presentation/widgets/drivers_sidebar.dart';
+import 'presentation/widgets/fleet_sidebar.dart';
 import 'presentation/widgets/status_bar.dart';
 import 'presentation/widgets/main_content_area.dart';
 import 'presentation/providers/tab_manager_provider.dart';
@@ -168,8 +169,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
               child: Row(
                 children: [
                   PrimarySidebar(
-                    onFleetTap: () => _toggleSidebar('fleet'),
+                    onAddRecordTap: () => _toggleSidebar('add_record'),
                     onDriversTap: () => _toggleSidebar('drivers'),
+                    onFleetTap: () => _toggleSidebar('fleet_list'),
                     onLoadsTap: () => _navigateTo('/highway-dispatch'),
                     onSettingsTap: () => _navigateTo('/settings'),
                     onProfileTap: () => _navigateTo('/profile'),
@@ -181,50 +183,18 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                   if (_activeSidebarPane != null)
                     SizedBox(
                       width: _sidebarWidth,
-                      child: _activeSidebarPane == 'fleet'
-                          ? SecondarySidebar(
-                              onItemTap: (item) {
-                                switch (item) {
-                                  case 'CUSTOMER':
-                                    _navigateTo('/customer');
-                                    break;
-                                  case 'PICK UP':
-                                    _navigateTo('/pickup');
-                                    break;
-                                  case 'DELIVER':
-                                    _navigateTo('/deliver');
-                                    break;
-                                  case 'VEHICLES':
-                                    _navigateTo('/vehicles');
-                                    break;
-                                  case 'HIGHWAY DISPATCH':
-                                    _navigateTo('/highway-dispatch');
-                                    break;
-                                  case 'DRIVER HOS':
-                                    _navigateTo('/driver-hos');
-                                    break;
-                                  case 'LOCATION':
-                                    _navigateTo('/location');
-                                    break;
-                                }
-                              },
-                            )
-                          : const DriversSidebar(),
+                      child: _buildSecondarySidebar(_activeSidebarPane!),
                     ),
 
-                  // Drag Handle (1px visual, wider hit target)
+                  // Drag Handle (Invisible visual, wider hit target)
                   if (_activeSidebarPane != null)
-                    Container(
-                      width: 1,
-                      color:
-                          FluentTheme.of(context).brightness == Brightness.light
-                          ? const Color(0xFFE0E0E0)
-                          : const Color(0xFF333333),
+                    SizedBox(
+                      width: 0,
                       child: Stack(
                         clipBehavior: Clip.none,
                         children: [
                           Positioned(
-                            left: -4, // Center 9px tap target over 1px line
+                            left: -4, // Center tap target
                             top: 0,
                             bottom: 0,
                             width: 9,
@@ -272,5 +242,41 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
         ),
       ),
     );
+  }
+
+  Widget _buildSecondarySidebar(String pane) {
+    switch (pane) {
+      case 'add_record':
+        return SecondarySidebar(
+          onItemTap: (item) {
+            switch (item) {
+              case 'CUSTOMER':
+                _navigateTo('/customer');
+                break;
+              case 'PICK UP':
+                _navigateTo('/pickup');
+                break;
+              case 'DELIVER':
+                _navigateTo('/deliver');
+                break;
+              case 'HIGHWAY DISPATCH':
+                _navigateTo('/highway-dispatch');
+                break;
+              case 'DRIVER HOS':
+                _navigateTo('/driver-hos');
+                break;
+              case 'LOCATION':
+                _navigateTo('/location');
+                break;
+            }
+          },
+        );
+      case 'drivers':
+        return const DriversSidebar();
+      case 'fleet_list':
+        return const FleetSidebar();
+      default:
+        return const SizedBox.shrink();
+    }
   }
 }

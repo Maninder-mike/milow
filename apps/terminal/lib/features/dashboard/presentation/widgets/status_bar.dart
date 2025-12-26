@@ -2,11 +2,12 @@ import 'dart:async';
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:milow_core/milow_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../notifications/data/notification_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
+import '../providers/database_health_provider.dart';
 
 class StatusBar extends ConsumerStatefulWidget {
   const StatusBar({super.key});
@@ -29,7 +30,8 @@ class _StatusBarState extends ConsumerState<StatusBar> {
 
   @override
   Widget build(BuildContext context) {
-    // ... no changes to logic ...
+    _setupListeners(context);
+
     final pendingUsersAsync = ref.watch(pendingUsersProvider);
     final pendingCount = pendingUsersAsync.maybeWhen(
       data: (users) => users.length,
@@ -41,7 +43,167 @@ class _StatusBarState extends ConsumerState<StatusBar> {
       orElse: () => 0,
     );
     final totalNotificationCount = pendingCount + driverLeftCount;
-    // ... rest of listeners ...
+
+    final connectivityAsync = ref.watch(connectivityProvider);
+    final dbHealth = ref.watch(databaseHealthProvider);
+
+    return Container(
+      height: 28,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF3F3F3),
+        border: Border(top: BorderSide(color: Color(0xFFE5E5E5))),
+      ),
+      child: Row(
+        children: [
+          // 1. Connectivity Status
+          connectivityAsync.when(
+            data: (results) {
+              final isOffline = results.contains(ConnectivityResult.none);
+              return _buildStatusItem(
+                icon: isOffline
+                    ? FluentIcons.wifi_off_24_regular
+                    : FluentIcons.wifi_1_24_regular,
+                label: isOffline ? 'Offline' : 'Online: Stable (5G)',
+                color: isOffline ? Colors.red : Colors.green,
+              );
+            },
+            loading: () => _buildStatusItem(
+              icon: FluentIcons.wifi_warning_24_regular,
+              label: 'Checking...',
+              color: Colors.grey,
+            ),
+            error: (_, __) => _buildStatusItem(
+              icon: FluentIcons.wifi_off_24_regular,
+              label: 'Error',
+              color: Colors.red,
+            ),
+          ),
+
+          _buildDivider(),
+
+          // 2. Database Status
+          _buildStatusItem(
+            icon: dbHealth.status == DatabaseStatus.connected
+                ? FluentIcons.database_24_regular
+                : FluentIcons.warning_24_regular,
+            label: _getDbStatusLabel(dbHealth.status),
+            color: _getDbStatusColor(dbHealth.status),
+          ),
+          _buildDivider(),
+
+          // 3. Daily Load Completion
+          Tooltip(
+            message: '35 Completed\n8 Active\n2 Delayed', // TODO: Dynamic data
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Loads:',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF666666)),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 100,
+                  height: 12,
+                  child: ProgressBar(
+                    value: 78,
+                    backgroundColor: Colors.grey.withValues(alpha: 0.3),
+                    activeColor: Colors.green, // TODO: Orange if delayed > 0
+                  ),
+                ),
+                const SizedBox(width: 8),
+                RichText(
+                  text: TextSpan(
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF333333),
+                    ),
+                    children: [
+                      const TextSpan(
+                        text: '35/45 ',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      TextSpan(
+                        text: '• 2 Delayed',
+                        style: TextStyle(
+                          color: Colors.orange.darker,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const Spacer(),
+
+          // 4. Last Sync Time (Real 24h)
+          Text(
+            _formatLastSyncTime(dbHealth.lastSyncTime),
+            style: const TextStyle(fontSize: 11, color: Color(0xFF666666)),
+          ),
+          _buildDivider(),
+
+          // Notifications
+          FlyoutTarget(
+            controller: _flyoutController,
+            child: GestureDetector(
+              onTap: () {
+                _flyoutController.showFlyout(
+                  builder: (context) {
+                    return FlyoutContent(
+                      constraints: const BoxConstraints(maxWidth: 350),
+                      child: _buildCombinedNotificationList(
+                        pendingUsersAsync,
+                        driverLeftAsync,
+                      ),
+                    );
+                  },
+                );
+              },
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: Stack(
+                  alignment: Alignment.center,
+                  clipBehavior: Clip.none,
+                  children: [
+                    Icon(
+                      FluentIcons.alert_24_regular,
+                      size: 18,
+                      color: Colors.black.withValues(alpha: 0.7),
+                    ),
+                    if (totalNotificationCount > 0)
+                      Positioned(
+                        top: 2,
+                        right: 2,
+                        child: Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: const Color(0xFFF3F3F3),
+                              width: 1.5,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _setupListeners(BuildContext context) {
     ref.listen<AsyncValue<List<UserProfile>>>(pendingUsersProvider, (
       previous,
       next,
@@ -52,7 +214,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
             final newUsers = nextUsers
                 .where((n) => !prevUsers.any((p) => p.id == n.id))
                 .toList();
-
             for (var user in newUsers) {
               _showNotificationToast(context, user);
             }
@@ -67,7 +228,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
     ) {
       next.whenData((results) {
         final isOffline = results.contains(ConnectivityResult.none);
-
         if (isOffline) {
           if (_confirmedOffline) return;
           if (_offlineDebounceTimer?.isActive ?? false) return;
@@ -105,60 +265,82 @@ class _StatusBarState extends ConsumerState<StatusBar> {
         });
       },
     );
+  }
 
-    return Container(
-      height: 22,
-      color: const Color(0xFF007ACC), // VS Code Blue
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      child: Row(
-        children: [
-          const Spacer(),
-          // Right items
-          FlyoutTarget(
-            controller: _flyoutController,
-            child: GestureDetector(
-              onTap: () {
-                _flyoutController.showFlyout(
-                  builder: (context) {
-                    return FlyoutContent(
-                      constraints: const BoxConstraints(maxWidth: 350),
-                      child: _buildCombinedNotificationList(
-                        pendingUsersAsync,
-                        driverLeftAsync,
-                      ),
-                    );
-                  },
-                );
-              },
-              child: Stack(
-                alignment: Alignment.topRight,
-                children: [
-                  _buildItem(FluentIcons.alert_24_regular, '', marginRight: 8),
-                  if (totalNotificationCount > 0)
-                    Positioned(
-                      top: 0,
-                      right: 4,
-                      child: Container(
-                        padding: const EdgeInsets.all(2),
-                        decoration: BoxDecoration(
-                          color: Colors.red,
-                          shape: BoxShape.circle,
-                        ),
-                        constraints: const BoxConstraints(
-                          minWidth: 8,
-                          minHeight: 8,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  Widget _buildStatusItem({
+    required IconData icon,
+    required String label,
+    Color? color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          size: 14,
+          color: color ?? Colors.black.withValues(alpha: 0.7),
+        ),
+        const SizedBox(width: 6),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: Color(0xFF333333)),
+        ),
+      ],
     );
   }
-  // ... show methods same ...
+
+  Widget _buildDivider() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      width: 1,
+      height: 14,
+      color: const Color(0xFFCCCCCC),
+    );
+  }
+
+  String _getDbStatusLabel(DatabaseStatus status) {
+    switch (status) {
+      case DatabaseStatus.connected:
+        return 'Database: Connected';
+      case DatabaseStatus.disconnected:
+        return 'Database: Disconnected';
+      case DatabaseStatus.checking:
+        return 'Database: Checking...';
+      case DatabaseStatus.error:
+        return 'Database: Error';
+    }
+  }
+
+  Color _getDbStatusColor(DatabaseStatus status) {
+    switch (status) {
+      case DatabaseStatus.connected:
+        return Colors.green;
+      case DatabaseStatus.disconnected:
+      case DatabaseStatus.error:
+        return Colors.red;
+      case DatabaseStatus.checking:
+        return Colors.grey;
+    }
+  }
+
+  String _formatLastSyncTime(DateTime? time) {
+    if (time == null) return 'Last Sync: --:--';
+    return 'Last Sync: ${_timeToString(time)}';
+  }
+
+  String _timeToString(DateTime time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  // ---------------------------------------------------------------------------
+  // Notification Widgets
+  // ---------------------------------------------------------------------------
 
   void _showNotificationToast(BuildContext context, UserProfile user) {
     displayInfoBar(
@@ -420,23 +602,6 @@ class _StatusBarState extends ConsumerState<StatusBar> {
           ],
         ],
       ),
-    );
-  }
-
-  Widget _buildItem(IconData icon, String text, {double marginRight = 0}) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 12, color: Colors.white),
-        if (text.isNotEmpty) ...[
-          const SizedBox(width: 4),
-          Text(
-            text,
-            style: GoogleFonts.inter(fontSize: 11, color: Colors.white),
-          ),
-        ],
-        if (marginRight > 0) SizedBox(width: marginRight),
-      ],
     );
   }
 }

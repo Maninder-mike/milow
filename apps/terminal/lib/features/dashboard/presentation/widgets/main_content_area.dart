@@ -100,10 +100,7 @@ class MainContentArea extends ConsumerWidget {
                       }
                     }
                   } else {
-                    // All tabs closed. Maybe navigate to a 'dashboard' route that shows nothing?
-                    // Or just stay on current route but show "No tabs"?
-                    // The empty state widget below handles the visual.
-                    // URL might stay as the last visited page.
+                    // All tabs closed.
                   }
                 }
               });

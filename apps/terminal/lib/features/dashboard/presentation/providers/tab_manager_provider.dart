@@ -45,8 +45,10 @@ class TabManager extends _$TabManager {
       (t) => t.id == tab.id || (t.path != null && t.path == tab.path),
     );
     if (index != -1) {
-      // Switch to existing
-      state = state.copyWith(selectedIndex: index);
+      // Switch to existing AND update it (vital for content updates on same route)
+      final newTabs = [...state.tabs];
+      newTabs[index] = tab;
+      state = state.copyWith(tabs: newTabs, selectedIndex: index);
     } else {
       // Add new
       state = state.copyWith(

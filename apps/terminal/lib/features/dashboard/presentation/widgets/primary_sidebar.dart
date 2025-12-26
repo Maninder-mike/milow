@@ -7,18 +7,20 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/providers/theme_provider.dart';
 
 class PrimarySidebar extends ConsumerWidget {
-  final VoidCallback onFleetTap;
+  final VoidCallback onAddRecordTap;
   final VoidCallback onDriversTap;
+  final VoidCallback onFleetTap;
   final VoidCallback onLoadsTap;
   final VoidCallback onSettingsTap;
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
-  final String? activePane; // 'fleet', 'drivers', etc
+  final String? activePane; // 'add_record', 'drivers', etc
 
   const PrimarySidebar({
     super.key,
-    required this.onFleetTap,
+    required this.onAddRecordTap,
     required this.onDriversTap,
+    required this.onFleetTap,
     required this.onLoadsTap,
     required this.onSettingsTap,
     required this.onProfileTap,
@@ -52,13 +54,14 @@ class PrimarySidebar extends ConsumerWidget {
           ),
           const SizedBox(height: 16),
 
-          // Fleet (was Add New / Add Record)
+          // Add Record (was Fleet)
           _buildNavItem(
             context,
-            FluentIcons.vehicle_truck_24_regular,
-            label: 'Fleet',
-            onTap: onFleetTap,
-            isActive: activePane == 'fleet', // aligned with activePane usage
+            FluentIcons.add_square_24_regular,
+            label: 'Add Record',
+            onTap: onAddRecordTap,
+            isActive:
+                activePane == 'add_record', // aligned with activePane usage
           ),
           const SizedBox(height: 16),
 
@@ -79,6 +82,16 @@ class PrimarySidebar extends ConsumerWidget {
             label: 'Drivers',
             onTap: onDriversTap,
             isActive: activePane == 'drivers',
+          ),
+          const SizedBox(height: 16),
+
+          // Fleet
+          _buildNavItem(
+            context,
+            FluentIcons.vehicle_truck_24_regular,
+            label: 'Fleet',
+            onTap: onFleetTap,
+            isActive: activePane == 'fleet', // Assuming logic for highlighting
           ),
 
           const Spacer(),
