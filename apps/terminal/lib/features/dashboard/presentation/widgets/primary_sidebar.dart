@@ -1,23 +1,25 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/providers/theme_provider.dart';
 
 class PrimarySidebar extends ConsumerWidget {
-  final VoidCallback onAddRecordTap;
+  final VoidCallback onFleetTap;
   final VoidCallback onDriversTap;
-  final VoidCallback onInboxTap;
+  final VoidCallback onLoadsTap;
   final VoidCallback onSettingsTap;
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
-  final String? activePane; // 'add_records' or 'drivers'
+  final String? activePane; // 'fleet', 'drivers', etc
 
   const PrimarySidebar({
     super.key,
-    required this.onAddRecordTap,
+    required this.onFleetTap,
     required this.onDriversTap,
-    required this.onInboxTap,
+    required this.onLoadsTap,
     required this.onSettingsTap,
     required this.onProfileTap,
     required this.onDashboardTap,
@@ -26,70 +28,77 @@ class PrimarySidebar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final theme = FluentTheme.of(context);
+    final isLight = theme.brightness == Brightness.light;
+
+    // Light gray/whiteish background for sidebar based on image
+    final backgroundColor = isLight
+        ? const Color(0xFFF0F4F8) // Light metallic/blue tint
+        : const Color(0xFF202020);
+
     return Container(
-      width: 48,
-      color: const Color(0xFF202020), // Slightly darker for depth
+      width: 72, // Wider to fit text
+      color: backgroundColor,
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
           // Dashboard / Home
-          _buildIcon(
-            FluentIcons.view_dashboard,
+          _buildNavItem(
+            context,
+            FluentIcons.home_24_regular,
+            label: 'Dashboard',
             onTap: onDashboardTap,
-            tooltip: 'Dashboard',
-            isActive:
-                activePane ==
-                null, // activePane is null on dashboard main view (usually)
-            // Actually DashboardShell logic needs review for active state.
-            // activePane is sidebar pane ('add_records', 'drivers').
-            // Navigation to /dashboard is independent of pane?
-            // Let's assume we highlight Home if not in a specific pane and route is /dashboard.
-            // But activePane is passed from parent. Parent needs to handle this logic.
-            // For now, let's just add the callback and icon.
-            iconSize: 24,
+            isActive: activePane == null, // Assuming null is dashboard
           ),
           const SizedBox(height: 16),
-          _buildIcon(
-            FluentIcons.add,
-            onTap: onAddRecordTap,
-            tooltip: 'Add New',
-            isActive: activePane == 'add_records',
-            iconSize: 24,
+
+          // Fleet (was Add New / Add Record)
+          _buildNavItem(
+            context,
+            FluentIcons.vehicle_truck_24_regular,
+            label: 'Fleet',
+            onTap: onFleetTap,
+            isActive: activePane == 'fleet', // aligned with activePane usage
           ),
           const SizedBox(height: 16),
-          _buildIcon(
-            FluentIcons.contact_list, // Changed to ContactList for Drivers
+
+          // Loads (Recovered Dispatch)
+          _buildNavItem(
+            context,
+            FluentIcons.document_text_24_regular,
+            label: 'Loads',
+            onTap: onLoadsTap,
+            isActive: activePane == 'loads', // or route check
+          ),
+          const SizedBox(height: 16),
+
+          // Drivers
+          _buildNavItem(
+            context,
+            FluentIcons.people_team_24_regular,
+            label: 'Drivers',
             onTap: onDriversTap,
-            tooltip: 'Drivers Directory',
             isActive: activePane == 'drivers',
-            iconSize: 24,
           ),
-          const SizedBox(height: 16),
-          _buildIcon(
-            FluentIcons.mail,
-            onTap: onInboxTap,
-            tooltip: 'Inbox',
-            isActive: false, // Inbox is a route, not a pane?
-            iconSize: 24,
-          ),
+
           const Spacer(),
 
-          const SizedBox(height: 10),
           _buildSettingsIcon(context, ref),
           const SizedBox(height: 12),
         ],
       ),
     );
   }
-  // ... rest remains same including _buildSettingsIcon and _buildIcon
 
   Widget _buildSettingsIcon(BuildContext context, WidgetRef ref) {
     final controller = FlyoutController();
 
     return FlyoutTarget(
       controller: controller,
-      child: _buildIcon(
-        FluentIcons.settings,
+      child: _buildNavItem(
+        context,
+        FluentIcons.settings_24_regular,
+        label: 'Settings',
         onTap: () {
           controller.showFlyout(
             autoModeConfiguration: FlyoutAutoConfiguration(
@@ -103,12 +112,12 @@ class PrimarySidebar extends ConsumerWidget {
                 items: [
                   MenuFlyoutItem(
                     text: const Text('My Profile'),
-                    leading: const Icon(FluentIcons.contact),
+                    leading: const Icon(FluentIcons.person_24_regular),
                     onPressed: onProfileTap,
                   ),
                   MenuFlyoutSubItem(
                     text: const Text('Themes'),
-                    leading: const Icon(FluentIcons.color),
+                    leading: const Icon(FluentIcons.color_24_regular),
                     items: (context) {
                       return [
                         MenuFlyoutItem(
@@ -140,20 +149,11 @@ class PrimarySidebar extends ConsumerWidget {
                   ),
                   const MenuFlyoutSeparator(),
                   MenuFlyoutItem(
-                    text: const Text('Settings Sync is On'),
-                    leading: const Icon(FluentIcons.check_mark),
-                    onPressed: () {},
-                  ),
-                  const MenuFlyoutSeparator(),
-                  MenuFlyoutItem(
-                    text: const Text('Check for Updates...'),
-                    leading: const Icon(FluentIcons.sync),
-                    onPressed: () {},
-                  ),
-                  const MenuFlyoutSeparator(),
-                  MenuFlyoutItem(
                     text: Text('Sign Out', style: TextStyle(color: Colors.red)),
-                    leading: Icon(FluentIcons.sign_out, color: Colors.red),
+                    leading: Icon(
+                      FluentIcons.sign_out_24_regular,
+                      color: Colors.red,
+                    ),
                     onPressed: () async {
                       await Supabase.instance.client.auth.signOut();
                       if (context.mounted) {
@@ -166,40 +166,84 @@ class PrimarySidebar extends ConsumerWidget {
             },
           );
         },
-        tooltip: 'Settings',
+        isActive: false, // Settings usually opens flyout or navigates
       ),
     );
   }
 
-  Widget _buildIcon(
+  Widget _buildNavItem(
+    BuildContext context,
     IconData icon, {
+    required String label,
     required VoidCallback onTap,
-    required String tooltip,
     bool isActive = false,
-    double iconSize = 24,
   }) {
+    final theme = FluentTheme.of(context);
+    final isLight = theme.brightness == Brightness.light;
+
+    // Active styling
+    final activeBgColor = isLight
+        ? const Color(0xFFE1E6EB)
+        : const Color(0xFF333333);
+    final iconColor = isActive
+        ? (isLight ? const Color(0xFF005FB8) : Colors.white)
+        : (isLight ? const Color(0xFF616161) : const Color(0xFFCCCCCC));
+
+    // Active/Selected indicator line
+    final showIndicator = isActive;
+
     return Tooltip(
-      message: tooltip,
+      message: label,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           onTap: onTap,
-          child: Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              border: isActive
-                  ? const Border(
-                      left: BorderSide(color: Colors.white, width: 2),
-                    )
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              icon,
-              size: iconSize,
-              color: isActive ? Colors.white : const Color(0xFF858585),
-            ),
+          child: Stack(
+            children: [
+              Container(
+                width: 64, // Slightly less than container width for padding
+                height: 60,
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                decoration: BoxDecoration(
+                  color: isActive ? activeBgColor : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(icon, size: 24, color: iconColor),
+                    const SizedBox(height: 4),
+                    Text(
+                      label,
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: iconColor,
+                        fontWeight: isActive
+                            ? FontWeight.w600
+                            : FontWeight.normal,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              if (showIndicator)
+                Positioned(
+                  left: 0,
+                  top: 16,
+                  bottom: 16,
+                  width: 3,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: isLight ? const Color(0xFF005FB8) : Colors.white,
+                      borderRadius: const BorderRadius.only(
+                        topRight: Radius.circular(2),
+                        bottomRight: Radius.circular(2),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ),
       ),

@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:system_theme/system_theme.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -85,6 +86,79 @@ class ConfigurationErrorApp extends StatelessWidget {
 class AdminApp extends ConsumerWidget {
   const AdminApp({super.key});
 
+  List<PlatformMenuItem> _buildAppMenuItems(GoRouter router) {
+    final items = <PlatformMenuItem>[
+      PlatformMenuItem(
+        label: 'About Milow Terminal',
+        onSelected: () {
+          final context = router.routerDelegate.navigatorKey.currentContext;
+          if (context != null) {
+            showCustomAboutDialog(context);
+          }
+        },
+      ),
+      PlatformMenuItem(
+        label: 'Check for Updates...',
+        onSelected: () {
+          final context = router.routerDelegate.navigatorKey.currentContext;
+          if (context != null) {
+            checkForUpdates(context);
+          }
+        },
+      ),
+    ];
+
+    // Only add quit menu item on platforms that support it (macOS)
+    if (PlatformProvidedMenuItem.hasMenu(PlatformProvidedMenuItemType.quit)) {
+      items.add(
+        const PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
+      );
+    } else {
+      // Add a manual exit option for Windows/Linux
+      items.add(
+        PlatformMenuItem(
+          label: 'Exit',
+          shortcut: const SingleActivator(
+            LogicalKeyboardKey.keyQ,
+            control: true,
+          ),
+          onSelected: () => exit(0),
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  List<PlatformMenuItem> _buildViewMenuItems() {
+    final items = <PlatformMenuItem>[];
+
+    // Only add toggleFullScreen on platforms that support it (macOS)
+    if (PlatformProvidedMenuItem.hasMenu(
+      PlatformProvidedMenuItemType.toggleFullScreen,
+    )) {
+      items.add(
+        const PlatformProvidedMenuItem(
+          type: PlatformProvidedMenuItemType.toggleFullScreen,
+        ),
+      );
+    } else {
+      // Add a manual fullscreen toggle for Windows/Linux
+      items.add(
+        PlatformMenuItem(
+          label: 'Toggle Full Screen',
+          shortcut: const SingleActivator(LogicalKeyboardKey.f11),
+          onSelected: () async {
+            final isFullScreen = await windowManager.isFullScreen();
+            await windowManager.setFullScreen(!isFullScreen);
+          },
+        ),
+      );
+    }
+
+    return items;
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final router = ref.watch(routerProvider);
@@ -94,51 +168,21 @@ class AdminApp extends ConsumerWidget {
       menus: [
         PlatformMenu(
           label: 'Milow Terminal',
-          menus: [
-            PlatformMenuItem(
-              label: 'About Milow Terminal',
-              onSelected: () {
-                // We need a context. Since we are using router, we use its navigator key context
-                // But router.routerDelegate.navigatorKey.currentContext might be null if not built?
-                // Actually GoRouter exposes it.
-                // We don't have direct access to the global key here easily unless we export it or access it via router.
-                // router.routerDelegate.navigatorKey is available.
-                final context =
-                    router.routerDelegate.navigatorKey.currentContext;
-                if (context != null) {
-                  showCustomAboutDialog(context);
-                }
-              },
-            ),
-            PlatformMenuItem(
-              label: 'Check for Updates...',
-              onSelected: () {
-                final context =
-                    router.routerDelegate.navigatorKey.currentContext;
-                if (context != null) {
-                  checkForUpdates(context);
-                }
-              },
-            ),
-            const PlatformMenuItemGroup(
-              members: [
-                PlatformProvidedMenuItem(
-                  type: PlatformProvidedMenuItemType.quit,
-                ),
-              ],
-            ),
-          ],
+          menus: _buildAppMenuItems(router),
         ),
         PlatformMenu(
           label: 'File',
           menus: [
             PlatformMenuItem(
               label: 'Close Window',
-              shortcut: const SingleActivator(
+              shortcut: SingleActivator(
                 LogicalKeyboardKey.keyW,
-                meta: true,
+                meta: Platform.isMacOS,
+                control: !Platform.isMacOS,
               ),
-              onSelected: () {},
+              onSelected: () async {
+                await windowManager.close();
+              },
             ),
           ],
         ),
@@ -147,28 +191,31 @@ class AdminApp extends ConsumerWidget {
           menus: [
             PlatformMenuItem(
               label: 'Undo',
-              shortcut: const SingleActivator(
+              shortcut: SingleActivator(
                 LogicalKeyboardKey.keyZ,
-                meta: true,
+                meta: Platform.isMacOS,
+                control: !Platform.isMacOS,
               ),
               onSelected: () {},
             ),
             PlatformMenuItem(
               label: 'Redo',
-              shortcut: const SingleActivator(
+              shortcut: SingleActivator(
                 LogicalKeyboardKey.keyZ,
-                meta: true,
+                meta: Platform.isMacOS,
+                control: !Platform.isMacOS,
                 shift: true,
               ),
               onSelected: () {},
             ),
-            const PlatformMenuItemGroup(
+            PlatformMenuItemGroup(
               members: [
                 PlatformMenuItem(
                   label: 'Cut',
                   shortcut: SingleActivator(
                     LogicalKeyboardKey.keyX,
-                    meta: true,
+                    meta: Platform.isMacOS,
+                    control: !Platform.isMacOS,
                   ),
                   onSelected: null,
                 ),
@@ -176,7 +223,8 @@ class AdminApp extends ConsumerWidget {
                   label: 'Copy',
                   shortcut: SingleActivator(
                     LogicalKeyboardKey.keyC,
-                    meta: true,
+                    meta: Platform.isMacOS,
+                    control: !Platform.isMacOS,
                   ),
                   onSelected: null,
                 ),
@@ -184,7 +232,8 @@ class AdminApp extends ConsumerWidget {
                   label: 'Paste',
                   shortcut: SingleActivator(
                     LogicalKeyboardKey.keyV,
-                    meta: true,
+                    meta: Platform.isMacOS,
+                    control: !Platform.isMacOS,
                   ),
                   onSelected: null,
                 ),
@@ -192,7 +241,8 @@ class AdminApp extends ConsumerWidget {
                   label: 'Select All',
                   shortcut: SingleActivator(
                     LogicalKeyboardKey.keyA,
-                    meta: true,
+                    meta: Platform.isMacOS,
+                    control: !Platform.isMacOS,
                   ),
                   onSelected: null,
                 ),
@@ -200,22 +250,16 @@ class AdminApp extends ConsumerWidget {
             ),
           ],
         ),
-        PlatformMenu(
-          label: 'View',
-          menus: [
-            PlatformProvidedMenuItem(
-              type: PlatformProvidedMenuItemType.toggleFullScreen,
-            ),
-          ],
-        ),
+        PlatformMenu(label: 'View', menus: _buildViewMenuItems()),
         PlatformMenu(
           label: 'Window',
           menus: [
             PlatformMenuItem(
               label: 'Minimize',
-              shortcut: const SingleActivator(
+              shortcut: SingleActivator(
                 LogicalKeyboardKey.keyM,
-                meta: true,
+                meta: Platform.isMacOS,
+                control: !Platform.isMacOS,
               ),
               onSelected: () async {
                 await windowManager.minimize();

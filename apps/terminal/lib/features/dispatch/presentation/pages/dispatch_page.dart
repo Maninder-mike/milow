@@ -7,14 +7,14 @@ import '../widgets/load_entry_form.dart';
 import '../widgets/broker_entry_dialog.dart';
 import '../../domain/models/broker.dart';
 
-class DispatchDashboard extends ConsumerStatefulWidget {
-  const DispatchDashboard({super.key});
+class DispatchPage extends ConsumerStatefulWidget {
+  const DispatchPage({super.key});
 
   @override
-  ConsumerState<DispatchDashboard> createState() => _DispatchDashboardState();
+  ConsumerState<DispatchPage> createState() => _DispatchPageState();
 }
 
-class _DispatchDashboardState extends ConsumerState<DispatchDashboard> {
+class _DispatchPageState extends ConsumerState<DispatchPage> {
   final List<Load> _loads = [];
   final List<Broker> _brokers = [
     Broker.empty().copyWith(name: 'TQL'),
@@ -187,7 +187,7 @@ class _DispatchDashboardState extends ConsumerState<DispatchDashboard> {
     Broker? createdBroker;
     await showDialog(
       context: context,
-      builder: (context) {
+      builder: (dialogContext) {
         return BrokerEntryDialog(
           onSave: (newBroker) async {
             await Future.delayed(const Duration(seconds: 1));
@@ -196,10 +196,11 @@ class _DispatchDashboardState extends ConsumerState<DispatchDashboard> {
               _brokers.add(newBroker);
             });
             createdBroker = newBroker;
+            if (!mounted) return;
             displayInfoBar(
               alignment: Alignment.bottomRight,
               context,
-              builder: (context, close) {
+              builder: (infoBarContext, close) {
                 return InfoBar(
                   title: const Text('Broker Saved'),
                   content: Text('Saved ${newBroker.name}'),

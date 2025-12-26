@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class EntityPlaceholderPage extends StatelessWidget {
@@ -19,7 +20,11 @@ class EntityPlaceholderPage extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(FluentIcons.page_list, size: 48, color: Colors.grey),
+            Icon(
+              FluentIcons.document_text_48_regular,
+              size: 48,
+              color: Colors.grey,
+            ),
             const SizedBox(height: 16),
             Text(
               '$title Page',

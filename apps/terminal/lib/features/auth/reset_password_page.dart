@@ -1,5 +1,6 @@
 import 'dart:ui';
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
@@ -180,7 +181,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       key: const ValueKey('reset_form'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(FluentIcons.lock, size: 64, color: _theme.primaryContentColor),
+        Icon(
+          FluentIcons.lock_closed_48_regular,
+          size: 64,
+          color: _theme.primaryContentColor,
+        ),
         const SizedBox(height: 24),
         Text(
           'Reset Password',
@@ -210,11 +215,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           onChanged: _calculatePasswordStrength,
           prefix: Padding(
             padding: const EdgeInsets.only(left: 8.0),
-            child: Icon(FluentIcons.lock, color: _theme.primaryContentColor),
+            child: Icon(
+              FluentIcons.lock_closed_24_regular,
+              color: _theme.primaryContentColor,
+            ),
           ),
           suffix: IconButton(
             icon: Icon(
-              _obscurePassword ? FluentIcons.red_eye : FluentIcons.hide,
+              _obscurePassword
+                  ? FluentIcons.eye_24_regular
+                  : FluentIcons.eye_off_24_regular,
               color: _theme.primaryContentColor,
             ),
             onPressed: () =>
@@ -240,11 +250,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           obscureText: _obscureConfirmPassword,
           prefix: Padding(
             padding: const EdgeInsets.only(left: 8.0),
-            child: Icon(FluentIcons.lock, color: _theme.primaryContentColor),
+            child: Icon(
+              FluentIcons.lock_closed_24_regular,
+              color: _theme.primaryContentColor,
+            ),
           ),
           suffix: IconButton(
             icon: Icon(
-              _obscureConfirmPassword ? FluentIcons.red_eye : FluentIcons.hide,
+              _obscureConfirmPassword
+                  ? FluentIcons.eye_24_regular
+                  : FluentIcons.eye_off_24_regular,
               color: _theme.primaryContentColor,
             ),
             onPressed: () => setState(
@@ -322,7 +337,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       key: const ValueKey('success'),
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(FluentIcons.check_mark, size: 80, color: const Color(0xFF10B981)),
+        Icon(
+          FluentIcons.checkmark_circle_48_regular,
+          size: 80,
+          color: const Color(0xFF10B981),
+        ),
         const SizedBox(height: 24),
         Text(
           'Password Updated!',
@@ -413,7 +432,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
       ),
       child: Row(
         children: [
-          Icon(FluentIcons.error, color: Colors.red, size: 16),
+          Icon(
+            FluentIcons.error_circle_24_regular,
+            color: Colors.red,
+            size: 16,
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
