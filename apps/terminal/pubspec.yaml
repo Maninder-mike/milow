@@ -50,6 +50,7 @@ dev_dependencies:
   build_runner: ^2.10.4
   flutter_launcher_icons: ^0.14.4
   mockito: ^5.6.1
+  msix: ^3.16.8
 
 flutter_launcher_icons:
   image_path: "assets/images/terminal_icon.png"
@@ -101,3 +102,31 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# MSIX configuration for Microsoft Store
+msix_config:
+  display_name: Milow Terminal
+  publisher_display_name: Maninder Singh
+  identity_name: ManinderSingh.milowterminal
+  msix_version: 0.0.1.0
+  logo_path: assets/images/terminal_icon.png
+  
+  # IMPORTANT: Replace with your Publisher ID from Partner Center
+  # Find it at: https://partner.microsoft.com/dashboard -> Account Settings -> Organization profile
+  # Format: CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
+  publisher: CN=503D7524-2660-491B-86EF-F923C5886DDE
+  
+  # Microsoft Store configuration
+  store: true
+  
+  # App capabilities
+  capabilities: internetClient
+  
+  # Languages supported
+  languages: en-us
+  
+  # Architecture (x64 for modern Windows)
+  architecture: x64
+  
+  # Output configuration
+  output_name: MilowTerminal
