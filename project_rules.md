@@ -1,7 +1,3 @@
----
-trigger: always_on
----
-
 # Project Rules: Milow (Flutter Multi-App Repository)
 
 ## 1. Persona & Context

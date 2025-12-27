@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:terminal/core/constants/location_data.dart';
+import 'package:terminal/core/widgets/form_widgets.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -226,420 +227,258 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildSectionHeader('Identification', FluentIcons.return_key),
+            const FluentSectionHeader(
+              title: 'Identification',
+              icon: FluentIcons.return_key,
+              showDivider: true,
+            ),
             const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'Vehicle ID / Unit #',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _vehicleNumberController,
-                      placeholder: 'e.g. 101',
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
-                    ),
+                    controller: _vehicleNumberController,
+                    placeholder: 'e.g. 101',
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: 16), // Standard gutter
                 Expanded(
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'VIN Number',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _vinController,
-                      placeholder: '17-digit VIN',
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
-                    ),
+                    controller: _vinController,
+                    placeholder: '17-digit VIN',
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: InfoLabel(
-                    label: 'Vehicle Type',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        ComboBox<String>(
-                          value: _vehicleType,
-                          items:
-                              [
-                                    'Truck',
-                                    'Trailer',
-                                    'Dry Van',
-                                    'Reefer',
-                                    'Car',
-                                    'Other',
-                                  ]
-                                  .map(
-                                    (e) =>
-                                        ComboBoxItem(value: e, child: Text(e)),
-                                  )
-                                  .toList(),
-                          onChanged: (v) => setState(() => _vehicleType = v!),
-                          isExpanded: true,
-                        ),
-                        if (_vehicleType == 'Other') ...[
-                          const SizedBox(height: 8),
-                          _WindowsStyledInput(
-                            controller: _customTypeController,
-                            placeholder: 'Specify Type',
-                            validator: (v) =>
-                                _vehicleType == 'Other' &&
-                                    (v == null || v.isEmpty)
-                                ? 'Required'
-                                : null,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 4),
+                        child: Text(
+                          'Vehicle Type',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors
+                                .grey, // Approximate, matching shared widget
                           ),
-                        ],
+                        ),
+                      ),
+                      ComboBox<String>(
+                        value: _vehicleType,
+                        items:
+                            [
+                                  'Truck',
+                                  'Trailer',
+                                  'Dry Van',
+                                  'Reefer',
+                                  'Car',
+                                  'Other',
+                                ]
+                                .map(
+                                  (e) => ComboBoxItem(value: e, child: Text(e)),
+                                )
+                                .toList(),
+                        onChanged: (v) => setState(() => _vehicleType = v!),
+                        isExpanded: true,
+                      ),
+                      if (_vehicleType == 'Other') ...[
+                        const SizedBox(height: 8),
+                        TextFormBox(
+                          controller: _customTypeController,
+                          placeholder: 'Specify Type',
+                          validator: (v) =>
+                              _vehicleType == 'Other' &&
+                                  (v == null || v.isEmpty)
+                              ? 'Required'
+                              : null,
+                        ),
                       ],
-                    ),
+                    ],
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 32),
 
-            _buildSectionHeader('Specifications', FluentIcons.info),
+            const FluentSectionHeader(
+              title: 'Specifications',
+              icon: FluentIcons.info,
+              showDivider: true,
+            ),
             const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'Year',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _yearController,
-                      placeholder: 'YYYY',
-                      keyboardType: TextInputType.number,
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
-                    ),
+                    controller: _yearController,
+                    placeholder: 'YYYY',
+                    keyboardType: TextInputType.number,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'Make',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _makeController,
-                      placeholder: 'e.g. Freightliner',
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
-                    ),
+                    controller: _makeController,
+                    placeholder: 'e.g. Freightliner',
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'Model',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _modelController,
-                      placeholder: 'e.g. Cascadia',
-                    ),
+                    controller: _modelController,
+                    placeholder: 'e.g. Cascadia',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 32),
 
-            _buildSectionHeader(
-              'Registration & Compliance',
-              FluentIcons.certificate,
+            const FluentSectionHeader(
+              title: 'Registration & Compliance',
+              icon: FluentIcons.certificate,
+              showDivider: true,
             ),
             const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'License Plate',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _plateController,
-                      placeholder: 'Plate Number',
-                      validator: (v) =>
-                          v == null || v.isEmpty ? 'Required' : null,
-                    ),
+                    controller: _plateController,
+                    placeholder: 'Plate Number',
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Required' : null,
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: InfoLabel(
-                    label: 'Jurisdiction',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: ComboBox<String>(
-                      value: _licenseProvince,
-                      items: [
-                        // Canada
-                        ...LocationData.canadianProvinces.entries.map(
-                          (e) => ComboBoxItem(
-                            value: e.value,
-                            child: Text('${e.key} - ${e.value}'),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 4),
+                        child: Text(
+                          'Jurisdiction',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey,
                           ),
                         ),
-                        // USA
-                        ...LocationData.usStates.entries.map(
-                          (e) => ComboBoxItem(
-                            value: e.value,
-                            child: Text('${e.key} - ${e.value}'),
+                      ),
+                      ComboBox<String>(
+                        value: _licenseProvince,
+                        items: [
+                          // Canada
+                          ...LocationData.canadianProvinces.entries.map(
+                            (e) => ComboBoxItem(
+                              value: e.value,
+                              child: Text('${e.key} - ${e.value}'),
+                            ),
                           ),
-                        ),
-                      ].toList(),
-                      onChanged: (v) => setState(() => _licenseProvince = v!),
-                      isExpanded: true,
-                    ),
+                          // USA
+                          ...LocationData.usStates.entries.map(
+                            (e) => ComboBoxItem(
+                              value: e.value,
+                              child: Text('${e.key} - ${e.value}'),
+                            ),
+                          ),
+                        ].toList(),
+                        onChanged: (v) => setState(() => _licenseProvince = v!),
+                        isExpanded: true,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'DOT Number',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _dotController,
-                      placeholder: 'USDOT or Carrier ID',
-                    ),
+                    controller: _dotController,
+                    placeholder: 'USDOT or Carrier ID',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 32),
 
-            _buildSectionHeader('Status & Insurance', FluentIcons.health),
+            const FluentSectionHeader(
+              title: 'Status & Insurance',
+              icon: FluentIcons.health,
+              showDivider: true,
+            ),
             const SizedBox(height: 16),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: InfoLabel(
-                    label: 'Current Status',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: ComboBox<String>(
-                      value: _status,
-                      items: ['Active', 'Maintenance', 'Idle', 'Breakdown']
-                          .map((e) => ComboBoxItem(value: e, child: Text(e)))
-                          .toList(),
-                      onChanged: (v) => setState(() => _status = v!),
-                      isExpanded: true,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Padding(
+                        padding: EdgeInsets.only(left: 4, bottom: 4),
+                        child: Text(
+                          'Current Status',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                      ComboBox<String>(
+                        value: _status,
+                        items: ['Active', 'Maintenance', 'Idle', 'Breakdown']
+                            .map((e) => ComboBoxItem(value: e, child: Text(e)))
+                            .toList(),
+                        onChanged: (v) => setState(() => _status = v!),
+                        isExpanded: true,
+                      ),
+                    ],
                   ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
                   flex: 2, // Wider for insurance
-                  child: InfoLabel(
+                  child: FluentLabeledInput(
                     label: 'Insurance Policy',
-                    labelStyle: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 13,
-                    ),
-                    child: _WindowsStyledInput(
-                      controller: _insuranceController,
-                      placeholder: 'Policy Number',
-                    ),
+                    controller: _insuranceController,
+                    placeholder: 'Policy Number',
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 24),
-            InfoLabel(
+            FluentLabeledInput(
               label: 'Terminal Address',
-              labelStyle: const TextStyle(
-                fontWeight: FontWeight.w600,
-                fontSize: 13,
-              ),
-              child: _WindowsStyledInput(
-                controller: _terminalController,
-                placeholder: 'Full garaging address',
-                validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-              ),
+              controller: _terminalController,
+              placeholder: 'Full garaging address',
+              validator: (v) => v == null || v.isEmpty ? 'Required' : null,
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Icon(icon, size: 16, color: FluentTheme.of(context).accentColor),
-            const SizedBox(width: 8),
-            Text(
-              title,
-              style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.bold,
-                color: FluentTheme.of(context).resources.textFillColorPrimary,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Container(
-          height: 1,
-          color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
-        ),
-      ],
-    );
-  }
-}
-
-class _WindowsStyledInput extends StatefulWidget {
-  final TextEditingController controller;
-  final String? placeholder;
-  final String? Function(String?)? validator;
-  final TextInputType? keyboardType;
-
-  const _WindowsStyledInput({
-    required this.controller,
-    this.placeholder,
-    this.validator,
-    this.keyboardType,
-  });
-
-  @override
-  State<_WindowsStyledInput> createState() => _WindowsStyledInputState();
-}
-
-class _WindowsStyledInputState extends State<_WindowsStyledInput> {
-  bool _isFocused = false;
-  final FocusNode _focusNode = FocusNode();
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(() {
-      setState(() => _isFocused = _focusNode.hasFocus);
-    });
-  }
-
-  @override
-  void dispose() {
-    _focusNode.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    final isLight = theme.brightness == Brightness.light;
-
-    final bgColor = isLight ? Colors.white : const Color(0xFF2D2D2D);
-    final borderColor = isLight
-        ? const Color(0xFFE5E5E5)
-        : const Color(0xFF404040);
-    final focusBorderColor = theme.accentColor;
-    final placeholderColor = isLight
-        ? const Color(0xFF6E6E6E)
-        : const Color(0xFF9E9E9E);
-
-    return FormField<String>(
-      validator: widget.validator,
-      initialValue: widget.controller.text,
-      builder: (FormFieldState<String> state) {
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              height: 32,
-              decoration: BoxDecoration(
-                color: bgColor,
-                borderRadius: BorderRadius.circular(4),
-                border: Border.all(
-                  color: state.hasError
-                      ? Colors.red
-                      : (_isFocused ? focusBorderColor : borderColor),
-                  width: _isFocused || state.hasError ? 1.5 : 1,
-                ),
-              ),
-              child: TextBox(
-                controller: widget.controller,
-                focusNode: _focusNode,
-                keyboardType: widget.keyboardType,
-                style: TextStyle(
-                  color: isLight ? Colors.black : Colors.white,
-                  fontSize: 13,
-                ),
-                placeholder: widget.placeholder,
-                placeholderStyle: TextStyle(
-                  color: placeholderColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                ),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 4,
-                ),
-                decoration: WidgetStateProperty.all(
-                  BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.fromBorderSide(BorderSide.none),
-                  ),
-                ),
-                highlightColor: Colors.transparent,
-                unfocusedColor: Colors.transparent,
-                onChanged: (text) {
-                  state.didChange(text);
-                },
-              ),
-            ),
-            if (state.hasError)
-              Padding(
-                padding: const EdgeInsets.only(top: 4, left: 2),
-                child: Text(
-                  state.errorText!,
-                  style: TextStyle(
-                    color: Colors.red,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-          ],
-        );
-      },
     );
   }
 }

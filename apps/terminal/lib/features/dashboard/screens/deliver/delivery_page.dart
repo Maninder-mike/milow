@@ -1,11 +1,16 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:terminal/core/constants/location_data.dart';
+import 'package:terminal/core/widgets/form_widgets.dart';
 import '../shared/trip_entry_scaffold.dart';
 
 class DeliveryPage extends StatefulWidget {
   final bool isDialog;
-  const DeliveryPage({super.key, this.isDialog = false});
+  final Map<String, dynamic>? receiverData;
+
+  const DeliveryPage({super.key, this.isDialog = false, this.receiverData});
 
   @override
   State<DeliveryPage> createState() => _DeliveryPageState();
@@ -25,8 +30,17 @@ class _DeliveryPageState extends State<DeliveryPage> {
   final _faxController = TextEditingController();
   final _emailController = TextEditingController();
   final _countryController = TextEditingController();
+  final _refNumberController = TextEditingController();
+  final _notesController = TextEditingController();
+  final _internalNotesController = TextEditingController();
+  final _searchController = TextEditingController();
 
-  // Schedule
+  // Cargo Controllers
+  final _commodityController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _quantityController = TextEditingController();
+
+  // Schedule & Flags
   DateTime _selectedDate = DateTime.now();
   DateTime _startTime = DateTime(
     DateTime.now().year,
@@ -35,99 +49,251 @@ class _DeliveryPageState extends State<DeliveryPage> {
     8,
     0,
   );
-
-  // Schedule & Logistics state
+  String _status = 'Scheduled';
   String _appointmentType = 'Live Unload';
   String _schedulingWindow = 'Strict Appointment';
+  String _weightUnit = 'Lbs';
 
   bool _driverAssist = false;
   bool _ppeRequired = false;
   bool _overnightParking = false;
   bool _strictLatePolicy = false;
   bool _callBeforeArrival = false;
+  bool _lumperRequired = false;
+  bool _gateCodeRequired = false;
 
-  final _refNumberController = TextEditingController();
-
-  // Dummy Data for Table
-  final List<Map<String, String>> _receivers = [];
+  // App State
+  bool _isLoading = false;
+  bool _isSaving = false;
+  List<Map<String, dynamic>> _receivers = [];
+  List<Map<String, dynamic>> _filteredReceivers = [];
+  String _sortColumn = 'delivery_date';
+  bool _isAscending = false;
 
   Offset _offset = Offset.zero;
 
-  // Constants for Dropdowns (reused)
-  static const _canadianProvinces = {
-    'AB': 'Alberta',
-    'BC': 'British Columbia',
-    'MB': 'Manitoba',
-    'NB': 'New Brunswick',
-    'NL': 'Newfoundland and Labrador',
-    'NS': 'Nova Scotia',
-    'NT': 'Northwest Territories',
-    'NU': 'Nunavut',
-    'ON': 'Ontario',
-    'PE': 'Prince Edward Island',
-    'QC': 'Quebec',
-    'SK': 'Saskatchewan',
-    'YT': 'Yukon',
-  };
+  // Constants for Dropdowns (reused) removed.
 
-  static const _usStates = {
-    'AK': 'Alaska',
-    'AL': 'Alabama',
-    'AR': 'Arkansas',
-    'AZ': 'Arizona',
-    'CA': 'California',
-    'CO': 'Colorado',
-    'CT': 'Connecticut',
-    'DC': 'District of Columbia',
-    'DE': 'Delaware',
-    'FL': 'Florida',
-    'GA': 'Georgia',
-    'HI': 'Hawaii',
-    'IA': 'Iowa',
-    'ID': 'Idaho',
-    'IL': 'Illinois',
-    'IN': 'Indiana',
-    'KS': 'Kansas',
-    'KY': 'Kentucky',
-    'LA': 'Louisiana',
-    'MA': 'Massachusetts',
-    'MD': 'Maryland',
-    'ME': 'Maine',
-    'MI': 'Michigan',
-    'MN': 'Minnesota',
-    'MO': 'Missouri',
-    'MS': 'Mississippi',
-    'MT': 'Montana',
-    'NC': 'North Carolina',
-    'ND': 'North Dakota',
-    'NE': 'Nebraska',
-    'NH': 'New Hampshire',
-    'NJ': 'New Jersey',
-    'NM': 'New Mexico',
-    'NV': 'Nevada',
-    'NY': 'New York',
-    'OH': 'Ohio',
-    'OK': 'Oklahoma',
-    'OR': 'Oregon',
-    'PA': 'Pennsylvania',
-    'RI': 'Rhode Island',
-    'SC': 'South Carolina',
-    'SD': 'South Dakota',
-    'TN': 'Tennessee',
-    'TX': 'Texas',
-    'UT': 'Utah',
-    'VA': 'Virginia',
-    'VT': 'Vermont',
-    'WA': 'Washington',
-    'WI': 'Wisconsin',
-    'WV': 'West Virginia',
-    'WY': 'Wyoming',
-  };
+  @override
+  void initState() {
+    super.initState();
+    if (widget.receiverData != null) {
+      _populateFields(widget.receiverData!);
+    }
+    if (!widget.isDialog) {
+      _fetchReceivers();
+    }
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _companyNameController.dispose();
+    _addressController.dispose();
+    _cityController.dispose();
+    _zipCodeController.dispose();
+    _contactController.dispose();
+    _phoneController.dispose();
+    _faxController.dispose();
+    _emailController.dispose();
+    _countryController.dispose();
+    _refNumberController.dispose();
+    _notesController.dispose();
+    _internalNotesController.dispose();
+    _searchController.dispose();
+    _commodityController.dispose();
+    _weightController.dispose();
+    _quantityController.dispose();
+    super.dispose();
+  }
+
+  void _populateFields(Map<String, dynamic> data) {
+    _companyNameController.text = data['receiver_name'] ?? '';
+    _addressController.text = data['address'] ?? '';
+    _cityController.text = data['city'] ?? '';
+    _state = data['state_province'] ?? 'Ontario';
+    _zipCodeController.text = data['postal_code'] ?? '';
+    _countryController.text = data['country'] ?? 'Canada';
+    _contactController.text = data['contact_person'] ?? '';
+    _phoneController.text = data['phone'] ?? '';
+    _emailController.text = data['email'] ?? '';
+    _faxController.text = data['fax'] ?? '';
+    if (data['delivery_date'] != null) {
+      _selectedDate = DateTime.parse(data['delivery_date']);
+    }
+    if (data['delivery_time'] != null) {
+      final parts = data['delivery_time'].split(':');
+      _startTime = DateTime(
+        _selectedDate.year,
+        _selectedDate.month,
+        _selectedDate.day,
+        int.parse(parts[0]),
+        int.parse(parts[1]),
+      );
+    }
+    _appointmentType = data['appointment_type'] ?? 'Live Unload';
+    _schedulingWindow = data['scheduling_window'] ?? 'Strict Appointment';
+    _refNumberController.text = data['reference_number'] ?? '';
+    _ppeRequired = data['is_ppe_required'] ?? false;
+    _driverAssist = data['is_driver_assist'] ?? false;
+    _overnightParking = data['is_overnight_parking'] ?? false;
+    _strictLatePolicy = data['is_strict_late_policy'] ?? false;
+    _callBeforeArrival = data['is_call_before_arrival'] ?? false;
+    _lumperRequired = data['is_lumper_required'] ?? false;
+    _gateCodeRequired = data['is_gate_code_required'] ?? false;
+    _commodityController.text = data['commodity'] ?? '';
+    _weightController.text = data['weight']?.toString() ?? '';
+    _weightUnit = data['weight_unit'] ?? 'Lbs';
+    _quantityController.text = data['quantity'] ?? '';
+    _notesController.text = data['driver_instructions'] ?? '';
+    _internalNotesController.text = data['internal_notes'] ?? '';
+    _status = data['status'] ?? 'Scheduled';
+  }
+
+  Future<void> _fetchReceivers() async {
+    setState(() => _isLoading = true);
+    try {
+      final response = await Supabase.instance.client
+          .from('receivers')
+          .select()
+          .order('delivery_date', ascending: false);
+
+      if (mounted) {
+        setState(() {
+          _receivers = List<Map<String, dynamic>>.from(response);
+          _filteredReceivers = _receivers;
+          _sortReceivers();
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching receivers: $e');
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.toLowerCase();
+    setState(() {
+      _filteredReceivers = _receivers.where((item) {
+        final name = (item['receiver_name'] ?? '').toLowerCase();
+        final city = (item['city'] ?? '').toLowerCase();
+        final ref = (item['reference_number'] ?? '').toLowerCase();
+        return name.contains(query) ||
+            city.contains(query) ||
+            ref.contains(query);
+      }).toList();
+      _sortReceivers();
+    });
+  }
+
+  void _sortReceivers() {
+    _filteredReceivers.sort((a, b) {
+      dynamic aVal = a[_sortColumn];
+      dynamic bVal = b[_sortColumn];
+
+      if (aVal == null && bVal == null) return 0;
+      if (aVal == null) return 1;
+      if (bVal == null) return -1;
+
+      int comparison;
+      if (aVal is num && bVal is num) {
+        comparison = aVal.compareTo(bVal);
+      } else {
+        comparison = aVal.toString().toLowerCase().compareTo(
+          bVal.toString().toLowerCase(),
+        );
+      }
+      return _isAscending ? comparison : -comparison;
+    });
+  }
+
+  void _onHeaderTap(String column) {
+    setState(() {
+      if (_sortColumn == column) {
+        _isAscending = !_isAscending;
+      } else {
+        _sortColumn = column;
+        _isAscending = true;
+      }
+      _sortReceivers();
+    });
+  }
+
+  Future<void> _saveReceiver() async {
+    setState(() => _isSaving = true);
+    try {
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user == null) return;
+
+      final data = {
+        'receiver_name': _companyNameController.text,
+        'address': _addressController.text,
+        'city': _cityController.text,
+        'state_province': _state,
+        'postal_code': _zipCodeController.text,
+        'country': _countryController.text,
+        'contact_person': _contactController.text,
+        'phone': _phoneController.text,
+        'email': _emailController.text,
+        'fax': _faxController.text,
+        'delivery_date': _selectedDate.toIso8601String().substring(0, 10),
+        'delivery_time':
+            '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
+        'appointment_type': _appointmentType,
+        'scheduling_window': _schedulingWindow,
+        'reference_number': _refNumberController.text,
+        'is_ppe_required': _ppeRequired,
+        'is_driver_assist': _driverAssist,
+        'is_overnight_parking': _overnightParking,
+        'is_strict_late_policy': _strictLatePolicy,
+        'is_call_before_arrival': _callBeforeArrival,
+        'is_lumper_required': _lumperRequired,
+        'is_gate_code_required': _gateCodeRequired,
+        'commodity': _commodityController.text,
+        'weight': double.tryParse(_weightController.text) ?? 0,
+        'weight_unit': _weightUnit,
+        'quantity': _quantityController.text,
+        'driver_instructions': _notesController.text,
+        'internal_notes': _internalNotesController.text,
+        'status': _status,
+      };
+
+      if (widget.receiverData != null) {
+        await Supabase.instance.client
+            .from('receivers')
+            .update(data)
+            .eq('id', widget.receiverData!['id']);
+      } else {
+        await Supabase.instance.client.from('receivers').insert(data);
+      }
+
+      if (mounted) {
+        if (widget.isDialog) {
+          Navigator.pop(context, true);
+        } else {
+          _fetchReceivers();
+          setState(() => _isSaving = false);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error saving receiver: $e');
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _deleteReceiver(String id) async {
+    try {
+      await Supabase.instance.client.from('receivers').delete().eq('id', id);
+      _fetchReceivers();
+    } catch (e) {
+      debugPrint('Error deleting receiver: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final isLight = theme.brightness == Brightness.light;
 
     if (widget.isDialog) {
       return Transform.translate(
@@ -145,7 +311,9 @@ class _DeliveryPageState extends State<DeliveryPage> {
                     color: Colors.transparent,
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Text(
-                      'Add New Receiver',
+                      widget.receiverData == null
+                          ? 'Add New Receiver'
+                          : 'Edit Receiver',
                       style: GoogleFonts.outfit(
                         fontSize: 24,
                         fontWeight: FontWeight.w600,
@@ -160,8 +328,10 @@ class _DeliveryPageState extends State<DeliveryPage> {
               ),
               const SizedBox(width: 8),
               FilledButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Save Receiver'),
+                onPressed: _isSaving ? null : _saveReceiver,
+                child: _isSaving
+                    ? const ProgressRing(strokeWidth: 2)
+                    : const Text('Save Record'),
               ),
             ],
           ),
@@ -174,20 +344,26 @@ class _DeliveryPageState extends State<DeliveryPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // Section: Receiver Location
-                      _buildSectionHeader('Receiver Location'),
+                      const FluentSectionHeader(title: 'Receiver Location'),
                       const SizedBox(height: 16),
-                      _buildInlineField(
-                        'Receiver Company Name',
-                        _companyNameController,
+                      FluentLabeledInput(
+                        label: 'Receiver Company Name',
+                        controller: _companyNameController,
                       ),
                       const SizedBox(height: 16),
-                      _buildInlineField('Street Address', _addressController),
+                      FluentLabeledInput(
+                        label: 'Street Address',
+                        controller: _addressController,
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
                             flex: 2,
-                            child: _buildInlineField('City', _cityController),
+                            child: FluentLabeledInput(
+                              label: 'City',
+                              controller: _cityController,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -196,12 +372,15 @@ class _DeliveryPageState extends State<DeliveryPage> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 2,
-                                    bottom: 6,
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 2, bottom: 6),
+                                  child: Text(
+                                    'State/Prov',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
                                   ),
-                                  child: _buildLabel('State/Prov'),
                                 ),
                                 ComboBox<String>(
                                   value: _state,
@@ -210,18 +389,19 @@ class _DeliveryPageState extends State<DeliveryPage> {
                                     style: TextStyle(fontSize: 14),
                                   ),
                                   items: [
-                                    // Canada
-                                    ..._canadianProvinces.entries.map(
-                                      (e) => ComboBoxItem(
-                                        value: e.value,
-                                        child: Text(
-                                          '${e.key} - ${e.value}',
-                                          style: const TextStyle(fontSize: 14),
+                                    ...LocationData.canadianProvinces.entries
+                                        .map(
+                                          (e) => ComboBoxItem(
+                                            value: e.value,
+                                            child: Text(
+                                              '${e.key} - ${e.value}',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                    ),
-                                    // USA
-                                    ..._usStates.entries.map(
+                                    ...LocationData.usStates.entries.map(
                                       (e) => ComboBoxItem(
                                         value: e.value,
                                         child: Text(
@@ -240,46 +420,77 @@ class _DeliveryPageState extends State<DeliveryPage> {
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildInlineField(
-                              'Zip Code',
-                              _zipCodeController,
+                            child: FluentLabeledInput(
+                              label: 'Zip Code',
+                              controller: _zipCodeController,
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             flex: 1,
-                            child: _buildDropdown(
-                              'Country',
-                              _countryController.text.isEmpty
-                                  ? 'Canada'
-                                  : _countryController.text,
-                              ['Canada', 'USA', 'Mexico'],
-                              (v) => setState(
-                                () => _countryController.text = v ?? 'Canada',
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 2, bottom: 6),
+                                  child: Text(
+                                    'Country',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                ComboBox<String>(
+                                  value: _countryController.text.isEmpty
+                                      ? 'Canada'
+                                      : _countryController.text,
+                                  items: LocationData.countries
+                                      .map(
+                                        (e) => ComboBoxItem(
+                                          value: e,
+                                          child: Text(
+                                            e,
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                            ),
+                                          ),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (v) => setState(
+                                    () =>
+                                        _countryController.text = v ?? 'Canada',
+                                  ),
+                                  isExpanded: true,
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
 
                       const SizedBox(height: 24),
-                      _buildDivider(),
-                      const SizedBox(height: 24),
-
-                      // Section: Contact Details
-                      _buildSectionHeader('Contact Details'),
+                      const FluentSectionHeader(
+                        title: 'Contact Details',
+                        showDivider: true,
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
-                            child: _buildInlineField(
-                              'Contact Person',
-                              _contactController,
+                            child: FluentLabeledInput(
+                              label: 'Contact Person',
+                              controller: _contactController,
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildInlineField('Phone', _phoneController),
+                            child: FluentLabeledInput(
+                              label: 'Phone',
+                              controller: _phoneController,
+                            ),
                           ),
                         ],
                       ),
@@ -287,20 +498,86 @@ class _DeliveryPageState extends State<DeliveryPage> {
                       Row(
                         children: [
                           Expanded(
-                            child: _buildInlineField('Email', _emailController),
+                            child: FluentLabeledInput(
+                              label: 'Email',
+                              controller: _emailController,
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildInlineField('Fax', _faxController),
+                            child: FluentLabeledInput(
+                              label: 'Fax',
+                              controller: _faxController,
+                            ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
-                      _buildDivider(),
-                      const SizedBox(height: 24),
 
-                      // Section: Schedule & Reference
-                      _buildSectionHeader('Schedule & Reference'),
+                      const SizedBox(height: 24),
+                      const FluentSectionHeader(
+                        title: 'Cargo Information',
+                        showDivider: true,
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: FluentLabeledInput(
+                              label: 'Commodity',
+                              controller: _commodityController,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 2,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Expanded(
+                                  child: FluentLabeledInput(
+                                    label: 'Weight',
+                                    controller: _weightController,
+                                    keyboardType: TextInputType.number,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 80,
+                                  child: ComboBox<String>(
+                                    value: _weightUnit,
+                                    items: ['Lbs', 'Kgs']
+                                        .map(
+                                          (e) => ComboBoxItem(
+                                            value: e,
+                                            child: Text(e),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) => setState(
+                                      () => _weightUnit = v ?? 'Lbs',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            flex: 2,
+                            child: FluentLabeledInput(
+                              label: 'Quantity (Pallets/Pieces)',
+                              controller: _quantityController,
+                            ),
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 24),
+                      const FluentSectionHeader(
+                        title: 'Schedule & Reference',
+                        showDivider: true,
+                      ),
                       const SizedBox(height: 16),
                       Row(
                         crossAxisAlignment: CrossAxisAlignment.end,
@@ -309,7 +586,13 @@ class _DeliveryPageState extends State<DeliveryPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Delivery Date'),
+                                const Text(
+                                  'Delivery Date',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
                                 DatePicker(
                                   selected: _selectedDate,
@@ -324,7 +607,13 @@ class _DeliveryPageState extends State<DeliveryPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                _buildLabel('Appointment Time'),
+                                const Text(
+                                  'Appointment Time',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
                                 TimePicker(
                                   selected: _startTime,
@@ -335,81 +624,205 @@ class _DeliveryPageState extends State<DeliveryPage> {
                               ],
                             ),
                           ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 2, bottom: 6),
+                                  child: Text(
+                                    'Status',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                ComboBox<String>(
+                                  value: _status,
+                                  items: ['Scheduled', 'Delivered', 'Cancelled']
+                                      .map(
+                                        (e) => ComboBoxItem(
+                                          value: e,
+                                          child: Text(e),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (v) => setState(
+                                    () => _status = v ?? 'Scheduled',
+                                  ),
+                                  isExpanded: true,
+                                ),
+                              ],
+                            ),
+                          ),
                         ],
                       ),
                       const SizedBox(height: 16),
-                      // Row: Appointment Type & Scheduling Window
                       Row(
                         children: [
                           Expanded(
-                            child: _buildDropdown(
-                              'Appointment Type',
-                              _appointmentType,
-                              ['Live Unload', 'Drop Trailer'],
-                              (v) => setState(
-                                () => _appointmentType = v ?? 'Live Unload',
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 2, bottom: 6),
+                                  child: Text(
+                                    'Appointment Type',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                ComboBox<String>(
+                                  value: _appointmentType,
+                                  items: ['Live Unload', 'Drop Trailer']
+                                      .map(
+                                        (e) => ComboBoxItem(
+                                          value: e,
+                                          child: Text(e),
+                                        ),
+                                      )
+                                      .toList(),
+                                  onChanged: (v) => setState(
+                                    () => _appointmentType = v ?? 'Live Unload',
+                                  ),
+                                  isExpanded: true,
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
-                            child: _buildDropdown(
-                              'Scheduling Window',
-                              _schedulingWindow,
-                              ['Strict Appointment', 'FCFS', 'Window (2hr)'],
-                              (v) => setState(
-                                () => _schedulingWindow =
-                                    v ?? 'Strict Appointment',
-                              ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Padding(
+                                  padding: EdgeInsets.only(left: 2, bottom: 6),
+                                  child: Text(
+                                    'Scheduling Window',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                ComboBox<String>(
+                                  value: _schedulingWindow,
+                                  items:
+                                      [
+                                            'Strict Appointment',
+                                            'FCFS',
+                                            'Window (2hr)',
+                                          ]
+                                          .map(
+                                            (e) => ComboBoxItem(
+                                              value: e,
+                                              child: Text(e),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (v) => setState(
+                                    () => _schedulingWindow =
+                                        v ?? 'Strict Appointment',
+                                  ),
+                                  isExpanded: true,
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 16),
+                      FluentLabeledInput(
+                        label: 'Reference Numbers',
+                        controller: _refNumberController,
+                        placeholder: 'DEL #, REF #',
+                      ),
 
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 24),
+                      const FluentSectionHeader(
+                        title: 'Logistics Flags',
+                        showDivider: true,
+                      ),
                       const SizedBox(height: 16),
                       Wrap(
                         spacing: 12,
                         runSpacing: 12,
                         children: [
-                          _buildToggleChip(
-                            'PPE Required',
-                            FluentIcons.shield,
-                            _ppeRequired,
-                            (v) => setState(() => _ppeRequired = v),
+                          FluentOptionChip(
+                            label: 'PPE Required',
+                            icon: FluentIcons.shield,
+                            value: _ppeRequired,
+                            onChanged: (v) => setState(() => _ppeRequired = v),
                           ),
-                          _buildToggleChip(
-                            'Driver Assist',
-                            FluentIcons.people,
-                            _driverAssist,
-                            (v) => setState(() => _driverAssist = v),
+                          FluentOptionChip(
+                            label: 'Driver Assist',
+                            icon: FluentIcons.people,
+                            value: _driverAssist,
+                            onChanged: (v) => setState(() => _driverAssist = v),
                           ),
-                          _buildToggleChip(
-                            'Overnight Parking',
-                            FluentIcons.parking_location,
-                            _overnightParking,
-                            (v) => setState(() => _overnightParking = v),
+                          FluentOptionChip(
+                            label: 'Overnight Parking',
+                            icon: FluentIcons.parking_location,
+                            value: _overnightParking,
+                            onChanged: (v) =>
+                                setState(() => _overnightParking = v),
                           ),
-                          _buildToggleChip(
-                            'Strict "Late" Policy',
-                            FluentIcons.timer,
-                            _strictLatePolicy,
-                            (v) => setState(() => _strictLatePolicy = v),
+                          FluentOptionChip(
+                            label: 'Strict Policy',
+                            icon: FluentIcons.timer,
+                            value: _strictLatePolicy,
+                            onChanged: (v) =>
+                                setState(() => _strictLatePolicy = v),
                           ),
-                          _buildToggleChip(
-                            'Call 1hr Before',
-                            FluentIcons.phone,
-                            _callBeforeArrival,
-                            (v) => setState(() => _callBeforeArrival = v),
+                          FluentOptionChip(
+                            label: 'Call Before',
+                            icon: FluentIcons.phone,
+                            value: _callBeforeArrival,
+                            onChanged: (v) =>
+                                setState(() => _callBeforeArrival = v),
+                          ),
+                          FluentOptionChip(
+                            label: 'Lumper Req.',
+                            icon: FluentIcons.money,
+                            value: _lumperRequired,
+                            onChanged: (v) =>
+                                setState(() => _lumperRequired = v),
+                          ),
+                          FluentOptionChip(
+                            label: 'Gate Code',
+                            icon: FluentIcons.lock,
+                            value: _gateCodeRequired,
+                            onChanged: (v) =>
+                                setState(() => _gateCodeRequired = v),
                           ),
                         ],
                       ),
+
+                      const SizedBox(height: 24),
+                      const FluentSectionHeader(
+                        title: 'Instructions & Notes',
+                        showDivider: true,
+                      ),
                       const SizedBox(height: 16),
-                      _buildInlineField(
-                        'Reference Numbers',
-                        _refNumberController,
-                        placeholder: 'DEL #, REF #',
+                      FluentLabeledInput(
+                        label: 'Driver Instructions',
+                        controller: _notesController,
+                        maxLines: 3,
+                        placeholder: 'Visibility to Driver',
+                      ),
+                      const SizedBox(height: 16),
+                      FluentLabeledInput(
+                        label: 'Internal Warehouse Notes',
+                        controller: _internalNotesController,
+                        maxLines: 3,
+                        placeholder: 'Dispatch Visibility Only',
                       ),
                     ],
                   ),
@@ -423,10 +836,10 @@ class _DeliveryPageState extends State<DeliveryPage> {
 
     // MAIN PAGE VIEW
     return TripEntryScaffold(
-      title: 'Delivery Information',
+      title: 'Receiver Management',
       actions: [
         FilledButton(
-          onPressed: () => _openAddReceiverDialog(context),
+          onPressed: () => _openReceiverDialog(context),
           child: const Row(
             children: [
               Icon(FluentIcons.add, size: 12),
@@ -436,277 +849,110 @@ class _DeliveryPageState extends State<DeliveryPage> {
           ),
         ),
       ],
-      child: Padding(
-        padding: const EdgeInsets.all(24.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [_buildReceiversSection(context, isLight)],
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildStatsRow(theme),
+              const SizedBox(height: 24),
+              _buildSearchHeader(theme),
+              const SizedBox(height: 16),
+              _buildReceiversSection(context, theme),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  void _openAddReceiverDialog(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (context) => const DeliveryPage(isDialog: true),
+  Widget _buildStatsRow(FluentThemeData theme) {
+    return Row(
+      children: [
+        _buildStatCard(
+          'Total Receivers',
+          _receivers.length.toString(),
+          FluentIcons.delivery_truck,
+          theme.accentColor,
+          theme,
+        ),
+        const SizedBox(width: 16),
+        _buildStatCard(
+          'Scheduled Today',
+          _receivers
+              .where((e) {
+                final date = e['delivery_date'];
+                if (date == null) return false;
+                final nowString = DateTime.now().toIso8601String().substring(
+                  0,
+                  10,
+                );
+                return date == nowString;
+              })
+              .length
+              .toString(),
+          FluentIcons.calendar,
+          Colors.orange,
+          theme,
+        ),
+        const SizedBox(width: 16),
+        _buildStatCard(
+          'Delivered',
+          _receivers.where((e) => e['status'] == 'Delivered').length.toString(),
+          FluentIcons.check_mark,
+          Colors.green,
+          theme,
+        ),
+      ],
     );
   }
 
-  Widget _buildReceiversSection(BuildContext context, bool isLight) {
-    return Expanded(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-            decoration: BoxDecoration(
-              color: isLight
-                  ? Colors.grey.withValues(alpha: 0.1)
-                  : Colors.grey.withValues(alpha: 0.1),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(6),
-              ),
-            ),
-            child: const Row(
-              children: [
-                Expanded(
-                  flex: 1,
-                  child: Text(
-                    'Seq',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Status',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 3,
-                  child: Text(
-                    'Receiver',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Ref #',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Date',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 4,
-                  child: Text(
-                    'Address',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                Expanded(
-                  flex: 2,
-                  child: Text(
-                    'Cargo',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-                SizedBox(width: 48), // Actions spacer
-              ],
-            ),
-          ),
-          // Rows
-          ..._receivers.map((item) {
-            return Container(
-              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-              decoration: BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(
-                    color: isLight
-                        ? const Color(0xFFF0F0F0)
-                        : const Color(0xFF444444),
-                  ),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(flex: 1, child: Text(item['seq']!)),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: _buildStatusBadge(item['status']!),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 3,
-                    child: Text(
-                      item['receiver']!,
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(
-                      item['ref'] ?? '--',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isLight ? Colors.grey[140] : Colors.grey[80],
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          item['date']!,
-                          style: const TextStyle(fontSize: 13),
-                        ),
-                        Text(
-                          item['apptTime']!,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isLight
-                                ? Colors.grey[120]
-                                : Colors.grey[100],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 4,
-                    child: Text(
-                      item['address']!,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          item['weight'] ?? '--',
-                          style: const TextStyle(fontWeight: FontWeight.w500),
-                        ),
-                        Text(
-                          '${item['pieces'] ?? '0'} pcs',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isLight
-                                ? Colors.grey[120]
-                                : Colors.grey[100],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(
-                    width: 48,
-                    child: Align(
-                      alignment: Alignment.centerRight,
-                      child: IconButton(
-                        icon: Icon(FluentIcons.more, size: 16),
-                        onPressed: null,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }),
-          // Empty State
-          if (_receivers.isEmpty)
-            Padding(
-              padding: const EdgeInsets.all(48),
-              child: Center(
-                child: Column(
-                  children: [
-                    Icon(
-                      FluentIcons.package,
-                      size: 48,
-                      color: isLight ? Colors.grey[100] : Colors.grey[60],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      "No delivery records found",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: isLight ? Colors.black : Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      "Click 'Add Receiver' to schedule a new one.",
-                      style: TextStyle(
-                        color: isLight ? Colors.grey[100] : Colors.grey[80],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
-  // --- Helper Widgets matching Pickup Page ---
-
-  Widget _buildToggleChip(
-    String label,
+  Widget _buildStatCard(
+    String title,
+    String value,
     IconData icon,
-    bool value,
-    ValueChanged<bool> onChanged,
+    Color color,
+    FluentThemeData theme,
   ) {
-    // Get the current accent color from the theme
-    final accentColor = FluentTheme.of(context).accentColor;
-
-    return GestureDetector(
-      onTap: () => onChanged(!value),
+    return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: value ? accentColor : null,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: value
-                ? accentColor
-                : Colors.grey[140], // Light grey border for unselected
-          ),
+          color: theme.resources.cardBackgroundFillColorDefault,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: theme.resources.dividerStrokeColorDefault),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: 16,
-              color: value ? Colors.white : Colors.white.withOpacity(0.8),
-            ),
-            const SizedBox(width: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: value ? Colors.white : Colors.white.withOpacity(0.9),
-                fontSize: 13,
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
               ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 16),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: theme.resources.textFillColorSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -714,123 +960,327 @@ class _DeliveryPageState extends State<DeliveryPage> {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
-    return Text(
-      title.toUpperCase(),
-      style: GoogleFonts.outfit(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        letterSpacing: 1.2,
-        color: FluentTheme.of(context).accentColor,
-      ),
+  Widget _buildSearchHeader(FluentThemeData theme) {
+    return Row(
+      children: [
+        Expanded(
+          child: TextBox(
+            controller: _searchController,
+            placeholder:
+                'Search by receiver name, city, or reference number...',
+            prefix: const Padding(
+              padding: EdgeInsets.only(left: 12),
+              child: Icon(FluentIcons.search),
+            ),
+            decoration: WidgetStatePropertyAll(
+              BoxDecoration(borderRadius: BorderRadius.circular(4)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildDivider() {
+  Widget _buildReceiversSection(BuildContext context, FluentThemeData theme) {
+    if (_isLoading) {
+      return const Center(child: ProgressRing());
+    }
+
+    if (_filteredReceivers.isEmpty) {
+      return Center(
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
+            Icon(
+              FluentIcons.search_and_apps,
+              size: 40,
+              color: theme.resources.textFillColorSecondary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No receivers found',
+              style: TextStyle(color: theme.resources.textFillColorSecondary),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
-      height: 1,
-      color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
-    );
-  }
-
-  Widget _buildLabel(String text) {
-    final isLight = FluentTheme.of(context).brightness == Brightness.light;
-    return Text(
-      text,
-      style: TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.w500,
-        color: isLight ? Colors.grey[140] : Colors.grey[80],
+      decoration: BoxDecoration(
+        color: theme.resources.cardBackgroundFillColorDefault,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: theme.resources.dividerStrokeColorDefault),
+      ),
+      child: Column(
+        children: [
+          _buildTableHeader(theme),
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: _filteredReceivers.length,
+            separatorBuilder: (context, index) => Divider(
+              style: DividerThemeData(
+                horizontalMargin: EdgeInsets.zero,
+                decoration: BoxDecoration(
+                  color: theme.resources.dividerStrokeColorDefault,
+                ),
+              ),
+            ),
+            itemBuilder: (context, index) =>
+                _buildReceiverRow(_filteredReceivers[index], index + 1, theme),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildInlineField(
-    String label,
-    TextEditingController controller, {
-    String? placeholder,
-    Widget? suffix,
-    int maxLines = 1,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 6),
-          child: _buildLabel(label),
-        ),
-        TextFormBox(
-          controller: controller,
-          placeholder: placeholder,
-          suffix: suffix,
-          maxLines: maxLines,
-          padding: const EdgeInsets.all(10),
-          style: const TextStyle(fontSize: 14),
-        ),
-      ],
+  Widget _buildTableHeader(FluentThemeData theme) {
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+      decoration: BoxDecoration(
+        color: theme.resources.subtleFillColorSecondary,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(8)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 40,
+            child: _buildSortableHeader('Seq', 'created_at', theme),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            flex: 2,
+            child: _buildSortableHeader('Status', 'status', theme),
+          ),
+          Expanded(
+            flex: 3,
+            child: _buildSortableHeader('Receiver', 'receiver_name', theme),
+          ),
+          Expanded(flex: 2, child: _buildSortableHeader('City', 'city', theme)),
+          Expanded(
+            flex: 2,
+            child: _buildSortableHeader('Reference', 'reference_number', theme),
+          ),
+          Expanded(
+            flex: 2,
+            child: _buildSortableHeader('Date', 'delivery_date', theme),
+          ),
+          const SizedBox(width: 80), // Actions
+        ],
+      ),
     );
   }
 
-  Widget _buildDropdown(
-    String label,
-    String? value,
-    List<String> items,
-    Function(String?) onChanged,
+  Widget _buildSortableHeader(
+    String title,
+    String column,
+    FluentThemeData theme,
   ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 2, bottom: 6),
-          child: _buildLabel(label),
+    final isSelected = _sortColumn == column;
+    return GestureDetector(
+      onTap: () => _onHeaderTap(column),
+      child: MouseRegion(
+        cursor: SystemMouseCursors.click,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isSelected
+                    ? theme.accentColor
+                    : theme.resources.textFillColorPrimary,
+              ),
+            ),
+            if (isSelected) ...[
+              const SizedBox(width: 4),
+              Icon(
+                _isAscending
+                    ? FluentIcons.chevron_up
+                    : FluentIcons.chevron_down,
+                size: 10,
+                color: theme.accentColor,
+              ),
+            ],
+          ],
         ),
-        ComboBox<String>(
-          value: value,
-          items: items
-              .map(
-                (e) => ComboBoxItem(
-                  value: e,
-                  child: Text(e, style: const TextStyle(fontSize: 14)),
-                ),
-              )
-              .toList(),
-          onChanged: onChanged,
-          isExpanded: true,
-          placeholder: const Text('Select', style: TextStyle(fontSize: 14)),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _buildStatusBadge(String status) {
+  Widget _buildReceiverRow(
+    Map<String, dynamic> item,
+    int seq,
+    FluentThemeData theme,
+  ) {
+    return HoverButton(
+      onPressed: () => _openReceiverDialog(context, receiverData: item),
+      builder: (context, states) {
+        return Container(
+          color: states.isHovered
+              ? theme.resources.subtleFillColorTertiary
+              : Colors.transparent,
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 40,
+                child: Text(
+                  seq.toString(),
+                  style: TextStyle(
+                    color: theme.resources.textFillColorSecondary,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                flex: 2,
+                child: _buildStatusBadge(item['status'] ?? 'Scheduled', theme),
+              ),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      item['receiver_name'] ?? 'N/A',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: theme.resources.textFillColorPrimary,
+                      ),
+                    ),
+                    Text(
+                      item['address'] ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.resources.textFillColorSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  item['city'] ?? 'N/A',
+                  style: TextStyle(color: theme.resources.textFillColorPrimary),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  item['reference_number'] ?? '-',
+                  style: TextStyle(color: theme.resources.textFillColorPrimary),
+                ),
+              ),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  item['delivery_date'] ?? '-',
+                  style: TextStyle(color: theme.resources.textFillColorPrimary),
+                ),
+              ),
+              SizedBox(
+                width: 80,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    IconButton(
+                      icon: const Icon(FluentIcons.edit, size: 14),
+                      onPressed: () =>
+                          _openReceiverDialog(context, receiverData: item),
+                    ),
+                    IconButton(
+                      icon: const Icon(FluentIcons.delete, size: 14),
+                      onPressed: () => _showDeleteDialog(item),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusBadge(String status, FluentThemeData theme) {
     Color color;
     switch (status) {
-      case 'Picked Up':
+      case 'Delivered':
         color = Colors.green;
         break;
       case 'Cancelled':
         color = Colors.red;
         break;
       default:
-        color = Colors.blue;
+        color = theme.accentColor;
     }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(4),
+        borderRadius: BorderRadius.circular(100),
         border: Border.all(color: color.withValues(alpha: 0.3)),
       ),
-      child: Text(
-        status.toUpperCase(),
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-          color: color,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(status, style: TextStyle(color: color, fontSize: 12)),
+        ],
+      ),
+    );
+  }
+
+  void _openReceiverDialog(
+    BuildContext context, {
+    Map<String, dynamic>? receiverData,
+  }) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) =>
+          DeliveryPage(isDialog: true, receiverData: receiverData),
+    ).then((value) {
+      if (value == true) {
+        _fetchReceivers();
+      }
+    });
+  }
+
+  void _showDeleteDialog(Map<String, dynamic> item) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Delete Receiver?'),
+        content: Text(
+          'Are you sure you want to delete ${item['receiver_name']}?',
         ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+          FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStatePropertyAll(Colors.red),
+            ),
+            child: const Text('Delete'),
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteReceiver(item['id']);
+            },
+          ),
+        ],
       ),
     );
   }

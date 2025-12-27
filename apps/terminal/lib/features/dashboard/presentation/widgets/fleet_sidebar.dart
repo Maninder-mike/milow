@@ -74,11 +74,9 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
     final isLight = theme.brightness == Brightness.light;
     // Sidebar colors - matching the lighter terminal theme
     final backgroundColor = isLight
-        ? const Color(0xFFE5E5E5) // Slightly darker for contrast
-        : const Color(0xFF252526);
-    final titleColor = isLight
-        ? const Color(0xFFBBBBBB)
-        : const Color(0xFFBBBBBB);
+        ? theme.resources.subtleFillColorSecondary
+        : theme.resources.solidBackgroundFillColorTertiary;
+    final titleColor = theme.resources.textFillColorSecondary;
 
     final vehiclesAsync = ref.watch(vehiclesListProvider);
 
@@ -223,12 +221,9 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
   }
 
   Widget _buildVehicleItem(Map<String, dynamic> vehicle, bool isLight) {
-    final textColor = isLight
-        ? const Color(0xFF333333)
-        : const Color(0xFFCCCCCC);
-    final hoverColor = isLight
-        ? const Color(0xFFE8E8E8)
-        : const Color(0xFF2A2D2E);
+    final theme = FluentTheme.of(context);
+    final textColor = theme.resources.textFillColorPrimary;
+    final hoverColor = theme.resources.subtleFillColorSecondary;
 
     final status = vehicle['status'] as String? ?? 'Unknown';
     final statusColor = _getStatusColor(status);
@@ -254,14 +249,10 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                 width: 36,
                 height: 36,
                 decoration: BoxDecoration(
-                  color: isLight
-                      ? const Color(0xFFFFFFFF)
-                      : const Color(0xFF333333),
+                  color: theme.resources.cardBackgroundFillColorDefault,
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: isLight
-                        ? const Color(0xFFE5E5E5)
-                        : const Color(0xFF404040),
+                    color: theme.resources.dividerStrokeColorDefault,
                   ),
                 ),
                 child: Icon(
@@ -269,9 +260,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                       ? FluentIcons.vehicle_truck_profile_24_regular
                       : FluentIcons.vehicle_truck_24_regular,
                   size: 18,
-                  color: isLight
-                      ? Colors.black.withValues(alpha: 0.87)
-                      : Colors.white.withValues(alpha: 0.7),
+                  color: theme.resources.textFillColorPrimary,
                 ),
               ),
               const SizedBox(width: 12),
@@ -397,17 +386,11 @@ class _SidebarSearchBarState extends State<_SidebarSearchBar> {
     final theme = FluentTheme.of(context);
 
     // Windows 11 style colors
-    final bgColor = widget.isLight ? Colors.white : const Color(0xFF2D2D2D);
-    final borderColor = widget.isLight
-        ? const Color(0xFFE5E5E5)
-        : const Color(0xFF404040);
+    final bgColor = theme.resources.controlFillColorDefault;
+    final borderColor = theme.resources.dividerStrokeColorDefault;
     final focusBorderColor = theme.accentColor;
-    final placeholderColor = widget.isLight
-        ? const Color(0xFF6E6E6E)
-        : const Color(0xFF9E9E9E);
-    final foregroundColor = widget.isLight
-        ? const Color(0xFF333333)
-        : const Color(0xFFFFFFFF);
+    final placeholderColor = theme.resources.textFillColorSecondary;
+    final foregroundColor = theme.resources.textFillColorPrimary;
 
     return SizedBox(
       height: 32,

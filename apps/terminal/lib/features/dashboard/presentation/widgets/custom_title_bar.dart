@@ -24,9 +24,11 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
     final isLight = theme.brightness == Brightness.light;
 
     final backgroundColor = isLight
-        ? const Color(0xFFF0F4F8) // Match Sidebar light blueish tint
-        : const Color(0xFF202020); // Match Sidebar dark mode
-    final foregroundColor = isLight ? const Color(0xFF333333) : Colors.white;
+        ? theme
+              .resources
+              .subtleFillColorTertiary // Subtle tinted background
+        : theme.resources.solidBackgroundFillColorBase;
+    final foregroundColor = theme.resources.textFillColorPrimary;
 
     return SizedBox(
       height: 38,
@@ -139,7 +141,7 @@ class _WindowControlButtonsState extends State<_WindowControlButtons> {
         _WindowButton(
           icon: FluentIcons.dismiss_24_regular,
           iconColor: iconColor,
-          hoverColor: const Color(0xFFE81123),
+          hoverColor: Colors.red,
           hoverIconColor: Colors.white,
           onPressed: () async {
             await windowManager.close();

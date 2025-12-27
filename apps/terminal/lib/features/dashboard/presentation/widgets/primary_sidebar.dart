@@ -32,8 +32,8 @@ class PrimarySidebar extends ConsumerWidget {
 
     // Light gray/whiteish background for sidebar based on image
     final backgroundColor = isLight
-        ? const Color(0xFFF0F4F8) // Light metallic/blue tint
-        : const Color(0xFF202020);
+        ? theme.resources.subtleFillColorTertiary
+        : theme.resources.solidBackgroundFillColorBase;
 
     return Container(
       width: 72, // Wider to fit text
@@ -122,11 +122,11 @@ class PrimarySidebar extends ConsumerWidget {
 
     // Active styling
     final activeBgColor = isLight
-        ? const Color(0xFFE1E6EB)
-        : const Color(0xFF333333);
+        ? theme.resources.subtleFillColorSecondary
+        : theme.resources.subtleFillColorTertiary;
     final iconColor = isActive
-        ? (isLight ? const Color(0xFF005FB8) : Colors.white)
-        : (isLight ? const Color(0xFF616161) : const Color(0xFFCCCCCC));
+        ? theme.accentColor
+        : theme.resources.textFillColorSecondary;
 
     // Active/Selected indicator line
     final showIndicator = isActive;
@@ -174,7 +174,7 @@ class PrimarySidebar extends ConsumerWidget {
                   width: 3,
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isLight ? const Color(0xFF005FB8) : Colors.white,
+                      color: theme.accentColor,
                       borderRadius: const BorderRadius.only(
                         topRight: Radius.circular(2),
                         bottomRight: Radius.circular(2),

@@ -184,6 +184,9 @@ alter table public.fuel_entries enable row level security;
 alter table public.messages enable row level security;
 alter table public.notifications enable row level security;
 alter table public.app_version enable row level security;
+alter table public.vehicles enable row level security;
+alter table public.vehicle_documents enable row level security;
+alter table public.customers enable row level security;
 
 
 -- ============================================
@@ -398,6 +401,7 @@ create policy "Users can update own notifications" on notifications
 
 
 -- APP VERSION
+drop policy if exists "Allow public read access" on app_version;
 create policy "Allow public read access" on app_version for select using (true);
 
 
@@ -424,7 +428,7 @@ create index if not exists profiles_role_idx on profiles(role);
 create index if not exists profiles_company_id_idx on profiles(company_id);
 create index if not exists profiles_email_idx on profiles(email);
 
-create index if not exists trucks_company_id_idx on trucks(company_id);
+create index if not exists vehicles_company_id_idx on public.vehicles(company_id);
 
 -- 6.1 Server-side Aggregations
 create or replace function public.get_total_trip_distance(user_uuid uuid)
@@ -436,6 +440,17 @@ returns numeric as $$
   and start_odometer is not null;
 $$ language sql stable security definer;
 
+-- Generic function to set company_id from user profile
+create or replace function public.set_company_id()
+returns trigger as $$
+begin
+  if new.company_id is null then
+    select company_id into new.company_id from public.profiles where id = auth.uid();
+  end if;
+  return new;
+end;
+$$ language plpgsql security definer;
+
 
 -- ============================================
 -- 7. STORAGE BUCKETS (AVATARS)
@@ -443,12 +458,19 @@ $$ language sql stable security definer;
 insert into storage.buckets (id, name, public) values ('avatars', 'avatars', true)
 on conflict (id) do nothing;
 
+drop policy if exists "Public read for avatars" on storage.objects;
 create policy "Public read for avatars" on storage.objects for select using ( bucket_id = 'avatars' );
+
+drop policy if exists "Users can upload their avatars" on storage.objects;
 create policy "Users can upload their avatars" on storage.objects for insert with check ( bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1] );
+
+drop policy if exists "Users can update their avatars" on storage.objects;
 create policy "Users can update their avatars" on storage.objects for update using ( bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1] );
+
+drop policy if exists "Users can delete their avatars" on storage.objects;
 create policy "Users can delete their avatars" on storage.objects for delete using ( bucket_id = 'avatars' and auth.uid()::text = (storage.foldername(name))[1] );
--- TRUCKS TABLE
-create table if not exists public.trucks (
+-- 2.8 VEHICLES (Renamed from trucks)
+create table if not exists public.vehicles (
     id uuid default gen_random_uuid() primary key,
     company_id uuid references public.companies(id) not null,
     truck_number text not null,
@@ -464,120 +486,344 @@ create table if not exists public.trucks (
     updated_at timestamptz default now()
 );
 
--- TRUCK DOCUMENTS TABLE
-create table if not exists public.truck_documents (
+-- 2.9 VEHICLE DOCUMENTS
+create table if not exists public.vehicle_documents (
     id uuid default gen_random_uuid() primary key,
-    truck_id uuid references public.trucks(id) on delete cascade not null,
-    company_id uuid references public.companies(id) not null, -- Denormalized for easier RLS
-    document_type text not null, -- 'Registration', 'Insurance', 'Inspection', 'Other'
+    vehicle_id uuid references public.vehicles(id) on delete cascade not null,
+    company_id uuid references public.companies(id) not null,
+    document_type text not null,
     file_path text not null,
     expiry_date date,
     notes text,
     created_at timestamptz default now()
 );
 
+-- 2.10 CUSTOMERS
+create table if not exists public.customers (
+    id uuid default gen_random_uuid() primary key,
+    company_id uuid references public.companies(id) not null,
+    name text not null,
+    email text,
+    phone text,
+    address_line1 text,
+    address_line2 text,
+    city text,
+    state_province text,
+    postal_code text,
+    country text,
+    fax text,
+    order_number text,
+    reference_numbers text,
+    rate numeric,
+    currency text default 'CDN',
+    equipment_type text,
+    assigned_dispatcher text,
+    payment_terms text,
+    is_round_trip boolean default false,
+    is_booked_for_other_carriers boolean default false,
+    is_csa_fast_load boolean default false,
+    is_bonded_shipment boolean default false,
+    is_hazmat boolean default false,
+    is_high_priority boolean default false,
+    is_team_load boolean default false,
+    is_tarp_required boolean default false,
+    is_appointment_required boolean default false,
+    is_liftgate_needed boolean default false,
+    is_residential_delivery boolean default false,
+    is_driver_assist boolean default false,
+    is_drop_trailer boolean default false,
+    is_port_rail boolean default false,
+    is_non_stackable boolean default false,
+    is_fragile boolean default false,
+    notes text,
+    created_by uuid references auth.users(id) default auth.uid(),
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+
 -- ENABLE RLS
-alter table public.trucks enable row level security;
-alter table public.truck_documents enable row level security;
-
--- POLICIES FOR TRUCKS
-create policy "Company members can view trucks"
-  on public.trucks for select using (
+-- POLICIES FOR VEHICLES
+drop policy if exists "Company members can view vehicles" on public.vehicles;
+create policy "Company members can view vehicles"
+  on public.vehicles for select using (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
-create policy "Company members can insert trucks"
-  on public.trucks for insert with check (
+drop policy if exists "Company members can insert vehicles" on public.vehicles;
+create policy "Company members can insert vehicles"
+  on public.vehicles for insert with check (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
-create policy "Company members can update trucks"
-  on public.trucks for update using (
+drop policy if exists "Company members can update vehicles" on public.vehicles;
+create policy "Company members can update vehicles"
+  on public.vehicles for update using (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
-create policy "Company members can delete trucks"
-  on public.trucks for delete using (
+drop policy if exists "Company members can delete vehicles" on public.vehicles;
+create policy "Company members can delete vehicles"
+  on public.vehicles for delete using (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
--- POLICIES FOR TRUCK DOCUMENTS
-create policy "Company members can view truck documents"
-  on public.truck_documents for select using (
+-- POLICIES FOR VEHICLE DOCUMENTS
+drop policy if exists "Company members can view vehicle documents" on public.vehicle_documents;
+create policy "Company members can view vehicle documents"
+  on public.vehicle_documents for select using (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
-create policy "Company members can insert truck documents"
-  on public.truck_documents for insert with check (
+drop policy if exists "Company members can insert vehicle documents" on public.vehicle_documents;
+create policy "Company members can insert vehicle documents"
+  on public.vehicle_documents for insert with check (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
-create policy "Company members can update truck documents"
-  on public.truck_documents for update using (
+drop policy if exists "Company members can update vehicle documents" on public.vehicle_documents;
+create policy "Company members can update vehicle documents"
+  on public.vehicle_documents for update using (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
-create policy "Company members can delete truck documents"
-  on public.truck_documents for delete using (
+drop policy if exists "Company members can delete vehicle documents" on public.vehicle_documents;
+create policy "Company members can delete vehicle documents"
+  on public.vehicle_documents for delete using (
     company_id in (select company_id from public.profiles where id = auth.uid())
   );
 
--- STORAGE for Truck Documents
-insert into storage.buckets (id, name, public) values ('truck_documents', 'truck_documents', false)
+-- POLICIES FOR CUSTOMERS
+drop policy if exists "Company members can view customers" on public.customers;
+create policy "Company members can view customers"
+  on public.customers for select using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can insert customers" on public.customers;
+create policy "Company members can insert customers"
+  on public.customers for insert with check (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can update customers" on public.customers;
+create policy "Company members can update customers"
+  on public.customers for update using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can delete customers" on public.customers;
+create policy "Company members can delete customers"
+  on public.customers for delete using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+-- STORAGE for Vehicle Documents
+insert into storage.buckets (id, name, public) values ('vehicle_documents', 'vehicle_documents', false)
 on conflict (id) do nothing;
 
-create policy "Company members can view truck documents storage"
+drop policy if exists "Company members can view vehicle documents storage" on storage.objects;
+create policy "Company members can view vehicle documents storage"
   on storage.objects for select using (
-    bucket_id = 'truck_documents' and
+    bucket_id = 'vehicle_documents' and
     (storage.foldername(name))[1] in (
        select company_id::text from public.profiles where id = auth.uid()
     )
   );
 
-create policy "Company members can upload truck documents storage"
+drop policy if exists "Company members can upload vehicle documents storage" on storage.objects;
+create policy "Company members can upload vehicle documents storage"
   on storage.objects for insert with check (
-    bucket_id = 'truck_documents' and
+    bucket_id = 'vehicle_documents' and
     (storage.foldername(name))[1] in (
        select company_id::text from public.profiles where id = auth.uid()
     )
   );
 
-create policy "Company members can delete truck documents storage"
+drop policy if exists "Company members can delete vehicle documents storage" on storage.objects;
+create policy "Company members can delete vehicle documents storage"
   on storage.objects for delete using (
-    bucket_id = 'truck_documents' and
+    bucket_id = 'vehicle_documents' and
     (storage.foldername(name))[1] in (
        select company_id::text from public.profiles where id = auth.uid()
     )
   );
 
--- TRIGGER to auto-set company_id on trucks
-create or replace function public.set_truck_company_id()
-returns trigger as $$
-begin
-  if new.company_id is null then
-    select company_id into new.company_id from public.profiles where id = auth.uid();
-  end if;
-  return new;
-end;
-$$ language plpgsql security definer;
+-- Generic triggers using set_company_id
+drop trigger if exists set_vehicle_company_id_trigger on public.vehicles;
+create trigger set_vehicle_company_id_trigger
+  before insert on public.vehicles
+  for each row execute procedure public.set_company_id();
 
-drop trigger if exists set_truck_company_id_trigger on public.trucks;
-create trigger set_truck_company_id_trigger
-  before insert on public.trucks
-  for each row execute procedure public.set_truck_company_id();
+drop trigger if exists set_vehicle_doc_company_id_trigger on public.vehicle_documents;
+create trigger set_vehicle_doc_company_id_trigger
+  before insert on public.vehicle_documents
+  for each row execute procedure public.set_company_id();
 
--- TRIGGER to auto-set company_id on truck_documents
-create or replace function public.set_truck_doc_company_id()
-returns trigger as $$
-begin
-  if new.company_id is null then
-    select company_id into new.company_id from public.profiles where id = auth.uid();
-  end if;
-  return new;
-end;
-$$ language plpgsql security definer;
+drop trigger if exists set_customer_company_id_trigger on public.customers;
+create trigger set_customer_company_id_trigger
+  before insert on public.customers
+  for each row execute procedure public.set_company_id();
+-- 2.11 PICKUPS
+create table if not exists public.pickups (
+    id uuid default gen_random_uuid() primary key,
+    company_id uuid references public.companies(id) not null,
+    shipper_name text not null,
+    address text,
+    city text,
+    state_province text,
+    postal_code text,
+    country text default 'Canada',
+    contact_person text,
+    phone text,
+    email text,
+    fax text,
+    pickup_date date,
+    start_time time,
+    appointment_type text,
+    scheduling_window text,
+    reference_number text,
+    
+    -- Logistics Flags
+    is_ppe_required boolean default false,
+    is_driver_assist boolean default false,
+    is_overnight_parking boolean default false,
+    is_strict_late_policy boolean default false,
+    is_call_before_arrival boolean default false,
+    is_blind_shipment boolean default false,
+    is_scale_on_site boolean default false,
+    is_clean_trailer boolean default false,
+    is_hazmat boolean default false,
+    is_facility_247 boolean default false,
+    is_straps_required boolean default false,
+    
+    -- Cargo
+    commodity text,
+    weight numeric,
+    weight_unit text default 'Lbs',
+    quantity text,
+    
+    -- Notes
+    driver_instructions text,
+    internal_notes text,
+    
+    -- System
+    status text default 'Scheduled',
+    created_by uuid references auth.users(id) default auth.uid(),
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
 
-drop trigger if exists set_truck_doc_company_id_trigger on public.truck_documents;
-create trigger set_truck_doc_company_id_trigger
-  before insert on public.truck_documents
-  for each row execute procedure public.set_truck_doc_company_id();
+-- ENABLE RLS
+alter table public.pickups enable row level security;
+
+-- POLICIES FOR PICKUPS
+drop policy if exists "Company members can view pickups" on public.pickups;
+create policy "Company members can view pickups"
+  on public.pickups for select using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can insert pickups" on public.pickups;
+create policy "Company members can insert pickups"
+  on public.pickups for insert with check (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can update pickups" on public.pickups;
+create policy "Company members can update pickups"
+  on public.pickups for update using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can delete pickups" on public.pickups;
+create policy "Company members can delete pickups"
+  on public.pickups for delete using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+-- Trigger for company_id
+drop trigger if exists set_pickup_company_id_trigger on public.pickups;
+create trigger set_pickup_company_id_trigger
+  before insert on public.pickups
+  for each row execute procedure public.set_company_id();
+
+-- 2.12 RECEIVERS
+create table if not exists public.receivers (
+    id uuid default gen_random_uuid() primary key,
+    company_id uuid references public.companies(id) not null,
+    receiver_name text not null,
+    address text,
+    city text,
+    state_province text,
+    postal_code text,
+    country text default 'Canada',
+    contact_person text,
+    phone text,
+    email text,
+    fax text,
+    delivery_date date,
+    delivery_time time,
+    appointment_type text,
+    scheduling_window text,
+    reference_number text,
+    
+    -- Logistics Flags
+    is_ppe_required boolean default false,
+    is_driver_assist boolean default false,
+    is_overnight_parking boolean default false,
+    is_strict_late_policy boolean default false,
+    is_call_before_arrival boolean default false,
+    is_lumper_required boolean default false,
+    is_gate_code_required boolean default false,
+    
+    -- Cargo
+    commodity text,
+    weight numeric,
+    weight_unit text default 'Lbs',
+    quantity text,
+    
+    -- Notes
+    driver_instructions text,
+    internal_notes text,
+    
+    -- System
+    status text default 'Scheduled',
+    created_by uuid references auth.users(id) default auth.uid(),
+    created_at timestamptz default now(),
+    updated_at timestamptz default now()
+);
+
+-- ENABLE RLS
+alter table public.receivers enable row level security;
+
+-- POLICIES FOR RECEIVERS
+drop policy if exists "Company members can view receivers" on public.receivers;
+create policy "Company members can view receivers"
+  on public.receivers for select using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can insert receivers" on public.receivers;
+create policy "Company members can insert receivers"
+  on public.receivers for insert with check (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can update receivers" on public.receivers;
+create policy "Company members can update receivers"
+  on public.receivers for update using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+drop policy if exists "Company members can delete receivers" on public.receivers;
+create policy "Company members can delete receivers"
+  on public.receivers for delete using (
+    company_id in (select company_id from public.profiles where id = auth.uid())
+  );
+
+-- Trigger for company_id
+drop trigger if exists set_receiver_company_id_trigger on public.receivers;
+create trigger set_receiver_company_id_trigger
+  before insert on public.receivers
+  for each row execute procedure public.set_company_id();
+

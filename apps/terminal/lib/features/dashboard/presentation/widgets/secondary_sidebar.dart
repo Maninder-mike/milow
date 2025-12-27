@@ -20,11 +20,9 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
     final isLight = theme.brightness == Brightness.light;
 
     final backgroundColor = isLight
-        ? const Color(0xFFF5F5F5)
-        : const Color(0xFF252526);
-    final titleColor = isLight
-        ? const Color(0xFF616161)
-        : const Color(0xFFBBBBBB);
+        ? theme.resources.subtleFillColorTertiary
+        : theme.resources.solidBackgroundFillColorTertiary;
+    final titleColor = theme.resources.textFillColorSecondary;
 
     return Container(
       color: backgroundColor,
@@ -105,14 +103,11 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
     required String description,
     required Color color,
   }) {
+    final theme = FluentTheme.of(context);
     final isHovered = _hoveredItem == title;
-    final cardColor = isLight ? Colors.white : const Color(0xFF2D2D2D);
-    final textColor = isLight
-        ? const Color(0xFF333333)
-        : const Color(0xFFE5E5E5);
-    final subTextColor = isLight
-        ? const Color(0xFF666666)
-        : const Color(0xFF999999);
+    final cardColor = theme.resources.cardBackgroundFillColorDefault;
+    final textColor = theme.resources.textFillColorPrimary;
+    final subTextColor = theme.resources.textFillColorSecondary;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hoveredItem = title),

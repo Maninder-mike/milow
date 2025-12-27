@@ -302,11 +302,13 @@ class AdminApp extends ConsumerWidget {
         theme: FluentThemeData(
           accentColor: SystemTheme.accentColor.accent.toAccentColor(),
           brightness: Brightness.light,
+          visualDensity: VisualDensity.standard,
           fontFamily: 'Segoe UI',
         ),
         darkTheme: FluentThemeData(
           accentColor: SystemTheme.accentColor.accent.toAccentColor(),
           brightness: Brightness.dark,
+          visualDensity: VisualDensity.standard,
           fontFamily: 'Segoe UI',
         ),
         themeMode: themeMode,
