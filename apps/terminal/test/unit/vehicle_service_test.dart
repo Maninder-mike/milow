@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import '../../lib/features/dashboard/services/vehicle_service.dart';
+import 'package:terminal/features/dashboard/services/vehicle_service.dart';
 import '../helpers/mock_vehicle_service.dart';
 
 void main() {

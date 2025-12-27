@@ -187,7 +187,7 @@ void main() {
     ) async {
       // Test that the close button uses the correct Windows red color
       const closeButtonHoverColor = Color(0xFFE81123);
-      expect(closeButtonHoverColor.value, equals(0xFFE81123));
+      expect(closeButtonHoverColor.toARGB32(), equals(0xFFE81123));
     });
   });
 }

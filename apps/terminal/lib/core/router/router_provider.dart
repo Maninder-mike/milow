@@ -20,7 +20,7 @@ import 'package:terminal/features/dashboard/screens/overview_page.dart';
 import 'package:terminal/features/dashboard/screens/entity_placeholder_page.dart';
 import 'package:terminal/features/dashboard/screens/customer/customer_page.dart';
 import 'package:terminal/features/dashboard/screens/pickup/pickup_page.dart';
-import 'package:terminal/features/dashboard/screens/deliver/deliver_page.dart';
+import 'package:terminal/features/dashboard/screens/deliver/delivery_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicles_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicle_status_page.dart';
 import 'package:terminal/features/dispatch/presentation/pages/dispatch_page.dart'; // [NEW] import
@@ -95,7 +95,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/deliver',
-            builder: (context, state) => const DeliverPage(),
+            builder: (context, state) => const DeliveryPage(),
           ),
           GoRoute(
             path: '/vehicles',

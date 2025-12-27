@@ -81,7 +81,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
       title = 'Pick Up';
       icon = FluentIcons.box_24_regular;
     } else if (location.startsWith('/deliver')) {
-      title = 'Deliver';
+      title = 'Delivery';
       icon = FluentIcons.vehicle_truck_24_regular;
     } else if (location.startsWith('/vehicles')) {
       title = 'Vehicles';
@@ -248,7 +248,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
               case 'PICK UP':
                 _navigateTo('/pickup');
                 break;
-              case 'DELIVER':
+              case 'DELIVERY':
                 _navigateTo('/deliver');
                 break;
               case 'HIGHWAY DISPATCH':

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:terminal/core/constants/location_data.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -48,10 +49,10 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
       // Attempt to map code to full name if it matches a key
       if (prov.length == 2) {
         final code = prov.toUpperCase();
-        if (_canadianProvinces.containsKey(code)) {
-          prov = _canadianProvinces[code]!;
-        } else if (_usStates.containsKey(code)) {
-          prov = _usStates[code]!;
+        if (LocationData.canadianProvinces.containsKey(code)) {
+          prov = LocationData.canadianProvinces[code]!;
+        } else if (LocationData.usStates.containsKey(code)) {
+          prov = LocationData.usStates[code]!;
         }
       }
       _licenseProvince = prov;
@@ -75,76 +76,6 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
       }
     }
   }
-
-  static const _canadianProvinces = {
-    'AB': 'Alberta',
-    'BC': 'British Columbia',
-    'MB': 'Manitoba',
-    'NB': 'New Brunswick',
-    'NL': 'Newfoundland and Labrador',
-    'NS': 'Nova Scotia',
-    'NT': 'Northwest Territories',
-    'NU': 'Nunavut',
-    'ON': 'Ontario',
-    'PE': 'Prince Edward Island',
-    'QC': 'Quebec',
-    'SK': 'Saskatchewan',
-    'YT': 'Yukon',
-  };
-
-  static const _usStates = {
-    'AK': 'Alaska',
-    'AL': 'Alabama',
-    'AR': 'Arkansas',
-    'AZ': 'Arizona',
-    'CA': 'California',
-    'CO': 'Colorado',
-    'CT': 'Connecticut',
-    'DC': 'District of Columbia',
-    'DE': 'Delaware',
-    'FL': 'Florida',
-    'GA': 'Georgia',
-    'HI': 'Hawaii',
-    'IA': 'Iowa',
-    'ID': 'Idaho',
-    'IL': 'Illinois',
-    'IN': 'Indiana',
-    'KS': 'Kansas',
-    'KY': 'Kentucky',
-    'LA': 'Louisiana',
-    'MA': 'Massachusetts',
-    'MD': 'Maryland',
-    'ME': 'Maine',
-    'MI': 'Michigan',
-    'MN': 'Minnesota',
-    'MO': 'Missouri',
-    'MS': 'Mississippi',
-    'MT': 'Montana',
-    'NC': 'North Carolina',
-    'ND': 'North Dakota',
-    'NE': 'Nebraska',
-    'NH': 'New Hampshire',
-    'NJ': 'New Jersey',
-    'NM': 'New Mexico',
-    'NV': 'Nevada',
-    'NY': 'New York',
-    'OH': 'Ohio',
-    'OK': 'Oklahoma',
-    'OR': 'Oregon',
-    'PA': 'Pennsylvania',
-    'RI': 'Rhode Island',
-    'SC': 'South Carolina',
-    'SD': 'South Dakota',
-    'TN': 'Tennessee',
-    'TX': 'Texas',
-    'UT': 'Utah',
-    'VA': 'Virginia',
-    'VT': 'Vermont',
-    'WA': 'Washington',
-    'WI': 'Wisconsin',
-    'WV': 'West Virginia',
-    'WY': 'Wyoming',
-  };
 
   @override
   void dispose() {
@@ -471,14 +402,14 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
                       value: _licenseProvince,
                       items: [
                         // Canada
-                        ..._canadianProvinces.entries.map(
+                        ...LocationData.canadianProvinces.entries.map(
                           (e) => ComboBoxItem(
                             value: e.value,
                             child: Text('${e.key} - ${e.value}'),
                           ),
                         ),
                         // USA
-                        ..._usStates.entries.map(
+                        ...LocationData.usStates.entries.map(
                           (e) => ComboBoxItem(
                             value: e.value,
                             child: Text('${e.key} - ${e.value}'),

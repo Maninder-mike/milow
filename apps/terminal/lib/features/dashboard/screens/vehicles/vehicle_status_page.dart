@@ -77,7 +77,9 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
             onPressed: () => Navigator.pop(context, false),
           ),
           FilledButton(
-            style: ButtonStyle(backgroundColor: ButtonState.all(Colors.red)),
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(Colors.red),
+            ),
             child: const Text('Delete'),
             onPressed: () => Navigator.pop(context, true),
           ),
@@ -347,13 +349,13 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
                 color: isExpired
-                    ? Colors.red.withOpacity(0.1)
-                    : Colors.green.withOpacity(0.1),
+                    ? Colors.red.withValues(alpha: 0.1)
+                    : Colors.green.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(4),
                 border: Border.all(
                   color: isExpired
-                      ? Colors.red.withOpacity(0.5)
-                      : Colors.green.withOpacity(0.5),
+                      ? Colors.red.withValues(alpha: 0.5)
+                      : Colors.green.withValues(alpha: 0.5),
                 ),
               ),
               child: Text(

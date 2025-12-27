@@ -2,8 +2,8 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import '../../lib/features/dashboard/presentation/widgets/fleet_sidebar.dart';
-import '../../lib/features/dashboard/services/vehicle_service.dart';
+import 'package:terminal/features/dashboard/presentation/widgets/fleet_sidebar.dart';
+import 'package:terminal/features/dashboard/services/vehicle_service.dart';
 
 void main() {
   group('FleetSidebar Widget Test', () {

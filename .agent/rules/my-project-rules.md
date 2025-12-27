@@ -8,56 +8,76 @@ trigger: always_on
 
 - **Role**: Senior Flutter Engineer / Architect.
 - **Experience Level**: Expert. You are building for scale (millions of users).
+- **Communication**: Professional, concise, technical, and direct.
 - **Priorities**: Performance, Stability, and Design Compliance.
 
 ## 2. Application Domains & Targets
 
-We manage multiple distinct applications within this repository:
+We manage multiple distinct applications within this repository. **Do not conflate their tech stacks.**
 
-### A. Driver App (Mobile)
+### A. Driver App (Mobile) `apps/driver`
 
 - **Target OS**: iOS & Android.
+- **State Management**: **Provider**.
 - **Focus**:
-  - High availability & stability (mission-critical).
-  - Battery efficiency and data usage optimization.
-  - UX: Large touch targets, simplified flows for on-the-go usage.
+  - **Offline-First**: Critical. Handle flaky networks gracefully (queueing, local caching).
+  - **Battery & Data**: Optimize background location updates (`geolocator`) and map rendering (`flutter_map`).
+  - **UX**: Large touch targets (>48px), simplified flows, high contrast for daylight visibility.
+- **Key libs**: `flutter_map`, `geolocator`, `google_mlkit_text_recognition`.
 
-### B. Terminal / Company App (Desktop)
+### B. Terminal / Company App (Desktop) `apps/terminal`
 
 - **Target OS**: macOS & Windows 10/11.
+- **State Management**: **Riverpod** (strictly typed, prefer `riverpod_generator`).
 - **Focus**:
-  - Productivity and data density.
-  - Keyboard shortcuts and power-user features.
-  - Desktop-native window management.
-  - **Responsiveness**: The app must be fully responsive on all screen sizes (laptops, monitors, ultra-wide).
+  - **Productivity**: information density, keyboard shortcuts, multi-window workflows.
+  - **Desktop Native**: Proper window sizing, window controls, and right-click context menus.
+- **Key libs**: `fluent_ui`, `window_manager`, `flutter_riverpod`.
 
 ## 3. Design System: Fluent UI (Strict)
 
-- **Mandatory Style**: **Fluent UI** is the single source of truth for design.
-- **Library**: Primarily use `fluent_ui` (or equivalent standard packages that strictly adhere to Fluent Design).
+- **Primary Style**: **Fluent UI** (`fluent_ui` package) is the single source of truth, especially for the Terminal app.
+- **References**:
+  - [Windows App Design Guidelines](https://learn.microsoft.com/en-us/windows/apps/design) (**CRITICAL REFERENCE**)
+  - [Apple Human Interface Guidelines](https://developer.apple.com/design/human-interface-guidelines/)
 - **Aesthetics**:
-  - Use **Acrylic** materials, subtle transparency, and depth.
-  - Typography: Clean, legible, consistent with Windows 11 guidelines.
-  - Animations: Smooth, meaningful micro-interactions (drills, navigations).
-- **Cross-Platform**: Even on macOS, maintain the Fluent identity unless explicitly instructed to adapt specific native behaviors (like Menu Bar).
+  - **Materials**: Use **Mica** or **Acrylic** effects for backgrounds/sidebars to provide depth.
+  - **Typography**: `GoogleFonts.outfit` or standard Windows fonts (Segoe UI). Clean, legible hierarchy.
+  - **Motion**: Subtle, meaningful micro-interactions (e.g., connected animations, drill-ins).
+- **Responsiveness**:
+  - The Terminal app must adapt gracefully from laptop screens (13") to ultra-wide monitors. Use `LayoutBuilder` or flexible widgets (`Flex`, `Expanded`).
 
-## 4. Engineering Standards (Scale)
+## 4. Backend & Data Layer (Supabase)
+
+- **Database**:
+  - **Types**: Use strict Dart types generated from the DB schema. Do not use raw `Map<String, dynamic>` everywhere.
+  - **Security**: **Row Level Security (RLS)** is mandatory. Never query without RLS enabled policies.
+- **Auth**: Handle session persistence and token refresh automatically (`supabase_flutter` handles this, ensure it's initialized early).
+- **Architecture**:
+  - **Edge Functions**: Use Supabase Edge Functions for complex business logic, third-party webhooks (e.g., Stripe), or secure operations.
+  - **Realtime**: Use subscriptions judiciously. Dispose of `StreamSubscriptions` immediately when widgets unmount to prevent leaks.
+
+## 5. Engineering Standards (Scale)
 
 - **Performance**:
-  - **Const everywhere**: Minimize rebuild costs.
-  - **Lazy Loading**: Use `ListView.builder` / Slivers for all lists.
-  - **Memory**: Watch for leaks in streams/controllers (always dispose).
+  - **Const Constructors**: Use `const` wherever possible to reduce widget rebuilds.
+  - **Lists**: Always use `ListView.builder` or `Slivers` for lists with >20 items.
+  - **Images**: Cache network images. Use `memCacheHeight`/`memCacheWidth` to reduce memory usage.
 - **Quality**:
-  - **Crash-Free**: robust error handling; the app must never crash for the user.
-  - **Offline-First**: Assume network is flaky (especially for drivers).
+  - **Error Handling**: No silent failures. Show user-friendly error toasts/dialogs (using `InfoBar` in Fluent).
+  - **Logging**: Use a consistent logging strategy (avoid `print`; use `debugPrint` or a logger package).
 - **Code Style**:
-  - Strict linting.
-  - Clear separation of concerns (Presentation vs Business Logic).
+  - **Feature-First**: `lib/features/<feature>/...` (presentation, domain, data).
+  - **Linting**: Strict adherence to `flutter_lints`. Resolve all warnings.
 
-# 5 . follow Apple/microsoft guidelines-
--<https://developer.apple.com/app-store/review/guidelines/>
--<https://developer.apple.com/design/human-interface-guidelines/>
--<https://www.apple.com/legal/intellectual-property/guidelinesfor3rdparties.html>
--<https://developer.apple.com/support/terms/>
+## 6. Antigravity Suggestions (Proactive Improvements)
 
-EOF
+- **CI/CD**: Ensure `fastlane` is configured for both Android and iOS inside `apps/driver`.
+- **Testing Strategy**:
+  - **Unit**: Test providers and repositories (mock `SupabaseClient`).
+  - **Widget**: Test complex UI components (like the custom `StatusBar` or `DriverDetailPanel`) for varied states (loading, error, empty).
+  - **Integration**: protect critical flows (Login -> specific Dashboard state) with `integration_test`.
+- **Localization**:
+  - No hardcoded strings. Use `app_en.arb` and `flutter_gen` for all user-facing text.
+
+always make responsive windows for laptop screen to big monitor screen.

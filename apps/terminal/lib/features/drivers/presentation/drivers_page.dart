@@ -307,7 +307,8 @@ class _OverviewTab extends StatelessWidget {
           ? Image.network(
               driver.avatarUrl!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _buildAvatarPlaceholder(context),
+              errorBuilder: (context, error, stackTrace) =>
+                  _buildAvatarPlaceholder(context),
             )
           : _buildAvatarPlaceholder(context),
     );
@@ -665,7 +666,7 @@ class _OverviewTab extends StatelessWidget {
                 }
                 return ListView.separated(
                   itemCount: data.length,
-                  separatorBuilder: (_, __) => const Divider(),
+                  separatorBuilder: (context, index) => const Divider(),
                   itemBuilder: (context, index) {
                     final trip = data[index];
                     return _buildActivityItem(

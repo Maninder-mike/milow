@@ -73,7 +73,7 @@ class _StatusBarState extends ConsumerState<StatusBar> {
               label: 'Checking...',
               color: Colors.grey,
             ),
-            error: (_, __) => _buildStatusItem(
+            error: (error, stack) => _buildStatusItem(
               icon: FluentIcons.wifi_off_24_regular,
               label: 'Error',
               color: Colors.red,

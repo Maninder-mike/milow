@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../shared/trip_entry_scaffold.dart';
+import 'package:terminal/core/constants/location_data.dart';
 
 class CustomerPage extends StatefulWidget {
   final bool isDialog;
@@ -16,6 +17,7 @@ class _CustomerPageState extends State<CustomerPage> {
   // Form Controllers - Core fields
   final _customerNameController = TextEditingController();
   final _phoneController = TextEditingController();
+  final _faxController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
   final _cityController = TextEditingController();
@@ -53,6 +55,8 @@ class _CustomerPageState extends State<CustomerPage> {
   bool _portRail = false;
   bool _nonStackable = false;
   bool _fragile = false;
+
+  Offset _offset = Offset.zero;
 
   @override
   void initState() {
@@ -95,36 +99,48 @@ class _CustomerPageState extends State<CustomerPage> {
     final isLight = theme.brightness == Brightness.light;
 
     if (widget.isDialog) {
-      return Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Text(
-                  'Add New Customer',
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w600,
+      return Transform.translate(
+        offset: _offset,
+        child: ContentDialog(
+          constraints: const BoxConstraints(maxWidth: 1000, maxHeight: 800),
+          title: Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onPanUpdate: (details) {
+                    setState(() => _offset += details.delta);
+                  },
+                  child: Container(
+                    color: Colors.transparent,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Add New Customer',
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
                   ),
                 ),
-                const Spacer(),
-                Button(
-                  onPressed: () => Navigator.pop(context),
-                  child: const Text('Cancel'),
-                ),
-                const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _saveRecord,
-                  child: const Text('Save Record'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: SingleChildScrollView(child: _buildFormContent(isLight)),
-            ),
-          ],
+              ),
+              Button(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton(
+                onPressed: _saveRecord,
+                child: const Text('Save Record'),
+              ),
+            ],
+          ),
+          content: Column(
+            children: [
+              Expanded(
+                child: SingleChildScrollView(child: _buildFormContent(isLight)),
+              ),
+            ],
+          ),
         ),
       );
     }
@@ -156,10 +172,10 @@ class _CustomerPageState extends State<CustomerPage> {
   void _openAddCustomerDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (context) => const ContentDialog(
-        constraints: BoxConstraints(maxWidth: 1000, maxHeight: 800),
-        content: CustomerPage(isDialog: true),
-      ),
+      barrierDismissible: true,
+      // Change: passing the widget directly, avoiding double-wrapping in ContentDialog
+      // effectively delegating ContentDialog creation to the widget itself now.
+      builder: (context) => const CustomerPage(isDialog: true),
     );
   }
 
@@ -195,21 +211,27 @@ class _CustomerPageState extends State<CustomerPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Section: Customer Info
-        _buildSectionHeader('Customer Information'),
-        const SizedBox(height: 20),
-        _buildInlineField('Customer Name', _customerNameController),
+        // Section: Contact Details
+        _buildSectionHeader('Contact details'),
         const SizedBox(height: 20),
         Row(
           children: [
             Expanded(
-              child: _buildInlineField('Phone Number', _phoneController),
+              child: _buildInlineField(
+                'Customer Name',
+                _customerNameController,
+              ),
             ),
             const SizedBox(width: 24),
-            Expanded(
-              flex: 2,
-              child: _buildInlineField('Email Address', _emailController),
-            ),
+            Expanded(child: _buildInlineField('Phone', _phoneController)),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(child: _buildInlineField('Email', _emailController)),
+            const SizedBox(width: 24),
+            Expanded(child: _buildInlineField('Fax', _faxController)),
           ],
         ),
 
@@ -228,22 +250,79 @@ class _CustomerPageState extends State<CustomerPage> {
               flex: 2,
               child: _buildInlineField('City', _cityController),
             ),
-            const SizedBox(width: 24),
+            const SizedBox(width: 16),
             Expanded(
-              child: _buildInlineField('State / Province', _stateController),
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 4),
+                    child: Text(
+                      'State/Prov',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            FluentTheme.of(context).brightness ==
+                                Brightness.light
+                            ? Colors.grey[140]
+                            : Colors.grey[80],
+                      ),
+                    ),
+                  ),
+                  ComboBox<String>(
+                    value: _stateController.text.isEmpty
+                        ? null
+                        : _stateController.text,
+                    placeholder: const Text(
+                      'Select...',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    items: [
+                      // Canada
+                      ...LocationData.canadianProvinces.entries.map(
+                        (e) => ComboBoxItem(
+                          value: '${e.key} - ${e.value}',
+                          child: Text(
+                            '${e.key} - ${e.value}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                      // USA
+                      ...LocationData.usStates.entries.map(
+                        (e) => ComboBoxItem(
+                          value: '${e.key} - ${e.value}',
+                          child: Text(
+                            '${e.key} - ${e.value}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _stateController.text = v ?? ''),
+                    isExpanded: true,
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(width: 24),
+            const SizedBox(width: 16),
             Expanded(
-              child: _buildInlineField('Zip / Postal Code', _zipCodeController),
+              flex: 1,
+              child: _buildInlineField('Zip Code', _zipCodeController),
             ),
-            const SizedBox(width: 24),
+            const SizedBox(width: 16),
             Expanded(
+              flex: 1,
               child: _buildDropdown(
                 'Country',
                 _countryController.text.isEmpty
                     ? 'Canada'
                     : _countryController.text,
-                ['Canada', 'USA', 'Mexico'],
+                LocationData.countries,
                 (v) => setState(() => _countryController.text = v ?? 'Canada'),
               ),
             ),
@@ -485,24 +564,11 @@ class _CustomerPageState extends State<CustomerPage> {
             ),
           ),
         ),
-        Container(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isLight
-                    ? const Color(0xFFCCCCCC)
-                    : const Color(0xFF333333),
-                width: 1.5,
-              ),
-            ),
-          ),
-          child: TextFormBox(
-            controller: controller,
-            placeholder: placeholder,
-            style: const TextStyle(fontSize: 15),
-            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-            decoration: WidgetStateProperty.all(const BoxDecoration()),
-          ),
+        TextFormBox(
+          controller: controller,
+          placeholder: placeholder,
+          style: const TextStyle(fontSize: 15),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
         ),
       ],
     );
@@ -546,8 +612,8 @@ class _CustomerPageState extends State<CustomerPage> {
             ],
           ),
         ),
+
         // Add a bottom border spacer to match the underline field height exactly
-        const SizedBox(height: 1.5),
       ],
     );
   }
@@ -579,7 +645,7 @@ class _CustomerPageState extends State<CustomerPage> {
           boxShadow: value
               ? [
                   BoxShadow(
-                    color: theme.accentColor.withOpacity(0.3),
+                    color: theme.accentColor.withValues(alpha: 0.3),
                     blurRadius: 8,
                     offset: const Offset(0, 2),
                   ),
@@ -605,7 +671,9 @@ class _CustomerPageState extends State<CustomerPage> {
                 fontWeight: value ? FontWeight.w700 : FontWeight.w500,
                 color: value
                     ? Colors.white
-                    : (isLight ? Colors.black : Colors.white.withOpacity(0.9)),
+                    : (isLight
+                          ? Colors.black
+                          : Colors.white.withValues(alpha: 0.9)),
               ),
             ),
           ],
@@ -662,17 +730,7 @@ class _CustomerPageState extends State<CustomerPage> {
             ),
           ),
         ),
-        Container(
-          decoration: BoxDecoration(
-            border: Border(
-              bottom: BorderSide(
-                color: isLight
-                    ? const Color(0xFFCCCCCC)
-                    : const Color(0xFF333333),
-                width: 1.5,
-              ),
-            ),
-          ),
+        Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: ComboBox<String>(
             value: value,

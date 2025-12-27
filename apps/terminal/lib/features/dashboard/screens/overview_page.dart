@@ -21,7 +21,7 @@ class OverviewPage extends StatelessWidget {
             Icon(
               FluentIcons.vehicle_truck_profile_24_regular,
               size: 64,
-              color: Colors.grey,
+              color: FluentTheme.of(context).resources.textFillColorSecondary,
             ),
             const SizedBox(height: 16),
             Text(
@@ -34,7 +34,10 @@ class OverviewPage extends StatelessWidget {
             const SizedBox(height: 8),
             Text(
               'Select a module from the sidebar to get started.',
-              style: GoogleFonts.inter(fontSize: 14, color: Colors.grey),
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: FluentTheme.of(context).resources.textFillColorSecondary,
+              ),
             ),
           ],
         ),
