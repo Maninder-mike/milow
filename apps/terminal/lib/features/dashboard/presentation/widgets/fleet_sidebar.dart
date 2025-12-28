@@ -14,17 +14,27 @@ class FleetSidebar extends ConsumerStatefulWidget {
 }
 
 class _FleetSidebarState extends ConsumerState<FleetSidebar> {
-  String _selectedFilter = 'All'; // All, Active, Maintenance, Idle, Breakdown
+  final Map<String, bool> _expandedSections = {
+    'ACTIVE': true,
+    'MAINTENANCE': true,
+    'IDLE': false,
+    'BREAKDOWN': false,
+  };
   String _searchQuery = '';
 
-  List<Map<String, dynamic>> _filterVehicles(
-    List<Map<String, dynamic>> allVehicles,
+  void _toggleSection(String title) {
+    setState(() {
+      _expandedSections[title] = !(_expandedSections[title] ?? false);
+    });
+  }
+
+  List<Map<String, dynamic>> _getVehiclesByStatus(
+    List<Map<String, dynamic>> vehicles,
+    String status,
   ) {
-    return allVehicles.where((v) {
-      final matchesFilter =
-          _selectedFilter == 'All' ||
-          (v['status'] as String?)?.toLowerCase() ==
-              _selectedFilter.toLowerCase();
+    return vehicles.where((v) {
+      final vStatus = (v['status'] as String?)?.toUpperCase() ?? 'UNKNOWN';
+      final matchesStatus = vStatus == status;
 
       final matchesSearch =
           _searchQuery.isEmpty ||
@@ -37,7 +47,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
               ) ==
               true;
 
-      return matchesFilter && matchesSearch;
+      return matchesStatus && matchesSearch;
     }).toList();
   }
 
@@ -72,23 +82,27 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final isLight = theme.brightness == Brightness.light;
+
     // Sidebar colors - matching the lighter terminal theme
     final backgroundColor = isLight
-        ? theme.resources.subtleFillColorSecondary
-        : theme.resources.solidBackgroundFillColorTertiary;
-    final titleColor = theme.resources.textFillColorSecondary;
+        ? const Color(0xFFF3F3F3)
+        : const Color(0xFF202020);
+    final titleColor = isLight
+        ? const Color(0xFF616161)
+        : const Color(0xFFCCCCCC);
 
     final vehiclesAsync = ref.watch(vehiclesListProvider);
 
-    return Container(
-      color: backgroundColor,
+    return Acrylic(
+      tint: backgroundColor,
+      tintAlpha: isLight ? 0.9 : 0.8,
+      luminosityAlpha: isLight ? 0.9 : 0.8,
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            height: 40,
+            padding: const EdgeInsets.fromLTRB(20, 10, 8, 0),
+            height: 35,
             alignment: Alignment.centerLeft,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -102,7 +116,6 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                   ),
                 ),
                 Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: Icon(
@@ -112,11 +125,14 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                       ),
                       onPressed: _showAddDialog,
                     ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      FluentIcons.filter_24_regular,
-                      size: 16,
-                      color: titleColor,
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: Icon(
+                        FluentIcons.more_horizontal_24_regular,
+                        size: 14,
+                        color: titleColor,
+                      ),
+                      onPressed: () {},
                     ),
                   ],
                 ),
@@ -126,64 +142,81 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
 
           // Search Bar
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: _SidebarSearchBar(
-              isLight: isLight,
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            child: TextBox(
+              placeholder: 'Search Fleet...',
+              placeholderStyle: GoogleFonts.inter(
+                color: isLight ? Colors.grey[100] : const Color(0xFF858585),
+                fontSize: 13,
+              ),
+              style: GoogleFonts.inter(
+                color: isLight ? Colors.black : Colors.white,
+                fontSize: 13,
+              ),
+              decoration: WidgetStateProperty.all(
+                BoxDecoration(
+                  color: isLight
+                      ? const Color(0xFFFFFFFF)
+                      : const Color(0xFF3C3C3C),
+                  border: Border.all(
+                    color: isLight
+                        ? const Color(0xFFE0E0E0)
+                        : const Color(0xFF3C3C3C),
+                    width: 1,
+                  ),
+                  borderRadius: BorderRadius.zero,
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              cursorColor: isLight ? Colors.black : Colors.white,
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
 
-          // Filters (Chips)
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Row(
-              children: [
-                _buildFilterChip('All'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Active'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Maintenance'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Idle'),
-                const SizedBox(width: 8),
-                _buildFilterChip('Breakdown'),
-              ],
-            ),
-          ),
-
-          const Divider(),
-
-          // List
-          // List
+          // Lists
           Expanded(
             child: vehiclesAsync.when(
               data: (vehicles) {
-                final filtered = _filterVehicles(vehicles);
-                if (filtered.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No vehicles found',
-                      style: TextStyle(color: titleColor),
-                    ),
-                  );
-                }
-                return ListView.builder(
+                return ListView(
                   padding: EdgeInsets.zero,
-                  itemCount: filtered.length,
-                  itemBuilder: (context, index) {
-                    final vehicle = filtered[index];
-                    return _buildVehicleItem(vehicle, isLight);
-                  },
+                  children: [
+                    _buildCollapsibleSection(
+                      'ACTIVE',
+                      isLight,
+                      _getVehiclesByStatus(
+                        vehicles,
+                        'ACTIVE',
+                      ).map((v) => _buildVehicleItem(v, isLight)).toList(),
+                    ),
+                    _buildCollapsibleSection(
+                      'MAINTENANCE',
+                      isLight,
+                      _getVehiclesByStatus(
+                        vehicles,
+                        'MAINTENANCE',
+                      ).map((v) => _buildVehicleItem(v, isLight)).toList(),
+                    ),
+                    _buildCollapsibleSection(
+                      'IDLE',
+                      isLight,
+                      _getVehiclesByStatus(
+                        vehicles,
+                        'IDLE',
+                      ).map((v) => _buildVehicleItem(v, isLight)).toList(),
+                    ),
+                    _buildCollapsibleSection(
+                      'BREAKDOWN',
+                      isLight,
+                      _getVehiclesByStatus(
+                        vehicles,
+                        'BREAKDOWN',
+                      ).map((v) => _buildVehicleItem(v, isLight)).toList(),
+                    ),
+                  ],
                 );
               },
               loading: () => const Center(child: ProgressRing()),
-              error: (e, st) => Center(
-                child: Text(
-                  'Error loading vehicles',
-                  style: TextStyle(color: Colors.red),
-                ),
-              ),
+              error: (e, s) => Center(child: Text('Error: $e')),
             ),
           ),
         ],
@@ -191,39 +224,104 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    final isSelected = _selectedFilter == label;
-    return GestureDetector(
-      onTap: () => setState(() => _selectedFilter = label),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: isSelected
-              ? FluentTheme.of(context).accentColor
-              : FluentTheme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? Colors.transparent
-                : FluentTheme.of(context).resources.dividerStrokeColorDefault,
-          ),
+  Widget _buildCollapsibleSection(
+    String title,
+    bool isLight,
+    List<Widget> children,
+  ) {
+    final textColor = isLight
+        ? const Color(0xFF333333)
+        : const Color(0xFFCCCCCC);
+    final hoverColor = isLight
+        ? const Color(0xFFE8E8E8)
+        : const Color(0xFF2A2D2E);
+
+    final isExpanded = _expandedSections[title] ?? false;
+
+    return Column(
+      children: [
+        HoverButton(
+          onPressed: () => _toggleSection(title),
+          builder: (context, states) {
+            return Container(
+              decoration: BoxDecoration(
+                color: states.isHovered ? hoverColor : Colors.transparent,
+                border: Border(
+                  top: BorderSide(
+                    color: isLight
+                        ? const Color(0xFFE5E5E5)
+                        : const Color(0xFF3E3E42),
+                    width: 1.0,
+                  ),
+                ),
+              ),
+              padding: const EdgeInsets.only(
+                left: 4,
+                right: 8,
+                top: 4,
+                bottom: 4,
+              ),
+              height: 28,
+              child: Row(
+                children: [
+                  Icon(
+                    isExpanded
+                        ? FluentIcons.chevron_down_24_regular
+                        : FluentIcons.chevron_right_24_regular,
+                    size: 8,
+                    color: textColor,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    title,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
+                    ),
+                  ),
+                  const Spacer(),
+                  // Badge count
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isLight
+                          ? const Color(0xFFE0E0E0)
+                          : const Color(0xFF4D4D4D),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      '${children.length}',
+                      style: GoogleFonts.inter(
+                        fontSize: 10,
+                        color: textColor,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 10,
-            color: isSelected ? Colors.white : null,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-          ),
-        ),
-      ),
+        if (isExpanded) Column(children: children),
+      ],
     );
   }
 
   Widget _buildVehicleItem(Map<String, dynamic> vehicle, bool isLight) {
-    final theme = FluentTheme.of(context);
-    final textColor = theme.resources.textFillColorPrimary;
-    final hoverColor = theme.resources.subtleFillColorSecondary;
+    final textColor = isLight
+        ? const Color(0xFF333333)
+        : const Color(0xFFCCCCCC);
+    final subTextColor = isLight
+        ? const Color(0xFF666666)
+        : const Color(0xFF999999);
+    final hoverColor = isLight
+        ? const Color(0xFFE8E8E8)
+        : const Color(0xFF2A2D2E);
 
     final status = vehicle['status'] as String? ?? 'Unknown';
     final statusColor = _getStatusColor(status);
@@ -234,117 +332,113 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
         context.go('/vehicles/status', extra: vehicle);
       },
       builder: (context, states) {
-        final isHovering = states.isHovered;
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
           decoration: BoxDecoration(
-            color: isHovering ? hoverColor : Colors.transparent,
-            borderRadius: BorderRadius.circular(6),
+            color: states.isHovered ? hoverColor : Colors.transparent,
+            border: Border(
+              left: BorderSide(
+                color: states.isHovered
+                    ? FluentTheme.of(context).accentColor
+                    : Colors.transparent,
+                width: 3,
+              ),
+            ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon Container
-              Container(
-                width: 36,
-                height: 36,
-                decoration: BoxDecoration(
-                  color: theme.resources.cardBackgroundFillColorDefault,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: theme.resources.dividerStrokeColorDefault,
+              // Icon with status indicator
+              Stack(
+                children: [
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isLight
+                            ? const Color(0xFFE0E0E0)
+                            : const Color(0xFF3C3C3C),
+                      ),
+                    ),
+                    alignment: Alignment.center,
+                    child: Icon(
+                      vehicle['vehicle_type'] == 'Trailer'
+                          ? FluentIcons.vehicle_truck_profile_24_regular
+                          : FluentIcons.vehicle_truck_24_regular,
+                      size: 16,
+                      color: textColor,
+                    ),
                   ),
-                ),
-                child: Icon(
-                  vehicle['vehicle_type'] == 'Trailer'
-                      ? FluentIcons.vehicle_truck_profile_24_regular
-                      : FluentIcons.vehicle_truck_24_regular,
-                  size: 18,
-                  color: theme.resources.textFillColorPrimary,
-                ),
+                  Positioned(
+                    right: -2,
+                    bottom: -2,
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: statusColor,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isLight
+                              ? Colors.white
+                              : const Color(0xFF252526),
+                          width: 2,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
               const SizedBox(width: 12),
-              // Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
                   children: [
+                    // Vehicle Number
+                    Text(
+                      vehicle['vehicle_number'] ?? 'Unknown',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: textColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // License Plate / Alert
                     Row(
                       children: [
                         Expanded(
                           child: Text(
-                            vehicle['vehicle_number'] ?? 'Unknown',
+                            vehicle['license_plate'] ?? '-',
                             style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: textColor,
-                              fontWeight: FontWeight.w600,
+                              fontSize: 11,
+                              color: subTextColor,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        // Status Badge
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: statusColor.withValues(alpha: 0.2),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 6,
-                                height: 6,
-                                decoration: BoxDecoration(
-                                  color: statusColor,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                status,
-                                style: GoogleFonts.inter(
-                                  fontSize: 9,
-                                  fontWeight: FontWeight.w600,
-                                  color: statusColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Row(
-                      children: [
-                        Text(
-                          vehicle['license_plate'] ?? '-',
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: textColor.withValues(alpha: 0.6),
-                          ),
-                        ),
                         if (hasIssue) ...[
-                          const SizedBox(width: 8),
-                          Icon(
-                            FluentIcons.warning_12_filled,
-                            size: 10,
-                            color: Colors.red,
-                          ),
                           const SizedBox(width: 4),
-                          Text(
-                            'Alert',
-                            style: GoogleFonts.inter(
-                              fontSize: 10,
-                              color: Colors.red,
-                              fontWeight: FontWeight.w500,
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 1,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(3),
+                            ),
+                            child: Text(
+                              'ALERT',
+                              style: GoogleFonts.inter(
+                                fontSize: 9,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.red,
+                              ),
                             ),
                           ),
                         ],
@@ -357,93 +451,6 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
           ),
         );
       },
-    );
-  }
-}
-
-class _SidebarSearchBar extends StatefulWidget {
-  final bool isLight;
-  final ValueChanged<String> onChanged;
-
-  const _SidebarSearchBar({required this.isLight, required this.onChanged});
-
-  @override
-  State<_SidebarSearchBar> createState() => _SidebarSearchBarState();
-}
-
-class _SidebarSearchBarState extends State<_SidebarSearchBar> {
-  final TextEditingController _controller = TextEditingController();
-  bool _isFocused = false;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-
-    // Windows 11 style colors
-    final bgColor = theme.resources.controlFillColorDefault;
-    final borderColor = theme.resources.dividerStrokeColorDefault;
-    final focusBorderColor = theme.accentColor;
-    final placeholderColor = theme.resources.textFillColorSecondary;
-    final foregroundColor = theme.resources.textFillColorPrimary;
-
-    return SizedBox(
-      height: 32,
-      child: Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: _isFocused ? focusBorderColor : borderColor,
-            width: _isFocused ? 1.5 : 1,
-          ),
-        ),
-        child: Focus(
-          onFocusChange: (focused) => setState(() => _isFocused = focused),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextBox(
-                  controller: _controller,
-                  placeholder: 'Search...',
-                  placeholderStyle: TextStyle(
-                    color: placeholderColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  style: TextStyle(color: foregroundColor, fontSize: 13),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: WidgetStateProperty.all(
-                    const BoxDecoration(
-                      color: Colors.transparent,
-                      border: Border.fromBorderSide(BorderSide.none),
-                    ),
-                  ),
-                  unfocusedColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  onChanged: widget.onChanged,
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Icon(
-                  FluentIcons.search_24_regular,
-                  size: 16,
-                  color: placeholderColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
     );
   }
 }

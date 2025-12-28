@@ -6,7 +6,6 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 // TabsShell provides navigation; this page returns content only
-import 'package:milow/core/widgets/dashboard_card.dart';
 import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
@@ -15,7 +14,6 @@ import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/utils/address_utils.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
-import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
@@ -42,14 +40,6 @@ class _DashboardPageState extends State<DashboardPage>
   // Recent entries (trips and fuel)
   List<Map<String, dynamic>> _recentEntries = [];
   bool _isLoadingEntries = true;
-
-  // Dashboard stats
-  int _totalTrips = 0;
-  double _totalMiles = 0;
-  String _distanceUnit = 'mi';
-  String _tripsTrend = '+0%';
-  String _milesTrend = '+0%';
-  String _timePeriod = 'biweekly'; // weekly, biweekly, monthly, yearly
 
   // Notification state
   int _unreadNotificationCount = 0;
@@ -95,7 +85,6 @@ class _DashboardPageState extends State<DashboardPage>
       forceRefresh: false,
     ); // Use prefetched data if available
     _loadRecentEntries();
-    _loadDashboardStats();
     _loadNotificationCount();
 
     // Refresh border wait times every 5 minutes
@@ -124,7 +113,6 @@ class _DashboardPageState extends State<DashboardPage>
     await Future.wait([
       _loadBorderWaitTimes(forceRefresh: true),
       _loadRecentEntries(),
-      _loadDashboardStats(),
     ]);
   }
 
@@ -206,169 +194,6 @@ class _DashboardPageState extends State<DashboardPage>
       _bellAnimationController.stop();
       _bellAnimationController.reset();
     }
-  }
-
-  Future<void> _loadDashboardStats() async {
-    try {
-      // Use prefetched data if available
-      final prefetch = DataPrefetchService.instance;
-      List<Trip> trips;
-      String distanceUnit;
-
-      if (prefetch.isPrefetchComplete && prefetch.cachedTrips != null) {
-        trips = prefetch.cachedTrips!;
-        distanceUnit = prefetch.cachedDistanceUnit;
-      } else {
-        trips = await TripService.getTrips();
-        distanceUnit = await PreferencesService.getDistanceUnit();
-      }
-
-      double totalDistance = 0;
-      for (final trip in trips) {
-        if (trip.totalDistance != null) {
-          totalDistance += trip.totalDistance!;
-        }
-      }
-
-      if (distanceUnit == 'km') {
-        totalDistance *= 1.60934;
-      }
-
-      // Calculate trends based on time period
-      final trends = _calculateTrends(trips);
-
-      if (mounted) {
-        setState(() {
-          _totalTrips = trips.length;
-          _totalMiles = totalDistance;
-          _distanceUnit = distanceUnit;
-          _tripsTrend = trends['tripsTrend']!;
-          _milesTrend = trends['milesTrend']!;
-        });
-      }
-    } catch (e) {
-      // Handle error silently
-    }
-  }
-
-  /// Calculate trend percentages based on selected time period
-  Map<String, String> _calculateTrends(List<Trip> allTrips) {
-    final now = DateTime.now();
-    DateTime compareDate;
-
-    switch (_timePeriod) {
-      case 'weekly':
-        compareDate = now.subtract(const Duration(days: 7));
-        break;
-      case 'biweekly':
-        compareDate = now.subtract(const Duration(days: 14));
-        break;
-      case 'monthly':
-        compareDate = DateTime(now.year, now.month - 1, now.day);
-        break;
-      case 'yearly':
-        compareDate = DateTime(now.year - 1, now.month, now.day);
-        break;
-      default:
-        compareDate = now.subtract(const Duration(days: 7));
-    }
-
-    // Split trips into current period and previous period
-    final currentPeriodTrips = allTrips
-        .where((trip) => trip.tripDate.isAfter(compareDate))
-        .toList();
-    final previousPeriodStart = compareDate.subtract(
-      now.difference(compareDate),
-    );
-    final previousPeriodTrips = allTrips
-        .where(
-          (trip) =>
-              trip.tripDate.isAfter(previousPeriodStart) &&
-              trip.tripDate.isBefore(compareDate),
-        )
-        .toList();
-
-    // Calculate trip count trend
-    final currentTripsCount = currentPeriodTrips.length;
-    final previousTripsCount = previousPeriodTrips.length;
-    String tripsTrend;
-    if (previousTripsCount == 0) {
-      tripsTrend = currentTripsCount > 0 ? '+100%' : '0%';
-    } else {
-      final tripPercentChange =
-          ((currentTripsCount - previousTripsCount) / previousTripsCount * 100)
-              .round();
-      tripsTrend = tripPercentChange >= 0
-          ? '+$tripPercentChange%'
-          : '$tripPercentChange%';
-    }
-
-    // Calculate miles trend
-    double currentMiles = 0;
-    double previousMiles = 0;
-    for (final trip in currentPeriodTrips) {
-      if (trip.totalDistance != null) currentMiles += trip.totalDistance!;
-    }
-    for (final trip in previousPeriodTrips) {
-      if (trip.totalDistance != null) previousMiles += trip.totalDistance!;
-    }
-
-    String milesTrend;
-    if (previousMiles == 0) {
-      milesTrend = currentMiles > 0 ? '+100%' : '0%';
-    } else {
-      final milesPercentChange =
-          ((currentMiles - previousMiles) / previousMiles * 100).round();
-      milesTrend = milesPercentChange >= 0
-          ? '+$milesPercentChange%'
-          : '$milesPercentChange%';
-    }
-
-    return {'tripsTrend': tripsTrend, 'milesTrend': milesTrend};
-  }
-
-  /// Show dialog to change time period
-  Future<void> _showTimePeriodDialog() async {
-    final periods = {
-      'weekly': 'Weekly',
-      'biweekly': 'Bi-Weekly',
-      'monthly': 'Monthly',
-      'yearly': 'Yearly',
-    };
-
-    await showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(
-            'Select Time Period',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-          ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: periods.entries.map((entry) {
-                return RadioListTile<String>(
-                  title: Text(entry.value, style: GoogleFonts.inter()),
-                  value: entry.key,
-                  groupValue: _timePeriod,
-                  activeColor: const Color(0xFF007AFF),
-                  onChanged: (value) {
-                    if (value != null) {
-                      Navigator.pop(context);
-                      setState(() {
-                        _timePeriod = value;
-                      });
-                      _loadDashboardStats();
-                    }
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      },
-    );
   }
 
   Future<void> _loadBorderWaitTimes({bool forceRefresh = false}) async {
@@ -487,6 +312,302 @@ class _DashboardPageState extends State<DashboardPage>
     return 'Something went wrong. Please try again.';
   }
 
+  Widget _buildHeroSection(
+    BuildContext context,
+    bool isDark,
+    double margin,
+    Color cardColor,
+    Color borderColor,
+    Color secondaryTextColor,
+    Color textColor,
+  ) {
+    // Base background color to fade into (matches Scaffold background)
+    final baseColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+
+    return Stack(
+      children: [
+        // Extended Gradient Background with Fade
+        Container(
+          height: 540,
+          width: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFF2E0213), // Deep dark red/purple
+                Color(0xFF8B2C4B), // Muted magenta
+                Color(0xFFA66C44), // Warm earthy tone
+              ],
+            ),
+          ),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: const [0.0, 0.5, 0.8, 1.0],
+                colors: [
+                  Colors.black.withValues(alpha: 0.1),
+                  Colors.black.withValues(alpha: 0.3),
+                  baseColor.withValues(alpha: 0.8),
+                  baseColor,
+                ],
+              ),
+            ),
+          ),
+        ),
+
+        // Combined Content
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Hero Content (Veo 3)
+            SizedBox(
+              height: 380,
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: margin, vertical: 24),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Create with Veo 3',
+                      style: GoogleFonts.outfit(
+                        fontSize: 32,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Generate videos with your ingredients',
+                      style: GoogleFonts.inter(
+                        fontSize: 16,
+                        color: Colors.white.withValues(alpha: 0.9),
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 24),
+                    ElevatedButton(
+                      onPressed: () {},
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 16,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Generate Video',
+                        style: GoogleFonts.inter(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    // Page Indicators
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.white54,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.white54,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Colors.white54,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // Get Started Section
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: margin),
+              child: Text(
+                'Get started',
+                style: GoogleFonts.inter(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              padding: EdgeInsets.symmetric(horizontal: margin),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildGetStartedCard(
+                    'Add Data',
+                    Icons.add,
+                    () => context.push('/add-entry'),
+                    cardColor,
+                    borderColor,
+                    textColor,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildGetStartedCard(
+                    'Explore',
+                    Icons.explore_outlined,
+                    () => context.go('/explore'),
+                    cardColor,
+                    borderColor,
+                    textColor,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildGetStartedCard(
+                    'Inbox',
+                    Icons.inbox_outlined,
+                    () => context.go('/inbox'),
+                    cardColor,
+                    borderColor,
+                    textColor,
+                  ),
+                  const SizedBox(width: 12),
+                  _buildGetStartedCard(
+                    'Settings',
+                    Icons.settings_outlined,
+                    () => context.go('/settings'),
+                    cardColor,
+                    borderColor,
+                    textColor,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+
+        // Header Icons Overlay
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: SafeArea(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: margin, vertical: 8),
+              child: Row(
+                children: [
+                  _quickAction(
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.white,
+                    Icons.search,
+                    () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const GlobalSearchPage(),
+                        ),
+                      );
+                    },
+                  ),
+                  const Spacer(),
+                  _buildNotificationBell(
+                    Colors.transparent,
+                    Colors.transparent,
+                    Colors.white,
+                    forceWhite: true,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGetStartedCard(
+    String label,
+    IconData icon,
+    VoidCallback onTap,
+    Color cardColor,
+    Color borderColor,
+    Color textColor,
+  ) {
+    return Column(
+      children: [
+        InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              color: cardColor,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: borderColor),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Icon(icon, size: 32, color: textColor),
+          ),
+        ),
+        const SizedBox(height: 8),
+        SizedBox(
+          width: 80,
+          child: Text(
+            label,
+            style: GoogleFonts.inter(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: textColor,
+            ),
+            textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -502,96 +623,6 @@ class _DashboardPageState extends State<DashboardPage>
         : const Color(0xFFD0D5DD);
 
     final margin = ResponsiveLayout.getMargin(context);
-    final gutter = ResponsiveLayout.getGutter(context);
-    final isTabletOrLarger = !ResponsiveLayout.isMobile(context);
-
-    // Format total miles for display
-    String formattedMiles;
-    if (_totalMiles >= 1000) {
-      formattedMiles = '${(_totalMiles / 1000).toStringAsFixed(1)}K';
-    } else {
-      formattedMiles = _totalMiles.toStringAsFixed(0);
-    }
-
-    // Get time period label for card titles
-    final timePeriodLabels = {
-      'weekly': 'Weekly',
-      'biweekly': 'Bi-Weekly',
-      'monthly': 'Monthly',
-      'yearly': 'Yearly',
-    };
-    final periodLabel = timePeriodLabels[_timePeriod] ?? 'Bi-Weekly';
-
-    final distanceLabel = _distanceUnit == 'km' ? 'KM' : 'Miles';
-    final tripsTitle = '$periodLabel Trips';
-    final milesTitle = '$periodLabel $distanceLabel';
-
-    Widget statsGrid() => Padding(
-      padding: EdgeInsets.symmetric(horizontal: margin),
-      child: isTabletOrLarger
-          ? Row(
-              children: [
-                Expanded(
-                  child: GestureDetector(
-                    onLongPress: _showTimePeriodDialog,
-                    child: DashboardCard(
-                      value: '$_totalTrips',
-                      title: tripsTitle,
-                      icon: Icons.local_shipping,
-                      color: const Color(0xFF3B82F6),
-                      trend: _tripsTrend,
-                    ),
-                  ),
-                ),
-                SizedBox(width: gutter),
-                Expanded(
-                  child: GestureDetector(
-                    onLongPress: _showTimePeriodDialog,
-                    child: DashboardCard(
-                      value: formattedMiles,
-                      title: milesTitle,
-                      icon: Icons.route,
-                      color: const Color(0xFF10B981),
-                      trend: _milesTrend,
-                    ),
-                  ),
-                ),
-              ],
-            )
-          : Column(
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: GestureDetector(
-                        onLongPress: _showTimePeriodDialog,
-                        child: DashboardCard(
-                          value: '$_totalTrips',
-                          title: tripsTitle,
-                          icon: Icons.local_shipping,
-                          color: const Color(0xFF3B82F6),
-                          trend: _tripsTrend,
-                        ),
-                      ),
-                    ),
-                    SizedBox(width: gutter),
-                    Expanded(
-                      child: GestureDetector(
-                        onLongPress: _showTimePeriodDialog,
-                        child: DashboardCard(
-                          value: formattedMiles,
-                          title: milesTitle,
-                          icon: Icons.route,
-                          color: const Color(0xFF10B981),
-                          trend: _milesTrend,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-    );
 
     return Container(
       decoration: BoxDecoration(
@@ -623,42 +654,16 @@ class _DashboardPageState extends State<DashboardPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Reduced top spacing after removing title
-                const SizedBox(height: 8),
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: margin),
-                  child: Row(
-                    children: [
-                      _quickAction(
-                        cardColor,
-                        borderColor,
-                        secondaryTextColor,
-                        Icons.search,
-                        () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const GlobalSearchPage(),
-                            ),
-                          );
-                        },
-                      ),
-                      const SizedBox(width: 8),
-
-                      const Spacer(),
-                      // Notification bell icon with red dot indicator
-                      _buildNotificationBell(
-                        cardColor,
-                        borderColor,
-                        secondaryTextColor,
-                      ),
-                      const SizedBox(width: 8),
-                    ],
-                  ),
+                _buildHeroSection(
+                  context,
+                  isDark,
+                  margin,
+                  cardColor,
+                  borderColor,
+                  secondaryTextColor,
+                  textColor,
                 ),
-                const SizedBox(height: 16),
-                statsGrid(),
-                const SizedBox(height: 16),
+                const SizedBox(height: 24),
                 // Border Wait Times Section
                 if (_isLoadingBorders) ...[
                   Padding(
@@ -1073,7 +1078,6 @@ class _DashboardPageState extends State<DashboardPage>
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(12),
-        border: bg == border ? null : Border.all(color: border),
       ),
       child: IconButton(
         icon: Icon(icon, color: iconColor),
@@ -1085,8 +1089,9 @@ class _DashboardPageState extends State<DashboardPage>
   Widget _buildNotificationBell(
     Color cardColor,
     Color borderColor,
-    Color iconColor,
-  ) {
+    Color iconColor, {
+    bool forceWhite = false,
+  }) {
     return GestureDetector(
       onTap: () async {
         await context.push('/notifications');
@@ -1099,7 +1104,6 @@ class _DashboardPageState extends State<DashboardPage>
         decoration: BoxDecoration(
           color: cardColor,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -1118,7 +1122,7 @@ class _DashboardPageState extends State<DashboardPage>
                         : 1.0,
                     child: Icon(
                       Icons.notifications_outlined,
-                      color: iconColor,
+                      color: forceWhite ? Colors.white : iconColor,
                       size: 24,
                     ),
                   ),

@@ -553,6 +553,43 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 ],
               ),
             ],
+            // Show status badge for already-actioned company notifications
+            if (notification.type == NotificationType.company &&
+                notification.isRead) ...[
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.check_circle_outline,
+                      size: 16,
+                      color: const Color(0xFF10B981),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Response Submitted',
+                      style: GoogleFonts.inter(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF10B981),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
       ),
@@ -563,10 +600,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
     try {
       await _markAsRead(notificationId);
 
-      // Notify the admin that driver accepted
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) return;
 
+      // Set driver as verified (adds to Active Users list)
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'is_verified': true})
+          .eq('id', userId);
+
+      // Notify the admin that driver accepted
       final userProfile = await Supabase.instance.client
           .from('profiles')
           .select('full_name')

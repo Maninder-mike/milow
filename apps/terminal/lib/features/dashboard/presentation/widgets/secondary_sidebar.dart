@@ -20,12 +20,14 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
     final isLight = theme.brightness == Brightness.light;
 
     final backgroundColor = isLight
-        ? theme.resources.subtleFillColorTertiary
+        ? const Color(0xFFF9F9F9) // Slightly off-white for secondary sidebar
         : theme.resources.solidBackgroundFillColorTertiary;
     final titleColor = theme.resources.textFillColorSecondary;
 
-    return Container(
-      color: backgroundColor,
+    return Acrylic(
+      tint: backgroundColor,
+      tintAlpha: isLight ? 0.95 : 0.75,
+      luminosityAlpha: isLight ? 0.98 : 0.88,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [

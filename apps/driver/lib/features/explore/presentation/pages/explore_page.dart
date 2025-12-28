@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:go_router/go_router.dart';
 // Tab shell provides nav; this page returns content only
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/fuel_service.dart';
@@ -602,6 +603,10 @@ class _ExplorePageState extends State<ExplorePage> {
                     filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                     child: Container(color: Colors.transparent),
                   ),
+                ),
+                leading: IconButton(
+                  icon: Icon(Icons.arrow_back, color: textColor),
+                  onPressed: () => context.go('/dashboard'),
                 ),
                 title: Text(
                   AppLocalizations.of(context)?.explore ?? 'Explore',

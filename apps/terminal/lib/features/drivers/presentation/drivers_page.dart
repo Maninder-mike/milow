@@ -185,6 +185,50 @@ class _OverviewTab extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
+          if (!driver.isVerified)
+            Container(
+              margin: const EdgeInsets.only(bottom: 24),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Icon(FluentIcons.warning, color: Colors.red),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Driver Inactive',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                          ),
+                        ),
+                        Text(
+                          'This driver is no longer active. New data cannot be accessed, but all historical data is preserved.',
+                          style: TextStyle(color: Colors.red),
+                        ),
+                      ],
+                    ),
+                  ),
+                  FilledButton(
+                    onPressed: () => _sendRejoinRequest(context),
+                    style: ButtonStyle(
+                      backgroundColor: WidgetStateProperty.resolveWith(
+                        (states) => Colors.red,
+                      ),
+                    ),
+                    child: const Text('Send request to Join'),
+                  ),
+                ],
+              ),
+            ),
+
           // Top Row: Photo + Contact Info + License | Recent Activity | Safety Score
           IntrinsicHeight(
             child: Row(
@@ -360,6 +404,7 @@ class _OverviewTab extends StatelessWidget {
         ],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -919,6 +964,24 @@ class _OverviewTab extends StatelessWidget {
           Text(
             'This Month',
             style: TextStyle(fontSize: 11, color: Colors.grey[100]),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _sendRejoinRequest(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Request Sent'),
+        content: Text(
+          'A re-join request has been sent to ${driver.fullName ?? "the driver"}.',
+        ),
+        actions: [
+          Button(
+            child: const Text('OK'),
+            onPressed: () => Navigator.pop(context),
           ),
         ],
       ),

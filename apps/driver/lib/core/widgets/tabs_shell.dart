@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:milow/core/widgets/curved_bottom_nav.dart';
 import 'package:milow/features/explore/presentation/pages/explore_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
 import 'package:milow/features/settings/presentation/pages/settings_page.dart';
-import 'package:milow/l10n/app_localizations.dart';
 
 class TabsShell extends StatefulWidget {
   final int initialIndex;
@@ -32,31 +29,14 @@ class _TabsShellState extends State<TabsShell> {
     super.dispose();
   }
 
-  void _onTap(int i) {
-    setState(() => _index = i);
-    _controller.animateToPage(
-      i,
-      duration: const Duration(milliseconds: 260),
-      curve: Curves.easeInOut,
-    );
-    switch (i) {
-      case 0:
-        context.go('/dashboard');
-        break;
-      case 1:
-        context.go('/explore');
-        break;
-      case 2:
-        context.go('/inbox');
-        break;
-      case 3:
-        context.go('/settings');
-        break;
+  @override
+  void didUpdateWidget(TabsShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.initialIndex != oldWidget.initialIndex &&
+        widget.initialIndex != _index) {
+      _index = widget.initialIndex;
+      _controller.jumpToPage(_index);
     }
-  }
-
-  void _onCenterTap() {
-    context.push('/add-entry');
   }
 
   @override
@@ -68,47 +48,16 @@ class _TabsShellState extends State<TabsShell> {
 
     return Scaffold(
       backgroundColor: background,
-      extendBody: true, // Allow body to extend behind bottom nav
-      body: SafeArea(
-        bottom: false, // Bottom nav handles its own padding
-        child: PageView(
-          controller: _controller,
-          physics: const BouncingScrollPhysics(),
-          onPageChanged: (i) => setState(() => _index = i),
-          children: const [
-            DashboardPage(),
-            ExplorePage(),
-            InboxPage(),
-            SettingsPage(),
-          ],
-        ),
-      ),
-      bottomNavigationBar: CurvedBottomNav(
-        currentIndex: _index,
-        items: [
-          CurvedBottomNavItem(
-            icon: Icons.home_outlined,
-            activeIcon: Icons.home,
-            label: AppLocalizations.of(context)!.home,
-          ),
-          CurvedBottomNavItem(
-            icon: Icons.explore_outlined,
-            activeIcon: Icons.explore,
-            label: AppLocalizations.of(context)!.explore,
-          ),
-          CurvedBottomNavItem(
-            icon: Icons.inbox_outlined,
-            activeIcon: Icons.inbox,
-            label: AppLocalizations.of(context)!.inbox,
-          ),
-          CurvedBottomNavItem(
-            icon: Icons.settings_outlined,
-            activeIcon: Icons.settings,
-            label: AppLocalizations.of(context)!.settings,
-          ),
+      body: PageView(
+        controller: _controller,
+        physics: const BouncingScrollPhysics(),
+        onPageChanged: (i) => setState(() => _index = i),
+        children: const [
+          DashboardPage(),
+          ExplorePage(),
+          InboxPage(),
+          SettingsPage(),
         ],
-        onCenterTap: _onCenterTap,
-        onTap: _onTap,
       ),
     );
   }

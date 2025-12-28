@@ -1,8 +1,6 @@
 name: terminal
-description: "Milow Terminal application."
-
-publish_to: 'none'
-
+description: "Milow Terminal - Fleet management application for dispatchers and admins"
+publish_to: "none"
 version: 0.0.1+1
 
 environment:
@@ -10,45 +8,56 @@ environment:
 
 resolution: workspace
 
-
 dependencies:
   flutter:
     sdk: flutter
 
-  cupertino_icons: ^1.0.8
+  # Core
+  intl: any
+  go_router: ^17.0.0
+
+  # State Management
+  provider: ^6.1.5+1
+  flutter_riverpod: ^3.0.3
+  riverpod: ^3.0.3
+  riverpod_annotation: ^3.0.3
+
+  # UI - Fluent Design
+  fluent_ui: ^4.13.0
+  fluentui_system_icons: ^1.1.273
+  google_fonts: ^6.3.2
+  system_theme: ^3.1.2
+
+  # Backend
   supabase_flutter: ^2.10.3
   flutter_dotenv: ^6.0.0
-  provider: ^6.1.5+1
-  go_router: ^17.0.0
-  intl: any
-  google_fonts: ^6.3.2
-  
-  milow_core:
-    path: ../../packages/core
-  window_manager: ^0.5.1
-  connectivity_plus: ^7.0.0
-  fluent_ui: ^4.13.0
-  flutter_riverpod: ^3.0.3
-  riverpod_annotation: ^3.0.3
-  system_theme: ^3.1.2
+
+  # Security
   local_auth: ^3.0.0
   flutter_secure_storage: ^10.0.0
+
+  # Desktop
+  window_manager: ^0.5.1
   file_selector: ^1.1.0
-  package_info_plus: ^8.3.1
+
+  # Networking & Utils
+  connectivity_plus: ^7.0.0
   url_launcher: ^6.3.2
+  package_info_plus: ^8.3.1
   app_links: ^6.4.1
-  riverpod: ^3.0.3
-  fluentui_system_icons: ^1.1.273
+  cupertino_icons: ^1.0.8
+
+  # Workspace Packages
+  milow_core:
+    path: ../../packages/core
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
-  
   flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
   riverpod_generator: ^3.0.3
   build_runner: ^2.10.4
-  flutter_launcher_icons: ^0.14.4
   mockito: ^5.6.1
   msix: ^3.16.8
 
@@ -61,72 +70,22 @@ flutter_launcher_icons:
   windows:
     generate: true
 
-# For information on the generic Dart part of this file, see the
-# following page: https://dart.dev/tools/pub/pubspec
-
-# The following section is specific to Flutter packages.
 flutter:
-
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
   uses-material-design: true
 
-  # To add assets to your application, add an assets section, like this:
   assets:
     - .env
     - assets/images/terminal_icon.png
 
-  # An image asset can refer to one or more resolution-specific "variants", see
-  # https://flutter.dev/to/resolution-aware-images
-
-  # For details regarding adding assets from package dependencies, see
-  # https://flutter.dev/to/asset-from-package
-
-  # To add custom fonts to your application, add a fonts section here,
-  # in this "flutter" section. Each entry in this list should have a
-  # "family" key with the font family name, and a "fonts" key with a
-  # list giving the asset and other descriptors for the font. For
-  # example:
-  # fonts:
-  #   - family: Schyler
-  #     fonts:
-  #       - asset: fonts/Schyler-Regular.ttf
-  #       - asset: fonts/Schyler-Italic.ttf
-  #         style: italic
-  #   - family: Trajan Pro
-  #     fonts:
-  #       - asset: fonts/TrajanPro.ttf
-  #       - asset: fonts/TrajanPro_Bold.ttf
-  #         weight: 700
-  #
-  # For details regarding fonts from package dependencies,
-  # see https://flutter.dev/to/font-from-package
-
-# MSIX configuration for Microsoft Store
 msix_config:
   display_name: Milow Terminal
   publisher_display_name: Maninder Singh
   identity_name: ManinderSingh.milowterminal
   msix_version: 0.0.1.0
   logo_path: assets/images/terminal_icon.png
-  
-  # IMPORTANT: Replace with your Publisher ID from Partner Center
-  # Find it at: https://partner.microsoft.com/dashboard -> Account Settings -> Organization profile
-  # Format: CN=XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX
   publisher: CN=503D7524-2660-491B-86EF-F923C5886DDE
-  
-  # Microsoft Store configuration
   store: true
-  
-  # App capabilities
   capabilities: internetClient
-  
-  # Languages supported
   languages: en-us
-  
-  # Architecture (x64 for modern Windows)
   architecture: x64
-  
-  # Output configuration
   output_name: MilowTerminal

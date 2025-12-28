@@ -1,69 +1,73 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# ========================
+# Milow Driver App .gitignore
+# ========================
+
+# === OS Generated ===
 .DS_Store
-.atom/
-.build/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
-WARP.md
-release.jks
+Thumbs.db
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
+# === IDEs ===
 .idea/
+*.iml
+*.swp
+.vscode/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
+# === Flutter/Dart ===
 .dart_tool/
+.flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
-/build/
-/coverage/
+build/
+**/doc/api/
 
-# Symbolication related
-app.*.symbols
-
-# Obfuscation related
-app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
-
-# Environment files
-.env
-*.env
-
-# IDE
-.vscode/
-
-# Generated files
+# === Generated Code ===
 *.g.dart
 *.freezed.dart
+*.mocks.dart
 
-# Firebase
-google-services.json
-GoogleService-Info.plist
-firebase_options.dart
+# === Test & Coverage ===
+coverage/
 
-# Security / Signing
+# === Environment & Secrets ===
+.env
+.env.*
+!.env.example
+
+# === Android Signing ===
 *.jks
 *.keystore
 key.properties
 local.properties
+google-services.json
+
+# === iOS/macOS ===
+**/ios/Flutter/.last_build_id
+**/ios/Pods/
+**/ios/Podfile.lock
+**/macos/Pods/
+**/macos/Podfile.lock
+GoogleService-Info.plist
+
+# === Firebase ===
+firebase_options.dart
+
+# === Symbolication & Obfuscation ===
+app.*.symbols
+app.*.map.json
+
+# === Build Artifacts ===
+/android/app/debug/
+/android/app/profile/
+/android/app/release/
+.buildlog/
+.history
+migrate_working_dir/
+
+# === Fastlane ===
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots/
+fastlane/test_output/
+*.ipa
+*.dSYM.zip

@@ -39,6 +39,16 @@ import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Enable edge-to-edge display
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+    ),
+  );
+  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+
   await dotenv.load(fileName: '.env');
 
   // Initialize logging service first to capture all activities

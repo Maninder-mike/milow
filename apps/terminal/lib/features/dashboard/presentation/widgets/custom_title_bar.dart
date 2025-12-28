@@ -7,6 +7,8 @@ import 'package:go_router/go_router.dart';
 
 import '../../../settings/widgets/custom_about_dialog.dart';
 import '../../../settings/utils/update_checker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/providers/theme_provider.dart';
 
 class CustomTitleBar extends StatefulWidget {
   final FocusNode? searchFocusNode;
@@ -22,18 +24,11 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final isLight = theme.brightness == Brightness.light;
-
-    final backgroundColor = isLight
-        ? theme
-              .resources
-              .subtleFillColorTertiary // Subtle tinted background
-        : theme.resources.solidBackgroundFillColorBase;
     final foregroundColor = theme.resources.textFillColorPrimary;
 
-    return SizedBox(
-      height: 38,
-      child: Container(
-        color: backgroundColor,
+    return Mica(
+      child: SizedBox(
+        height: 38,
         child: Row(
           children: [
             // Windows Menu Bar (only show on Windows)
@@ -388,6 +383,33 @@ class _WindowsMenuBar extends StatelessWidget {
           label: 'View',
           foregroundColor: foregroundColor,
           menuItems: [
+            MenuFlyoutSubItem(
+              text: const Text('Theme'),
+              items: (context) => [
+                MenuFlyoutItem(
+                  text: const Text('System'),
+                  onPressed: () {
+                    final ref = ProviderScope.containerOf(context);
+                    ref.read(themeProvider.notifier).setTheme(ThemeMode.system);
+                  },
+                ),
+                MenuFlyoutItem(
+                  text: const Text('Light'),
+                  onPressed: () {
+                    final ref = ProviderScope.containerOf(context);
+                    ref.read(themeProvider.notifier).setTheme(ThemeMode.light);
+                  },
+                ),
+                MenuFlyoutItem(
+                  text: const Text('Dark'),
+                  onPressed: () {
+                    final ref = ProviderScope.containerOf(context);
+                    ref.read(themeProvider.notifier).setTheme(ThemeMode.dark);
+                  },
+                ),
+              ],
+            ),
+            const MenuFlyoutSeparator(),
             MenuFlyoutItem(
               leading: const Icon(
                 FluentIcons.full_screen_maximize_24_regular,

@@ -121,6 +121,29 @@ class _SettingsPageState extends State<SettingsPage> {
           child: Column(
             children: [
               const SizedBox(height: 16),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(
+                        Icons.arrow_back,
+                        color: isDark ? Colors.white : const Color(0xFF101828),
+                      ),
+                      onPressed: () => context.go('/dashboard'),
+                    ),
+                    Text(
+                      'Settings',
+                      style: GoogleFonts.inter(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white : const Color(0xFF101828),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
               _buildProfileHeader(context, userName, userEmail, isDark),
               const SizedBox(height: 28),
               _buildAccountSection(context, isDark),

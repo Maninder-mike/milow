@@ -70,6 +70,31 @@ final driverLeftNotificationsProvider =
           });
     });
 
+/// Provider that streams company_invite notifications for the current admin.
+/// These include "Verification Accepted" and "Verification Declined" from drivers.
+final companyInviteNotificationsProvider =
+    StreamProvider<List<Map<String, dynamic>>>((ref) {
+      final supabase = Supabase.instance.client;
+      final userId = supabase.auth.currentUser?.id;
+
+      if (userId == null) return Stream.value([]);
+
+      return supabase
+          .from('notifications')
+          .stream(primaryKey: ['id'])
+          .eq('user_id', userId)
+          .order('created_at', ascending: false)
+          .map((data) {
+            // Filter to only company_invite type notifications that are unread
+            return data
+                .where(
+                  (n) => n['type'] == 'company_invite' && n['is_read'] != true,
+                )
+                .toList()
+                .cast<Map<String, dynamic>>();
+          });
+    });
+
 /// Provider for notification actions
 final notificationActionsProvider = Provider((ref) => NotificationActions());
 
@@ -80,16 +105,19 @@ class NotificationActions {
     final adminId = client.auth.currentUser?.id;
 
     String? companyName;
+    String? adminName;
     if (adminId != null) {
-      // Fetch admin's company name
+      // Fetch admin's company name and full name
       final adminData = await client
           .from('profiles')
-          .select('company_name')
+          .select('company_name, full_name')
           .eq('id', adminId)
           .maybeSingle();
       companyName = adminData?['company_name'] as String?;
+      adminName = adminData?['full_name'] as String? ?? 'Admin';
     }
 
+    // Update user profile
     await client
         .from('profiles')
         .update({
@@ -98,6 +126,19 @@ class NotificationActions {
           if (companyName != null) 'company_name': companyName,
         })
         .eq('id', userId);
+
+    // Send notification to the driver
+    if (adminId != null) {
+      await client.from('notifications').insert({
+        'user_id': userId,
+        'type': 'company_invite',
+        'title': 'Verification Request',
+        'body':
+            'Admin $adminName has verified your ID. Please approve to share your data.',
+        'data': {'admin_id': adminId, 'admin_name': adminName},
+        'is_read': false,
+      });
+    }
   }
 
   Future<void> rejectUser(String userId) async {

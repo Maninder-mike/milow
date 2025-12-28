@@ -130,8 +130,35 @@ class AdminApp extends ConsumerWidget {
     return items;
   }
 
-  List<PlatformMenuItem> _buildViewMenuItems() {
+  List<PlatformMenuItem> _buildViewMenuItems(WidgetRef ref) {
     final items = <PlatformMenuItem>[];
+
+    // Theme Submenu
+    items.add(
+      PlatformMenu(
+        label: 'Theme',
+        menus: [
+          PlatformMenuItem(
+            label: 'System',
+            onSelected: () {
+              ref.read(themeProvider.notifier).setTheme(ThemeMode.system);
+            },
+          ),
+          PlatformMenuItem(
+            label: 'Light',
+            onSelected: () {
+              ref.read(themeProvider.notifier).setTheme(ThemeMode.light);
+            },
+          ),
+          PlatformMenuItem(
+            label: 'Dark',
+            onSelected: () {
+              ref.read(themeProvider.notifier).setTheme(ThemeMode.dark);
+            },
+          ),
+        ],
+      ),
+    );
 
     // Only add toggleFullScreen on platforms that support it (macOS)
     if (PlatformProvidedMenuItem.hasMenu(
@@ -250,7 +277,7 @@ class AdminApp extends ConsumerWidget {
             ),
           ],
         ),
-        PlatformMenu(label: 'View', menus: _buildViewMenuItems()),
+        PlatformMenu(label: 'View', menus: _buildViewMenuItems(ref)),
         PlatformMenu(
           label: 'Window',
           menus: [

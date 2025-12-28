@@ -2,6 +2,11 @@
 trigger: always_on
 ---
 
+---
+
+trigger: always_on
+---
+
 # Project Rules: Milow (Flutter Multi-App Repository)
 
 ## 1. Persona & Context
@@ -38,7 +43,7 @@ Do not conflate the tech stacks between the two main apps.
 
 ---
 
-## 3. Design System: Fluent UI (Strict)
+## 3. Design System: Fluent UI (Terminal App - Desktop)
 
 The `fluent_ui` package is the single source of truth for the Terminal app.
 
@@ -56,6 +61,8 @@ The `fluent_ui` package is the single source of truth for the Terminal app.
 - **Nested elements**: `Inner Radius = Outer Radius - Padding`.
 - **Spacing**: Use an **8px base grid** (8, 16, 24, 32px) for all margins and paddings.
 - **Control Height**: Standard controls (Buttons, Inputs) should be **32px** or **36px**.
+
+- Adaptive Cards Overview use somewhere it works well
 
 ### C. Color & Theming
 
@@ -75,7 +82,100 @@ The `fluent_ui` package is the single source of truth for the Terminal app.
 
 ---
 
-## 4. Backend & Data Layer (Supabase)
+## 4. Design System: Material 3 (Driver App - Android)
+
+> **Reference:** [Flutter Material Component Widgets](https://docs.flutter.dev/ui/widgets/material)
+
+### A. Theming & Color
+
+- **Seed Colors:** Use `ColorScheme.fromSeed()` — never hardcode hex values.
+- **Dynamic Color:** Use `dynamic_color` package for Android "Material You" wallpaper sync.
+- **Surface Tint:** Use elevation-based tint (not shadows) for depth.
+- **Dark Mode:** Support `ThemeMode.system` with user override option.
+
+### B. Widget Selection (M3 Only)
+
+Always use Material 3 widgets. Avoid deprecated M2 variants:
+
+| ✅ Use | ❌ Avoid |
+| ------ | -------- |
+| `NavigationBar` | `BottomNavigationBar` |
+| `FilledButton` / `FilledButton.tonal` | `ElevatedButton` |
+| `NavigationDrawer` | `Drawer` |
+| `SearchBar` + `SearchAnchor` | Custom `TextField` for search |
+| `SegmentedButton` | `ToggleButtons` |
+
+### C. Official M3 Widget Catalog
+
+#### Actions
+
+- `FilledButton` / `FilledButton.tonal` — Primary actions
+- `OutlinedButton` / `TextButton` — Secondary actions
+- `FloatingActionButton` / `FloatingActionButton.extended` — Key actions
+- `IconButton` — Supplementary icon actions
+- `SegmentedButton` — Toggle options, switch views
+
+#### Communication
+
+- `Badge` — Dynamic counts or status indicators
+- `LinearProgressIndicator` / `CircularProgressIndicator` — Loading states
+- `SnackBar` — Brief messages at bottom of screen
+
+#### Containment
+
+- `AlertDialog` — Prompt for data or decisions
+- `BottomSheet` — Supplementary content anchored at bottom
+- `Card` — Related content in rounded container
+- `Divider` — Group content in lists
+- `ListTile` — Single fixed-height row with text/icons
+
+#### Navigation
+
+- `AppBar` — Top content and actions
+- `BottomAppBar` — Bottom navigation and actions
+- `NavigationBar` — Primary destinations
+- `NavigationDrawer` — Slide-out section navigation
+- `TabBar` — Organize content across screens
+
+#### Selection
+
+- `Checkbox`, `Radio`, `Switch` — Form controls
+- `Chip` / `FilterChip` / `InputChip` — Compact selections
+- `DatePicker` / `TimePicker` — Date/time selection
+- `MenuAnchor` — Temporary list of choices
+- `Slider` — Range value selection
+
+#### Text Inputs
+
+- `TextField` — Primary text input
+- `SearchBar` + `SearchAnchor` — Search functionality
+- `DropdownMenu` — Selection from options list
+
+### D. Layout Standards (Android)
+
+- **Corner Radius:** `28.0` for Dialogs/Cards, `16.0` for smaller elements
+- **Spacing:** 8px grid (8, 16, 24, 32, 48)
+- **Touch Targets:** Minimum 48x48dp for all interactive elements
+- **Safe Area:** Every screen wrapped in `SafeArea`
+
+### E. Android-Specific Excellence
+
+- **Edge-to-edge:** Support Android 14+ display modes
+- **Predictive back:** Implement `PopScope` for gesture navigation
+- **Adaptive icons:** Provide `ic_launcher_foreground` + `ic_launcher_background`
+- **Large screens:** Responsive tablet/foldable layouts
+- **Target SDK:** Always latest stable (API 34+)
+
+### F. Accessibility (WCAG 2.1 AA)
+
+- **Semantic labels:** Add `Semantics()` to interactive elements
+- **Color contrast:** 4.5:1 minimum for text
+- **Touch targets:** 48x48dp minimum
+- **Screen readers:** Test with TalkBack
+
+---
+
+## 5. Backend & Data Layer (Supabase)
 
 - **Database**:
   - **Strict Typing**: Use Dart types generated from the DB schema. No raw `Map<String, dynamic>`.
@@ -85,7 +185,7 @@ The `fluent_ui` package is the single source of truth for the Terminal app.
 
 ---
 
-## 5. Engineering Standards
+## 6. Engineering Standards
 
 - **Performance**:
   - Use `const` constructors aggressively.
@@ -102,7 +202,7 @@ The `fluent_ui` package is the single source of truth for the Terminal app.
 
 ---
 
-## 6. Proactive Advice for Antigravity
+## 7. Proactive Advice for Antigravity
 
 - **Responsiveness**: Always test responsive layouts for windows ranging from 13" laptops to ultra-wide monitors.
 - **Title Bar Integration**: The `CustomTitleBar` widget should handle both window dragging and window controls properly across OSs.
@@ -110,3 +210,4 @@ The `fluent_ui` package is the single source of truth for the Terminal app.
   - **Unit**: Mock `SupabaseClient` for repository tests.
   - **Integration**: Protect critical paths (Login -> Dashboard) with `integration_test`.
 - **CI/CD**: Ensure `fastlane` is synced for both apps.
+- Use the latest design materials (Acrylic and Mica for Terminal, Material You for Driver)

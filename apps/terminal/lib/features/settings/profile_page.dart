@@ -6,6 +6,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_selector/file_selector.dart';
 import 'dart:io';
 
+import '../../core/widgets/toast_notification.dart';
+import '../users/data/user_repository_provider.dart'; // Import usersProvider
+
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
 
@@ -59,22 +62,38 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     if (email.isEmpty) return;
 
     try {
-      // Find user by email
+      // Find user by email (case-insensitive search)
       final response = await Supabase.instance.client
           .from('profiles')
-          .select('id')
-          .eq('email', email)
+          .select('id, is_verified, full_name')
+          .ilike('email', email)
           .maybeSingle();
 
       if (response == null) {
+        if (mounted) {
+          showToast(
+            context,
+            title: 'User Not Found',
+            message: 'No user found with email: $email',
+            type: ToastType.warning,
+          );
+        }
+        return;
+      }
+
+      // Check if user is already verified
+      final isVerified = response['is_verified'] == true;
+      final fullName = response['full_name'] ?? email;
+
+      if (isVerified) {
         if (mounted) {
           displayInfoBar(
             context,
             builder: (context, close) {
               return InfoBar(
-                title: const Text('User Not Found'),
-                content: Text('No user found with email: $email'),
-                severity: InfoBarSeverity.warning,
+                title: const Text('User Already Active'),
+                content: Text('$fullName is already in the Active Users list.'),
+                severity: InfoBarSeverity.info,
                 action: IconButton(
                   icon: const Icon(FluentIcons.dismiss_24_regular),
                   onPressed: close,
@@ -83,7 +102,23 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             },
           );
         }
+        _manualApprovalEmailController.clear();
         return;
+      }
+
+      // Get user ID and admin info for notification
+      final userId = response['id'] as String;
+      final adminId = Supabase.instance.client.auth.currentUser?.id;
+
+      // Fetch admin name
+      String adminName = 'Admin';
+      if (adminId != null) {
+        final adminData = await Supabase.instance.client
+            .from('profiles')
+            .select('full_name')
+            .eq('id', adminId)
+            .maybeSingle();
+        adminName = adminData?['full_name'] as String? ?? 'Admin';
       }
 
       // Update user
@@ -96,6 +131,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           })
           .eq('email', email);
 
+      // Send notification to the driver
+      if (adminId != null) {
+        await Supabase.instance.client.from('notifications').insert({
+          'user_id': userId,
+          'type': 'company_invite',
+          'title': 'Verification Request',
+          'body':
+              'Admin $adminName has verified your ID. Please approve to share your data.',
+          'data': {'admin_id': adminId, 'admin_name': adminName},
+          'is_read': false,
+        });
+      }
+
       if (mounted) {
         _manualApprovalEmailController.clear();
         displayInfoBar(
@@ -103,7 +151,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           builder: (context, close) {
             return InfoBar(
               title: const Text('Success'),
-              content: Text('User $email has been approved.'),
+              content: Text('User $email has been approved and notified.'),
               severity: InfoBarSeverity.success,
               action: IconButton(
                 icon: const Icon(FluentIcons.dismiss_24_regular),
@@ -153,6 +201,13 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     });
   }
 
+  @override
+  void dispose() {
+    _verifiedUsersChannel?.unsubscribe();
+    _manualApprovalEmailController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadUserProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
@@ -196,32 +251,20 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             );
           });
 
-          // Fetch Company Details
-          try {
-            final comp = await Supabase.instance.client
-                .from('companies') // Updated table name
-                .select()
-                .limit(1)
-                .maybeSingle();
-
-            if (comp != null && mounted) {
-              setState(() {
-                // _companyDetailsId was unused
-                _compNameController.text =
-                    comp['company_name'] as String? ?? '';
-                _compAddressController.text = comp['address'] as String? ?? '';
-                _compCityController.text = comp['city'] as String? ?? '';
-                _compStateController.text = comp['state'] as String? ?? '';
-                _compZipController.text = comp['zip_code'] as String? ?? '';
-                _compDotController.text = comp['dot_number'] as String? ?? '';
-                _compMcController.text = comp['mc_number'] as String? ?? '';
-                _compPhoneController.text = comp['phone'] as String? ?? '';
-                _compEmailController.text = comp['email'] as String? ?? '';
-              });
-            }
-          } catch (e) {
-            debugPrint('Error fetching company details: $e');
-          }
+          // Load Company Details from profile data
+          setState(() {
+            _compNameController.text = data['company_name'] as String? ?? '';
+            _compAddressController.text =
+                data['company_address'] as String? ?? '';
+            _compCityController.text = data['company_city'] as String? ?? '';
+            _compStateController.text = data['company_state'] as String? ?? '';
+            _compZipController.text = data['company_zip'] as String? ?? '';
+            _compDotController.text =
+                data['company_dot_number'] as String? ?? '';
+            _compMcController.text = data['company_mc_number'] as String? ?? '';
+            _compPhoneController.text = data['company_phone'] as String? ?? '';
+            _compEmailController.text = data['company_email'] as String? ?? '';
+          });
         }
       } catch (e) {
         debugPrint('Error loading profile: $e');
@@ -315,6 +358,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       );
       debugPrint('Auth metadata updated');
 
+      // Save company details to profile if admin has edited them
+      if (_isAdmin) {
+        await Supabase.instance.client
+            .from('profiles')
+            .update({
+              'company_name': _compNameController.text,
+              'company_address': _compAddressController.text,
+              'company_city': _compCityController.text,
+              'company_state': _compStateController.text,
+              'company_zip': _compZipController.text,
+              'company_dot_number': _compDotController.text,
+              'company_mc_number': _compMcController.text,
+              'company_phone': _compPhoneController.text,
+              'company_email': _compEmailController.text,
+            })
+            .eq('id', user.id);
+        debugPrint('Company details saved to profile');
+      }
+
       if (mounted) {
         // ... (success info bar)
         displayInfoBar(
@@ -393,7 +455,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   FilledButton(
                     onPressed: _isLoading ? null : _updateProfile,
                     child: _isLoading
-                        ? const ProgressRing()
+                        ? const SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: ProgressRing(strokeWidth: 2),
+                          )
                         : const Text('Save Changes'),
                   ),
                 ],
@@ -1118,21 +1184,58 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
   // List of verified users for management
   List<Map<String, dynamic>> _verifiedUsers = [];
+  RealtimeChannel? _verifiedUsersChannel;
 
   Future<void> _loadVerifiedUsers() async {
     if (!_isAdmin) return;
 
+    // Cancel existing subscription
+    _verifiedUsersChannel?.unsubscribe();
+
+    try {
+      // Initial load
+      final data = await Supabase.instance.client
+          .from('profiles')
+          .select()
+          .eq('is_verified', true)
+          .neq('role', 'admin')
+          .order('updated_at', ascending: false)
+          .limit(50);
+
+      if (mounted) {
+        setState(() {
+          _verifiedUsers = List<Map<String, dynamic>>.from(data);
+        });
+      }
+
+      // Subscribe to realtime updates
+      _verifiedUsersChannel = Supabase.instance.client
+          .channel('verified_users_changes')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: 'profiles',
+            callback: (payload) {
+              // Reload on any change to profiles
+              _refreshVerifiedUsers();
+            },
+          )
+          .subscribe();
+    } catch (e) {
+      debugPrint('Error loading verified users: $e');
+    }
+  }
+
+  Future<void> _refreshVerifiedUsers() async {
+    if (!_isAdmin || !mounted) return;
     try {
       final data = await Supabase.instance.client
           .from('profiles')
           .select()
           .eq('is_verified', true)
-          .neq(
-            'role',
-            'admin',
-          ) // Don't allow revoking other admins here for safety
+          .neq('role', 'admin')
           .order('updated_at', ascending: false)
-          .limit(50); // Limit to recent 50 for performance
+          .limit(50);
 
       if (mounted) {
         setState(() {
@@ -1140,7 +1243,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         });
       }
     } catch (e) {
-      debugPrint('Error loading verified users: $e');
+      debugPrint('Error refreshing verified users: $e');
     }
   }
 
@@ -1150,12 +1253,25 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           .from('profiles')
           .update({
             'is_verified': false,
-            'role': 'pending', // Reset role to pending
+            // Keep role as is so we know they were a driver/dispatcher
           })
           .eq('id', userId);
 
-      // Refresh list
-      await _loadVerifiedUsers();
+      // Optimistically remove from local list
+      if (mounted) {
+        setState(() {
+          _verifiedUsers.removeWhere((u) => u['id'] == userId);
+        });
+      }
+
+      // Refresh list from DB to be sure
+      // await _loadVerifiedUsers(); // Start this but don't blocking wait for UI update?
+      // Actually, if we optimistic update, we can skip re-loading or do it silently.
+      // Let's re-load to be safe but we already removed them.
+      _loadVerifiedUsers();
+
+      // Invalidate global users list to trigger sidebar update
+      ref.invalidate(usersProvider);
 
       if (mounted) {
         displayInfoBar(
@@ -1163,7 +1279,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           builder: (context, close) {
             return InfoBar(
               title: const Text('Access Revoked'),
-              content: Text('User $email has been revoked and set to pending.'),
+              content: Text(
+                'User $email has been revoked and marked as inactive.',
+              ),
               severity: InfoBarSeverity.success,
               action: IconButton(
                 icon: const Icon(FluentIcons.dismiss_24_regular),

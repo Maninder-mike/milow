@@ -16,15 +16,28 @@ class StatusBar extends ConsumerStatefulWidget {
   ConsumerState<StatusBar> createState() => _StatusBarState();
 }
 
-class _StatusBarState extends ConsumerState<StatusBar> {
+class _StatusBarState extends ConsumerState<StatusBar>
+    with SingleTickerProviderStateMixin {
   final FlyoutController _flyoutController = FlyoutController();
   Timer? _offlineDebounceTimer;
   bool _confirmedOffline = false;
+  bool _isSyncing = false;
+  late AnimationController _syncAnimationController;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 800),
+    );
+  }
 
   @override
   void dispose() {
     _offlineDebounceTimer?.cancel();
     _flyoutController.dispose();
+    _syncAnimationController.dispose();
     super.dispose();
   }
 
@@ -42,7 +55,13 @@ class _StatusBarState extends ConsumerState<StatusBar> {
       data: (notifications) => notifications.length,
       orElse: () => 0,
     );
-    final totalNotificationCount = pendingCount + driverLeftCount;
+    final companyInviteAsync = ref.watch(companyInviteNotificationsProvider);
+    final companyInviteCount = companyInviteAsync.maybeWhen(
+      data: (notifications) => notifications.length,
+      orElse: () => 0,
+    );
+    final totalNotificationCount =
+        pendingCount + driverLeftCount + companyInviteCount;
 
     final connectivityAsync = ref.watch(connectivityProvider);
     final dbHealth = ref.watch(databaseHealthProvider);
@@ -140,10 +159,35 @@ class _StatusBarState extends ConsumerState<StatusBar> {
 
           const Spacer(),
 
-          // 4. Last Sync Time (Real 24h)
-          Text(
-            _formatLastSyncTime(dbHealth.lastSyncTime),
-            style: const TextStyle(fontSize: 11, color: Color(0xFF666666)),
+          // 4. Sync Button with Animation + Last Sync Time
+          GestureDetector(
+            onTap: _performSync,
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  RotationTransition(
+                    turns: _syncAnimationController,
+                    child: Icon(
+                      FluentIcons.arrow_sync_24_regular,
+                      size: 14,
+                      color: _isSyncing
+                          ? Colors.blue
+                          : Colors.black.withValues(alpha: 0.6),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    _formatLastSyncTime(dbHealth.lastSyncTime),
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: Color(0xFF666666),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
           _buildDivider(),
 
@@ -159,6 +203,7 @@ class _StatusBarState extends ConsumerState<StatusBar> {
                       child: _buildCombinedNotificationList(
                         pendingUsersAsync,
                         driverLeftAsync,
+                        companyInviteAsync,
                       ),
                     );
                   },
@@ -291,6 +336,30 @@ class _StatusBarState extends ConsumerState<StatusBar> {
         ),
       ],
     );
+  }
+
+  Future<void> _performSync() async {
+    if (_isSyncing) return; // Prevent double-tap
+
+    setState(() => _isSyncing = true);
+    _syncAnimationController.repeat();
+
+    try {
+      // Refresh all data providers
+      ref.invalidate(pendingUsersProvider);
+      ref.invalidate(driverLeftNotificationsProvider);
+      ref.invalidate(companyInviteNotificationsProvider);
+      ref.invalidate(databaseHealthProvider);
+
+      // Give a slight delay for visual feedback
+      await Future.delayed(const Duration(milliseconds: 600));
+    } finally {
+      if (mounted) {
+        _syncAnimationController.stop();
+        _syncAnimationController.reset();
+        setState(() => _isSyncing = false);
+      }
+    }
   }
 
   Widget _buildDivider() {
@@ -448,6 +517,7 @@ class _StatusBarState extends ConsumerState<StatusBar> {
   Widget _buildCombinedNotificationList(
     AsyncValue<List<UserProfile>> pendingUsersAsync,
     AsyncValue<List<Map<String, dynamic>>> driverLeftAsync,
+    AsyncValue<List<Map<String, dynamic>>> companyInviteAsync,
   ) {
     final pendingUsers = pendingUsersAsync.maybeWhen(
       data: (users) => users,
@@ -457,8 +527,15 @@ class _StatusBarState extends ConsumerState<StatusBar> {
       data: (notifs) => notifs,
       orElse: () => <Map<String, dynamic>>[],
     );
+    final companyInviteNotifs = companyInviteAsync.maybeWhen(
+      data: (notifs) => notifs,
+      orElse: () => <Map<String, dynamic>>[],
+    );
 
-    final isEmpty = pendingUsers.isEmpty && driverLeftNotifs.isEmpty;
+    final isEmpty =
+        pendingUsers.isEmpty &&
+        driverLeftNotifs.isEmpty &&
+        companyInviteNotifs.isEmpty;
 
     if (isEmpty) {
       return const Padding(
@@ -596,6 +673,71 @@ class _StatusBarState extends ConsumerState<StatusBar> {
                       },
                     ),
                   ],
+                ),
+              );
+            }),
+          ],
+          // Verification Response Notifications (Accepted/Declined)
+          if (companyInviteNotifs.isNotEmpty) ...[
+            if (pendingUsers.isNotEmpty || driverLeftNotifs.isNotEmpty)
+              const Divider(),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                'VERIFICATION RESPONSES',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+            ...companyInviteNotifs.map((notif) {
+              final title = notif['title'] ?? 'Verification Response';
+              final body = notif['body'] ?? notif['message'] ?? '';
+              final driverName = notif['data']?['driver_name'] ?? 'Unknown';
+              final isDeclined = title.toLowerCase().contains('declined');
+              return ListTile(
+                title: Text(
+                  driverName,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: isDeclined
+                            ? Colors.red.withValues(alpha: 0.1)
+                            : Colors.green.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        isDeclined ? 'Declined' : 'Accepted',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isDeclined ? Colors.red : Colors.green,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                trailing: IconButton(
+                  icon: Icon(
+                    FluentIcons.dismiss_24_regular,
+                    color: Colors.grey,
+                  ),
+                  onPressed: () {
+                    ref
+                        .read(notificationActionsProvider)
+                        .dismissNotification(notif['id']);
+                  },
                 ),
               );
             }),

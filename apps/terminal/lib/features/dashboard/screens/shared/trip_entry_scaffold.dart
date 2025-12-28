@@ -1,7 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-// import 'package:go_router/go_router.dart'; // Unused
 import 'package:google_fonts/google_fonts.dart';
-import '../../../../core/widgets/connectivity_badge.dart';
 
 class TripEntryScaffold extends StatelessWidget {
   final Widget child;
@@ -34,16 +32,7 @@ class TripEntryScaffold extends StatelessWidget {
                   ),
                 ),
                 if (actions != null)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const ConnectivityBadge(),
-                      const SizedBox(width: 16),
-                      ...actions!,
-                    ],
-                  )
-                else
-                  const ConnectivityBadge(),
+                  Row(mainAxisSize: MainAxisSize.min, children: actions!),
               ],
             ),
           ),

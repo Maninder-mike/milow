@@ -32,70 +32,75 @@ class PrimarySidebar extends ConsumerWidget {
 
     // Light gray/whiteish background for sidebar based on image
     final backgroundColor = isLight
-        ? theme.resources.subtleFillColorTertiary
+        ? const Color(0xFFF3F3F3) // Light gray to match TopBar
         : theme.resources.solidBackgroundFillColorBase;
 
-    return Container(
-      width: 72, // Wider to fit text
-      color: backgroundColor,
-      child: Column(
-        children: [
-          const SizedBox(height: 16),
-          // Dashboard / Home
-          _buildNavItem(
-            context,
-            FluentIcons.home_24_regular,
-            label: 'Dashboard',
-            onTap: onDashboardTap,
-            isActive: activePane == null, // Assuming null is dashboard
-          ),
-          const SizedBox(height: 16),
+    return Acrylic(
+      tint: backgroundColor,
+      tintAlpha: isLight ? 0.95 : 0.7,
+      luminosityAlpha: isLight ? 0.98 : 0.85,
+      child: SizedBox(
+        width: 72, // Wider to fit text
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            // Dashboard / Home
+            _buildNavItem(
+              context,
+              FluentIcons.home_24_regular,
+              label: 'Dashboard',
+              onTap: onDashboardTap,
+              isActive: activePane == null, // Assuming null is dashboard
+            ),
+            const SizedBox(height: 16),
 
-          // Add Record (was Fleet)
-          _buildNavItem(
-            context,
-            FluentIcons.add_square_24_regular,
-            label: 'Add Record',
-            onTap: onAddRecordTap,
-            isActive:
-                activePane == 'add_record', // aligned with activePane usage
-          ),
-          const SizedBox(height: 16),
+            // Add Record (was Fleet)
+            _buildNavItem(
+              context,
+              FluentIcons.add_square_24_regular,
+              label: 'Add Record',
+              onTap: onAddRecordTap,
+              isActive:
+                  activePane == 'add_record', // aligned with activePane usage
+            ),
+            const SizedBox(height: 16),
 
-          // Loads (Recovered Dispatch)
-          _buildNavItem(
-            context,
-            FluentIcons.document_text_24_regular,
-            label: 'Loads',
-            onTap: onLoadsTap,
-            isActive: activePane == 'loads', // or route check
-          ),
-          const SizedBox(height: 16),
+            // Loads (Recovered Dispatch)
+            _buildNavItem(
+              context,
+              FluentIcons.document_text_24_regular,
+              label: 'Loads',
+              onTap: onLoadsTap,
+              isActive: activePane == 'loads', // or route check
+            ),
+            const SizedBox(height: 16),
 
-          // Drivers
-          _buildNavItem(
-            context,
-            FluentIcons.people_team_24_regular,
-            label: 'Drivers',
-            onTap: onDriversTap,
-            isActive: activePane == 'drivers',
-          ),
-          const SizedBox(height: 16),
+            // Drivers
+            _buildNavItem(
+              context,
+              FluentIcons.people_team_24_regular,
+              label: 'Drivers',
+              onTap: onDriversTap,
+              isActive: activePane == 'drivers',
+            ),
+            const SizedBox(height: 16),
 
-          // Fleet
-          _buildNavItem(
-            context,
-            FluentIcons.vehicle_truck_24_regular,
-            label: 'Fleet',
-            onTap: onFleetTap,
-            isActive: activePane == 'fleet', // Assuming logic for highlighting
-          ),
+            // Fleet
+            _buildNavItem(
+              context,
+              FluentIcons.vehicle_truck_24_regular,
+              label: 'Fleet',
+              onTap: onFleetTap,
+              isActive:
+                  activePane == 'fleet', // Assuming logic for highlighting
+            ),
 
-          const Spacer(),
+            const Spacer(),
 
-          _buildSettingsIcon(context, ref),
-          const SizedBox(height: 12),
-        ],
+            _buildSettingsIcon(context, ref),
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }

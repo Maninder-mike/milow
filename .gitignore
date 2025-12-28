@@ -1,66 +1,125 @@
-# Miscellaneous
-*.class
-*.log
-*.pyc
-*.swp
+# ========================
+# Milow Monorepo .gitignore
+# ========================
+
+# === OS Generated ===
 .DS_Store
-.atom/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-build_log.txt
-build_and_release.yml
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-
-
-# IntelliJ related
+# === IDEs ===
+.idea/
 *.iml
 *.ipr
 *.iws
-.idea/
-
-# VS Code related
 .vscode/
+*.swp
+*.swo
+*~
+.atom/
 
-# Flutter/Dart/Pub related
-**/doc/api/
+# === Flutter/Dart ===
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
 build/
-coverage/
+**/doc/api/
 
-# Secrets
+# === Generated Code ===
+*.g.dart
+*.freezed.dart
+*.mocks.dart
+*.config.dart
+
+# === Test & Coverage ===
+coverage/
+test/.test_coverage.dart
+.test_coverage.dart
+
+# === Logs ===
+*.log
+build_log.txt
+
+# === Environment & Secrets ===
 .env
+.env.*
+!.env.example
 *.pem
 *.key
-*.keystore
-*.jks
+*.p12
+*.p8
 
-# Android
-**/android/**/*.gradle
-**/android/**/gradlew
-**/android/**/gradlew.bat
+# === Android ===
+**/android/.gradle/
 **/android/local.properties
-**/android/app/google-services.json
 **/android/key.properties
-**/android/.gradle
+**/android/*.jks
+**/android/*.keystore
+**/android/app/google-services.json
+**/android/**/GeneratedPluginRegistrant.java
 
-# iOS / macOS
+# === iOS ===
+**/ios/Flutter/.last_build_id
 **/ios/Flutter/Generated.xcconfig
 **/ios/Flutter/flutter_export_environment.sh
-**/macos/Flutter/Generated.xcconfig
-**/macos/Flutter/flutter_export_environment.sh
 **/ios/*.mode1v3
 **/ios/*.mode2v3
 **/ios/*.moved-aside
-**/ios/*.nb
 **/ios/*.perspectivev3
 **/ios/*.xcuserstate
-**/Pods/
+**/ios/ServiceDefinitions.plist
+**/ios/Pods/
+**/ios/Podfile.lock
+**/ios/Runner/GeneratedPluginRegistrant.*
+**/ios/GoogleService-Info.plist
 
-# Supabase / Cloud
+# === macOS ===
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Flutter/Generated.xcconfig
+**/macos/Flutter/flutter_export_environment.sh
+**/macos/Pods/
+**/macos/Podfile.lock
+
+# === Windows ===
+**/windows/flutter/generated_plugin_registrant.cc
+**/windows/flutter/generated_plugin_registrant.h
+**/windows/flutter/generated_plugins.cmake
+
+# === Symbolication & Obfuscation ===
+app.*.symbols
+app.*.map.json
+*.dSYM/
+
+# === Firebase ===
+firebase_options.dart
+**/firebase_app_id_file.json
+
+# === Supabase ===
+supabase/.branches/
+supabase/.temp/
 supabase/functions/**/.env
+
+# === Fastlane ===
+**/fastlane/report.xml
+**/fastlane/Preview.html
+**/fastlane/screenshots/
+**/fastlane/test_output/
+**/fastlane/README.md
+*.ipa
+*.dSYM.zip
+
+# === Misc Build Artifacts ===
+*.class
+*.pyc
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
