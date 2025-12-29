@@ -319,9 +319,9 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: delayColor.withOpacity(0.1),
+        color: delayColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: delayColor.withOpacity(0.2)),
+        border: Border.all(color: delayColor.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -380,7 +380,7 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
                 fontSize: 11,
                 color: Theme.of(
                   context,
-                ).colorScheme.onSurfaceVariant.withOpacity(0.7),
+                ).colorScheme.onSurfaceVariant.withValues(alpha: 0.7),
               ),
             ),
           ],

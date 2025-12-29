@@ -39,7 +39,7 @@ class DashboardCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Icon(icon, color: color, size: 26),
@@ -60,8 +60,8 @@ class DashboardCard extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: 11,
               color: isDark
-                  ? Colors.white.withOpacity(0.6)
-                  : textColor.withOpacity(0.6),
+                  ? Colors.white.withValues(alpha: 0.6)
+                  : textColor.withValues(alpha: 0.6),
               fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
@@ -77,7 +77,7 @@ class DashboardCard extends StatelessWidget {
                     (trend!.startsWith('+')
                             ? const Color(0xFF10B981)
                             : const Color(0xFFEF4444))
-                        .withOpacity(0.15),
+                        .withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(

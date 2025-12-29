@@ -562,7 +562,6 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
@@ -571,7 +570,7 @@ class _ExplorePageState extends State<ExplorePage> {
           onRefresh: _onRefresh,
           displacement: 60,
           strokeWidth: 3.0,
-          color: const Color(0xFF6C5CE7),
+          color: Theme.of(context).colorScheme.primary,
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           child: CustomScrollView(
             slivers: [
@@ -581,7 +580,11 @@ class _ExplorePageState extends State<ExplorePage> {
                 floating: true,
                 snap: true,
                 leading: IconButton(
-                  icon: Icon(Icons.arrow_back, color: textColor),
+                  icon: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Theme.of(context).colorScheme.onSurface,
+                    size: 20,
+                  ),
                   onPressed: () => context.go('/dashboard'),
                 ),
                 title: Text(
@@ -594,7 +597,7 @@ class _ExplorePageState extends State<ExplorePage> {
               SliverToBoxAdapter(
                 child: _isLoading
                     ? Padding(
-                        padding: EdgeInsets.all(32.0),
+                        padding: const EdgeInsets.all(32.0),
                         child: Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 3.0,
@@ -892,7 +895,7 @@ class _SimpleDestinationCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.15),
+              color: Colors.orange.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
@@ -966,7 +969,9 @@ class _SimpleActivityCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: Icon(
@@ -1181,7 +1186,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
@@ -1209,7 +1214,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: distanceColor.withOpacity(0.2),
+                          color: distanceColor.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
@@ -1257,12 +1262,12 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.tertiaryContainer.withOpacity(0.3),
+                ).colorScheme.tertiaryContainer.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color: Theme.of(
                     context,
-                  ).colorScheme.tertiary.withOpacity(0.2),
+                  ).colorScheme.tertiary.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -1366,7 +1371,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.secondaryContainer.withOpacity(0.4),
+                ).colorScheme.secondaryContainer.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -1444,9 +1449,9 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1544,7 +1549,7 @@ class _ExpandableDestinationCardState
                     width: 60,
                     height: 60,
                     decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1),
+                      color: accentColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(14),
                     ),
                     child: Column(
@@ -1782,9 +1787,9 @@ class _ExpandableDestinationCardState
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1879,7 +1884,7 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
                     width: 48,
                     height: 48,
                     decoration: BoxDecoration(
-                      color: accentColor.withOpacity(0.1),
+                      color: accentColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(icon, color: accentColor, size: 24),
@@ -1975,9 +1980,9 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.1),
+              color: accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: accentColor.withOpacity(0.2)),
+              border: Border.all(color: accentColor.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2089,7 +2094,7 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
               decoration: BoxDecoration(
                 color: Theme.of(
                   context,
-                ).colorScheme.secondaryContainer.withOpacity(0.4),
+                ).colorScheme.secondaryContainer.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -2142,9 +2147,9 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: accentColor.withOpacity(0.1),
+              color: accentColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: accentColor.withOpacity(0.2)),
+              border: Border.all(color: accentColor.withValues(alpha: 0.2)),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2341,9 +2346,9 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2398,9 +2403,9 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
+        color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [

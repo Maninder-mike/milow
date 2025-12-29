@@ -234,7 +234,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -306,7 +306,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                         Switch(
                           value: _pinEnabled,
                           onChanged: _togglePin,
-                          activeThumbColor: const Color(0xFF007AFF),
+                          activeColor: Theme.of(context).colorScheme.primary,
                         ),
                       ],
                     ),
@@ -332,13 +332,15 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                                   'Change PIN',
                                   style: GoogleFonts.outfit(
                                     fontSize: 16,
-                                    color: const Color(0xFF007AFF),
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                   ),
                                 ),
-                                const Icon(
-                                  Icons.arrow_forward_ios,
+                                Icon(
+                                  Icons.arrow_forward_ios_rounded,
                                   size: 16,
-                                  color: Color(0xFF007AFF),
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ],
                             ),
@@ -383,7 +385,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                                       decoration: BoxDecoration(
                                         color: const Color(
                                           0xFF98A2B3,
-                                        ).withOpacity(0.1),
+                                        ).withValues(alpha: 0.1),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
@@ -416,7 +418,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                           onChanged: _biometricAvailable
                               ? _toggleBiometric
                               : null,
-                          activeThumbColor: const Color(0xFF007AFF),
+                          activeThumbColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                         ),
                       ],
                     ),
@@ -430,18 +434,22 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF007AFF).withOpacity(0.1),
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF007AFF).withOpacity(0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.info_outline,
-                    color: Color(0xFF007AFF),
+                  Icon(
+                    Icons.info_outline_rounded,
+                    color: Theme.of(context).colorScheme.primary,
                     size: 20,
                   ),
                   const SizedBox(width: 12),
@@ -450,7 +458,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                       'Enable PIN or biometric authentication to avoid repeated email logins. Your session will stay active and secure.',
                       style: GoogleFonts.outfit(
                         fontSize: 14,
-                        color: const Color(0xFF007AFF),
+                        color: Theme.of(context).colorScheme.primary,
                         height: 1.5,
                       ),
                     ),

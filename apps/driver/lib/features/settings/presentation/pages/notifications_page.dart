@@ -116,7 +116,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         elevation: 0,
         leading: IconButton(
           icon: Icon(
-            Icons.arrow_back,
+            Icons.arrow_back_ios_new_rounded,
             color: Theme.of(context).textTheme.bodyLarge?.color,
           ),
           onPressed: () => Navigator.pop(context),
@@ -258,7 +258,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               ),
                               color: const Color(0xFFEF4444),
                               child: const Icon(
-                                Icons.delete_outline,
+                                Icons.delete_outline_rounded,
                                 color: Colors.white,
                                 size: 28,
                               ),
@@ -350,8 +350,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withOpacity(0.2)
-                    : const Color(0xFF007AFF).withOpacity(0.1),
+                    ? Colors.white.withValues(alpha: 0.2)
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -395,7 +397,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   decoration: BoxDecoration(
                     color: _getNotificationColor(
                       notification.type,
-                    ).withOpacity(0.1),
+                    ).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -426,8 +428,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             Container(
                               width: 8,
                               height: 8,
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF007AFF),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary,
                                 shape: BoxShape.circle,
                               ),
                             ),
@@ -469,7 +471,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             decoration: BoxDecoration(
                               color: _getNotificationColor(
                                 notification.type,
-                              ).withOpacity(0.1),
+                              ).withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
@@ -538,10 +540,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFF10B981).withOpacity(0.3),
+                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
@@ -679,13 +681,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF007AFF).withOpacity(0.1),
+              color: Theme.of(
+                context,
+              ).colorScheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: const Icon(
-              Icons.notifications_off_outlined,
+            child: Icon(
+              Icons.notifications_off_rounded,
               size: 64,
-              color: Color(0xFF007AFF),
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(height: 24),

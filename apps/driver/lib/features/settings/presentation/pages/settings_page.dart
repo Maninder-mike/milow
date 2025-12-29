@@ -109,7 +109,11 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: Icon(Icons.arrow_back, color: textColor),
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: 20,
+                      ),
                       onPressed: () => context.go('/dashboard'),
                     ),
                     Text(
@@ -303,13 +307,13 @@ class _SettingsPageState extends State<SettingsPage> {
                   title:
                       AppLocalizations.of(context)?.editProfile ??
                       'Edit Profile',
-                  iconColor: const Color(0xFF6C5CE7),
+                  iconColor: Theme.of(context).colorScheme.primary,
                   onTap: () => context.push('/edit-profile'),
                   textColor: textColor,
                 ),
                 _buildDivider(),
                 _buildMenuItem(
-                  icon: Icons.notifications_outlined,
+                  icon: Icons.notifications_none_rounded,
                   title:
                       AppLocalizations.of(context)?.notifications ??
                       'Notifications',
@@ -319,7 +323,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 _buildDivider(),
                 _buildMenuItem(
-                  icon: Icons.security_outlined,
+                  icon: Icons.privacy_tip_outlined,
                   title:
                       AppLocalizations.of(context)?.privacySecurity ??
                       'Privacy & Security',
@@ -416,9 +420,9 @@ class _SettingsPageState extends State<SettingsPage> {
             child: Column(
               children: [
                 _buildMenuItem(
-                  icon: Icons.feedback_outlined,
+                  icon: Icons.chat_bubble_outline_rounded,
                   title: 'Send Feedback',
-                  iconColor: const Color(0xFFA29BFE),
+                  iconColor: Theme.of(context).colorScheme.primary,
                   onTap: () => context.push('/feedback'),
                   textColor: textColor,
                 ),
@@ -426,7 +430,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _buildMenuItem(
                   icon: Icons.help_outline,
                   title: 'Help Center',
-                  iconColor: const Color(0xFF00CEC9),
+                  iconColor: Theme.of(context).colorScheme.primary,
                   // TODO: Implement Help Center navigation
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
@@ -488,7 +492,7 @@ class _SettingsPageState extends State<SettingsPage> {
           style: GoogleFonts.outfit(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: textColor.withOpacity(0.5),
+            color: textColor.withValues(alpha: 0.5),
             letterSpacing: 1.2,
           ),
         ),
@@ -536,7 +540,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, size: 22, color: iconColor),
@@ -570,7 +574,9 @@ class _SettingsPageState extends State<SettingsPage> {
       height: 1,
       indent: 16,
       endIndent: 16,
-      color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
+      color: Theme.of(
+        context,
+      ).colorScheme.outlineVariant.withValues(alpha: 0.5),
     );
   }
 
@@ -584,7 +590,7 @@ class _SettingsPageState extends State<SettingsPage> {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.primaryContainer.withOpacity(0.2),
+              ).colorScheme.primaryContainer.withValues(alpha: 0.2),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(
@@ -609,7 +615,7 @@ class _SettingsPageState extends State<SettingsPage> {
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
-              ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(

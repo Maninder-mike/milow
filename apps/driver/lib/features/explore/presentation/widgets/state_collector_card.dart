@@ -95,7 +95,7 @@ class StateCollectorCard extends StatelessWidget {
                     border: Border.all(
                       color: Theme.of(
                         context,
-                      ).colorScheme.primary.withOpacity(0.3),
+                      ).colorScheme.primary.withValues(alpha: 0.3),
                     ),
                   ),
                   child: Text(

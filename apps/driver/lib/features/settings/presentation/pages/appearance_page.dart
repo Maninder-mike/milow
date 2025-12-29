@@ -19,7 +19,7 @@ class AppearancePage extends StatelessWidget {
         elevation: 0,
         leading: IconButton(
           icon: Icon(
-            Icons.arrow_back,
+            Icons.arrow_back_ios_new_rounded,
             color: Theme.of(context).textTheme.bodyLarge?.color,
           ),
           onPressed: () => Navigator.pop(context),
@@ -47,7 +47,7 @@ class AppearancePage extends StatelessWidget {
                   fontWeight: FontWeight.w500,
                   color: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.color?.withOpacity(0.6),
+                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
                 ),
               ),
             ),
@@ -130,16 +130,16 @@ class AppearancePage extends StatelessWidget {
                       fontSize: 14,
                       color: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.color?.withOpacity(0.6),
+                      ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
               ),
             ),
             if (isSelected)
-              const Icon(
-                Icons.check_circle,
-                color: Color(0xFF007AFF),
+              Icon(
+                Icons.check_circle_rounded,
+                color: Theme.of(context).colorScheme.primary,
                 size: 24,
               ),
           ],
@@ -152,7 +152,7 @@ class AppearancePage extends StatelessWidget {
     return Divider(
       height: 1,
       thickness: 1,
-      color: Theme.of(context).dividerColor.withOpacity(0.1),
+      color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
       indent: 16,
       endIndent: 16,
     );

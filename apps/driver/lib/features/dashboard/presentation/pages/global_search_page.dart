@@ -602,7 +602,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: iconColor.withOpacity(0.1),
+                  color: iconColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Icon(icon, color: iconColor, size: 22),
@@ -770,7 +770,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
         leading: Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: result.iconColor.withOpacity(0.1),
+            color: result.iconColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Icon(result.icon, color: result.iconColor, size: 24),

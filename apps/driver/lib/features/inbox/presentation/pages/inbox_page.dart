@@ -27,8 +27,14 @@ class _InboxPageState extends State<InboxPage> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: Theme.of(context).colorScheme.onSurface,
+            size: 20,
+          ),
           onPressed: () {
             if (context.canPop()) {
               context.pop();
@@ -39,12 +45,17 @@ class _InboxPageState extends State<InboxPage> {
         ),
         title: Text(
           'Inbox',
-          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.search),
+            icon: Icon(
+              Icons.search_rounded,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Search coming soon')),
@@ -491,7 +502,7 @@ class _InboxPageState extends State<InboxPage> {
                                     ?.copyWith(
                                       fontSize: 10,
                                       color: isMe
-                                          ? Colors.white.withOpacity(0.7)
+                                          ? Colors.white.withValues(alpha: 0.7)
                                           : Theme.of(
                                               context,
                                             ).colorScheme.onSurfaceVariant,

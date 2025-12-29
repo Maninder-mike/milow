@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/core/utils/address_utils.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -368,20 +367,25 @@ class _RecordsListPageState extends State<RecordsListPage> {
               floating: false,
               pinned: true,
               leading: IconButton(
-                icon: Icon(Icons.arrow_back, color: textColor),
+                icon: Icon(
+                  Icons.arrow_back_ios_new_rounded,
+                  color: Theme.of(context).colorScheme.onSurface,
+                  size: 20,
+                ),
                 onPressed: () => Navigator.pop(context),
               ),
               title: Text(
                 'All Records',
-                style: GoogleFonts.outfit(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               actions: [
                 IconButton(
-                  icon: Icon(Icons.save_alt, color: textColor),
+                  icon: Icon(
+                    Icons.download_rounded,
+                    color: Theme.of(context).colorScheme.onSurface,
+                  ),
                   onPressed: () => _showDownloadBottomSheet(
                     textColor,
                     secondaryTextColor,
@@ -392,7 +396,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                 IconButton(
                   icon: Badge(
                     isLabelVisible: _selectedFilter != 'All',
-                    child: Icon(Icons.filter_list, color: textColor),
+                    child: Icon(
+                      Icons.tune_rounded,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
                   ),
                   onPressed: _showFilterBottomSheet,
                 ),
@@ -418,10 +425,18 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   decoration: InputDecoration(
                     hintText: 'Search by load ID or route...',
                     hintStyle: GoogleFonts.outfit(color: secondaryTextColor),
-                    prefixIcon: Icon(Icons.search, color: secondaryTextColor),
+                    prefixIcon: Icon(
+                      Icons.search_rounded,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
-                            icon: Icon(Icons.clear, color: secondaryTextColor),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
                             onPressed: () {
                               setState(() {
                                 _searchController.clear();
@@ -444,7 +459,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     ),
                     focusedBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Color(0xFF007AFF)),
+                      borderSide: BorderSide(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
                     contentPadding: const EdgeInsets.symmetric(
                       horizontal: 16,
@@ -467,16 +484,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           _selectedFilter,
                           style: GoogleFonts.outfit(
                             fontSize: 12,
-                            color: const Color(0xFF007AFF),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
-                        backgroundColor: const Color(
-                          0xFF007AFF,
-                        ).withOpacity(0.1),
-                        deleteIcon: const Icon(
-                          Icons.close,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
+                        deleteIcon: Icon(
+                          Icons.close_rounded,
                           size: 16,
-                          color: Color(0xFF007AFF),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         onDeleted: () {
                           setState(() {
@@ -506,7 +523,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
             onRefresh: _onRefresh,
             displacement: 60,
             strokeWidth: 3.0,
-            color: const Color(0xFF007AFF),
+            color: Theme.of(context).colorScheme.primary,
             backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             child: _isLoading
                 ? const Center(
@@ -522,7 +539,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.inbox_outlined,
+                                Icons.inbox_rounded,
                                 size: 64,
                                 color: secondaryTextColor,
                               ),
@@ -563,14 +580,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         key: Key('${record['type']}_${record['id']}'),
                         background: Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6),
+                            color: Theme.of(context).colorScheme.primary,
                             borderRadius: BorderRadius.circular(20),
                           ),
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.only(left: 20),
                           child: Row(
                             children: [
-                              const Icon(Icons.edit, color: Colors.white),
+                              Icon(Icons.edit_rounded, color: Colors.white),
                               const SizedBox(width: 8),
                               Text(
                                 'Modify',
@@ -600,7 +617,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              const Icon(Icons.delete, color: Colors.white),
+                              Icon(Icons.delete_rounded, color: Colors.white),
                             ],
                           ),
                         ),
@@ -639,7 +656,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     borderRadius: BorderRadius.circular(24),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.black.withOpacity(0.15),
+                                        color: Colors.black.withValues(
+                                          alpha: 0.15,
+                                        ),
                                         blurRadius: 20,
                                         offset: const Offset(0, -5),
                                       ),
@@ -655,7 +674,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                         height: 4,
                                         decoration: BoxDecoration(
                                           color: dialogSecondaryColor
-                                              .withOpacity(0.3),
+                                              .withValues(alpha: 0.3),
                                           borderRadius: BorderRadius.circular(
                                             2,
                                           ),
@@ -669,7 +688,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                         decoration: BoxDecoration(
                                           color: const Color(
                                             0xFFEF4444,
-                                          ).withOpacity(0.1),
+                                          ).withValues(alpha: 0.1),
                                           shape: BoxShape.circle,
                                         ),
                                         child: const Icon(
@@ -774,9 +793,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                                         ),
                                                     boxShadow: [
                                                       BoxShadow(
-                                                        color: const Color(
-                                                          0xFFEF4444,
-                                                        ).withOpacity(0.3),
+                                                        color:
+                                                            const Color(
+                                                              0xFFEF4444,
+                                                            ).withValues(
+                                                              alpha: 0.3,
+                                                            ),
                                                         blurRadius: 8,
                                                         offset: const Offset(
                                                           0,
@@ -924,15 +946,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   decoration: BoxDecoration(
                     color:
                         (isTrip
-                                ? const Color(0xFF3B82F6)
+                                ? Theme.of(context).colorScheme.primary
                                 : const Color(0xFFF59E0B))
-                            .withOpacity(0.1),
+                            .withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
                     isTrip ? Icons.local_shipping : Icons.local_gas_station,
                     color: isTrip
-                        ? const Color(0xFF3B82F6)
+                        ? Theme.of(context).colorScheme.primary
                         : const Color(0xFFF59E0B),
                     size: 24,
                   ),
@@ -958,7 +980,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: const Color(0xFF3B82F6),
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ],
@@ -1348,13 +1370,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF007AFF).withOpacity(0.1),
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.primary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(
-                              Icons.picture_as_pdf,
-                              color: Color(0xFF007AFF),
-                              size: 24,
+                            child: Icon(
+                              Icons.flag_rounded,
+                              color: Theme.of(context).colorScheme.primary,
+                              size: 20,
                             ),
                           ),
                           const SizedBox(width: 12),
@@ -1640,14 +1664,25 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: exportCount > 0
-                              ? const Color(0xFF007AFF).withOpacity(0.1)
-                              : const Color(0xFFEF4444).withOpacity(0.1),
+                              ? Theme.of(
+                                  context,
+                                ).colorScheme.primary.withValues(alpha: 0.1)
+                              : const Color(0xFFEF4444).withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: exportCount > 0
-                                ? const Color(0xFF007AFF).withOpacity(0.3)
-                                : const Color(0xFFEF4444).withOpacity(0.3),
-                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: exportCount > 0
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withValues(alpha: 0.3)
+                                  : const Color(
+                                      0xFFEF4444,
+                                    ).withValues(alpha: 0.3),
+                              blurRadius: 4,
+                              spreadRadius: 0,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Row(
                           children: [
@@ -1655,8 +1690,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: exportCount > 0
-                                    ? const Color(0xFF007AFF).withOpacity(0.2)
-                                    : const Color(0xFFEF4444).withOpacity(0.2),
+                                    ? Theme.of(context).colorScheme.primary
+                                          .withValues(alpha: 0.2)
+                                    : const Color(
+                                        0xFFEF4444,
+                                      ).withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
@@ -1664,7 +1702,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     ? Icons.description_outlined
                                     : Icons.error_outline,
                                 color: exportCount > 0
-                                    ? const Color(0xFF007AFF)
+                                    ? Theme.of(context).colorScheme.primary
                                     : const Color(0xFFEF4444),
                                 size: 24,
                               ),
@@ -1740,7 +1778,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                   }
                                 });
                               },
-                              selectedColor: const Color(0xFF007AFF),
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.primary,
                               checkmarkColor: Colors.white,
                               backgroundColor: isDark
                                   ? const Color(0xFF1E293B)
@@ -1749,7 +1789,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 borderRadius: BorderRadius.circular(8),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFF007AFF)
+                                      ? Theme.of(context).colorScheme.primary
                                       : borderColor,
                                 ),
                               ),
@@ -1874,7 +1914,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     }
                                   : null,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF007AFF),
+                                backgroundColor: Theme.of(
+                                  context,
+                                ).colorScheme.primary,
                                 disabledBackgroundColor: isDark
                                     ? const Color(0xFF3A3A3A)
                                     : const Color(0xFFE5E5E5),
@@ -1948,7 +1990,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   Icons.calendar_today_rounded,
                   size: 16,
                   color: date != null
-                      ? const Color(0xFF007AFF)
+                      ? Theme.of(context).colorScheme.primary
                       : secondaryTextColor,
                 ),
                 const SizedBox(width: 8),
@@ -2014,24 +2056,24 @@ class _RecordsListPageState extends State<RecordsListPage> {
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: isDark
-                ? const ColorScheme.dark(
-                    primary: Color(0xFF007AFF),
+                ? ColorScheme.dark(
+                    primary: Theme.of(context).colorScheme.primary,
                     onPrimary: Colors.white,
-                    surface: Color(0xFF1E1E1E),
+                    surface: const Color(0xFF1E1E1E),
                     onSurface: Colors.white,
                   )
-                : const ColorScheme.light(
-                    primary: Color(0xFF007AFF),
+                : ColorScheme.light(
+                    primary: Theme.of(context).colorScheme.primary,
                     onPrimary: Colors.white,
                     surface: Colors.white,
-                    onSurface: Color(0xFF101828),
+                    onSurface: const Color(0xFF101828),
                   ),
             dialogTheme: DialogThemeData(
               backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF007AFF),
+                foregroundColor: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -2084,9 +2126,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
+        builder: (context) => Center(
           child: CircularProgressIndicator(
-            color: Color(0xFF007AFF),
+            color: Theme.of(context).colorScheme.primary,
             strokeWidth: 3.0,
           ),
         ),
@@ -2098,7 +2140,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
       final recordsToExport = _getExportRecords(filter, dateRange);
 
       // Prepare CSV data
-      List<List<dynamic>> rows = [];
+      final List<List<dynamic>> rows = [];
 
       // Add Header
       rows.add([
@@ -2219,9 +2261,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
       showDialog(
         context: context,
         barrierDismissible: false,
-        builder: (context) => const Center(
+        builder: (context) => Center(
           child: CircularProgressIndicator(
-            color: Color(0xFF007AFF),
+            color: Theme.of(context).colorScheme.primary,
             strokeWidth: 3.0,
           ),
         ),
@@ -3045,7 +3087,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -3078,15 +3120,17 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF007AFF).withOpacity(0.1),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.primary.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      Icons.folder,
-                      color: Color(0xFF007AFF),
+                    Icon(
+                      Icons.folder_rounded,
+                      color: Theme.of(context).colorScheme.primary,
                       size: 16,
                     ),
                     const SizedBox(width: 8),
@@ -3095,7 +3139,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         'Saved to device storage',
                         style: GoogleFonts.outfit(
                           fontSize: 12,
-                          color: const Color(0xFF007AFF),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -3115,17 +3159,22 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           XFile(filePath),
                         ], text: 'Milow Records Report');
                       },
-                      icon: const Icon(Icons.share, color: Color(0xFF007AFF)),
+                      icon: Icon(
+                        Icons.share_rounded,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                       label: Text(
                         'Share',
                         style: GoogleFonts.outfit(
-                          color: const Color(0xFF007AFF),
+                          color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
-                        side: const BorderSide(color: Color(0xFF007AFF)),
+                        side: BorderSide(
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),
                         ),
@@ -3139,7 +3188,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         Navigator.pop(context);
                         await OpenFile.open(filePath);
                       },
-                      icon: const Icon(Icons.open_in_new, color: Colors.white),
+                      icon: const Icon(
+                        Icons.open_in_new_rounded,
+                        color: Colors.white,
+                      ),
                       label: Text(
                         'Open',
                         style: GoogleFonts.outfit(
@@ -3148,7 +3200,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         ),
                       ),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
+                        backgroundColor: Theme.of(context).colorScheme.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(12),

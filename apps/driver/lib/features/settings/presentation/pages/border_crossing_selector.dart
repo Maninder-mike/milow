@@ -98,7 +98,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
         backgroundColor: bgColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
@@ -122,9 +122,9 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
         ],
       ),
       body: _loading
-          ? const Center(
+          ? Center(
               child: CircularProgressIndicator(
-                color: Color(0xFF007AFF),
+                color: Theme.of(context).colorScheme.primary,
                 strokeWidth: 3.0,
               ),
             )
@@ -142,7 +142,10 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                         fontSize: 15,
                         color: subtextColor,
                       ),
-                      prefixIcon: Icon(Icons.search, color: subtextColor),
+                      prefixIcon: Icon(
+                        Icons.search_rounded,
+                        color: subtextColor,
+                      ),
                       filled: true,
                       fillColor: cardColor,
                       contentPadding: const EdgeInsets.symmetric(
@@ -176,10 +179,10 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Row(
                       children: [
-                        const Icon(
-                          Icons.bookmark,
+                        Icon(
+                          Icons.bookmark_rounded,
                           size: 18,
-                          color: Color(0xFF007AFF),
+                          color: Theme.of(context).colorScheme.primary,
                         ),
                         const SizedBox(width: 8),
                         Text(
@@ -212,9 +215,11 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                 color: Colors.white,
                               ),
                             ),
-                            backgroundColor: const Color(0xFF007AFF),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.primary,
                             deleteIcon: const Icon(
-                              Icons.close,
+                              Icons.close_rounded,
                               size: 16,
                               color: Colors.white,
                             ),
@@ -256,7 +261,9 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                 borderRadius: BorderRadius.circular(12),
                                 border: isSaved
                                     ? Border.all(
-                                        color: const Color(0xFF007AFF),
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
                                         width: 2,
                                       )
                                     : null,
@@ -273,14 +280,14 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                     color: port.borderType == 'Canadian'
                                         ? const Color(
                                             0xFFDC2626,
-                                          ).withOpacity(0.1)
+                                          ).withValues(alpha: 0.1)
                                         : port.borderType == 'Mexican'
                                         ? const Color(
                                             0xFF16A34A,
-                                          ).withOpacity(0.1)
+                                          ).withValues(alpha: 0.1)
                                         : const Color(
                                             0xFF94A3B8,
-                                          ).withOpacity(0.2),
+                                          ).withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Center(
@@ -316,7 +323,9 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                       port.location,
                                       style: GoogleFonts.outfit(
                                         fontSize: 12,
-                                        color: subtextColor.withOpacity(0.7),
+                                        color: subtextColor.withValues(
+                                          alpha: 0.7,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -324,10 +333,10 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                 trailing: IconButton(
                                   icon: Icon(
                                     isSaved
-                                        ? Icons.bookmark
-                                        : Icons.bookmark_border,
+                                        ? Icons.bookmark_rounded
+                                        : Icons.bookmark_border_rounded,
                                     color: isSaved
-                                        ? const Color(0xFF007AFF)
+                                        ? Theme.of(context).colorScheme.primary
                                         : subtextColor,
                                   ),
                                   onPressed: () => _toggleSaved(port),
@@ -361,7 +370,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
         setState(() => _filterBorder = label);
       },
       backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-      selectedColor: const Color(0xFF007AFF),
+      selectedColor: Theme.of(context).colorScheme.primary,
       checkmarkColor: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
     );

@@ -99,9 +99,9 @@ class _AboutPageState extends State<AboutPage> {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
               decoration: BoxDecoration(
-                color: primaryColor.withOpacity(0.1),
+                color: primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: primaryColor.withOpacity(0.2)),
+                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
               ),
               child: Text(
                 'Version $_version ($_buildNumber)',
@@ -204,7 +204,7 @@ class _AboutPageState extends State<AboutPage> {
           Container(
             padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
+              color: primaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: primaryColor, size: 20),

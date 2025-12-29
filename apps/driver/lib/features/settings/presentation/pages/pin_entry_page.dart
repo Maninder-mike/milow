@@ -170,13 +170,13 @@ class _PinEntryPageState extends State<PinEntryPage> {
                   height: 16,
                   decoration: BoxDecoration(
                     color: isFilled
-                        ? const Color(0xFF007AFF)
+                        ? Theme.of(context).colorScheme.primary
                         : Colors.transparent,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: _errorMessage != null
                           ? Colors.red
-                          : const Color(0xFF007AFF),
+                          : Theme.of(context).colorScheme.primary,
                       width: 2,
                     ),
                   ),
@@ -203,11 +203,11 @@ class _PinEntryPageState extends State<PinEntryPage> {
                   onPressed: _authenticateWithBiometric,
                   icon: Icon(
                     _hasMultipleBiometrics
-                        ? Icons.security
+                        ? Icons.security_rounded
                         : (_hasFaceRecognition
-                              ? Icons.face
-                              : Icons.fingerprint),
-                    color: const Color(0xFF007AFF),
+                              ? Icons.face_rounded
+                              : Icons.fingerprint_rounded),
+                    color: Theme.of(context).colorScheme.primary,
                     size: 28,
                   ),
                   label: Text(
@@ -219,7 +219,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                     style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF007AFF),
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                   ),
                 ),
@@ -275,7 +275,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -311,14 +311,14 @@ class _PinEntryPageState extends State<PinEntryPage> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
         child: Center(
-          child: Icon(Icons.backspace_outlined, color: iconColor, size: 28),
+          child: Icon(Icons.backspace_rounded, color: iconColor, size: 28),
         ),
       ),
     );

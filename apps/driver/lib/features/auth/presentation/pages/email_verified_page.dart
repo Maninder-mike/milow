@@ -79,11 +79,11 @@ class EmailVerifiedPage extends StatelessWidget {
                         borderRadius: BorderRadius.circular(16),
                         color: Theme.of(
                           context,
-                        ).colorScheme.primary.withOpacity(0.06),
+                        ).colorScheme.primary.withValues(alpha: 0.06),
                         border: Border.all(
                           color: Theme.of(
                             context,
-                          ).colorScheme.primary.withOpacity(0.1),
+                          ).colorScheme.primary.withValues(alpha: 0.1),
                         ),
                       ),
                       child: Row(

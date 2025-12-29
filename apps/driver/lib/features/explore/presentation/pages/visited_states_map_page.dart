@@ -523,14 +523,14 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
         return Card(
           elevation: 0,
           color: isVisited
-              ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+              ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
               : Colors.transparent,
           margin: const EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
             side: BorderSide(
               color: isVisited
-                  ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                  ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
                   : Theme.of(context).colorScheme.outlineVariant,
             ),
           ),
@@ -541,7 +541,7 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
               height: 40,
               decoration: BoxDecoration(
                 color: isVisited
-                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                     : Theme.of(context).colorScheme.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
@@ -631,7 +631,7 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -658,9 +658,9 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
       if (stats.visitCount > 5) {
         color = Theme.of(context).colorScheme.primary;
       } else if (stats.visitCount > 2) {
-        color = Theme.of(context).colorScheme.primary.withOpacity(0.8);
+        color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.8);
       } else {
-        color = Theme.of(context).colorScheme.primary.withOpacity(0.6);
+        color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.6);
       }
       colors[code] = color;
       colors['us-$code'] = color;
@@ -716,7 +716,7 @@ class _RegionDetailsSheet extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: stats != null
-                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
                       : Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
@@ -783,7 +783,7 @@ class _RegionDetailsSheet extends StatelessWidget {
                       size: 48,
                       color: Theme.of(
                         context,
-                      ).colorScheme.onSurfaceVariant.withOpacity(0.3),
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
                     ),
                     const SizedBox(height: 16),
                     Text(

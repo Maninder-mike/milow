@@ -19,7 +19,7 @@ Thumbs.db
 .pub-cache/
 .pub/
 build/
-**/doc/api/
+**/doc/api
 
 # === Generated Code ===
 *.g.dart

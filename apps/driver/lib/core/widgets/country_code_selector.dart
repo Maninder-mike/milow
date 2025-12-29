@@ -186,7 +186,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 IconButton(
                   onPressed: () => Navigator.pop(context),
                   icon: Icon(
-                    Icons.close,
+                    Icons.close_rounded,
                     color: widget.isDark
                         ? Colors.white70
                         : const Color(0xFF667085),
@@ -209,7 +209,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                   fontSize: 15,
                   color: subtextColor,
                 ),
-                prefixIcon: Icon(Icons.search, color: subtextColor),
+                prefixIcon: Icon(Icons.search_rounded, color: subtextColor),
                 filled: true,
                 fillColor: widget.isDark
                     ? const Color(0xFF2A2A2A)
@@ -232,8 +232,8 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: const BorderSide(
-                    color: Color(0xFF007AFF),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
                     width: 2,
                   ),
                 ),
@@ -275,7 +275,9 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? const Color(0xFF007AFF).withOpacity(0.1)
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withValues(alpha: 0.1)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -317,15 +319,17 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     color: isSelected
-                                        ? const Color(0xFF007AFF)
+                                        ? Theme.of(context).colorScheme.primary
                                         : subtextColor,
                                   ),
                                 ),
                                 if (isSelected) ...[
                                   const SizedBox(width: 8),
-                                  const Icon(
-                                    Icons.check_circle,
-                                    color: Color(0xFF007AFF),
+                                  Icon(
+                                    Icons.check_circle_rounded,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
                                     size: 20,
                                   ),
                                 ],

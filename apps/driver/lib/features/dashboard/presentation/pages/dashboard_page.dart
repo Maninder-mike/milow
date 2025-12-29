@@ -359,9 +359,9 @@ class _DashboardPageState extends State<DashboardPage>
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.5, 0.8, 1.0],
                 colors: [
-                  Colors.black.withOpacity(0.1),
-                  Colors.black.withOpacity(0.3),
-                  baseColor.withOpacity(0.8),
+                  Colors.black.withValues(alpha: 0.1),
+                  Colors.black.withValues(alpha: 0.3),
+                  baseColor.withValues(alpha: 0.8),
                   baseColor,
                 ],
               ),
@@ -382,7 +382,7 @@ class _DashboardPageState extends State<DashboardPage>
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     Text(
-                      'Create with Veo 3',
+                      'Track Your Journey',
                       style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -391,15 +391,15 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Generate videos with your ingredients',
+                      'Log fuel, mileage, and border crossings effortlessly.',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withOpacity(0.9),
+                        color: Colors.white.withValues(alpha: 0.9),
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
                     FilledButton(
-                      onPressed: () {},
+                      onPressed: () => context.push('/add-entry'),
                       style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
@@ -409,7 +409,7 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                       ),
                       child: Text(
-                        'Generate Video',
+                        'Start New Entry',
                         style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -522,7 +522,7 @@ class _DashboardPageState extends State<DashboardPage>
       width: isActive ? 16 : 6,
       height: 6,
       decoration: BoxDecoration(
-        color: isActive ? Colors.white : Colors.white.withOpacity(0.5),
+        color: isActive ? Colors.white : Colors.white.withValues(alpha: 0.5),
         borderRadius: BorderRadius.circular(3),
         shape: BoxShape.rectangle,
       ),
@@ -638,7 +638,7 @@ class _DashboardPageState extends State<DashboardPage>
           onRefresh: _onRefresh,
           displacement: 60,
           strokeWidth: 3.0,
-          color: const Color(0xFF007AFF),
+          color: Theme.of(context).colorScheme.primary,
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
@@ -764,10 +764,10 @@ class _DashboardPageState extends State<DashboardPage>
                               TextButton.icon(
                                 onPressed: () =>
                                     _loadBorderWaitTimes(forceRefresh: true),
-                                icon: const Icon(
-                                  Icons.refresh,
+                                icon: Icon(
+                                  Icons.refresh_rounded,
                                   size: 16,
-                                  color: Color(0xFF007AFF),
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                                 label: Text(
                                   'Refresh',
@@ -860,7 +860,7 @@ class _DashboardPageState extends State<DashboardPage>
                                                   color: Theme.of(context)
                                                       .colorScheme
                                                       .onSurfaceVariant
-                                                      .withOpacity(0.7),
+                                                      .withValues(alpha: 0.7),
                                                 ),
                                           ),
                                         ],
@@ -1078,7 +1078,7 @@ class _DashboardPageState extends State<DashboardPage>
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: iconColor.withOpacity(0.1),
+              color: iconColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),

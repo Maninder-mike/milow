@@ -219,8 +219,10 @@ class _LoginPageState extends State<LoginPage>
                     style: GoogleFonts.outfit(color: textColor, fontSize: 16),
                     decoration: _inputDecoration(
                       hint: AppLocalizations.of(context)!.emailHint,
-                      prefixIcon: Icons.alternate_email,
-                      suffixIcon: _emailValid ? Icons.check_circle : null,
+                      prefixIcon: Icons.alternate_email_rounded,
+                      suffixIcon: _emailValid
+                          ? Icons.check_circle_rounded
+                          : null,
                       suffixColor: const Color(0xFF10B981),
                     ),
                   ),
@@ -236,10 +238,10 @@ class _LoginPageState extends State<LoginPage>
                     style: GoogleFonts.outfit(color: textColor, fontSize: 16),
                     decoration: _inputDecoration(
                       hint: AppLocalizations.of(context)!.enterPasswordHint,
-                      prefixIcon: Icons.lock_outline,
+                      prefixIcon: Icons.lock_rounded,
                       suffixIcon: _obscurePassword
-                          ? Icons.visibility_off_outlined
-                          : Icons.visibility_outlined,
+                          ? Icons.visibility_off_rounded
+                          : Icons.visibility_rounded,
                       onSuffixTap: () {
                         setState(() => _obscurePassword = !_obscurePassword);
                       },
@@ -300,7 +302,10 @@ class _LoginPageState extends State<LoginPage>
                                   ),
                                 ),
                                 const SizedBox(width: 8),
-                                const Icon(Icons.arrow_forward, size: 20),
+                                const Icon(
+                                  Icons.arrow_forward_rounded,
+                                  size: 20,
+                                ),
                               ],
                             ),
                     ),
@@ -312,14 +317,16 @@ class _LoginPageState extends State<LoginPage>
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: Colors.red.withOpacity(0.1),
+                        color: Colors.red.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.red.withOpacity(0.2)),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: 0.2),
+                        ),
                       ),
                       child: Row(
                         children: [
                           const Icon(
-                            Icons.error_outline,
+                            Icons.error_outline_rounded,
                             color: Colors.red,
                             size: 20,
                           ),
@@ -437,13 +444,13 @@ class _LoginPageState extends State<LoginPage>
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         ),
         child: _isGoogleLoading
-            ? const Center(
+            ? Center(
                 child: SizedBox(
                   width: 24,
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 3.0,
-                    color: Color(0xFF007AFF),
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
               )

@@ -2,7 +2,6 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:intl/intl.dart';
@@ -10,14 +9,14 @@ import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/models/country_code.dart';
 import 'package:milow/core/widgets/country_code_selector.dart';
 
-class EditProfilePage extends ConsumerStatefulWidget {
+class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
 
   @override
-  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
+  State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends ConsumerState<EditProfilePage> {
+class _EditProfilePageState extends State<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
 
   // Personal Info
@@ -512,7 +511,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(
-                color: primaryColor.withOpacity(0.2),
+                color: primaryColor.withValues(alpha: 0.2),
                 width: 4,
               ),
             ),
@@ -696,7 +695,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
         ),
         disabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: outlineVariant.withOpacity(0.5)),
+          borderSide: BorderSide(color: outlineVariant.withValues(alpha: 0.5)),
         ),
         contentPadding: const EdgeInsets.symmetric(
           horizontal: 16,

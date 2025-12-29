@@ -189,7 +189,7 @@ class _SignUpPageState extends State<SignUpPage>
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.red.withOpacity(0.1),
+                    color: Colors.red.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
@@ -472,8 +472,8 @@ class _SignUpPageState extends State<SignUpPage>
                                 borderRadius: BorderRadius.circular(4),
                                 child: LinearProgressIndicator(
                                   value: _passwordStrength,
-                                  backgroundColor: _strengthColor.withOpacity(
-                                    0.2,
+                                  backgroundColor: _strengthColor.withValues(
+                                    alpha: 0.2,
                                   ),
                                   valueColor: AlwaysStoppedAnimation<Color>(
                                     _strengthColor,

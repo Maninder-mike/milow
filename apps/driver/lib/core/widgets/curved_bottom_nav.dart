@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -28,10 +27,10 @@ class CurvedBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final activeColor = const Color(0xFF6C5CE7); // Purple accent
+    final activeColor = Theme.of(context).colorScheme.primary; // Brand Blue
     final inactiveColor = isDark
-        ? Colors.white.withOpacity(0.6)
-        : Colors.black.withOpacity(0.5);
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.5);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 20),
@@ -42,17 +41,17 @@ class CurvedBottomNav extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(32),
             color: isDark
-                ? Colors.white.withOpacity(0.12)
-                : Colors.white.withOpacity(0.75),
+                ? Colors.white.withValues(alpha: 0.12)
+                : Colors.white.withValues(alpha: 0.75),
             border: Border.all(
               color: isDark
-                  ? Colors.white.withOpacity(0.15)
-                  : Colors.white.withOpacity(0.5),
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.white.withValues(alpha: 0.5),
               width: 0.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.08),
+                color: Colors.black.withValues(alpha: 0.08),
                 blurRadius: 32,
                 spreadRadius: 0,
                 offset: const Offset(0, 8),

@@ -1,5 +1,7 @@
-• Interactive Smart Suggestions: Tap tiles to take action instantly.
-• Profile Stats Fix: Accurate trip counts and distance tracking (Miles/KM).
-• Localization: Improved Hindi and Urdu translations.
-• UI Polish: Cleaner layout and easier navigation.
-• Bug fixes and performance improvements.
+• Material 3 Theme Alignment: Complete visual refresh with dynamic theming.
+• Consistent Icons: Standardized to Material 3 rounded icon variants.
+• Dynamic Colors: All accent colors now adapt to light/dark mode seamlessly.
+• Records Export: Improved PDF/CSV export dialogs with refined styling.
+• Bottom Navigation: Updated active/inactive states for better visibility.
+• Performance: Optimized widget rebuilds and reduced memory usage.
+• Bug fixes and stability improvements.
