@@ -1,16 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/widgets/glassy_card.dart';
 import 'package:go_router/go_router.dart';
 
 class SmartSuggestionsCard extends StatelessWidget {
-  final bool isDark;
   final List<Trip> trips;
   final List<FuelEntry> fuelEntries;
 
   const SmartSuggestionsCard({
-    required this.isDark,
     required this.trips,
     required this.fuelEntries,
     super.key,
@@ -33,17 +30,15 @@ class SmartSuggestionsCard extends StatelessWidget {
             children: [
               Icon(
                 Icons.lightbulb_outline,
-                color: isDark ? Colors.amber : Colors.amber[700],
+                color: Theme.of(context).colorScheme.primary,
                 size: 20,
               ),
               const SizedBox(width: 8),
               Text(
                 'Smart Suggestions',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
             ],
           ),
@@ -57,6 +52,7 @@ class SmartSuggestionsCard extends StatelessWidget {
   List<Widget> _generateSuggestions(BuildContext context) {
     final list = <Widget>[];
     final now = DateTime.now();
+    final colorScheme = Theme.of(context).colorScheme;
 
     // 1. Weekly Progress (Always show)
     // Logic: Sum miles for current week (Mon-Sun)
@@ -70,10 +66,11 @@ class SmartSuggestionsCard extends StatelessWidget {
 
     list.add(
       _buildSuggestionTile(
+        context,
         icon: Icons.trending_up,
         title: 'Weekly Progress',
         subtitle: '${weekMiles.round()} miles driven this week.',
-        color: weekMiles > 0 ? Colors.green : Colors.blueGrey,
+        color: weekMiles > 0 ? colorScheme.primary : colorScheme.outline,
         onTap: () => context.go('/dashboard'),
       ),
     );
@@ -91,10 +88,11 @@ class SmartSuggestionsCard extends StatelessWidget {
     if (hasIncompleteLog) {
       list.add(
         _buildSuggestionTile(
+          context,
           icon: Icons.warning_amber_rounded,
           title: 'Incomplete Log',
           subtitle: 'A recent trip is missing odometer readings.',
-          color: Colors.orange,
+          color: colorScheme.error,
           onTap: () => context.go('/dashboard'),
         ),
       );
@@ -113,10 +111,11 @@ class SmartSuggestionsCard extends StatelessWidget {
       if (isToday && (lastTrip.totalDistance ?? 0) > 500) {
         list.add(
           _buildSuggestionTile(
-            icon: Icons.bed_outlined, // or hotel class
+            context,
+            icon: Icons.hotel_outlined,
             title: 'Rest Recommended',
             subtitle: 'You drove a long distance today. Take a break.',
-            color: Colors.indigoAccent,
+            color: colorScheme.tertiary,
             onTap: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Find safety rest areas nearby.')),
@@ -141,11 +140,12 @@ class SmartSuggestionsCard extends StatelessWidget {
           (lastTrip.totalDistance ?? 0) > 400) {
         list.add(
           _buildSuggestionTile(
+            context,
             icon: Icons.local_gas_station,
             title: 'Refill Suggested',
             subtitle:
                 '${lastTrip.totalDistance?.round()} miles since last fill-up.',
-            color: Colors.redAccent,
+            color: colorScheme.secondary,
             onTap: () => context.push('/add-entry'),
           ),
         );
@@ -157,10 +157,11 @@ class SmartSuggestionsCard extends StatelessWidget {
     if (list.length <= 2 && weekMiles == 0) {
       list.add(
         _buildSuggestionTile(
+          context,
           icon: Icons.add_road,
           title: 'Start Your Week',
           subtitle: 'Log your first trip to track performance.',
-          color: Colors.blue,
+          color: colorScheme.primary,
           onTap: () => context.push('/add-entry'),
         ),
       );
@@ -174,7 +175,8 @@ class SmartSuggestionsCard extends StatelessWidget {
     return list;
   }
 
-  Widget _buildSuggestionTile({
+  Widget _buildSuggestionTile(
+    BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
@@ -191,7 +193,7 @@ class SmartSuggestionsCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: color.withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: color, size: 24),
@@ -203,17 +205,14 @@ class SmartSuggestionsCard extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: isDark ? Colors.white : Colors.black87,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     subtitle,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ],
@@ -221,7 +220,7 @@ class SmartSuggestionsCard extends StatelessWidget {
             ),
             Icon(
               Icons.chevron_right,
-              color: isDark ? Colors.grey[600] : Colors.grey[300],
+              color: Theme.of(context).colorScheme.outlineVariant,
             ),
           ],
         ),

@@ -416,7 +416,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Add Border Crossing',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontWeight: FontWeight.w600,
             color: isDark ? Colors.white : const Color(0xFF101828),
           ),
@@ -456,7 +456,10 @@ class _AddEntryPageState extends State<AddEntryPage>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.inter(color: Colors.grey)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.outfit(color: Colors.grey),
+            ),
           ),
           TextButton(
             onPressed: () {
@@ -467,7 +470,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             },
             child: Text(
               'Add',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 color: const Color(0xFF007AFF),
                 fontWeight: FontWeight.w600,
               ),
@@ -630,7 +633,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                       const SizedBox(width: 12),
                       Text(
                         'Select or add border',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           color: hintColor,
                           fontSize: 14,
                         ),
@@ -656,7 +659,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                             Expanded(
                               child: Text(
                                 border,
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   color: textColor,
                                   fontSize: 14,
                                 ),
@@ -790,7 +793,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                               ),
                               child: Text(
                                 option,
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   color: isDark
                                       ? Colors.white
                                       : const Color(0xFF101828),
@@ -1172,7 +1175,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                 children: [
                                   Text(
                                     'Add Entry',
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.outfit(
                                       fontSize: 28,
                                       fontWeight: FontWeight.w700,
                                       color: textColor,
@@ -1180,7 +1183,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                   ),
                                   Text(
                                     'Track your trips and fuel',
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.outfit(
                                       fontSize: 14,
                                       color: const Color(0xFF667085),
                                     ),
@@ -1211,7 +1214,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                         dividerColor: Colors.transparent,
                         labelColor: Colors.white,
                         unselectedLabelColor: const Color(0xFF667085),
-                        labelStyle: GoogleFonts.inter(
+                        labelStyle: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                         ),
@@ -1316,7 +1319,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(height: 20),
                 Text(
                   'ROUTE',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF667085),
@@ -1340,7 +1343,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(height: 20),
                 Text(
                   'ODOMETER',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
                     color: const Color(0xFF667085),
@@ -1410,7 +1413,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             color: Theme.of(context).scaffoldBackgroundColor,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 8,
                 offset: const Offset(0, -2),
               ),
@@ -1437,7 +1440,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     ),
                     child: Text(
                       'Cancel',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -1467,7 +1470,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                           )
                         : Text(
                             _isEditMode ? 'Update' : 'Save',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -1771,7 +1774,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                 const SizedBox(width: 8),
                                 Text(
                                   'Truck Fuel',
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.outfit(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: !_isReeferFuel
@@ -1821,7 +1824,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                 const SizedBox(width: 8),
                                 Text(
                                   'Reefer Fuel',
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.outfit(
                                     fontSize: 14,
                                     fontWeight: FontWeight.w600,
                                     color: _isReeferFuel
@@ -1904,14 +1907,14 @@ class _AddEntryPageState extends State<AddEntryPage>
                                 value: 'USD',
                                 child: Text(
                                   'USD (\$)',
-                                  style: GoogleFonts.inter(fontSize: 14),
+                                  style: GoogleFonts.outfit(fontSize: 14),
                                 ),
                               ),
                               DropdownMenuItem(
                                 value: 'CAD',
                                 child: Text(
                                   'CAD (C\$)',
-                                  style: GoogleFonts.inter(fontSize: 14),
+                                  style: GoogleFonts.outfit(fontSize: 14),
                                 ),
                               ),
                             ],
@@ -2056,14 +2059,14 @@ class _AddEntryPageState extends State<AddEntryPage>
                   SwitchListTile(
                     title: Text(
                       'DEF from Yard',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
                     subtitle: Text(
                       'Filled at home terminal (no cost)',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 12,
                         color: Colors.grey,
                       ),
@@ -2096,7 +2099,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             color: Theme.of(context).scaffoldBackgroundColor,
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.1),
+                color: Colors.black.withOpacity(0.1),
                 blurRadius: 8,
                 offset: const Offset(0, -2),
               ),
@@ -2123,7 +2126,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     ),
                     child: Text(
                       'Cancel',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -2153,7 +2156,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                           )
                         : Text(
                             _isEditMode ? 'Update' : 'Save',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 16,
                               fontWeight: FontWeight.w600,
                               color: Colors.white,
@@ -2340,7 +2343,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       children: [
         Text(
           text,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 14,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -2349,7 +2352,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         if (isRequired)
           Text(
             ' *',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 14,
               fontWeight: FontWeight.w600,
               color: Colors.red,
@@ -2368,7 +2371,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.inter(
+      hintStyle: GoogleFonts.outfit(
         color: const Color(0xFF98A2B3),
         fontSize: 14,
       ),
@@ -2420,11 +2423,9 @@ class _AddEntryPageState extends State<AddEntryPage>
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+        color: const Color(0xFF007AFF).withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF007AFF).withValues(alpha: 0.3),
-        ),
+        border: Border.all(color: const Color(0xFF007AFF).withOpacity(0.3)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2434,7 +2435,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             children: [
               Text(
                 'Total Cost',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: const Color(0xFF667085),
                 ),
@@ -2442,7 +2443,7 @@ class _AddEntryPageState extends State<AddEntryPage>
               const SizedBox(height: 4),
               Text(
                 '$currencySymbol${grandTotal.toStringAsFixed(2)}',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 24,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF007AFF),
@@ -2455,14 +2456,14 @@ class _AddEntryPageState extends State<AddEntryPage>
             children: [
               Text(
                 '${quantity.toStringAsFixed(1)} $_fuelUnit',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: const Color(0xFF667085),
                 ),
               ),
               Text(
                 '@ $currencySymbol${price.toStringAsFixed(3)}/$_fuelUnit',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: const Color(0xFF667085),
                 ),
@@ -2474,7 +2475,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(height: 4),
                 Text(
                   '+ DEF: ${double.parse(_defQuantityController.text).toStringAsFixed(1)} $_fuelUnit',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 12,
                     color: const Color(0xFF667085),
                     fontStyle: FontStyle.italic,
@@ -2483,7 +2484,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 if (!_defFromYard)
                   Text(
                     '@ $currencySymbol${(double.tryParse(_defPriceController.text) ?? 0).toStringAsFixed(3)}',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 12,
                       color: const Color(0xFF667085),
                       fontStyle: FontStyle.italic,
@@ -2492,7 +2493,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 else
                   Text(
                     '(Yard)',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 12,
                       color: Colors.green,
                       fontStyle: FontStyle.italic,

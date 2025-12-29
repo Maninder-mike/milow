@@ -1,7 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 // Tab shell provides nav; this page returns content only
 import 'package:milow_core/milow_core.dart';
@@ -566,25 +564,9 @@ class _ExplorePageState extends State<ExplorePage> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
     return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    const Color(0xFF1a1a2e),
-                    const Color(0xFF16213e),
-                    const Color(0xFF0f0f1a),
-                  ]
-                : [
-                    const Color(0xFFF0F4FF),
-                    const Color(0xFFFDF2F8),
-                    const Color(0xFFF0FDF4),
-                  ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
-        ),
+        color: Theme.of(context).scaffoldBackgroundColor,
         child: RefreshIndicator(
           onRefresh: _onRefresh,
           displacement: 60,
@@ -594,37 +576,29 @@ class _ExplorePageState extends State<ExplorePage> {
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
-                backgroundColor: Colors.transparent,
+                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
                 elevation: 0,
                 floating: true,
                 snap: true,
-                flexibleSpace: ClipRRect(
-                  child: BackdropFilter(
-                    filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-                    child: Container(color: Colors.transparent),
-                  ),
-                ),
                 leading: IconButton(
                   icon: Icon(Icons.arrow_back, color: textColor),
                   onPressed: () => context.go('/dashboard'),
                 ),
                 title: Text(
                   AppLocalizations.of(context)?.explore ?? 'Explore',
-                  style: GoogleFonts.inter(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w700,
-                    color: textColor,
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ),
               SliverToBoxAdapter(
                 child: _isLoading
-                    ? const Padding(
+                    ? Padding(
                         padding: EdgeInsets.all(32.0),
                         child: Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 3.0,
-                            color: Color(0xFF6C5CE7),
+                            color: Theme.of(context).colorScheme.primary,
                           ),
                         ),
                       )
@@ -647,7 +621,6 @@ class _ExplorePageState extends State<ExplorePage> {
                               else
                                 ExploreMapView(
                                   markers: _mapMarkers,
-                                  isDark: isDark,
                                   onMarkerTap: (marker) {
                                     showDialog(
                                       context: context,
@@ -683,7 +656,6 @@ class _ExplorePageState extends State<ExplorePage> {
                               const SizedBox(height: 24),
                               StateCollectorCard(
                                 visitedStates: _visitedStates,
-                                isDark: isDark,
                                 onTap: () {
                                   Navigator.push(
                                     context,
@@ -703,12 +675,10 @@ class _ExplorePageState extends State<ExplorePage> {
                                 totalMiles: _statsTotalMiles,
                                 totalFuelCost: _statsFuelCost,
                                 tripCount: _statsTripCount,
-                                isDark: isDark,
                               ),
                               const SizedBox(height: 24),
 
                               SmartSuggestionsCard(
-                                isDark: isDark,
                                 trips: _allTrips,
                                 fuelEntries: _allFuelEntries,
                               ),
@@ -819,28 +789,23 @@ class _SectionHeaderRow extends StatelessWidget {
   const _SectionHeaderRow({required this.title, this.onAction});
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(
           title,
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         if (onAction != null)
           TextButton(
             onPressed: onAction,
             child: Text(
               'See all',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF007AFF),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ),
@@ -856,42 +821,32 @@ class _EmptyStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-        child: Container(
-          padding: const EdgeInsets.all(24.0),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : Colors.white.withValues(alpha: 0.7),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.white.withValues(alpha: 0.5),
-              width: 0.5,
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              size: 32,
             ),
-          ),
-          child: Row(
-            children: [
-              Icon(icon, color: const Color(0xFF9CA3AF), size: 32),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Text(
-                  message,
-                  style: GoogleFonts.inter(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.6)
-                        : const Color(0xFF9CA3AF),
-                    fontSize: 14,
-                  ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Text(
+                message,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -908,53 +863,14 @@ class _GlassyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.3)
-                : Colors.black.withValues(alpha: 0.08),
-            blurRadius: 24,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
-          ),
-        ],
+    return Card(
+      elevation: 0, // Flat M3 style
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20), // Standard 20px
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        Colors.white.withValues(alpha: 0.15),
-                        Colors.white.withValues(alpha: 0.05),
-                      ]
-                    : [
-                        Colors.white.withValues(alpha: 0.9),
-                        Colors.white.withValues(alpha: 0.7),
-                      ],
-              ),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.8),
-                width: 1.5,
-              ),
-            ),
-            child: child,
-          ),
-        ),
-      ),
+      child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
     );
   }
 }
@@ -966,11 +882,6 @@ class _SimpleDestinationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtitleColor = isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : const Color(0xFF667085);
     final city = destination['city'] as String;
     final description = destination['description'] as String;
 
@@ -981,12 +892,12 @@ class _SimpleDestinationCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFF59E0B).withValues(alpha: 0.15),
+              color: Colors.orange.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
               Icons.location_city,
-              color: Color(0xFFF59E0B),
+              color: Colors.orange,
               size: 26,
             ),
           ),
@@ -997,23 +908,23 @@ class _SimpleDestinationCard extends StatelessWidget {
               children: [
                 Text(
                   city,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: GoogleFonts.inter(fontSize: 13, color: subtitleColor),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
           ),
           Icon(
             Icons.chevron_right,
-            color: isDark ? Colors.white54 : Colors.grey.shade400,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ],
       ),
@@ -1043,12 +954,6 @@ class _SimpleActivityCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtitleColor = isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : const Color(0xFF667085);
-
     final title = activity['title'] as String;
     final subtitle = activity['subtitle'] as String;
     final date = activity['date'] as DateTime;
@@ -1061,10 +966,14 @@ class _SimpleActivityCard extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
+              color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
               borderRadius: BorderRadius.circular(14),
             ),
-            child: Icon(icon, color: const Color(0xFF6C5CE7), size: 26),
+            child: Icon(
+              icon,
+              color: Theme.of(context).colorScheme.primary,
+              size: 26,
+            ),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -1073,16 +982,16 @@ class _SimpleActivityCard extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.inter(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: GoogleFonts.inter(fontSize: 13, color: subtitleColor),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -1091,10 +1000,8 @@ class _SimpleActivityCard extends StatelessWidget {
           ),
           Text(
             _formatTimeAgo(date),
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              color: isDark ? Colors.white54 : Colors.grey.shade500,
-              fontWeight: FontWeight.w500,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -1125,11 +1032,11 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
     return DateFormat('MMM d, yyyy').format(date);
   }
 
-  Color _getDistanceColor(double? distance) {
-    if (distance == null) return const Color(0xFF9CA3AF);
-    if (distance > 500) return const Color(0xFF3B82F6); // Long Haul - blue
-    if (distance >= 200) return const Color(0xFFF59E0B); // Regional - amber
-    return const Color(0xFF10B981); // Local - green
+  Color _getDistanceColor(BuildContext context, double? distance) {
+    if (distance == null) return Theme.of(context).colorScheme.outline;
+    if (distance > 500) return Theme.of(context).colorScheme.primary;
+    if (distance >= 200) return Colors.orange;
+    return Theme.of(context).colorScheme.tertiary;
   }
 
   String _getDistanceCategory(double? distance) {
@@ -1141,174 +1048,141 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF8FAFC);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtextColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF667085);
-    final dividerColor = isDark
-        ? const Color(0xFF334155)
-        : const Color(0xFFE2E8F0);
-    final accentColor = const Color(0xFF3B82F6);
-
     final trip = widget.trip;
     final route =
         trip.pickupLocations.isNotEmpty && trip.deliveryLocations.isNotEmpty
         ? '${widget.extractCityState(trip.pickupLocations.first)} → ${widget.extractCityState(trip.deliveryLocations.last)}'
         : 'No route';
     final distance = trip.totalDistance;
-    final distanceColor = _getDistanceColor(distance);
+    final distanceColor = _getDistanceColor(context, distance);
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // Distance section
-                    Container(
-                      width: 80,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            distance != null
-                                ? distance.toStringAsFixed(0)
-                                : '--',
-                            style: GoogleFonts.inter(
-                              fontSize: 26,
-                              fontWeight: FontWeight.w700,
-                              color: textColor,
-                              height: 1,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            trip.distanceUnitLabel,
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w500,
-                              color: distanceColor,
-                            ),
-                          ),
-                        ],
-                      ),
+      color: Theme.of(context).colorScheme.surface,
+      child: InkWell(
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Distance section
+                  Container(
+                    width: 80,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          distance != null ? distance.toStringAsFixed(0) : '--',
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          trip.distanceUnitLabel.toUpperCase(),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: distanceColor,
+                                letterSpacing: 0.5,
+                              ),
+                        ),
+                      ],
                     ),
-                    // Divider
-                    Container(width: 1, height: 50, color: dividerColor),
-                    const SizedBox(width: 16),
-                    // Trip info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Trip ${trip.tripNumber}',
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            route,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: subtextColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
+                  ),
+                  // Vertical Divider
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  const SizedBox(width: 16),
+                  // Trip info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Trip ${trip.tripNumber}',
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          route,
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ),
-                    // Expand icon
-                    AnimatedRotation(
-                      turns: _isExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        color: subtextColor,
-                      ),
+                  ),
+                  // Expand icon
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-              // Expanded content
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: _buildExpandedContent(
-                  isDark: isDark,
-                  textColor: textColor,
-                  subtextColor: subtextColor,
-                  dividerColor: dividerColor,
-                  accentColor: accentColor,
-                  distanceColor: distanceColor,
-                ),
-                crossFadeState: _isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
-              ),
-            ],
-          ),
+            ),
+            // Expanded content
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: _buildExpandedContent(context),
+              crossFadeState: _isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildExpandedContent({
-    required bool isDark,
-    required Color textColor,
-    required Color subtextColor,
-    required Color dividerColor,
-    required Color accentColor,
-    required Color distanceColor,
-  }) {
+  Widget _buildExpandedContent(BuildContext context) {
     final trip = widget.trip;
     final distance = trip.totalDistance;
     final category = _getDistanceCategory(distance);
+    final distanceColor = _getDistanceColor(context, distance);
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
-          Divider(color: dividerColor, height: 1),
+          Divider(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            height: 1,
+          ),
           const SizedBox(height: 16),
 
           // Trip details section
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.1),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: accentColor.withValues(alpha: 0.2)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1318,15 +1192,13 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
                     Icon(
                       Icons.local_shipping_outlined,
                       size: 18,
-                      color: accentColor,
+                      color: Theme.of(context).colorScheme.primary,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Trip Details',
-                      style: GoogleFonts.inter(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     const Spacer(),
@@ -1337,16 +1209,16 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: distanceColor,
+                          color: distanceColor.withOpacity(0.2),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           category,
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.white,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: distanceColor,
+                              ),
                         ),
                       ),
                   ],
@@ -1356,20 +1228,18 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
                   children: [
                     Expanded(
                       child: _buildDetailItem(
+                        context,
                         icon: Icons.calendar_today_outlined,
                         label: 'Date',
                         value: _formatDate(trip.tripDate),
-                        textColor: textColor,
-                        subtextColor: subtextColor,
                       ),
                     ),
                     Expanded(
                       child: _buildDetailItem(
+                        context,
                         icon: Icons.directions_car_outlined,
                         label: 'Truck',
                         value: trip.truckNumber,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
                       ),
                     ),
                   ],
@@ -1385,32 +1255,36 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                color: Theme.of(
+                  context,
+                ).colorScheme.tertiaryContainer.withOpacity(0.3),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.tertiary.withOpacity(0.2),
                 ),
               ),
               child: Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.speed_outlined,
                     size: 18,
-                    color: Color(0xFF10B981),
+                    color: Theme.of(context).colorScheme.tertiary,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     'Odometer',
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   const Spacer(),
                   Text(
                     '${trip.startOdometer?.toStringAsFixed(0) ?? '--'} → ${trip.endOdometer?.toStringAsFixed(0) ?? '--'} ${trip.distanceUnitLabel}',
-                    style: GoogleFonts.inter(fontSize: 13, color: subtextColor),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -1424,23 +1298,21 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
             children: [
               Expanded(
                 child: _buildLocationChip(
+                  context,
                   icon: Icons.trip_origin,
                   label: 'Pickups',
                   locations: trip.pickupLocations,
-                  color: const Color(0xFF3B82F6),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildLocationChip(
+                  context,
                   icon: Icons.flag_outlined,
                   label: 'Deliveries',
                   locations: trip.deliveryLocations,
-                  color: const Color(0xFFF59E0B),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Colors.orange,
                 ),
               ),
             ],
@@ -1453,26 +1325,28 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1E293B)
-                    : const Color(0xFFF1F5F9),
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.rv_hookup, size: 18, color: subtextColor),
+                  Icon(
+                    Icons.rv_hookup,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Trailers: ',
-                    style: GoogleFonts.inter(fontSize: 13, color: subtextColor),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   Expanded(
                     child: Text(
                       trip.trailers.join(', '),
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                        color: textColor,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1490,24 +1364,27 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.secondaryContainer.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.note_outlined,
                     size: 18,
-                    color: Color(0xFFD97706),
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       trip.notes!,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: const Color(0xFF92400E),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSecondaryContainer,
                       ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
@@ -1522,31 +1399,34 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
     );
   }
 
-  Widget _buildDetailItem({
+  Widget _buildDetailItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
-    required Color textColor,
-    required Color subtextColor,
   }) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: subtextColor),
+        Icon(
+          icon,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(fontSize: 11, color: subtextColor),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             Text(
               value,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: textColor,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -1554,20 +1434,19 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
     );
   }
 
-  Widget _buildLocationChip({
+  Widget _buildLocationChip(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required List<String> locations,
     required Color color,
-    required Color textColor,
-    required Color subtextColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1578,9 +1457,8 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
               const SizedBox(width: 6),
               Text(
                 '$label (${locations.length})',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
@@ -1594,7 +1472,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
                     widget.extractCityState(loc),
-                    style: GoogleFonts.inter(fontSize: 12, color: textColor),
+                    style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -1603,7 +1481,10 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
           if (locations.length > 2)
             Text(
               '+${locations.length - 2} more',
-              style: GoogleFonts.inter(fontSize: 11, color: subtextColor),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 10,
+              ),
             ),
         ],
       ),
@@ -1635,150 +1516,121 @@ class _ExpandableDestinationCardState
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF8FAFC);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtextColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF667085);
-    final dividerColor = isDark
-        ? const Color(0xFF334155)
-        : const Color(0xFFE2E8F0);
-    final accentColor = const Color(0xFFF59E0B);
-
     final city = widget.destination['city'] as String;
     final count = widget.destination['count'] as int;
     final trips = widget.destination['trips'] as List<Trip>? ?? [];
     final totalMiles = widget.destination['totalMiles'] as double? ?? 0.0;
+    final accentColor = Theme.of(context).colorScheme.primary;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // Count section
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: accentColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            '$count',
-                            style: GoogleFonts.inter(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w700,
-                              color: accentColor,
-                              height: 1,
-                            ),
-                          ),
-                          Text(
-                            count == 1 ? 'trip' : 'trips',
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: accentColor,
-                            ),
-                          ),
-                        ],
-                      ),
+      color: Theme.of(context).colorScheme.surface,
+      child: InkWell(
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Count section
+                  Container(
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    const SizedBox(width: 14),
-                    // City info
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            city,
-                            style: GoogleFonts.inter(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          if (totalMiles > 0)
-                            Text(
-                              '${totalMiles.toStringAsFixed(0)} miles total',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: subtextColor,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          '$count',
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: accentColor,
                               ),
-                            ),
-                        ],
-                      ),
+                        ),
+                        Text(
+                          count == 1 ? 'TRIP' : 'TRIPS',
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: accentColor,
+                                fontSize: 9,
+                                letterSpacing: 0.5,
+                              ),
+                        ),
+                      ],
                     ),
-                    // Expand icon
-                    AnimatedRotation(
-                      turns: _isExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
-                      child: Icon(
-                        Icons.keyboard_arrow_down,
-                        color: subtextColor,
-                      ),
+                  ),
+                  const SizedBox(width: 14),
+                  // City info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          city,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        if (totalMiles > 0)
+                          Text(
+                            '${totalMiles.toStringAsFixed(0)} miles total',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                          ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  // Expand icon
+                  AnimatedRotation(
+                    turns: _isExpanded ? 0.5 : 0,
+                    duration: const Duration(milliseconds: 200),
+                    child: Icon(
+                      Icons.keyboard_arrow_down,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-              // Expanded content
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: _buildExpandedContent(
-                  isDark: isDark,
-                  textColor: textColor,
-                  subtextColor: subtextColor,
-                  dividerColor: dividerColor,
-                  accentColor: accentColor,
-                  trips: trips,
-                  totalMiles: totalMiles,
-                ),
-                crossFadeState: _isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
+            ),
+            // Expanded content
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: _buildExpandedContent(
+                context,
+                trips: trips,
+                totalMiles: totalMiles,
               ),
-            ],
-          ),
+              crossFadeState: _isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildExpandedContent({
-    required bool isDark,
-    required Color textColor,
-    required Color subtextColor,
-    required Color dividerColor,
-    required Color accentColor,
+  Widget _buildExpandedContent(
+    BuildContext context, {
     required List<Trip> trips,
     required double totalMiles,
   }) {
@@ -1786,7 +1638,10 @@ class _ExpandableDestinationCardState
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
-          Divider(color: dividerColor, height: 1),
+          Divider(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            height: 1,
+          ),
           const SizedBox(height: 16),
 
           // Stats row
@@ -1794,23 +1649,21 @@ class _ExpandableDestinationCardState
             children: [
               Expanded(
                 child: _buildStatCard(
+                  context,
                   icon: Icons.local_shipping_outlined,
-                  label: 'Trips',
+                  label: trips.length == 1 ? 'Trip' : 'Trips',
                   value: '${trips.length}',
-                  color: const Color(0xFF3B82F6),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildStatCard(
+                  context,
                   icon: Icons.straighten_outlined,
-                  label: 'Total Distance',
+                  label: 'Distance',
                   value: '${totalMiles.toStringAsFixed(0)} mi',
-                  color: const Color(0xFF10B981),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
               ),
             ],
@@ -1820,15 +1673,17 @@ class _ExpandableDestinationCardState
             const SizedBox(height: 16),
             Row(
               children: [
-                Icon(Icons.history, size: 16, color: subtextColor),
+                Icon(
+                  Icons.history,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 8),
                 Text(
-                  'Recent Trips to this location',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                  'Recent Trips',
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -1841,47 +1696,43 @@ class _ExpandableDestinationCardState
                   : 'Trip ${trip.tripNumber}';
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
-                padding: const EdgeInsets.all(10),
+                padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF1E293B)
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(10),
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 36,
-                      height: 36,
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
-                        color: accentColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                        color: Theme.of(context).colorScheme.primaryContainer,
+                        shape: BoxShape.circle,
                       ),
                       child: Icon(
-                        Icons.local_shipping,
-                        size: 18,
-                        color: accentColor,
+                        Icons.local_shipping_outlined,
+                        size: 14,
+                        color: Theme.of(context).colorScheme.onPrimaryContainer,
                       ),
                     ),
-                    const SizedBox(width: 10),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
                             'Trip ${trip.tripNumber}',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(fontWeight: FontWeight.bold),
                           ),
                           Text(
                             route,
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: subtextColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1893,19 +1744,21 @@ class _ExpandableDestinationCardState
                       children: [
                         Text(
                           _formatDate(trip.tripDate),
-                          style: GoogleFonts.inter(
-                            fontSize: 11,
-                            color: subtextColor,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
                         ),
                         if (trip.totalDistance != null)
                           Text(
-                            '${trip.totalDistance!.toStringAsFixed(0)} ${trip.distanceUnitLabel}',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF10B981),
-                            ),
+                            '${trip.totalDistance!.toStringAsFixed(0)} mi',
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.tertiary,
+                                ),
                           ),
                       ],
                     ),
@@ -1913,56 +1766,43 @@ class _ExpandableDestinationCardState
                 ),
               );
             }),
-            if (trips.length > 3)
-              Text(
-                '+${trips.length - 3} more trips',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: accentColor,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
           ],
         ],
       ),
     );
   }
 
-  Widget _buildStatCard({
+  Widget _buildStatCard(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
     required Color color,
-    required Color textColor,
-    required Color subtextColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(icon, size: 20, color: color),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.inter(fontSize: 11, color: subtextColor),
-              ),
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
-                  color: textColor,
-                ),
-              ),
-            ],
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+          Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
           ),
         ],
       ),
@@ -2008,243 +1848,178 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark
-        ? const Color(0xFF1E293B)
-        : const Color(0xFFF8FAFC);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtextColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF667085);
-    final dividerColor = isDark
-        ? const Color(0xFF334155)
-        : const Color(0xFFE2E8F0);
-
     final isTrip = widget.activity['type'] == 'trip';
     final accentColor = isTrip
-        ? const Color(0xFF3B82F6)
-        : const Color(0xFF10B981);
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.tertiary;
     final date = widget.activity['date'] as DateTime;
+    final icon = widget.activity['icon'] as IconData;
+    final title = widget.activity['title'] as String;
+    final subtitle = widget.activity['subtitle'] as String;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+    return Card(
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
-          borderRadius: BorderRadius.circular(16),
-          child: Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  children: [
-                    // Icon section
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        color: accentColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Icon(
-                        widget.activity['icon'] as IconData,
-                        color: accentColor,
-                        size: 24,
-                      ),
+      color: Theme.of(context).colorScheme.surface,
+      child: InkWell(
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Icon section
+                  Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    const SizedBox(width: 14),
-                    // Info section
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.activity['title'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            widget.activity['subtitle'] as String,
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              color: subtextColor,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Time ago
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Icon(icon, color: accentColor, size: 24),
+                  ),
+                  const SizedBox(width: 14),
+                  // Info section
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          _formatTimeAgo(date),
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            color: subtextColor,
-                          ),
+                          title,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                        const SizedBox(height: 8),
-                        AnimatedRotation(
-                          turns: _isExpanded ? 0.5 : 0,
-                          duration: const Duration(milliseconds: 200),
-                          child: Icon(
-                            Icons.keyboard_arrow_down,
-                            color: subtextColor,
-                            size: 20,
-                          ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
-                  ],
-                ),
-              ),
-              // Expanded content
-              AnimatedCrossFade(
-                firstChild: const SizedBox.shrink(),
-                secondChild: isTrip
-                    ? _buildTripExpandedContent(
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        dividerColor: dividerColor,
-                        accentColor: accentColor,
-                      )
-                    : _buildFuelExpandedContent(
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        dividerColor: dividerColor,
-                        accentColor: accentColor,
+                  ),
+                  // Time ago
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        _formatTimeAgo(date),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                       ),
-                crossFadeState: _isExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
-                duration: const Duration(milliseconds: 200),
+                      const SizedBox(height: 8),
+                      AnimatedRotation(
+                        turns: _isExpanded ? 0.5 : 0,
+                        duration: const Duration(milliseconds: 200),
+                        child: Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          size: 20,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            // Expanded content
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: isTrip
+                  ? _buildTripExpandedContent(context)
+                  : _buildFuelExpandedContent(context),
+              crossFadeState: _isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTripExpandedContent({
-    required bool isDark,
-    required Color textColor,
-    required Color subtextColor,
-    required Color dividerColor,
-    required Color accentColor,
-  }) {
+  Widget _buildTripExpandedContent(BuildContext context) {
     final trip = widget.activity['trip'] as Trip?;
     if (trip == null) return const SizedBox.shrink();
 
     final distance = trip.totalDistance;
-    Color distanceColor;
-    String category;
-    if (distance == null) {
-      distanceColor = const Color(0xFF9CA3AF);
-      category = '';
-    } else if (distance > 500) {
-      distanceColor = const Color(0xFF3B82F6);
-      category = 'Long Haul';
-    } else if (distance >= 200) {
-      distanceColor = const Color(0xFFF59E0B);
-      category = 'Regional';
-    } else {
-      distanceColor = const Color(0xFF10B981);
-      category = 'Local';
-    }
+    final accentColor = Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
-          Divider(color: dividerColor, height: 1),
+          Divider(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            height: 1,
+          ),
           const SizedBox(height: 16),
 
           // Trip overview
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.1),
+              color: accentColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+              border: Border.all(color: accentColor.withOpacity(0.2)),
             ),
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildInfoItem(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Date',
-                      value: _formatDate(trip.tripDate),
-                      textColor: textColor,
-                      subtextColor: subtextColor,
-                    ),
-                    _buildInfoItem(
-                      icon: Icons.directions_car_outlined,
-                      label: 'Truck',
-                      value: trip.truckNumber,
-                      textColor: textColor,
-                      subtextColor: subtextColor,
-                    ),
-                    if (distance != null)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: distanceColor,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: Colors.white,
-                              ),
-                            ),
-                            if (category.isNotEmpty)
-                              Text(
-                                category,
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w500,
-                                  color: Colors.white.withValues(alpha: 0.8),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                  ],
+                _buildInfoItem(
+                  context,
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Date',
+                  value: _formatDate(trip.tripDate),
                 ),
+                _buildInfoItem(
+                  context,
+                  icon: Icons.directions_car_outlined,
+                  label: 'Truck',
+                  value: trip.truckNumber,
+                ),
+                if (distance != null)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.secondary,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}',
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSecondary,
+                                fontSize: 13,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
             ),
           ),
@@ -2256,23 +2031,21 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
             children: [
               Expanded(
                 child: _buildLocationInfo(
+                  context,
                   icon: Icons.trip_origin,
                   label: 'From',
                   locations: trip.pickupLocations,
-                  color: const Color(0xFF3B82F6),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildLocationInfo(
+                  context,
                   icon: Icons.flag_outlined,
                   label: 'To',
                   locations: trip.deliveryLocations,
-                  color: const Color(0xFFF59E0B),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Colors.orange,
                 ),
               ),
             ],
@@ -2283,20 +2056,24 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1E293B)
-                    : const Color(0xFFF1F5F9),
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
-                  Icon(Icons.rv_hookup, size: 16, color: subtextColor),
+                  Icon(
+                    Icons.rv_hookup,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                   const SizedBox(width: 8),
                   Text(
                     'Trailers: ${trip.trailers.join(', ')}',
-                    style: GoogleFonts.inter(fontSize: 13, color: textColor),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
@@ -2308,26 +2085,29 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.secondaryContainer.withOpacity(0.4),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.note_outlined,
                     size: 16,
-                    color: Color(0xFFD97706),
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       trip.notes!,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF92400E),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.onSecondaryContainer,
                       ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -2342,62 +2122,55 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
     );
   }
 
-  Widget _buildFuelExpandedContent({
-    required bool isDark,
-    required Color textColor,
-    required Color subtextColor,
-    required Color dividerColor,
-    required Color accentColor,
-  }) {
+  Widget _buildFuelExpandedContent(BuildContext context) {
     final fuel = widget.activity['fuel'] as FuelEntry?;
     if (fuel == null) return const SizedBox.shrink();
+
+    final accentColor = Theme.of(context).colorScheme.tertiary;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
-          Divider(color: dividerColor, height: 1),
+          Divider(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            height: 1,
+          ),
           const SizedBox(height: 16),
 
           // Fuel overview
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.1),
+              color: accentColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: accentColor.withValues(alpha: 0.2)),
+              border: Border.all(color: accentColor.withOpacity(0.2)),
             ),
-            child: Column(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    _buildInfoItem(
-                      icon: Icons.calendar_today_outlined,
-                      label: 'Date',
-                      value: _formatDate(fuel.fuelDate),
-                      textColor: textColor,
-                      subtextColor: subtextColor,
+                _buildInfoItem(
+                  context,
+                  icon: Icons.calendar_today_outlined,
+                  label: 'Date',
+                  value: _formatDate(fuel.fuelDate),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: accentColor,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    fuel.formattedTotalCost,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onTertiary,
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: accentColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        fuel.formattedTotalCost,
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -2410,24 +2183,22 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
             children: [
               Expanded(
                 child: _buildFuelDetailCard(
+                  context,
                   icon: Icons.local_gas_station_outlined,
                   label: 'Quantity',
                   value:
                       '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}',
-                  color: const Color(0xFF3B82F6),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildFuelDetailCard(
+                  context,
                   icon: Icons.attach_money,
                   label: 'Price',
                   value: fuel.formattedPricePerUnit,
-                  color: const Color(0xFF10B981),
-                  textColor: textColor,
-                  subtextColor: subtextColor,
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
               ),
             ],
@@ -2441,23 +2212,21 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
               if (fuel.isTruckFuel && fuel.truckNumber != null)
                 Expanded(
                   child: _buildFuelDetailCard(
+                    context,
                     icon: Icons.local_shipping_outlined,
                     label: 'Truck',
                     value: fuel.truckNumber!,
-                    color: const Color(0xFFF59E0B),
-                    textColor: textColor,
-                    subtextColor: subtextColor,
+                    color: Colors.orange,
                   ),
                 )
               else if (fuel.isReeferFuel && fuel.reeferNumber != null)
                 Expanded(
                   child: _buildFuelDetailCard(
+                    context,
                     icon: Icons.ac_unit_outlined,
                     label: 'Reefer',
                     value: fuel.reeferNumber!,
-                    color: const Color(0xFFF59E0B),
-                    textColor: textColor,
-                    subtextColor: subtextColor,
+                    color: Colors.blue,
                   ),
                 )
               else
@@ -2466,24 +2235,22 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
               if (fuel.isTruckFuel && fuel.odometerReading != null)
                 Expanded(
                   child: _buildFuelDetailCard(
+                    context,
                     icon: Icons.speed_outlined,
                     label: 'Odometer',
                     value:
                         '${fuel.odometerReading!.toStringAsFixed(0)} ${fuel.distanceUnitLabel}',
-                    color: const Color(0xFF8B5CF6),
-                    textColor: textColor,
-                    subtextColor: subtextColor,
+                    color: Colors.purple,
                   ),
                 )
               else if (fuel.isReeferFuel && fuel.reeferHours != null)
                 Expanded(
                   child: _buildFuelDetailCard(
+                    context,
                     icon: Icons.timer_outlined,
-                    label: 'Reefer Hours',
+                    label: 'Hours',
                     value: fuel.reeferHours!.toStringAsFixed(1),
-                    color: const Color(0xFF8B5CF6),
-                    textColor: textColor,
-                    subtextColor: subtextColor,
+                    color: Theme.of(context).colorScheme.secondary,
                   ),
                 )
               else
@@ -2496,11 +2263,9 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
             const SizedBox(height: 12),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1E293B)
-                    : const Color(0xFFF1F5F9),
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -2508,13 +2273,15 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
                   Icon(
                     Icons.location_on_outlined,
                     size: 16,
-                    color: subtextColor,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
                       fuel.location!,
-                      style: GoogleFonts.inter(fontSize: 13, color: textColor),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -2528,32 +2295,35 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
     );
   }
 
-  Widget _buildInfoItem({
+  Widget _buildInfoItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
-    required Color textColor,
-    required Color subtextColor,
   }) {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: 16, color: subtextColor),
+        Icon(
+          icon,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(fontSize: 11, color: subtextColor),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             Text(
               value,
-              style: GoogleFonts.inter(
-                fontSize: 13,
-                fontWeight: FontWeight.w500,
-                color: textColor,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
           ],
         ),
@@ -2561,20 +2331,19 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
     );
   }
 
-  Widget _buildLocationInfo({
+  Widget _buildLocationInfo(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required List<String> locations,
     required Color color,
-    required Color textColor,
-    required Color subtextColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2585,9 +2354,8 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
               const SizedBox(width: 6),
               Text(
                 '$label (${locations.length})',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
                   color: color,
                 ),
               ),
@@ -2601,7 +2369,7 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
                     widget.extractCityState(loc),
-                    style: GoogleFonts.inter(fontSize: 12, color: textColor),
+                    style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -2610,27 +2378,29 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
           if (locations.length > 2)
             Text(
               '+${locations.length - 2} more',
-              style: GoogleFonts.inter(fontSize: 11, color: subtextColor),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 10,
+              ),
             ),
         ],
       ),
     );
   }
 
-  Widget _buildFuelDetailCard({
+  Widget _buildFuelDetailCard(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
     required Color color,
-    required Color textColor,
-    required Color subtextColor,
   }) {
     return Container(
-      padding: const EdgeInsets.all(10),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        color: color.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(0.2)),
       ),
       child: Row(
         children: [
@@ -2642,14 +2412,14 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
               children: [
                 Text(
                   label,
-                  style: GoogleFonts.inter(fontSize: 11, color: subtextColor),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
                 Text(
                   value,
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -2678,28 +2448,15 @@ class _AllDestinationsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-
     return Scaffold(
-      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
         title: Text(
           categoryLabel == 'All Routes'
               ? 'Popular Destinations'
               : '$categoryLabel Destinations',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF101828),
-          ),
-        ),
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : const Color(0xFF101828),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
       body: destinations.isEmpty
@@ -2708,9 +2465,8 @@ class _AllDestinationsPage extends StatelessWidget {
                 categoryLabel == 'All Routes'
                     ? 'No destinations found'
                     : 'No destinations for $categoryLabel trips',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF9CA3AF),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             )
@@ -2803,26 +2559,26 @@ class _AllActivityPageState extends State<_AllActivityPage> {
       builder: (dialogContext) => AlertDialog(
         title: Text(
           'Delete ${isTrip ? 'Trip' : 'Fuel Entry'}',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
         content: Text(
           'Are you sure you want to delete $title?',
-          style: GoogleFonts.inter(),
+          style: Theme.of(context).textTheme.bodyMedium,
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(dialogContext, false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.inter(color: const Color(0xFF667085)),
-            ),
+            child: const Text('Cancel'),
           ),
-          TextButton(
+          FilledButton(
             onPressed: () => Navigator.pop(dialogContext, true),
-            child: Text(
-              'Delete',
-              style: GoogleFonts.inter(color: const Color(0xFFEF4444)),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+              foregroundColor: Theme.of(context).colorScheme.onError,
             ),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -2889,28 +2645,15 @@ class _AllActivityPageState extends State<_AllActivityPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-
     return Scaffold(
-      backgroundColor: backgroundColor,
       appBar: AppBar(
-        backgroundColor: backgroundColor,
-        elevation: 0,
         title: Text(
           widget.categoryLabel == 'All Routes'
               ? 'All Activity'
               : '${widget.categoryLabel} Activity',
-          style: GoogleFonts.inter(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: isDark ? Colors.white : const Color(0xFF101828),
-          ),
-        ),
-        iconTheme: IconThemeData(
-          color: isDark ? Colors.white : const Color(0xFF101828),
+          style: Theme.of(
+            context,
+          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
         ),
       ),
       body: _activity.isEmpty
@@ -2919,9 +2662,8 @@ class _AllActivityPageState extends State<_AllActivityPage> {
                 widget.categoryLabel == 'All Routes'
                     ? 'No activity found'
                     : 'No ${widget.categoryLabel} activity found',
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF9CA3AF),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             )
@@ -2939,21 +2681,25 @@ class _AllActivityPageState extends State<_AllActivityPage> {
                   background: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6),
+                      color: Theme.of(context).colorScheme.primary,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     alignment: Alignment.centerLeft,
                     padding: const EdgeInsets.only(left: 20),
                     child: Row(
                       children: [
-                        const Icon(Icons.edit, color: Colors.white),
+                        Icon(
+                          Icons.edit,
+                          color: Theme.of(context).colorScheme.onPrimary,
+                        ),
                         const SizedBox(width: 8),
                         Text(
                           'Modify',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.onPrimary,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                       ],
                     ),
@@ -2961,7 +2707,7 @@ class _AllActivityPageState extends State<_AllActivityPage> {
                   secondaryBackground: Container(
                     margin: const EdgeInsets.only(bottom: 12),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFEF4444),
+                      color: Theme.of(context).colorScheme.error,
                       borderRadius: BorderRadius.circular(16),
                     ),
                     alignment: Alignment.centerRight,
@@ -2971,13 +2717,17 @@ class _AllActivityPageState extends State<_AllActivityPage> {
                       children: [
                         Text(
                           'Delete',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: Theme.of(context).textTheme.labelLarge
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.onError,
+                                fontWeight: FontWeight.bold,
+                              ),
                         ),
                         const SizedBox(width: 8),
-                        const Icon(Icons.delete, color: Colors.white),
+                        Icon(
+                          Icons.delete,
+                          color: Theme.of(context).colorScheme.onError,
+                        ),
                       ],
                     ),
                   ),

@@ -26,7 +26,7 @@ class AppearancePage extends StatelessWidget {
         ),
         title: Text(
           AppLocalizations.of(context)?.appearance ?? 'Appearance',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -42,12 +42,12 @@ class AppearancePage extends StatelessWidget {
               padding: const EdgeInsets.symmetric(horizontal: 16.0),
               child: Text(
                 'Theme',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                   color: Theme.of(
                     context,
-                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                  ).textTheme.bodyMedium?.color?.withOpacity(0.6),
                 ),
               ),
             ),
@@ -117,7 +117,7 @@ class AppearancePage extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w500,
                       color: Theme.of(context).textTheme.bodyLarge?.color,
@@ -126,11 +126,11 @@ class AppearancePage extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     subtitle,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 14,
                       color: Theme.of(
                         context,
-                      ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                      ).textTheme.bodyMedium?.color?.withOpacity(0.6),
                     ),
                   ),
                 ],
@@ -152,7 +152,7 @@ class AppearancePage extends StatelessWidget {
     return Divider(
       height: 1,
       thickness: 1,
-      color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
+      color: Theme.of(context).dividerColor.withOpacity(0.1),
       indent: 16,
       endIndent: 16,
     );

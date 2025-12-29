@@ -97,7 +97,7 @@ class _LanguagePageState extends State<LanguagePage> {
         ),
         title: Text(
           AppLocalizations.of(context)?.language ?? 'Language',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: textColor,
@@ -114,7 +114,7 @@ class _LanguagePageState extends State<LanguagePage> {
             children: [
               Text(
                 'Select your preferred language',
-                style: GoogleFonts.inter(fontSize: 14, color: subtitleColor),
+                style: GoogleFonts.outfit(fontSize: 14, color: subtitleColor),
               ),
               const SizedBox(height: 16),
               Container(
@@ -123,9 +123,7 @@ class _LanguagePageState extends State<LanguagePage> {
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.3 : 0.05,
-                      ),
+                      color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -173,7 +171,7 @@ class _LanguagePageState extends State<LanguagePage> {
                                         children: [
                                           Text(
                                             language['name']!,
-                                            style: GoogleFonts.inter(
+                                            style: GoogleFonts.outfit(
                                               fontSize: 16,
                                               fontWeight: FontWeight.w500,
                                               color: isSupported
@@ -192,13 +190,13 @@ class _LanguagePageState extends State<LanguagePage> {
                                               decoration: BoxDecoration(
                                                 color: const Color(
                                                   0xFFF59E0B,
-                                                ).withValues(alpha: 0.1),
+                                                ).withOpacity(0.1),
                                                 borderRadius:
                                                     BorderRadius.circular(4),
                                               ),
                                               child: Text(
                                                 'Soon',
-                                                style: GoogleFonts.inter(
+                                                style: GoogleFonts.outfit(
                                                   fontSize: 10,
                                                   fontWeight: FontWeight.w600,
                                                   color: const Color(
@@ -213,7 +211,7 @@ class _LanguagePageState extends State<LanguagePage> {
                                       const SizedBox(height: 2),
                                       Text(
                                         language['nativeName']!,
-                                        style: GoogleFonts.inter(
+                                        style: GoogleFonts.outfit(
                                           fontSize: 14,
                                           color: subtitleColor,
                                         ),
@@ -256,10 +254,10 @@ class _LanguagePageState extends State<LanguagePage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  color: const Color(0xFF10B981).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    color: const Color(0xFF10B981).withOpacity(0.3),
                   ),
                 ),
                 child: Row(
@@ -273,7 +271,7 @@ class _LanguagePageState extends State<LanguagePage> {
                     Expanded(
                       child: Text(
                         'All languages are fully supported!',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 14,
                           color: const Color(0xFF10B981),
                         ),

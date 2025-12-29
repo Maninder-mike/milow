@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import 'package:milow/core/constants/design_tokens.dart';
 
 class SectionHeader extends StatelessWidget {
   final String title;
@@ -8,40 +6,37 @@ class SectionHeader extends StatelessWidget {
   final String actionLabel;
 
   const SectionHeader({
-    required this.title, super.key,
+    required this.title,
+    super.key,
     this.onAction,
     this.actionLabel = 'See more',
   });
 
   @override
   Widget build(BuildContext context) {
-    final tokens =
-        Theme.of(context).extension<DesignTokens>() ?? DesignTokens.light;
-    final textColor = Theme.of(context).brightness == Brightness.dark
-        ? Colors.white
-        : const Color(0xFF101828);
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             title,
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           if (onAction != null)
-            GestureDetector(
-              onTap: onAction,
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: EdgeInsets.zero,
+              ),
               child: Text(
                 actionLabel,
-                style: GoogleFonts.inter(
-                  fontSize: 14,
-                  color: const Color(0xFF007AFF),
-                  fontWeight: FontWeight.w500,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),

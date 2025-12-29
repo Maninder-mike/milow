@@ -103,7 +103,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
         ),
         title: Text(
           'Border Crossings',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: textColor,
@@ -115,7 +115,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
               padding: const EdgeInsets.only(right: 16),
               child: Text(
                 '${_savedCrossings.length}/5 selected',
-                style: GoogleFonts.inter(fontSize: 14, color: subtextColor),
+                style: GoogleFonts.outfit(fontSize: 14, color: subtextColor),
               ),
             ),
           ),
@@ -135,10 +135,10 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                   padding: const EdgeInsets.all(16),
                   child: TextField(
                     onChanged: (value) => setState(() => _searchQuery = value),
-                    style: GoogleFonts.inter(fontSize: 15, color: textColor),
+                    style: GoogleFonts.outfit(fontSize: 15, color: textColor),
                     decoration: InputDecoration(
                       hintText: 'Search border crossings...',
-                      hintStyle: GoogleFonts.inter(
+                      hintStyle: GoogleFonts.outfit(
                         fontSize: 15,
                         color: subtextColor,
                       ),
@@ -184,7 +184,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                         const SizedBox(width: 8),
                         Text(
                           'Selected Crossings',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: textColor,
@@ -207,7 +207,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                           child: Chip(
                             label: Text(
                               saved.portName,
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.outfit(
                                 fontSize: 13,
                                 color: Colors.white,
                               ),
@@ -239,7 +239,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                       ? Center(
                           child: Text(
                             'No border crossings found',
-                            style: GoogleFonts.inter(color: subtextColor),
+                            style: GoogleFonts.outfit(color: subtextColor),
                           ),
                         )
                       : ListView.builder(
@@ -273,14 +273,14 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                     color: port.borderType == 'Canadian'
                                         ? const Color(
                                             0xFFDC2626,
-                                          ).withValues(alpha: 0.1)
+                                          ).withOpacity(0.1)
                                         : port.borderType == 'Mexican'
                                         ? const Color(
                                             0xFF16A34A,
-                                          ).withValues(alpha: 0.1)
+                                          ).withOpacity(0.1)
                                         : const Color(
                                             0xFF94A3B8,
-                                          ).withValues(alpha: 0.2),
+                                          ).withOpacity(0.2),
                                     borderRadius: BorderRadius.circular(10),
                                   ),
                                   child: Center(
@@ -296,7 +296,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                 ),
                                 title: Text(
                                   port.portName,
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.outfit(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     color: textColor,
@@ -307,18 +307,16 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                   children: [
                                     Text(
                                       port.crossingName,
-                                      style: GoogleFonts.inter(
+                                      style: GoogleFonts.outfit(
                                         fontSize: 13,
                                         color: subtextColor,
                                       ),
                                     ),
                                     Text(
                                       port.location,
-                                      style: GoogleFonts.inter(
+                                      style: GoogleFonts.outfit(
                                         fontSize: 12,
-                                        color: subtextColor.withValues(
-                                          alpha: 0.7,
-                                        ),
+                                        color: subtextColor.withOpacity(0.7),
                                       ),
                                     ),
                                   ],
@@ -350,7 +348,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
     return FilterChip(
       label: Text(
         label,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.outfit(
           fontSize: 13,
           fontWeight: FontWeight.w500,
           color: isSelected

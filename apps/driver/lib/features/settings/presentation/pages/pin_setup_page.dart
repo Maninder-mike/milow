@@ -91,7 +91,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
         ),
         title: Text(
           widget.isChanging ? 'Change PIN' : 'Set Up PIN',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: textColor,
@@ -105,7 +105,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
           // Title
           Text(
             _isConfirming ? 'Confirm your PIN' : 'Create a PIN',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 24,
               fontWeight: FontWeight.w600,
               color: textColor,
@@ -114,7 +114,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
           const SizedBox(height: 12),
           Text(
             _isConfirming ? 'Enter the same PIN again' : 'Enter a 4-digit PIN',
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 16,
               color: const Color(0xFF667085),
             ),
@@ -152,7 +152,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
               padding: const EdgeInsets.symmetric(horizontal: 32),
               child: Text(
                 _errorMessage!,
-                style: GoogleFonts.inter(fontSize: 14, color: Colors.red),
+                style: GoogleFonts.outfit(fontSize: 14, color: Colors.red),
                 textAlign: TextAlign.center,
               ),
             ),
@@ -207,7 +207,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -216,7 +216,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
         child: Center(
           child: Text(
             number,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 28,
               fontWeight: FontWeight.w600,
               color: textColor,
@@ -243,7 +243,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

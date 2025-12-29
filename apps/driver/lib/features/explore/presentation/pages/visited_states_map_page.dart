@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:countries_world_map/countries_world_map.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:go_router/go_router.dart';
@@ -300,28 +299,20 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final bgColor = isDark ? const Color(0xFF121212) : Colors.white;
-
     return Scaffold(
-      backgroundColor: bgColor,
       appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        iconTheme: IconThemeData(color: textColor),
         centerTitle: true,
         title: Container(
           decoration: BoxDecoration(
-            color: isDark ? Colors.grey[800] : Colors.grey[200],
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
             borderRadius: BorderRadius.circular(20),
           ),
           padding: const EdgeInsets.all(4),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildToggleButton('USA', !_showCanada, isDark),
-              _buildToggleButton('Canada', _showCanada, isDark),
+              _buildToggleButton('USA', !_showCanada),
+              _buildToggleButton('Canada', _showCanada),
             ],
           ),
         ),
@@ -353,11 +344,13 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
                     children: [
                       Text(
                         _showCanada ? 'Provinces Visited' : 'States Visited',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: Colors.grey,
-                          fontWeight: FontWeight.w500,
-                        ),
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                              fontWeight: FontWeight.bold,
+                            ),
                       ),
                       const SizedBox(height: 4),
                       Row(
@@ -366,28 +359,31 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
                         children: [
                           Text(
                             '$_visitedCount',
-                            style: GoogleFonts.inter(
-                              fontSize: 32,
-                              fontWeight: FontWeight.w700,
-                              color: const Color(0xFF007AFF),
-                            ),
+                            style: Theme.of(context).textTheme.displayMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                           ),
                           Text(
                             '/$_totalRegions',
-                            style: GoogleFonts.inter(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w600,
-                              color: Colors.grey,
-                            ),
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            _showCanada ? 'Collected' : 'Collected',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w500,
-                              color: textColor,
-                            ),
+                            'Collected',
+                            style: Theme.of(context).textTheme.labelLarge
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurface,
+                                ),
                           ),
                         ],
                       ),
@@ -409,11 +405,11 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
                                 ? _visitedCount / _totalRegions
                                 : 0,
                             strokeWidth: 5,
-                            backgroundColor: isDark
-                                ? Colors.grey[800]
-                                : Colors.grey[200],
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                              Color(0xFF007AFF),
+                            backgroundColor: Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Theme.of(context).colorScheme.primary,
                             ),
                           ),
                         ),
@@ -421,11 +417,8 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
                       Center(
                         child: Text(
                           '${((_totalRegions > 0 ? _visitedCount / _totalRegions : 0) * 100).toInt()}%',
-                          style: GoogleFonts.inter(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                            color: textColor,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
                       ),
                     ],
@@ -440,20 +433,18 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
           Expanded(
             child: _isListView
                 ? _buildListView(context)
-                : _buildMapView(isDark, textColor),
+                : _buildMapView(context),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMapView(bool isDark, Color textColor) {
+  Widget _buildMapView(BuildContext context) {
     return RepaintBoundary(
       key: _mapRepaintBoundaryKey,
       child: Stack(
         children: [
-          // Map Background (for sharing)
-          Container(color: isDark ? const Color(0xFF121212) : Colors.white),
           InteractiveViewer(
             maxScale: 10.0,
             minScale: 1.0,
@@ -465,10 +456,10 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
                   instructions: _showCanada
                       ? SMapCanada.instructions
                       : SMapUnitedStates.instructions,
-                  defaultColor: isDark
-                      ? const Color(0xFF2C2C2E)
-                      : const Color(0xFFF2F4F7),
-                  colors: _getMapColors(isDark),
+                  defaultColor: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest,
+                  colors: _getMapColors(context),
                   callback: (id, name, tapDetails) {
                     _handleRegionTap(id, name);
                   },
@@ -480,42 +471,33 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
           Positioned(
             bottom: 16,
             left: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF1E1E1E)
-                    : Colors.white.withValues(alpha: 0.9),
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 12,
-                    height: 12,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF007AFF),
-                      shape: BoxShape.circle,
+            child: Card(
+              elevation: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 12,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.primary,
+                        shape: BoxShape.circle,
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Visited',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
+                    const SizedBox(width: 8),
+                    Text(
+                      'Visited',
+                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
@@ -540,55 +522,57 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
 
         return Card(
           elevation: 0,
-          color: Colors.transparent,
+          color: isVisited
+              ? Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3)
+              : Colors.transparent,
           margin: const EdgeInsets.only(bottom: 8),
-          child: ListTile(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isVisited
-                    ? const Color(0xFF007AFF).withValues(alpha: 0.3)
-                    : Colors.grey.withValues(alpha: 0.2),
-              ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: isVisited
+                  ? Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                  : Theme.of(context).colorScheme.outlineVariant,
             ),
-            tileColor: isVisited
-                ? const Color(0xFF007AFF).withValues(alpha: 0.05)
-                : null,
+          ),
+          child: ListTile(
+            onTap: isVisited ? () => _handleRegionTap(code, name) : null,
             leading: Container(
               width: 40,
               height: 40,
               decoration: BoxDecoration(
                 color: isVisited
-                    ? const Color(0xFF007AFF).withValues(alpha: 0.1)
-                    : Colors.grey.withValues(alpha: 0.1),
+                    ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                    : Theme.of(context).colorScheme.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 isVisited ? Icons.check : Icons.map_outlined,
-                color: isVisited ? const Color(0xFF007AFF) : Colors.grey,
+                color: isVisited
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
                 size: 20,
               ),
             ),
             title: Text(
               name,
-              style: GoogleFonts.inter(
-                fontWeight: FontWeight.w600,
-                color: isVisited ? null : Colors.grey,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: isVisited
+                    ? null
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            subtitle: isVisited
-                ? Text(
-                    '${stats.visitCount} visits • Last: ${DateFormat.yMMMd().format(stats.lastVisited!)}',
-                    style: GoogleFonts.inter(fontSize: 12),
-                  )
-                : Text(
-                    'Not visited yet',
-                    style: GoogleFonts.inter(fontSize: 12),
-                  ),
+            subtitle: Text(
+              isVisited
+                  ? '${stats.visitCount} visits • Last: ${DateFormat.yMMMd().format(stats.lastVisited!)}'
+                  : 'Not visited yet',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
             trailing: isVisited
-                ? const Icon(Icons.chevron_right, color: Colors.grey)
+                ? const Icon(Icons.chevron_right, size: 20)
                 : null,
-            onTap: isVisited ? () => _handleRegionTap(code, name) : null,
           ),
         );
       },
@@ -630,7 +614,7 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
     }
   }
 
-  Widget _buildToggleButton(String label, bool isSelected, bool isDark) {
+  Widget _buildToggleButton(String label, bool isSelected) {
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -641,13 +625,13 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? (isDark ? Colors.grey[700] : Colors.white)
+              ? Theme.of(context).colorScheme.surface
               : Colors.transparent,
           borderRadius: BorderRadius.circular(16),
           boxShadow: isSelected
               ? [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
+                    color: Colors.black.withOpacity(0.1),
                     blurRadius: 4,
                     offset: const Offset(0, 2),
                   ),
@@ -656,47 +640,32 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
         ),
         child: Text(
           label,
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
+          style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.bold,
             color: isSelected
-                ? (isDark ? Colors.white : Colors.black)
-                : Colors.grey,
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ),
     );
   }
 
-  Map<String, Color> _getMapColors(bool isDark) {
+  Map<String, Color> _getMapColors(BuildContext context) {
     final Map<String, Color> colors = {};
-
-    // Iterate over our collected stats
     _stateStats.forEach((code, stats) {
-      // Code is our normalized 2-letter code (e.g. 'ny', 'on')
-
-      Color color = const Color(0xFF007AFF);
+      Color color = Theme.of(context).colorScheme.primary;
       if (stats.visitCount > 5) {
-        color = const Color(0xFF003366);
+        color = Theme.of(context).colorScheme.primary;
       } else if (stats.visitCount > 2) {
-        color = const Color(0xFF0056B3);
+        color = Theme.of(context).colorScheme.primary.withOpacity(0.8);
       } else {
-        color = const Color(0xFF007AFF);
+        color = Theme.of(context).colorScheme.primary.withOpacity(0.6);
       }
-
-      // SMap packages can be inconsistent.
-      // Some versions use 'us-ny', some 'ny'.
-      // We set ALL possible variants to be safe.
-
-      // 1. Raw code
       colors[code] = color;
-
-      // 2. Prefixed code (US)
       colors['us-$code'] = color;
-
-      // 3. Prefixed code (Canada)
       colors['ca-$code'] = color;
     });
-
     return colors;
   }
 
@@ -731,13 +700,9 @@ class _RegionDetailsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-
     return Container(
       decoration: BoxDecoration(
-        color: bgColor,
+        color: Theme.of(context).colorScheme.surface,
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: const EdgeInsets.all(24),
@@ -751,13 +716,15 @@ class _RegionDetailsSheet extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: stats != null
-                      ? const Color(0xFF007AFF).withValues(alpha: 0.1)
-                      : Colors.grey.withValues(alpha: 0.1),
+                      ? Theme.of(context).colorScheme.primary.withOpacity(0.1)
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
                   Icons.map,
-                  color: stats != null ? const Color(0xFF007AFF) : Colors.grey,
+                  color: stats != null
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                   size: 24,
                 ),
               ),
@@ -767,31 +734,29 @@ class _RegionDetailsSheet extends StatelessWidget {
                 children: [
                   Text(
                     regionName,
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      color: textColor,
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
                   Text(
                     stats != null
                         ? 'Visited ${stats!.visitCount} times'
                         : 'Not yet visited',
-                    style: GoogleFonts.inter(fontSize: 14, color: Colors.grey),
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
             ],
           ),
           const SizedBox(height: 24),
-
           if (stats != null) ...[
             Text(
               'RECENT ACTIVITY',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: Colors.grey,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
                 letterSpacing: 1.0,
               ),
             ),
@@ -803,7 +768,7 @@ class _RegionDetailsSheet extends StatelessWidget {
                 itemCount: stats!.recentActivity.take(5).length,
                 itemBuilder: (context, index) {
                   final item = stats!.recentActivity[index];
-                  return _buildListTile(context, item, isDark);
+                  return _buildListTile(context, item);
                 },
               ),
             ),
@@ -814,17 +779,21 @@ class _RegionDetailsSheet extends StatelessWidget {
                 child: Column(
                   children: [
                     Icon(
-                      Icons.terrain,
+                      Icons.landscape_outlined,
                       size: 48,
-                      color: Colors.grey.withValues(alpha: 0.3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withOpacity(0.3),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'No visits recorded here yet.',
-                      style: GoogleFonts.inter(color: Colors.grey),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton.icon(
+                    FilledButton.icon(
                       onPressed: () {
                         context.pop(); // Close sheet
                         context.go(
@@ -836,76 +805,70 @@ class _RegionDetailsSheet extends StatelessWidget {
                         Icons.add_location_alt_outlined,
                         size: 18,
                       ),
-                      label: Text(
-                        'Add Trip Here',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF007AFF),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 24,
-                          vertical: 12,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        elevation: 0,
-                      ),
+                      label: const Text('Add Trip Here'),
                     ),
                   ],
                 ),
               ),
             ),
           ],
-
           const SizedBox(height: 16),
         ],
       ),
     );
   }
 
-  Widget _buildListTile(BuildContext context, dynamic item, bool isDark) {
+  Widget _buildListTile(BuildContext context, dynamic item) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+
     if (item is Trip) {
       return ListTile(
         contentPadding: EdgeInsets.zero,
         leading: Icon(
           Icons.local_shipping_outlined,
-          color: isDark ? Colors.white70 : Colors.black54,
+          color: colorScheme.onSurfaceVariant,
           size: 20,
         ),
         title: Text(
           'Trip ${item.tripNumber}',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+          style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           DateFormat.yMMMd().format(item.tripDate),
-          style: GoogleFonts.inter(fontSize: 12),
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
-        trailing: const Icon(Icons.chevron_right, size: 16, color: Colors.grey),
+        trailing: Icon(
+          Icons.chevron_right,
+          size: 16,
+          color: colorScheme.outline,
+        ),
       );
     } else if (item is FuelEntry) {
       return ListTile(
         contentPadding: EdgeInsets.zero,
         leading: Icon(
           Icons.local_gas_station_outlined,
-          color: isDark ? Colors.white70 : Colors.black54,
+          color: colorScheme.onSurfaceVariant,
           size: 20,
         ),
         title: Text(
           'Fuel Stop',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14),
+          style: textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         subtitle: Text(
           DateFormat.yMMMd().format(item.fuelDate),
-          style: GoogleFonts.inter(fontSize: 12),
+          style: textTheme.bodySmall?.copyWith(
+            color: colorScheme.onSurfaceVariant,
+          ),
         ),
         trailing: Text(
           '\$${item.totalCost.toStringAsFixed(0)}',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            color: const Color(0xFF007AFF),
+          style: textTheme.titleSmall?.copyWith(
+            fontWeight: FontWeight.bold,
+            color: colorScheme.primary,
           ),
         ),
       );

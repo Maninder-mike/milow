@@ -201,6 +201,7 @@ class BorderWaitTimeService {
                   'operational_status': bwt.operationalStatus,
                 },
                 'FAST_lanes': {
+                  'maximum_lanes': bwt.fastMaxLanes,
                   'lanes_open': bwt.fastLanesOpen,
                   'delay_minutes': bwt.fastLanesDelay,
                   'operational_status': bwt.fastOperationalStatus,

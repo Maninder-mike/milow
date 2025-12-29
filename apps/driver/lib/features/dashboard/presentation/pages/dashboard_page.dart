@@ -1,10 +1,9 @@
-// ignore_for_file: deprecated_member_use
 import 'dart:async';
-import 'dart:ui';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 // TabsShell provides navigation; this page returns content only
 import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
@@ -48,8 +47,39 @@ class _DashboardPageState extends State<DashboardPage>
 
   // Bell icon animation
   late AnimationController _bellAnimationController;
-  late Animation<double> _bellRotationAnimation;
   late Animation<double> _bellScaleAnimation;
+
+  // Dynamic Gradients
+  late List<Color> _currentGradientColors;
+
+  static const List<List<Color>> _gradientPalettes = [
+    // Dark Red (Original)
+    [Color(0xFF2E0213), Color(0xFF8B2C4B), Color(0xFFA66C44)],
+    // Pistachio (Green)
+    [
+      Color(0xFF1A4D2E), // Deep forest green
+      Color(0xFF4F6F52), // Sage green
+      Color(0xFFE8DFCA), // Cream/Beige for warmth
+    ],
+    // Orange / Embers
+    [
+      Color(0xFF431407), // Dark burnt orange
+      Color(0xFF9A3412), // Rust
+      Color(0xFFF59E0B), // Vibrant amber
+    ],
+    // Dark Yellow / Gold
+    [
+      Color(0xFF422006), // Dark brown
+      Color(0xFF854D0E), // Bronze
+      Color(0xFFEAB308), // Gold
+    ],
+    // Midnight Blue
+    [
+      Color(0xFF0F172A), // Slate 900
+      Color(0xFF1E3A8A), // Blue 900
+      Color(0xFF3B82F6), // Blue 500
+    ],
+  ];
 
   @override
   void initState() {
@@ -61,18 +91,6 @@ class _DashboardPageState extends State<DashboardPage>
       vsync: this,
     );
 
-    // Create rotation animation (-15° to +15°)
-    _bellRotationAnimation =
-        Tween<double>(
-          begin: -0.26, // -15 degrees in radians
-          end: 0.26, // +15 degrees in radians
-        ).animate(
-          CurvedAnimation(
-            parent: _bellAnimationController,
-            curve: Curves.easeInOut,
-          ),
-        );
-
     // Create scale animation (1.0 to 1.1)
     _bellScaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(
@@ -80,6 +98,11 @@ class _DashboardPageState extends State<DashboardPage>
         curve: Curves.easeInOut,
       ),
     );
+
+    // Pick a random gradient
+    final random = Random();
+    _currentGradientColors =
+        _gradientPalettes[random.nextInt(_gradientPalettes.length)];
 
     _loadBorderWaitTimes(
       forceRefresh: false,
@@ -312,17 +335,9 @@ class _DashboardPageState extends State<DashboardPage>
     return 'Something went wrong. Please try again.';
   }
 
-  Widget _buildHeroSection(
-    BuildContext context,
-    bool isDark,
-    double margin,
-    Color cardColor,
-    Color borderColor,
-    Color secondaryTextColor,
-    Color textColor,
-  ) {
-    // Base background color to fade into (matches Scaffold background)
-    final baseColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
+  Widget _buildHeroSection(BuildContext context, double margin) {
+    // Base background color to fade into
+    final baseColor = Theme.of(context).scaffoldBackgroundColor;
 
     return Stack(
       children: [
@@ -330,15 +345,11 @@ class _DashboardPageState extends State<DashboardPage>
         Container(
           height: 540,
           width: double.infinity,
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [
-                Color(0xFF2E0213), // Deep dark red/purple
-                Color(0xFF8B2C4B), // Muted magenta
-                Color(0xFFA66C44), // Warm earthy tone
-              ],
+              colors: _currentGradientColors,
             ),
           ),
           child: Container(
@@ -348,9 +359,9 @@ class _DashboardPageState extends State<DashboardPage>
                 end: Alignment.bottomCenter,
                 stops: const [0.0, 0.5, 0.8, 1.0],
                 colors: [
-                  Colors.black.withValues(alpha: 0.1),
-                  Colors.black.withValues(alpha: 0.3),
-                  baseColor.withValues(alpha: 0.8),
+                  Colors.black.withOpacity(0.1),
+                  Colors.black.withOpacity(0.3),
+                  baseColor.withOpacity(0.8),
                   baseColor,
                 ],
               ),
@@ -372,8 +383,7 @@ class _DashboardPageState extends State<DashboardPage>
                   children: [
                     Text(
                       'Create with Veo 3',
-                      style: GoogleFonts.outfit(
-                        fontSize: 32,
+                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
                       ),
@@ -382,32 +392,26 @@ class _DashboardPageState extends State<DashboardPage>
                     const SizedBox(height: 8),
                     Text(
                       'Generate videos with your ingredients',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        color: Colors.white.withValues(alpha: 0.9),
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Colors.white.withOpacity(0.9),
                       ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 24),
-                    ElevatedButton(
+                    FilledButton(
                       onPressed: () {},
-                      style: ElevatedButton.styleFrom(
+                      style: FilledButton.styleFrom(
                         backgroundColor: Colors.white,
                         foregroundColor: Colors.black,
                         padding: const EdgeInsets.symmetric(
                           horizontal: 32,
                           vertical: 16,
                         ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(30),
-                        ),
-                        elevation: 0,
                       ),
                       child: Text(
                         'Generate Video',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
@@ -416,57 +420,27 @@ class _DashboardPageState extends State<DashboardPage>
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Colors.white54,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                        _buildPageIndicator(true),
                         const SizedBox(width: 8),
-                        Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                        _buildPageIndicator(false),
                         const SizedBox(width: 8),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Colors.white54,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                        _buildPageIndicator(false),
                         const SizedBox(width: 8),
-                        Container(
-                          width: 6,
-                          height: 6,
-                          decoration: const BoxDecoration(
-                            color: Colors.white54,
-                            shape: BoxShape.circle,
-                          ),
-                        ),
+                        _buildPageIndicator(false),
                       ],
                     ),
                   ],
                 ),
               ),
             ),
-
             // Get Started Section
             Padding(
               padding: EdgeInsets.symmetric(horizontal: margin),
               child: Text(
                 'Get started',
-                style: GoogleFonts.inter(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: Theme.of(context).colorScheme.onSurface,
                 ),
               ),
             ),
@@ -478,39 +452,31 @@ class _DashboardPageState extends State<DashboardPage>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildGetStartedCard(
+                    context,
                     'Add Data',
                     Icons.add,
                     () => context.push('/add-entry'),
-                    cardColor,
-                    borderColor,
-                    textColor,
                   ),
                   const SizedBox(width: 12),
                   _buildGetStartedCard(
+                    context,
                     'Explore',
                     Icons.explore_outlined,
                     () => context.go('/explore'),
-                    cardColor,
-                    borderColor,
-                    textColor,
                   ),
                   const SizedBox(width: 12),
                   _buildGetStartedCard(
+                    context,
                     'Inbox',
                     Icons.inbox_outlined,
                     () => context.go('/inbox'),
-                    cardColor,
-                    borderColor,
-                    textColor,
                   ),
                   const SizedBox(width: 12),
                   _buildGetStartedCard(
+                    context,
                     'Settings',
                     Icons.settings_outlined,
                     () => context.go('/settings'),
-                    cardColor,
-                    borderColor,
-                    textColor,
                   ),
                 ],
               ),
@@ -528,12 +494,8 @@ class _DashboardPageState extends State<DashboardPage>
               padding: EdgeInsets.symmetric(horizontal: margin, vertical: 8),
               child: Row(
                 children: [
-                  _quickAction(
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.white,
-                    Icons.search,
-                    () {
+                  IconButton(
+                    onPressed: () {
                       Navigator.push(
                         context,
                         MaterialPageRoute(
@@ -541,14 +503,11 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                       );
                     },
+                    icon: const Icon(Icons.search),
+                    style: IconButton.styleFrom(foregroundColor: Colors.white),
                   ),
                   const Spacer(),
-                  _buildNotificationBell(
-                    Colors.transparent,
-                    Colors.transparent,
-                    Colors.white,
-                    forceWhite: true,
-                  ),
+                  _buildNotificationBell(context),
                 ],
               ),
             ),
@@ -558,35 +517,50 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
+  Widget _buildPageIndicator(bool isActive) {
+    return Container(
+      width: isActive ? 16 : 6,
+      height: 6,
+      decoration: BoxDecoration(
+        color: isActive ? Colors.white : Colors.white.withOpacity(0.5),
+        borderRadius: BorderRadius.circular(3),
+        shape: BoxShape.rectangle,
+      ),
+    );
+  }
+
   Widget _buildGetStartedCard(
+    BuildContext context,
     String label,
     IconData icon,
     VoidCallback onTap,
-    Color cardColor,
-    Color borderColor,
-    Color textColor,
   ) {
     return Column(
       children: [
-        InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(20),
-          child: Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              color: cardColor,
+        SizedBox(
+          width: 80,
+          height: 80,
+          child: Card(
+            elevation: 0,
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            margin: EdgeInsets.zero,
+            shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: borderColor),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
+              side: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
             ),
-            child: Icon(icon, size: 32, color: textColor),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(20),
+              child: Center(
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
+            ),
           ),
         ),
         const SizedBox(height: 8),
@@ -594,10 +568,8 @@ class _DashboardPageState extends State<DashboardPage>
           width: 80,
           child: Text(
             label,
-            style: GoogleFonts.inter(
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-              color: textColor,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurface,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -608,19 +580,42 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
+  Widget _buildNotificationBell(BuildContext context) {
+    return Stack(
+      children: [
+        AnimatedBuilder(
+          animation: _bellAnimationController,
+          builder: (context, child) {
+            return Transform.scale(
+              scale: _bellScaleAnimation.value,
+              child: IconButton(
+                onPressed: () => context.push('/notifications'),
+                icon: const Icon(Icons.notifications_outlined),
+                style: IconButton.styleFrom(foregroundColor: Colors.white),
+              ),
+            );
+          },
+        ),
+        if (_unreadNotificationCount > 0)
+          Positioned(
+            right: 8,
+            top: 8,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: const BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+              ),
+              constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
+            ),
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark
-        ? Colors.white
-        : const Color(0xFF101828); // retained for subsequent widgets
-    final secondaryTextColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
-    final borderColor = isDark
-        ? const Color(0xFF3A3A3A)
-        : const Color(0xFFD0D5DD);
 
     final margin = ResponsiveLayout.getMargin(context);
 
@@ -635,11 +630,7 @@ class _DashboardPageState extends State<DashboardPage>
                   const Color(0xFF16213e),
                   const Color(0xFF0f0f23),
                 ]
-              : [
-                  const Color(0xFFe8f4f8),
-                  const Color(0xFFfce4ec),
-                  const Color(0xFFe8f5e9),
-                ],
+              : [Colors.white, const Color(0xFFF5F5F5), Colors.white],
         ),
       ),
       child: Shimmer(
@@ -654,247 +645,249 @@ class _DashboardPageState extends State<DashboardPage>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _buildHeroSection(
-                  context,
-                  isDark,
-                  margin,
-                  cardColor,
-                  borderColor,
-                  secondaryTextColor,
-                  textColor,
-                ),
-                const SizedBox(height: 24),
-                // Border Wait Times Section
-                if (_isLoadingBorders) ...[
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: const ShimmerLoading(
-                      isLoading: true,
-                      child: Column(
-                        children: [
-                          ShimmerBorderWaitCard(),
-                          ShimmerBorderWaitCard(),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ] else if (_borderError != null &&
-                    _borderWaitTimes.isEmpty) ...[
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: cardColor,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: borderColor),
-                      ),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFFEE2E2),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.error_outline,
-                              color: Color(0xFFDC2626),
-                              size: 20,
+                _buildHeroSection(context, margin),
+
+                Container(
+                  transform: Matrix4.translationValues(0, -32, 0),
+                  width: double.infinity,
+                  padding: const EdgeInsets.only(top: 24),
+                  child: Column(
+                    children: [
+                      // Border Wait Times Section
+                      if (_isLoadingBorders) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: margin),
+                          child: const ShimmerLoading(
+                            isLoading: true,
+                            child: Column(
+                              children: [
+                                ShimmerBorderWaitCard(),
+                                ShimmerBorderWaitCard(),
+                              ],
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                        ),
+                        const SizedBox(height: 16),
+                      ] else if (_borderError != null &&
+                          _borderWaitTimes.isEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: margin),
+                          child: Container(
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainer,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.outlineVariant,
+                              ),
+                            ),
+                            child: Row(
                               children: [
-                                Text(
-                                  'Border Wait Times Unavailable',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFFEE2E2),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.error_outline,
+                                    color: Color(0xFFDC2626),
+                                    size: 20,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  _borderError!,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: secondaryTextColor,
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Border Wait Times Unavailable',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        _borderError!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                TextButton(
+                                  onPressed: () =>
+                                      _loadBorderWaitTimes(forceRefresh: true),
+                                  child: Text(
+                                    'Retry',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelLarge
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          TextButton(
-                            onPressed: () =>
-                                _loadBorderWaitTimes(forceRefresh: true),
-                            child: Text(
-                              'Retry',
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: const Color(0xFF007AFF),
+                        ),
+                        const SizedBox(height: 16),
+                      ] else if (_borderWaitTimes.isNotEmpty) ...[
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: margin),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(
+                                'Border Wait Times',
+                                style: Theme.of(context).textTheme.titleLarge
+                                    ?.copyWith(fontWeight: FontWeight.bold),
                               ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ] else if (_borderWaitTimes.isNotEmpty) ...[
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(
-                          'Border Wait Times',
-                          style: GoogleFonts.inter(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
-                        ),
-                        TextButton.icon(
-                          onPressed: () =>
-                              _loadBorderWaitTimes(forceRefresh: true),
-                          icon: const Icon(
-                            Icons.refresh,
-                            size: 16,
-                            color: Color(0xFF007AFF),
-                          ),
-                          label: Text(
-                            'Refresh',
-                            style: GoogleFonts.inter(
-                              fontSize: 13,
-                              color: const Color(0xFF007AFF),
-                            ),
+                              TextButton.icon(
+                                onPressed: () =>
+                                    _loadBorderWaitTimes(forceRefresh: true),
+                                icon: const Icon(
+                                  Icons.refresh,
+                                  size: 16,
+                                  color: Color(0xFF007AFF),
+                                ),
+                                label: Text(
+                                  'Refresh',
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                ),
+                              ),
+                            ],
                           ),
                         ),
+                        const SizedBox(height: 8),
+                        Padding(
+                          padding: EdgeInsets.symmetric(horizontal: margin),
+                          child: Column(
+                            children: _borderWaitTimes
+                                .map((bwt) => BorderWaitTimeCard(waitTime: bwt))
+                                .toList(),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
                       ],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Padding(
-                    padding: EdgeInsets.symmetric(horizontal: margin),
-                    child: Column(
-                      children: _borderWaitTimes
-                          .map((bwt) => BorderWaitTimeCard(waitTime: bwt))
-                          .toList(),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                ],
 
-                // Last Record Entries
-                Padding(
-                  padding: EdgeInsets.symmetric(horizontal: margin),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Last Record Entries',
-                        style: GoogleFonts.inter(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Container(
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isDark
-                                  ? Colors.black.withValues(alpha: 0.3)
-                                  : Colors.black.withValues(alpha: 0.08),
-                              blurRadius: 24,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 8),
+                      // Last Record Entries
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: margin),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Last Record Entries',
+                              style: Theme.of(context).textTheme.titleLarge
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                  ),
                             ),
-                          ],
-                        ),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(24),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(24),
-                                gradient: LinearGradient(
-                                  begin: Alignment.topLeft,
-                                  end: Alignment.bottomRight,
-                                  colors: isDark
-                                      ? [
-                                          Colors.white.withValues(alpha: 0.15),
-                                          Colors.white.withValues(alpha: 0.05),
-                                        ]
-                                      : [
-                                          Colors.white.withValues(alpha: 0.9),
-                                          Colors.white.withValues(alpha: 0.7),
-                                        ],
-                                ),
-                                border: Border.all(
-                                  color: isDark
-                                      ? Colors.white.withValues(alpha: 0.2)
-                                      : Colors.white.withValues(alpha: 0.8),
-                                  width: 1.5,
-                                ),
-                              ),
-                              child: _isLoadingEntries
-                                  ? const ShimmerLoading(
-                                      isLoading: true,
+                            const SizedBox(height: 12),
+                            _isLoadingEntries
+                                ? const ShimmerLoading(
+                                    isLoading: true,
+                                    child: Column(
+                                      children: [
+                                        ShimmerEntryItem(),
+                                        ShimmerEntryItem(),
+                                        ShimmerEntryItem(),
+                                        ShimmerEntryItem(showDivider: false),
+                                      ],
+                                    ),
+                                  )
+                                : _recentEntries.isEmpty
+                                ? Padding(
+                                    padding: const EdgeInsets.all(32),
+                                    child: Center(
                                       child: Column(
                                         children: [
-                                          ShimmerEntryItem(),
-                                          ShimmerEntryItem(),
-                                          ShimmerEntryItem(),
-                                          ShimmerEntryItem(showDivider: false),
+                                          Icon(
+                                            Icons.inbox_outlined,
+                                            size: 48,
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.outline,
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Text(
+                                            'No entries yet',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleSmall
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant,
+                                                ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Add your first trip or fuel entry',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  color: Theme.of(context)
+                                                      .colorScheme
+                                                      .onSurfaceVariant
+                                                      .withOpacity(0.7),
+                                                ),
+                                          ),
                                         ],
                                       ),
-                                    )
-                                  : _recentEntries.isEmpty
-                                  ? Padding(
-                                      padding: const EdgeInsets.all(32),
-                                      child: Center(
-                                        child: Column(
-                                          children: [
-                                            Icon(
-                                              Icons.inbox_outlined,
-                                              size: 48,
-                                              color: secondaryTextColor,
-                                            ),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                              'No entries yet',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                color: secondaryTextColor,
-                                              ),
-                                            ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              'Add your first trip or fuel entry',
-                                              style: GoogleFonts.inter(
-                                                fontSize: 12,
-                                                color: secondaryTextColor,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
+                                    ),
+                                  )
+                                : Card(
+                                    elevation: 0,
+                                    margin: EdgeInsets.zero,
+                                    color:
+                                        Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.black
+                                        : const Color(0xFFF5F5F5),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(24),
+                                      side: BorderSide(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.outlineVariant,
                                       ),
-                                    )
-                                  : Column(
+                                    ),
+                                    child: Column(
                                       children: [
                                         ..._recentEntries.asMap().entries.map((
                                           entry,
                                         ) {
-                                          final index = entry.key;
                                           final item = entry.value;
                                           final isTrip = item['type'] == 'trip';
 
@@ -916,8 +909,6 @@ class _DashboardPageState extends State<DashboardPage>
                                                 : '-';
 
                                             entryWidget = _buildRecordEntry(
-                                              textColor,
-                                              secondaryTextColor,
                                               'trip',
                                               'Trip #${trip.tripNumber}',
                                               route,
@@ -942,8 +933,6 @@ class _DashboardPageState extends State<DashboardPage>
                                                 : fuel.reeferNumber ?? 'Reefer';
 
                                             entryWidget = _buildRecordEntry(
-                                              textColor,
-                                              secondaryTextColor,
                                               'fuel',
                                               '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
                                               location,
@@ -953,21 +942,19 @@ class _DashboardPageState extends State<DashboardPage>
                                               quantity,
                                             );
                                           }
-
                                           return Column(
                                             children: [
                                               entryWidget,
-                                              if (index <
-                                                  _recentEntries.length - 1)
-                                                Divider(
-                                                  height: 1,
-                                                  color: borderColor,
-                                                ),
+                                              Divider(
+                                                height: 1,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.outlineVariant,
+                                              ),
                                             ],
                                           );
                                         }),
-                                        Divider(height: 1, color: borderColor),
-                                        // See more button
+                                        // View All Button
                                         InkWell(
                                           onTap: () {
                                             Navigator.push(
@@ -978,85 +965,90 @@ class _DashboardPageState extends State<DashboardPage>
                                               ),
                                             );
                                           },
-                                          child: Padding(
+                                          borderRadius: const BorderRadius.only(
+                                            bottomLeft: Radius.circular(24),
+                                            bottomRight: Radius.circular(24),
+                                          ),
+                                          child: Container(
+                                            width: double.infinity,
                                             padding: const EdgeInsets.symmetric(
-                                              vertical: 14,
+                                              vertical: 16,
                                             ),
-                                            child: Center(
-                                              child: Text(
-                                                'See more',
-                                                style: GoogleFonts.inter(
-                                                  fontSize: 14,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: const Color(
-                                                    0xFF007AFF,
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              'View All Entries',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelLarge
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
                                                   ),
-                                                ),
-                                              ),
                                             ),
                                           ),
                                         ),
                                       ],
                                     ),
-                            ),
+                                  ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
+                      const SectionHeader(title: 'Learning Pages'),
+                      const SizedBox(height: 12),
+                      Card(
+                        margin: EdgeInsets.symmetric(horizontal: margin),
+                        elevation: 0,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.black
+                            : const Color(0xFFF5F5F5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: BorderSide(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 24,
+                            horizontal: 16,
+                          ),
+                          child: Column(
+                            children: [
+                              Icon(
+                                Icons.school_outlined,
+                                size: 32,
+                                color: Theme.of(context).colorScheme.secondary,
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                'Learning Resources Coming Soon',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'We are working on great educational content for you.',
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
+                                    ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
                           ),
                         ),
                       ),
+                      // Extra padding for floating bottom nav bar
+                      const SizedBox(height: 120),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-
-                const SectionHeader(title: 'Learning Pages'),
-                const SizedBox(height: 12),
-                Container(
-                  width: double.infinity,
-                  margin: EdgeInsets.symmetric(horizontal: margin),
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 24,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.05)
-                        : Colors.black.withValues(alpha: 0.03),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.1)
-                          : Colors.black.withValues(alpha: 0.05),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.school_outlined,
-                        size: 32,
-                        color: secondaryTextColor,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Learning Resources Coming Soon',
-                        style: GoogleFonts.inter(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'We are working on great educational content for you.',
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: secondaryTextColor,
-                        ),
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
-                ),
-                // Extra padding for floating bottom nav bar
-                const SizedBox(height: 120),
               ],
             ),
           ),
@@ -1065,94 +1057,7 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  Widget _quickAction(
-    Color bg,
-    Color border,
-    Color iconColor,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    return Container(
-      width: 48,
-      height: 48,
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: IconButton(
-        icon: Icon(icon, color: iconColor),
-        onPressed: onTap,
-      ),
-    );
-  }
-
-  Widget _buildNotificationBell(
-    Color cardColor,
-    Color borderColor,
-    Color iconColor, {
-    bool forceWhite = false,
-  }) {
-    return GestureDetector(
-      onTap: () async {
-        await context.push('/notifications');
-        // Refresh notification count after returning from notifications page
-        await NotificationService.instance.refreshUnreadCount();
-      },
-      child: Container(
-        width: 48,
-        height: 48,
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // Animated bell icon
-            AnimatedBuilder(
-              animation: _bellAnimationController,
-              builder: (context, child) {
-                return Transform.rotate(
-                  angle: _unreadNotificationCount > 0
-                      ? _bellRotationAnimation.value
-                      : 0.0,
-                  child: Transform.scale(
-                    scale: _unreadNotificationCount > 0
-                        ? _bellScaleAnimation.value
-                        : 1.0,
-                    child: Icon(
-                      Icons.notifications_outlined,
-                      color: forceWhite ? Colors.white : iconColor,
-                      size: 24,
-                    ),
-                  ),
-                );
-              },
-            ),
-            // Red dot indicator for unread notifications
-            if (_unreadNotificationCount > 0)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFEF4444),
-                    shape: BoxShape.circle,
-                    border: Border.all(color: cardColor, width: 2),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildRecordEntry(
-    Color textColor,
-    Color secondaryTextColor,
     String type,
     String entryId,
     String description,
@@ -1161,8 +1066,8 @@ class _DashboardPageState extends State<DashboardPage>
   ) {
     final isTrip = type == 'trip';
     final iconColor = isTrip
-        ? const Color(0xFF3B82F6)
-        : const Color(0xFFF59E0B);
+        ? Theme.of(context).colorScheme.primary
+        : Theme.of(context).colorScheme.tertiary;
     final icon = isTrip ? Icons.local_shipping : Icons.local_gas_station;
 
     return Padding(
@@ -1173,7 +1078,7 @@ class _DashboardPageState extends State<DashboardPage>
             width: 48,
             height: 48,
             decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
+              color: iconColor.withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Icon(icon, color: iconColor, size: 24),
@@ -1188,18 +1093,15 @@ class _DashboardPageState extends State<DashboardPage>
                   children: [
                     Text(
                       entryId,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                       ),
                     ),
                     Text(
                       value,
-                      style: GoogleFonts.inter(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        color: const Color(0xFF3B82F6),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: Theme.of(context).colorScheme.primary,
                       ),
                     ),
                   ],
@@ -1212,9 +1114,8 @@ class _DashboardPageState extends State<DashboardPage>
                     Expanded(
                       child: Text(
                         description,
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          color: secondaryTextColor,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1222,9 +1123,8 @@ class _DashboardPageState extends State<DashboardPage>
                     const SizedBox(width: 8),
                     Text(
                       date,
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        color: secondaryTextColor,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],

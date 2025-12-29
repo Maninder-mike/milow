@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -152,53 +153,87 @@ final GoRouter _router = GoRouter(
 
     GoRoute(
       path: '/dashboard',
-      builder: (context, state) =>
-          const AuthWrapper(child: TabsShell(initialIndex: 0)),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: TabsShell(initialIndex: 0)),
+      ),
     ),
     GoRoute(
       path: '/settings',
-      builder: (context, state) =>
-          const AuthWrapper(child: TabsShell(initialIndex: 3)),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: TabsShell(initialIndex: 3)),
+      ),
     ),
     GoRoute(
       path: '/edit-profile',
-      builder: (context, state) => const AuthWrapper(child: EditProfilePage()),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: EditProfilePage()),
+      ),
     ),
     GoRoute(
       path: '/privacy-security',
-      builder: (context, state) =>
-          const AuthWrapper(child: PrivacySecurityPage()),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: PrivacySecurityPage()),
+      ),
     ),
     GoRoute(
       path: '/appearance',
-      builder: (context, state) => const AuthWrapper(child: AppearancePage()),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: AppearancePage()),
+      ),
     ),
     GoRoute(
       path: '/notifications',
-      builder: (context, state) =>
-          const AuthWrapper(child: NotificationsPage()),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: NotificationsPage()),
+      ),
     ),
     GoRoute(
       path: '/language',
-      builder: (context, state) => const AuthWrapper(child: LanguagePage()),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: LanguagePage()),
+      ),
     ),
 
     GoRoute(
       path: '/add-entry',
-      builder: (context, state) {
+      pageBuilder: (context, state) {
         final initialData = state.extra as Map<String, dynamic>?;
-        return AuthWrapper(child: AddEntryPage(initialData: initialData));
+        return _buildTransitionPage(
+          context,
+          state,
+          AuthWrapper(child: AddEntryPage(initialData: initialData)),
+        );
       },
     ),
     GoRoute(
       path: '/explore',
-      builder: (context, state) =>
-          const AuthWrapper(child: TabsShell(initialIndex: 1)),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: TabsShell(initialIndex: 1)),
+      ),
     ),
     GoRoute(
       path: '/inbox',
-      builder: (context, state) =>
-          const AuthWrapper(child: TabsShell(initialIndex: 2)),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: TabsShell(initialIndex: 2)),
+      ),
     ),
     GoRoute(
       path: '/email-verified',
@@ -207,10 +242,34 @@ final GoRouter _router = GoRouter(
     ),
     GoRoute(
       path: '/feedback',
-      builder: (context, state) => const AuthWrapper(child: FeedbackPage()),
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: FeedbackPage()),
+      ),
     ),
   ],
 );
+
+Page<dynamic> _buildTransitionPage(
+  BuildContext context,
+  GoRouterState state,
+  Widget child,
+) {
+  return CustomTransitionPage(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      return SharedAxisTransition(
+        animation: animation,
+        secondaryAnimation: secondaryAnimation,
+        transitionType: SharedAxisTransitionType.horizontal,
+        child: child,
+      );
+    },
+    transitionDuration: const Duration(milliseconds: 300),
+  );
+}
 
 class MyApp extends StatefulWidget {
   const MyApp({super.key});

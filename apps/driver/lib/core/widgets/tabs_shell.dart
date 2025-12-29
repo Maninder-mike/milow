@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:animations/animations.dart';
 import 'package:milow/features/explore/presentation/pages/explore_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/dashboard_page.dart';
 import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
@@ -48,16 +49,25 @@ class _TabsShellState extends State<TabsShell> {
 
     return Scaffold(
       backgroundColor: background,
-      body: PageView(
-        controller: _controller,
-        physics: const BouncingScrollPhysics(),
-        onPageChanged: (i) => setState(() => _index = i),
-        children: const [
-          DashboardPage(),
-          ExplorePage(),
-          InboxPage(),
-          SettingsPage(),
-        ],
+      body: PageTransitionSwitcher(
+        transitionBuilder:
+            (
+              Widget child,
+              Animation<double> primaryAnimation,
+              Animation<double> secondaryAnimation,
+            ) {
+              return FadeThroughTransition(
+                animation: primaryAnimation,
+                secondaryAnimation: secondaryAnimation,
+                child: child,
+              );
+            },
+        child: [
+          const DashboardPage(),
+          const ExplorePage(),
+          const InboxPage(),
+          const SettingsPage(),
+        ][_index],
       ),
     );
   }

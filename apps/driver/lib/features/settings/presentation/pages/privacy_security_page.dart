@@ -85,7 +85,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
             SnackBar(
               content: Text(
                 'PIN enabled successfully',
-                style: GoogleFonts.inter(),
+                style: GoogleFonts.outfit(),
               ),
               backgroundColor: Colors.green,
             ),
@@ -99,25 +99,25 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
         builder: (context) => AlertDialog(
           title: Text(
             'Disable PIN?',
-            style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
           ),
           content: Text(
             'You will need to login with email and password next time.',
-            style: GoogleFonts.inter(),
+            style: GoogleFonts.outfit(),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text(
                 'Cancel',
-                style: GoogleFonts.inter(color: const Color(0xFF667085)),
+                style: GoogleFonts.outfit(color: const Color(0xFF667085)),
               ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 'Disable',
-                style: GoogleFonts.inter(color: Colors.red),
+                style: GoogleFonts.outfit(color: Colors.red),
               ),
             ),
           ],
@@ -131,7 +131,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
         });
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('PIN disabled', style: GoogleFonts.inter())),
+            SnackBar(
+              content: Text('PIN disabled', style: GoogleFonts.outfit()),
+            ),
           );
         }
       }
@@ -153,7 +155,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
           SnackBar(
             content: Text(
               'PIN changed successfully',
-              style: GoogleFonts.inter(),
+              style: GoogleFonts.outfit(),
             ),
             backgroundColor: Colors.green,
           ),
@@ -168,7 +170,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
         SnackBar(
           content: Text(
             'Biometric authentication not available on this device',
-            style: GoogleFonts.inter(),
+            style: GoogleFonts.outfit(),
           ),
           backgroundColor: Colors.red,
         ),
@@ -189,7 +191,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
             SnackBar(
               content: Text(
                 '$_biometricType enabled successfully',
-                style: GoogleFonts.inter(),
+                style: GoogleFonts.outfit(),
               ),
               backgroundColor: Colors.green,
             ),
@@ -206,7 +208,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
           SnackBar(
             content: Text(
               '$_biometricType disabled',
-              style: GoogleFonts.inter(),
+              style: GoogleFonts.outfit(),
             ),
           ),
         );
@@ -237,7 +239,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
         ),
         title: Text(
           'Privacy & Security',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: textColor,
@@ -255,7 +257,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'AUTHENTICATION',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: const Color(0xFF98A2B3),
@@ -284,7 +286,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                             children: [
                               Text(
                                 'PIN Code',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w500,
                                   color: textColor,
@@ -293,7 +295,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                               const SizedBox(height: 4),
                               Text(
                                 'Use a 4-digit PIN to login',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 14,
                                   color: secondaryTextColor,
                                 ),
@@ -328,7 +330,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                               children: [
                                 Text(
                                   'Change PIN',
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.outfit(
                                     fontSize: 16,
                                     color: const Color(0xFF007AFF),
                                   ),
@@ -365,7 +367,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                                 children: [
                                   Text(
                                     _biometricType,
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.outfit(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w500,
                                       color: textColor,
@@ -381,12 +383,12 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                                       decoration: BoxDecoration(
                                         color: const Color(
                                           0xFF98A2B3,
-                                        ).withValues(alpha: 0.1),
+                                        ).withOpacity(0.1),
                                         borderRadius: BorderRadius.circular(4),
                                       ),
                                       child: Text(
                                         'Not Available',
-                                        style: GoogleFonts.inter(
+                                        style: GoogleFonts.outfit(
                                           fontSize: 11,
                                           fontWeight: FontWeight.w600,
                                           color: const Color(0xFF98A2B3),
@@ -401,7 +403,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                                 _biometricAvailable
                                     ? 'Use ${_biometricType.toLowerCase()} to login'
                                     : 'Not available on this device',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 14,
                                   color: secondaryTextColor,
                                 ),
@@ -428,10 +430,10 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
               margin: const EdgeInsets.symmetric(horizontal: 16),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+                color: const Color(0xFF007AFF).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
-                  color: const Color(0xFF007AFF).withValues(alpha: 0.2),
+                  color: const Color(0xFF007AFF).withOpacity(0.2),
                 ),
               ),
               child: Row(
@@ -446,7 +448,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                   Expanded(
                     child: Text(
                       'Enable PIN or biometric authentication to avoid repeated email logins. Your session will stay active and secure.',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 14,
                         color: const Color(0xFF007AFF),
                         height: 1.5,

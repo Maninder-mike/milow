@@ -7,14 +7,8 @@ import 'package:milow/core/widgets/glassy_card.dart';
 class ExploreMapView extends StatefulWidget {
   final List<ExploreMapMarker> markers;
   final Function(ExploreMapMarker)? onMarkerTap;
-  final bool isDark;
 
-  const ExploreMapView({
-    required this.markers,
-    required this.isDark,
-    this.onMarkerTap,
-    super.key,
-  });
+  const ExploreMapView({required this.markers, this.onMarkerTap, super.key});
 
   @override
   State<ExploreMapView> createState() => _ExploreMapViewState();
@@ -25,6 +19,8 @@ class _ExploreMapViewState extends State<ExploreMapView> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return SizedBox(
       height: 400,
       child: GlassyCard(
@@ -45,13 +41,12 @@ class _ExploreMapViewState extends State<ExploreMapView> {
                 ),
                 children: [
                   TileLayer(
-                    urlTemplate: widget.isDark
+                    urlTemplate: isDark
                         ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
                         : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
                     subdomains: const ['a', 'b', 'c', 'd'],
                     userAgentPackageName: 'com.maninder.milow',
                   ),
-                  // PolylineLayer removed as per request
                   MarkerLayer(
                     markers: widget.markers.map((marker) {
                       return Marker(
@@ -60,50 +55,47 @@ class _ExploreMapViewState extends State<ExploreMapView> {
                         height: 40,
                         child: GestureDetector(
                           onTap: () => widget.onMarkerTap?.call(marker),
-                          child: _buildMarkerIcon(marker),
+                          child: _buildMarkerIcon(context, marker),
                         ),
                       );
                     }).toList(),
                   ),
                 ],
               ),
-              // Legend / Controls Overlay
+              // Controls Overlay
               Positioned(
                 right: 8,
                 top: 8,
                 child: Column(
                   children: [
-                    _MapControlBtn(
-                      icon: Icons.add,
-                      onTap: () {
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.add, size: 20),
+                      onPressed: () {
                         _mapController.move(
                           _mapController.camera.center,
                           _mapController.camera.zoom + 1,
                         );
                       },
-                      isDark: widget.isDark,
                     ),
                     const SizedBox(height: 8),
-                    _MapControlBtn(
-                      icon: Icons.remove,
-                      onTap: () {
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.remove, size: 20),
+                      onPressed: () {
                         _mapController.move(
                           _mapController.camera.center,
                           _mapController.camera.zoom - 1,
                         );
                       },
-                      isDark: widget.isDark,
                     ),
                     const SizedBox(height: 8),
-                    _MapControlBtn(
-                      icon: Icons.refresh,
-                      onTap: () {
+                    IconButton.filledTonal(
+                      icon: const Icon(Icons.refresh, size: 20),
+                      onPressed: () {
                         _mapController.move(
                           const LatLng(39.8283, -98.5795),
                           3.5,
                         );
                       },
-                      isDark: widget.isDark,
                     ),
                   ],
                 ),
@@ -115,21 +107,21 @@ class _ExploreMapViewState extends State<ExploreMapView> {
     );
   }
 
-  Widget _buildMarkerIcon(ExploreMapMarker marker) {
+  Widget _buildMarkerIcon(BuildContext context, ExploreMapMarker marker) {
     Color color;
     IconData icon;
 
     switch (marker.type) {
       case MapMarkerType.trip:
-        color = const Color(0xFF2E86DE); // Stronger Blue
+        color = Theme.of(context).colorScheme.primary;
         icon = Icons.local_shipping;
         break;
       case MapMarkerType.fuel:
-        color = const Color(0xFFFF9F43); // Orange
+        color = Theme.of(context).colorScheme.secondary;
         icon = Icons.local_gas_station;
         break;
       case MapMarkerType.document:
-        color = const Color(0xFF1DD1A1); // Green
+        color = Theme.of(context).colorScheme.tertiary;
         icon = Icons.description;
         break;
     }
@@ -138,48 +130,22 @@ class _ExploreMapViewState extends State<ExploreMapView> {
       decoration: BoxDecoration(
         color: color,
         shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 2),
+        border: Border.all(
+          color: Theme.of(context).colorScheme.surface,
+          width: 2,
+        ),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.4),
+            color: color.withOpacity(0.4),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Icon(icon, color: Colors.white, size: 20),
-    );
-  }
-}
-
-class _MapControlBtn extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  final bool isDark;
-
-  const _MapControlBtn({
-    required this.icon,
-    required this.onTap,
-    required this.isDark,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Material(
-      color: isDark ? Colors.grey[800] : Colors.white,
-      shape: const CircleBorder(),
-      elevation: 2,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: const CircleBorder(),
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Icon(
-            icon,
-            size: 20,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
-        ),
+      child: Icon(
+        icon,
+        color: Theme.of(context).colorScheme.onPrimary,
+        size: 20,
       ),
     );
   }

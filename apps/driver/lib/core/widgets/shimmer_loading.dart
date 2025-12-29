@@ -99,7 +99,9 @@ class ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
 /// Widget that applies shimmer loading effect to its child
 class ShimmerLoading extends StatefulWidget {
   const ShimmerLoading({
-    required this.isLoading, required this.child, super.key,
+    required this.isLoading,
+    required this.child,
+    super.key,
   });
 
   final bool isLoading;
@@ -199,9 +201,7 @@ class ShimmerDashboardCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE0E0E0),
-        ),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
@@ -269,9 +269,7 @@ class ShimmerBorderWaitCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFD0D5DD),
-        ),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Row(
         children: [
@@ -338,9 +336,6 @@ class ShimmerEntryItem extends StatelessWidget {
     final baseColor = isDark
         ? const Color(0xFF2A2A2A)
         : const Color(0xFFE0E0E0);
-    final borderColor = isDark
-        ? const Color(0xFF3A3A3A)
-        : const Color(0xFFD0D5DD);
 
     return Column(
       children: [
@@ -411,7 +406,11 @@ class ShimmerEntryItem extends StatelessWidget {
             ],
           ),
         ),
-        if (showDivider) Divider(height: 1, color: borderColor),
+        if (showDivider)
+          Divider(
+            height: 1,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
       ],
     );
   }

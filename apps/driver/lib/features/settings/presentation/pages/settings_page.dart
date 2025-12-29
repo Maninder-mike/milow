@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:milow/l10n/app_localizations.dart';
@@ -25,7 +24,7 @@ class _SettingsPageState extends State<SettingsPage> {
   String? _fullName;
   String? _email;
   String? _avatarUrl;
-  bool _loading = true;
+
   UnitSystem _unitSystem = UnitSystem.metric;
   int _tripCount = 0;
   double _totalMiles = 0;
@@ -76,7 +75,6 @@ class _SettingsPageState extends State<SettingsPage> {
       _fullName = cached?['full_name'] as String?;
       _email = cached?['email'] as String?;
       _avatarUrl = cached?['avatar_url'] as String?;
-      _loading = false;
     });
 
     final fresh = await ProfileRepository.refresh();
@@ -95,26 +93,11 @@ class _SettingsPageState extends State<SettingsPage> {
     final userName = _fullName ?? AuthService.getCurrentUserName() ?? 'User';
     final userEmail = _email ?? AuthService.getCurrentUserEmail() ?? '';
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  const Color(0xFF1a1a2e),
-                  const Color(0xFF16213e),
-                  const Color(0xFF0f0f23),
-                ]
-              : [
-                  const Color(0xFFe8f4f8),
-                  const Color(0xFFfce4ec),
-                  const Color(0xFFe8f5e9),
-                ],
-        ),
-      ),
-      child: SafeArea(
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: SafeArea(
         bottom: false,
         child: SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
@@ -126,18 +109,15 @@ class _SettingsPageState extends State<SettingsPage> {
                 child: Row(
                   children: [
                     IconButton(
-                      icon: Icon(
-                        Icons.arrow_back,
-                        color: isDark ? Colors.white : const Color(0xFF101828),
-                      ),
+                      icon: Icon(Icons.arrow_back, color: textColor),
                       onPressed: () => context.go('/dashboard'),
                     ),
                     Text(
                       'Settings',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 28,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : const Color(0xFF101828),
+                        color: textColor,
                       ),
                     ),
                   ],
@@ -146,15 +126,15 @@ class _SettingsPageState extends State<SettingsPage> {
               const SizedBox(height: 16),
               _buildProfileHeader(context, userName, userEmail, isDark),
               const SizedBox(height: 28),
-              _buildAccountSection(context, isDark),
+              _buildAccountSection(context, textColor),
               const SizedBox(height: 24),
-              _buildPreferencesSection(context, isDark),
+              _buildPreferencesSection(context, textColor),
               const SizedBox(height: 24),
-              _buildDataSection(context, isDark),
+              _buildDataSection(context, textColor),
               const SizedBox(height: 24),
-              _buildSupportSection(context, isDark),
+              _buildSupportSection(context, textColor),
               const SizedBox(height: 24),
-              _buildSignOutSection(context, isDark),
+              _buildSignOutSection(context, textColor),
               const SizedBox(height: 120),
             ],
           ),
@@ -171,149 +151,105 @@ class _SettingsPageState extends State<SettingsPage> {
   ) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        Colors.white.withValues(alpha: 0.08),
-                        Colors.white.withValues(alpha: 0.03),
-                      ]
-                    : [
-                        Colors.white.withValues(alpha: 0.9),
-                        Colors.white.withValues(alpha: 0.7),
-                      ],
-              ),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.white.withValues(alpha: 0.8),
-                width: 1,
-              ),
-            ),
-            child: Stack(
+      child: Card(
+        elevation: 0,
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        margin: EdgeInsets.zero,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => context.push('/edit-profile'),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               children: [
-                // Futuristic accent line
-                Positioned(
-                  top: 0,
-                  left: 40,
-                  right: 40,
-                  child: Container(
-                    height: 2,
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          Colors.transparent,
-                          const Color(0xFF6C5CE7).withValues(alpha: 0.8),
-                          const Color(0xFF00D9FF).withValues(alpha: 0.8),
-                          Colors.transparent,
-                        ],
-                      ),
-                      borderRadius: BorderRadius.circular(1),
-                    ),
-                  ),
+                CircleAvatar(
+                  radius: 30,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  backgroundImage: _avatarUrl != null && _avatarUrl!.isNotEmpty
+                      ? NetworkImage(_avatarUrl!)
+                      : null,
+                  child: _avatarUrl == null || _avatarUrl!.isEmpty
+                      ? Text(
+                          userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        )
+                      : null,
                 ),
-                // Content
-                Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Row(
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Minimal futuristic avatar
-                      _buildFuturisticAvatar(context, userName, isDark),
-                      const SizedBox(width: 16),
-                      // User info - minimal
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              userName,
-                              style: GoogleFonts.inter(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                color: isDark
-                                    ? Colors.white
-                                    : const Color(0xFF101828),
-                                letterSpacing: -0.3,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              userEmail,
-                              style: GoogleFonts.inter(
-                                fontSize: 13,
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.6)
-                                    : const Color(0xFF667085),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 10),
-                            // Minimal stats row
-                            Row(
-                              children: [
-                                _buildMinimalStat(
-                                  _tripCount.toString(),
-                                  AppLocalizations.of(
-                                    context,
-                                  )!.trips.toLowerCase(),
-                                  isDark,
-                                ),
-                                const SizedBox(width: 8),
-                                _buildMinimalStat(
-                                  _totalMiles >= 1000
-                                      ? '${(_totalMiles / 1000).toStringAsFixed(1)}K'
-                                      : _totalMiles.toStringAsFixed(0),
-                                  _unitSystem == UnitSystem.metric
-                                      ? 'km'
-                                      : 'miles',
-                                  isDark,
-                                ),
-                                const SizedBox(width: 16),
-                                _buildProBadge(isDark),
-                              ],
-                            ),
-                          ],
+                      Text(
+                        userName,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      // Edit button - minimal
-                      GestureDetector(
-                        onTap: () => context.push('/edit-profile'),
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : Colors.black.withValues(alpha: 0.04),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.1)
-                                  : Colors.black.withValues(alpha: 0.06),
+                      const SizedBox(height: 4),
+                      Text(
+                        userEmail,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          _buildStatBadge(
+                            context,
+                            _tripCount.toString(),
+                            AppLocalizations.of(context)!.trips,
+                          ),
+                          const SizedBox(width: 8),
+                          _buildStatBadge(
+                            context,
+                            _totalMiles >= 1000
+                                ? '${(_totalMiles / 1000).toStringAsFixed(1)}K'
+                                : _totalMiles.toStringAsFixed(0),
+                            _unitSystem == UnitSystem.metric ? 'km' : 'mi',
+                          ),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.tertiaryContainer,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              'PRO',
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onTertiaryContainer,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
                           ),
-                          child: Icon(
-                            Icons.arrow_forward_ios_rounded,
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.6)
-                                : const Color(0xFF667085),
-                            size: 16,
-                          ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 16,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ],
             ),
@@ -323,142 +259,28 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildFuturisticAvatar(
-    BuildContext context,
-    String userName,
-    bool isDark,
-  ) {
-    if (_loading) {
-      return Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.1)
-              : Colors.black.withValues(alpha: 0.05),
-        ),
-        child: Center(
-          child: SizedBox(
-            width: 24,
-            height: 24,
-            child: CircularProgressIndicator(
-              strokeWidth: 3.0,
-              color: const Color(0xFF6C5CE7).withValues(alpha: 0.7),
-            ),
-          ),
-        ),
-      );
-    }
-
-    return GestureDetector(
-      onTap: () => context.push('/edit-profile'),
-      child: Container(
-        width: 60,
-        height: 60,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF6C5CE7), Color(0xFF00D9FF)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
-              blurRadius: 16,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Container(
-          margin: const EdgeInsets.all(2),
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isDark ? const Color(0xFF1a1a2e) : Colors.white,
-          ),
-          child: _avatarUrl != null && _avatarUrl!.isNotEmpty
-              ? ClipOval(
-                  child: Image.network(
-                    _avatarUrl!,
-                    fit: BoxFit.cover,
-                    width: 56,
-                    height: 56,
-                  ),
-                )
-              : Center(
-                  child: ShaderMask(
-                    shaderCallback: (bounds) => const LinearGradient(
-                      colors: [Color(0xFF6C5CE7), Color(0xFF00D9FF)],
-                    ).createShader(bounds),
-                    child: Text(
-                      userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
-                      style: GoogleFonts.inter(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMinimalStat(String value, String label, bool isDark) {
-    return Row(
-      children: [
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w700,
-            color: const Color(0xFF6C5CE7),
-          ),
-        ),
-        const SizedBox(width: 3),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 12,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.5)
-                : const Color(0xFF98A2B3),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProBadge(bool isDark) {
+  Widget _buildStatBadge(BuildContext context, String value, String label) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            const Color(0xFF6C5CE7).withValues(alpha: 0.15),
-            const Color(0xFF00D9FF).withValues(alpha: 0.1),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(
-          color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
-          width: 1,
-        ),
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          const Icon(Icons.auto_awesome, size: 10, color: Color(0xFF6C5CE7)),
-          const SizedBox(width: 3),
           Text(
-            'PRO',
-            style: GoogleFonts.inter(
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-              color: const Color(0xFF6C5CE7),
-              letterSpacing: 0.5,
+            value,
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            label.toLowerCase(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],
@@ -466,45 +288,44 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildAccountSection(BuildContext context, bool isDark) {
+  Widget _buildAccountSection(BuildContext context, Color textColor) {
     return Column(
       children: [
-        _buildSectionLabel('Account', isDark),
+        _buildSectionLabel('Account', textColor),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildGlassyCard(
-            isDark: isDark,
+          child: _buildSolidCard(
             child: Column(
               children: [
-                _buildGlassyMenuItem(
+                _buildMenuItem(
                   icon: Icons.person_outline,
                   title:
                       AppLocalizations.of(context)?.editProfile ??
                       'Edit Profile',
                   iconColor: const Color(0xFF6C5CE7),
                   onTap: () => context.push('/edit-profile'),
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
-                _buildGlassyDivider(isDark),
-                _buildGlassyMenuItem(
+                _buildDivider(),
+                _buildMenuItem(
                   icon: Icons.notifications_outlined,
                   title:
                       AppLocalizations.of(context)?.notifications ??
                       'Notifications',
                   iconColor: const Color(0xFFFF6B6B),
                   onTap: () => context.push('/notifications'),
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
-                _buildGlassyDivider(isDark),
-                _buildGlassyMenuItem(
+                _buildDivider(),
+                _buildMenuItem(
                   icon: Icons.security_outlined,
                   title:
                       AppLocalizations.of(context)?.privacySecurity ??
                       'Privacy & Security',
                   iconColor: const Color(0xFF4ECDC4),
                   onTap: () => context.push('/privacy-security'),
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
               ],
             ),
@@ -514,35 +335,34 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildPreferencesSection(BuildContext context, bool isDark) {
+  Widget _buildPreferencesSection(BuildContext context, Color textColor) {
     return Column(
       children: [
-        _buildSectionLabel('Preferences', isDark),
+        _buildSectionLabel('Preferences', textColor),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildGlassyCard(
-            isDark: isDark,
+          child: _buildSolidCard(
             child: Column(
               children: [
-                _buildGlassyMenuItem(
+                _buildMenuItem(
                   icon: Icons.palette_outlined,
                   title:
                       AppLocalizations.of(context)?.appearance ?? 'Appearance',
                   iconColor: const Color(0xFFFF8C42),
                   onTap: () => context.push('/appearance'),
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
-                _buildGlassyDivider(isDark),
-                _buildGlassyMenuItem(
+                _buildDivider(),
+                _buildMenuItem(
                   icon: Icons.language_outlined,
                   title: AppLocalizations.of(context)?.language ?? 'Language',
                   iconColor: const Color(0xFF45B7D1),
                   onTap: () => context.push('/language'),
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
-                _buildGlassyDivider(isDark),
-                _buildGlassyUnitSystemItem(isDark),
+                _buildDivider(),
+                _buildUnitSystemItem(textColor),
               ],
             ),
           ),
@@ -551,18 +371,17 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildDataSection(BuildContext context, bool isDark) {
+  Widget _buildDataSection(BuildContext context, Color textColor) {
     return Column(
       children: [
-        _buildSectionLabel('Data', isDark),
+        _buildSectionLabel('Data', textColor),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildGlassyCard(
-            isDark: isDark,
+          child: _buildSolidCard(
             child: Column(
               children: [
-                _buildGlassyMenuItem(
+                _buildMenuItem(
                   icon: Icons.traffic_outlined,
                   title:
                       AppLocalizations.of(context)?.borderWaitTimes ??
@@ -576,7 +395,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       ),
                     );
                   },
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
               ],
             ),
@@ -586,26 +405,25 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSupportSection(BuildContext context, bool isDark) {
+  Widget _buildSupportSection(BuildContext context, Color textColor) {
     return Column(
       children: [
-        _buildSectionLabel(AppLocalizations.of(context)!.support, isDark),
+        _buildSectionLabel(AppLocalizations.of(context)!.support, textColor),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: _buildGlassyCard(
-            isDark: isDark,
+          child: _buildSolidCard(
             child: Column(
               children: [
-                _buildGlassyMenuItem(
+                _buildMenuItem(
                   icon: Icons.feedback_outlined,
                   title: 'Send Feedback',
                   iconColor: const Color(0xFFA29BFE),
                   onTap: () => context.push('/feedback'),
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
-                _buildGlassyDivider(isDark),
-                _buildGlassyMenuItem(
+                _buildDivider(),
+                _buildMenuItem(
                   icon: Icons.help_outline,
                   title: 'Help Center',
                   iconColor: const Color(0xFF00CEC9),
@@ -615,11 +433,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       const SnackBar(content: Text('Help Center coming soon')),
                     );
                   },
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
 
-                _buildGlassyDivider(isDark),
-                _buildGlassyMenuItem(
+                _buildDivider(),
+                _buildMenuItem(
                   icon: Icons.info_outline,
                   title: 'About Milow',
                   iconColor: const Color(0xFFFF7675),
@@ -627,7 +445,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     context,
                     MaterialPageRoute(builder: (_) => const AboutPage()),
                   ),
-                  isDark: isDark,
+                  textColor: textColor,
                 ),
               ],
             ),
@@ -637,12 +455,11 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildSignOutSection(BuildContext context, bool isDark) {
+  Widget _buildSignOutSection(BuildContext context, Color textColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: _buildGlassyCard(
-        isDark: isDark,
-        child: _buildGlassyMenuItem(
+      child: _buildSolidCard(
+        child: _buildMenuItem(
           icon: Icons.logout_rounded,
           title: AppLocalizations.of(context)?.signOut ?? 'Sign Out',
           iconColor: const Color(0xFFFF6B6B),
@@ -654,26 +471,24 @@ class _SettingsPageState extends State<SettingsPage> {
               context.go('/login');
             }
           },
-          isDark: isDark,
+          textColor: textColor,
           showChevron: false,
         ),
       ),
     );
   }
 
-  Widget _buildSectionLabel(String label, bool isDark) {
+  Widget _buildSectionLabel(String label, Color textColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 24),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           label.toUpperCase(),
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 12,
             fontWeight: FontWeight.w600,
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.5)
-                : const Color(0xFF667085),
+            color: textColor.withOpacity(0.5),
             letterSpacing: 1.2,
           ),
         ),
@@ -681,67 +496,39 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildGlassyCard({required bool isDark, required Widget child}) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(20),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-        child: Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? [
-                      Colors.white.withValues(alpha: 0.12),
-                      Colors.white.withValues(alpha: 0.05),
-                    ]
-                  : [
-                      Colors.white.withValues(alpha: 0.8),
-                      Colors.white.withValues(alpha: 0.6),
-                    ],
-            ),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.15)
-                  : Colors.white.withValues(alpha: 0.8),
-              width: 1.5,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: isDark
-                    ? Colors.black.withValues(alpha: 0.2)
-                    : Colors.black.withValues(alpha: 0.05),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
-          ),
-          child: child,
+  Widget _buildSolidCard({required Widget child}) {
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).cardColor,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: Theme.of(context).colorScheme.outlineVariant,
+          width: 1,
         ),
       ),
+      child: child,
     );
   }
 
-  Widget _buildGlassyMenuItem({
+  Widget _buildMenuItem({
     required IconData icon,
     required String title,
     required Color iconColor,
     required VoidCallback onTap,
-    required bool isDark,
+    required Color textColor,
     bool isDestructive = false,
     bool showChevron = true,
   }) {
-    final textColor = isDestructive
-        ? const Color(0xFFFF6B6B)
-        : (isDark ? Colors.white : const Color(0xFF101828));
+    final finalTextColor = isDestructive
+        ? Theme.of(context).colorScheme.error
+        : textColor;
 
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           child: Row(
@@ -749,14 +536,7 @@ class _SettingsPageState extends State<SettingsPage> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      iconColor.withValues(alpha: 0.2),
-                      iconColor.withValues(alpha: 0.1),
-                    ],
-                  ),
+                  color: iconColor.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, size: 22, color: iconColor),
@@ -765,19 +545,17 @@ class _SettingsPageState extends State<SettingsPage> {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
-                    color: textColor,
+                    color: finalTextColor,
                   ),
                 ),
               ),
               if (showChevron)
                 Icon(
                   Icons.chevron_right_rounded,
-                  color: isDark
-                      ? Colors.white.withValues(alpha: 0.3)
-                      : const Color(0xFFD0D5DD),
+                  color: Theme.of(context).colorScheme.outline,
                   size: 22,
                 ),
             ],
@@ -787,19 +565,16 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
-  Widget _buildGlassyDivider(bool isDark) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16),
+  Widget _buildDivider() {
+    return Divider(
       height: 1,
-      color: isDark
-          ? Colors.white.withValues(alpha: 0.08)
-          : Colors.black.withValues(alpha: 0.05),
+      indent: 16,
+      endIndent: 16,
+      color: Theme.of(context).colorScheme.outlineVariant.withOpacity(0.5),
     );
   }
 
-  Widget _buildGlassyUnitSystemItem(bool isDark) {
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-
+  Widget _buildUnitSystemItem(Color textColor) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(
@@ -807,27 +582,22 @@ class _SettingsPageState extends State<SettingsPage> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF96CEB4).withValues(alpha: 0.2),
-                  const Color(0xFF96CEB4).withValues(alpha: 0.1),
-                ],
-              ),
+              color: Theme.of(
+                context,
+              ).colorScheme.primaryContainer.withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(
+            child: Icon(
               Icons.straighten_outlined,
               size: 22,
-              color: Color(0xFF96CEB4),
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
               AppLocalizations.of(context)?.unitSystem ?? 'Unit System',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
                 color: textColor,
@@ -837,10 +607,10 @@ class _SettingsPageState extends State<SettingsPage> {
           Container(
             padding: const EdgeInsets.all(4),
             decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : Colors.black.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(10),
+              color: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest.withOpacity(0.5),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -852,7 +622,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     await PreferencesService.setUnitSystem(UnitSystem.metric);
                     setState(() => _unitSystem = UnitSystem.metric);
                   },
-                  isDark,
                 ),
                 _buildSegmentButton(
                   'Imperial',
@@ -861,7 +630,6 @@ class _SettingsPageState extends State<SettingsPage> {
                     await PreferencesService.setUnitSystem(UnitSystem.imperial);
                     setState(() => _unitSystem = UnitSystem.imperial);
                   },
-                  isDark,
                 ),
               ],
             ),
@@ -875,7 +643,6 @@ class _SettingsPageState extends State<SettingsPage> {
     String label,
     bool isSelected,
     VoidCallback onTap,
-    bool isDark,
   ) {
     return GestureDetector(
       onTap: onTap,
@@ -883,25 +650,19 @@ class _SettingsPageState extends State<SettingsPage> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF6C5CE7) : Colors.transparent,
+          color: isSelected
+              ? Theme.of(context).colorScheme.primary
+              : Colors.transparent,
           borderRadius: BorderRadius.circular(8),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: const Color(0xFF6C5CE7).withValues(alpha: 0.3),
-                    blurRadius: 8,
-                  ),
-                ]
-              : null,
         ),
         child: Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 13,
             fontWeight: FontWeight.w600,
             color: isSelected
-                ? Colors.white
-                : (isDark ? Colors.white60 : const Color(0xFF667085)),
+                ? Theme.of(context).colorScheme.onPrimary
+                : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ),

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
@@ -391,21 +391,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final secondaryTextColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
-    final borderColor = isDark
-        ? const Color(0xFF3A3A3A)
-        : const Color(0xFFD0D5DD);
-
     return Scaffold(
-      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Column(
           children: [
@@ -413,9 +399,11 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
             Container(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
               decoration: BoxDecoration(
-                color: cardColor,
+                color: Theme.of(context).colorScheme.surface,
                 border: Border(
-                  bottom: BorderSide(color: borderColor, width: 1),
+                  bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
               ),
               child: Column(
@@ -423,66 +411,38 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                   // Search Bar
                   Row(
                     children: [
-                      // Back button
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Container(
-                          padding: const EdgeInsets.all(8),
-                          child: Icon(
-                            Icons.arrow_back,
-                            color: textColor,
-                            size: 24,
-                          ),
-                        ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(context),
+                        icon: const Icon(Icons.arrow_back),
                       ),
                       const SizedBox(width: 8),
                       // Search field
                       Expanded(
-                        child: Container(
-                          height: 44,
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF2A2A2A)
-                                : const Color(0xFFF5F5F5),
-                            borderRadius: BorderRadius.circular(12),
+                        child: SearchBar(
+                          controller: _searchController,
+                          focusNode: _focusNode,
+                          onChanged: _performSearch,
+                          hintText: 'Search trips, fuel, locations...',
+                          leading: const Icon(Icons.search),
+                          trailing: [
+                            if (_searchController.text.isNotEmpty)
+                              IconButton(
+                                onPressed: () {
+                                  _searchController.clear();
+                                  _performSearch('');
+                                },
+                                icon: const Icon(Icons.close),
+                              ),
+                          ],
+                          elevation: WidgetStateProperty.all(0),
+                          backgroundColor: WidgetStateProperty.all(
+                            Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                           ),
-                          child: TextField(
-                            controller: _searchController,
-                            focusNode: _focusNode,
-                            onChanged: _performSearch,
-                            style: GoogleFonts.inter(
-                              fontSize: 16,
-                              color: textColor,
-                            ),
-                            decoration: InputDecoration(
-                              hintText: 'Search trips, fuel, locations...',
-                              hintStyle: GoogleFonts.inter(
-                                fontSize: 16,
-                                color: secondaryTextColor,
-                              ),
-                              prefixIcon: Icon(
-                                Icons.search,
-                                color: secondaryTextColor,
-                                size: 22,
-                              ),
-                              suffixIcon: _searchController.text.isNotEmpty
-                                  ? GestureDetector(
-                                      onTap: () {
-                                        _searchController.clear();
-                                        _performSearch('');
-                                      },
-                                      child: Icon(
-                                        Icons.close,
-                                        color: secondaryTextColor,
-                                        size: 20,
-                                      ),
-                                    )
-                                  : null,
-                              border: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
+                          shape: WidgetStateProperty.all(
+                            RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
                           ),
                         ),
@@ -498,40 +458,15 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
                         final isSelected = _selectedCategory == category;
                         return Padding(
                           padding: const EdgeInsets.only(right: 8),
-                          child: GestureDetector(
-                            onTap: () {
+                          child: FilterChip(
+                            label: Text(category),
+                            selected: isSelected,
+                            onSelected: (selected) {
                               setState(() {
                                 _selectedCategory = category;
                               });
                               _performSearch(_searchController.text);
                             },
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              decoration: BoxDecoration(
-                                color: isSelected
-                                    ? const Color(0xFF007AFF)
-                                    : isDark
-                                    ? const Color(0xFF2A2A2A)
-                                    : const Color(0xFFF5F5F5),
-                                borderRadius: BorderRadius.circular(20),
-                                border: isSelected
-                                    ? null
-                                    : Border.all(color: borderColor),
-                              ),
-                              child: Text(
-                                category,
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w500,
-                                  color: isSelected
-                                      ? Colors.white
-                                      : secondaryTextColor,
-                                ),
-                              ),
-                            ),
                           ),
                         );
                       }).toList(),
@@ -544,34 +479,14 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
             // Results
             Expanded(
               child: _isLoading
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3.0,
-                        color: Color(0xFF007AFF),
-                      ),
-                    )
+                  ? const Center(child: CircularProgressIndicator())
                   : _isSearching
-                  ? const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3.0,
-                        color: Color(0xFF007AFF),
-                      ),
-                    )
+                  ? const Center(child: CircularProgressIndicator())
                   : _searchController.text.isEmpty
-                  ? _buildEmptyState(
-                      textColor,
-                      secondaryTextColor,
-                      cardColor,
-                      borderColor,
-                    )
+                  ? _buildEmptyState(context)
                   : _searchResults.isEmpty
-                  ? _buildNoResultsState(textColor, secondaryTextColor)
-                  : _buildResultsList(
-                      textColor,
-                      secondaryTextColor,
-                      cardColor,
-                      borderColor,
-                    ),
+                  ? _buildNoResultsState(context)
+                  : _buildResultsList(context),
             ),
           ],
         ),
@@ -579,12 +494,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
     );
   }
 
-  Widget _buildEmptyState(
-    Color textColor,
-    Color secondaryTextColor,
-    Color cardColor,
-    Color borderColor,
-  ) {
+  Widget _buildEmptyState(BuildContext context) {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -597,25 +507,17 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               children: [
                 Text(
                   'Recent Searches',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                 ),
-                GestureDetector(
-                  onTap: () {
+                TextButton(
+                  onPressed: () {
                     setState(() {
                       _recentSearches.clear();
                     });
                   },
-                  child: Text(
-                    'Clear',
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: const Color(0xFF007AFF),
-                    ),
-                  ),
+                  child: const Text('Clear'),
                 ),
               ],
             ),
@@ -624,40 +526,13 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               spacing: 8,
               runSpacing: 8,
               children: _recentSearches.map((search) {
-                return GestureDetector(
-                  onTap: () {
+                return ActionChip(
+                  onPressed: () {
                     _searchController.text = search;
                     _performSearch(search);
                   },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 8,
-                    ),
-                    decoration: BoxDecoration(
-                      color: cardColor,
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: borderColor),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.history,
-                          size: 16,
-                          color: secondaryTextColor,
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          search,
-                          style: GoogleFonts.inter(
-                            fontSize: 13,
-                            color: textColor,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
+                  avatar: const Icon(Icons.history, size: 16),
+                  label: Text(search),
                 );
               }).toList(),
             ),
@@ -667,44 +542,33 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
           // Search suggestions
           Text(
             'Try searching for',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: textColor,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           _buildSuggestionItem(
+            context,
             Icons.local_shipping_outlined,
-            const Color(0xFF3B82F6),
+            Theme.of(context).colorScheme.primary,
             'Trip numbers',
             'e.g., "1234", "Trip 5678"',
-            textColor,
-            secondaryTextColor,
-            cardColor,
-            borderColor,
           ),
           const SizedBox(height: 10),
           _buildSuggestionItem(
+            context,
             Icons.location_on_outlined,
-            const Color(0xFF10B981),
+            Theme.of(context).colorScheme.tertiary,
             'City or state names',
             'e.g., "Chicago", "Texas", "CA"',
-            textColor,
-            secondaryTextColor,
-            cardColor,
-            borderColor,
           ),
           const SizedBox(height: 10),
           _buildSuggestionItem(
+            context,
             Icons.local_gas_station_outlined,
-            const Color(0xFFF59E0B),
+            Theme.of(context).colorScheme.secondary,
             'Truck or reefer numbers',
             'e.g., "TRK-123", "RF-456"',
-            textColor,
-            secondaryTextColor,
-            cardColor,
-            borderColor,
           ),
         ],
       ),
@@ -712,62 +576,66 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
   }
 
   Widget _buildSuggestionItem(
+    BuildContext context,
     IconData icon,
     Color iconColor,
     String title,
     String example,
-    Color textColor,
-    Color secondaryTextColor,
-    Color cardColor,
-    Color borderColor,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: cardColor,
+    return Card(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: iconColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                    color: textColor,
-                  ),
+      child: InkWell(
+        onTap: () {
+          _searchController.text = title;
+          _performSearch(title);
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  example,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    color: secondaryTextColor,
-                  ),
+                child: Icon(icon, color: iconColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      example,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildNoResultsState(Color textColor, Color secondaryTextColor) {
+  Widget _buildNoResultsState(BuildContext context) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(40),
@@ -775,30 +643,30 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: secondaryTextColor.withValues(alpha: 0.1),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 Icons.search_off,
-                size: 48,
-                color: secondaryTextColor,
+                size: 64,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 24),
             Text(
               'No results found',
-              style: GoogleFonts.inter(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'Try adjusting your search or filters',
-              style: GoogleFonts.inter(fontSize: 14, color: secondaryTextColor),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
               textAlign: TextAlign.center,
             ),
           ],
@@ -807,12 +675,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
     );
   }
 
-  Widget _buildResultsList(
-    Color textColor,
-    Color secondaryTextColor,
-    Color cardColor,
-    Color borderColor,
-  ) {
+  Widget _buildResultsList(BuildContext context) {
     // Group results by type
     final tripResults = _searchResults
         .where((r) => r.type == SearchResultType.trip)
@@ -829,21 +692,21 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
           padding: const EdgeInsets.only(bottom: 16),
           child: Text(
             '${_searchResults.length} result${_searchResults.length == 1 ? '' : 's'} found',
-            style: GoogleFonts.inter(fontSize: 13, color: secondaryTextColor),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
 
         // Trip results
         if (tripResults.isNotEmpty) ...[
           _buildResultSection(
+            context,
             'Trips',
             Icons.local_shipping_outlined,
-            const Color(0xFF3B82F6),
+            Theme.of(context).colorScheme.primary,
             tripResults,
-            textColor,
-            secondaryTextColor,
-            cardColor,
-            borderColor,
           ),
           const SizedBox(height: 20),
         ],
@@ -851,14 +714,11 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
         // Fuel results
         if (fuelResults.isNotEmpty) ...[
           _buildResultSection(
+            context,
             'Fuel Entries',
             Icons.local_gas_station_outlined,
-            const Color(0xFFF59E0B),
+            Theme.of(context).colorScheme.secondary,
             fuelResults,
-            textColor,
-            secondaryTextColor,
-            cardColor,
-            borderColor,
           ),
         ],
       ],
@@ -866,14 +726,11 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
   }
 
   Widget _buildResultSection(
+    BuildContext context,
     String title,
     IconData icon,
     Color color,
     List<SearchResult> results,
-    Color textColor,
-    Color secondaryTextColor,
-    Color cardColor,
-    Color borderColor,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -884,129 +741,84 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
             const SizedBox(width: 8),
             Text(
               title,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: textColor,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
             ),
             const SizedBox(width: 8),
+            Badge(label: Text('${results.length}'), backgroundColor: color),
+          ],
+        ),
+        const SizedBox(height: 12),
+        ...results.map((result) => _buildResultItem(context, result)),
+      ],
+    );
+  }
+
+  Widget _buildResultItem(BuildContext context, SearchResult result) {
+    return Card(
+      elevation: 0,
+      margin: const EdgeInsets.only(bottom: 8),
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: ListTile(
+        onTap: () => _openResult(result),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        leading: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: result.iconColor.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(result.icon, color: result.iconColor, size: 24),
+        ),
+        title: Text(
+          result.title,
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 4),
+            Text(
+              result.subtitle,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 6),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(4),
               ),
               child: Text(
-                '${results.length}',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: color,
+                result.matchReason,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        ...results.map(
-          (result) => _buildResultItem(
-            result,
-            textColor,
-            secondaryTextColor,
-            cardColor,
-            borderColor,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildResultItem(
-    SearchResult result,
-    Color textColor,
-    Color secondaryTextColor,
-    Color cardColor,
-    Color borderColor,
-  ) {
-    return GestureDetector(
-      onTap: () => _openResult(result),
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: borderColor),
-        ),
-        child: Row(
+        trailing: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: result.iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(result.icon, color: result.iconColor, size: 22),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    result.title,
-                    style: GoogleFonts.inter(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    result.subtitle,
-                    style: GoogleFonts.inter(
-                      fontSize: 13,
-                      color: secondaryTextColor,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        DateFormat('MMM d, yyyy').format(result.date),
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          color: secondaryTextColor,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          result.matchReason,
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w500,
-                            color: const Color(0xFF007AFF),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+            Text(
+              DateFormat.yMMMd().format(result.date),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
-            Icon(Icons.chevron_right, color: secondaryTextColor, size: 20),
+            const Icon(Icons.chevron_right, size: 20),
           ],
         ),
       ),

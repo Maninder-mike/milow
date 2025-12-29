@@ -1,127 +1,88 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
-import 'package:milow/l10n/app_localizations.dart';
-import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow_core/milow_core.dart';
 import 'package:intl/intl.dart';
-import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/models/country_code.dart';
 import 'package:milow/core/widgets/country_code_selector.dart';
-import 'package:milow/core/utils/error_handler.dart';
-import 'package:milow/core/widgets/glassy_card.dart';
-import 'package:path/path.dart' show extension;
 
-// Expected local (national) number lengths from previous implementation
-const Map<String, List<int>> _countryLocalLengths = {
-  '+1': [10],
-  '+44': [10],
-  '+91': [10],
-  '+61': [9],
-  '+81': [10],
-  '+49': [10, 11],
-  '+33': [9],
-  '+34': [9],
-  '+52': [10],
-  '+31': [9],
-  '+32': [9],
-  '+39': [10],
-  '+86': [11],
-  '+7': [10],
-  '+27': [9],
-  '+55': [10, 11],
-};
-
-class EditProfilePage extends StatefulWidget {
+class EditProfilePage extends ConsumerStatefulWidget {
   const EditProfilePage({super.key});
 
   @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
+  ConsumerState<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends ConsumerState<EditProfilePage> {
   final _formKey = GlobalKey<FormState>();
 
   // Personal Info
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
+  late TextEditingController _nameController;
+  late TextEditingController _emailController;
+  late TextEditingController _phoneController;
   CountryCode _selectedCountryCode = countryCodes[0];
 
-  // Address
-  final _streetController = TextEditingController();
-  final _cityController = TextEditingController();
-  final _stateController = TextEditingController();
-  final _zipController = TextEditingController();
-  final _countryController = TextEditingController(); // Or use a selector
+  // Address Info
+  late TextEditingController _streetController;
+  late TextEditingController _cityController;
+  late TextEditingController _stateController;
+  late TextEditingController _zipController;
+  late TextEditingController _countryController;
 
   // Driver Info
-  final _licenseNumberController = TextEditingController();
-  final _licenseTypeController = TextEditingController();
-  final _fastIdController = TextEditingController();
+  late TextEditingController _licenseNumberController;
+  late TextEditingController _licenseTypeController;
+  late TextEditingController _fastIdController;
   DateTime? _dob;
+  DateTime? _licenseExpiryDate;
   CountryCode? _citizenship;
 
-  // Company Info
-  Map<String, dynamic>? _companyInfo;
-
+  bool _isLoading = false;
+  File? _imageFile;
   String? _avatarUrl;
-  XFile? _pickedImage;
-  bool _loading = true;
-  bool _saving = false;
-
-  String _formatCompanyAddress(Map<String, dynamic> info) {
-    // Check if 'companies' is a list (one-to-many from Supabase view) and take first
-    // Note: 'companies' from select('*, companies(*)') returns a List<dynamic> even if singular relation
-    // Wait, let's verification in _populateFields handles structure.
-    // Assuming passed info is the map of the company.
-
-    final parts = [
-      info['address'],
-      info['city'],
-      info['state'],
-      info['zip_code'],
-      info['country'],
-    ].where((p) => p != null && p.toString().isNotEmpty).join(', ');
-    return parts.isEmpty ? 'address not set' : parts;
-  }
 
   @override
   void initState() {
     super.initState();
+    _nameController = TextEditingController();
+    _emailController = TextEditingController();
+    _phoneController = TextEditingController();
+
+    _streetController = TextEditingController();
+    _cityController = TextEditingController();
+    _stateController = TextEditingController();
+    _zipController = TextEditingController();
+    _countryController = TextEditingController();
+
+    _licenseNumberController = TextEditingController();
+    _licenseTypeController = TextEditingController();
+    _fastIdController = TextEditingController();
+
     _loadProfile();
   }
 
   Future<void> _loadProfile() async {
-    final profile = await ProfileRepository.getCachedFirst(refresh: false);
-    if (profile != null) {
-      _populateFields(profile);
-      setState(() => _loading = false);
-    } else {
-      setState(() => _loading = false);
+    setState(() => _isLoading = true);
+    final data = await ProfileRepository.getCachedFirst(refresh: true);
+    if (data != null) {
+      _populateFields(data);
     }
-
-    final fresh = await ProfileRepository.refresh();
-    if (!mounted) return;
-    if (fresh != null) {
-      _populateFields(fresh);
-      // Ensure loading is off if it was on, but only refresh state if mounted
-      if (mounted) setState(() => _loading = false);
-    }
+    setState(() => _isLoading = false);
   }
 
   void _populateFields(Map<String, dynamic> data) {
     _nameController.text = data['full_name'] ?? '';
     _emailController.text = data['email'] ?? '';
 
-    // Address Split
+    // Address
     _streetController.text = data['street'] ?? '';
     _cityController.text = data['city'] ?? '';
     _stateController.text = data['state_province'] ?? '';
     _zipController.text = data['postal_code'] ?? '';
-    // Use stored country name or default/empty
     _countryController.text = data['country'] ?? '';
 
     // Driver Info
@@ -132,9 +93,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (data['date_of_birth'] != null) {
       try {
         _dob = DateTime.parse(data['date_of_birth']);
-      } catch (e) {
-        debugPrint('Error parsing date_of_birth: $e');
-      }
+      } catch (_) {}
+    }
+
+    if (data['license_expiry_date'] != null) {
+      try {
+        _licenseExpiryDate = DateTime.parse(data['license_expiry_date']);
+      } catch (_) {}
     }
 
     final citizenshipCode = data['citizenship'];
@@ -142,666 +107,445 @@ class _EditProfilePageState extends State<EditProfilePage> {
       try {
         _citizenship = countryCodes.firstWhere(
           (c) =>
-              c.name.toLowerCase() ==
-                  citizenshipCode.toString().toLowerCase() ||
-              c.code == citizenshipCode,
+              c.code == citizenshipCode ||
+              c.name.toLowerCase() == citizenshipCode.toString().toLowerCase(),
           orElse: () => countryCodes[0],
         );
-        try {
-          _citizenship = countryCodes.firstWhere(
-            (c) =>
-                c.name.toLowerCase() ==
-                    citizenshipCode.toString().toLowerCase() ||
-                c.code == citizenshipCode,
-          );
-        } catch (_) {
-          _citizenship = null;
-        }
-      } catch (e) {
-        debugPrint('Error parsing citizenship: $e');
-      }
+      } catch (_) {}
     }
 
-    if (data['companies'] != null) {
-      // companies is likely a map if singular join (maybeSingle) or list?
-      // supabase_flutter v2 client with select('*, companies(*)') usually returns a list if it's one-to-many,
-      // or single object if one-to-one and forced?
-      // Let's assume list and take first, or map.
-      // Safest check:
-      final comp = data['companies'];
-      if (comp is List && comp.isNotEmpty) {
-        _companyInfo = comp.first as Map<String, dynamic>;
-      } else if (comp is Map<String, dynamic>) {
-        _companyInfo = comp;
-      }
-    } else {
-      if (data['company_name'] != null) {
-        _companyInfo = {'name': data['company_name']};
-      }
-    }
+    _avatarUrl = data['avatar_url'];
 
-    _avatarUrl = data['avatar_url'] as String?;
-
-    // Phone parsing logic
+    // Phone parsing
     final phoneNumber = data['phone'] as String? ?? '';
     if (phoneNumber.isNotEmpty) {
-      final parsedCountry = parsePhoneNumber(phoneNumber);
-      if (parsedCountry != null) {
-        _selectedCountryCode = parsedCountry;
-        _phoneController.text =
-            extractPhoneNumber(phoneNumber, parsedCountry) ?? '';
+      final country = parsePhoneNumber(phoneNumber);
+      if (country != null) {
+        _selectedCountryCode = country;
+        _phoneController.text = extractPhoneNumber(phoneNumber, country) ?? '';
       }
     }
   }
 
-  Future<void> _save() async {
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _streetController.dispose();
+    _cityController.dispose();
+    _stateController.dispose();
+    _zipController.dispose();
+    _countryController.dispose();
+    _licenseNumberController.dispose();
+    _licenseTypeController.dispose();
+    _fastIdController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _pickImage() async {
+    final picker = ImagePicker();
+    final image = await picker.pickImage(source: ImageSource.gallery);
+    if (image != null) {
+      setState(() {
+        _imageFile = File(image.path);
+      });
+    }
+  }
+
+  Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
-    setState(() => _saving = true);
-    String? newAvatarUrl = _avatarUrl;
-    final messenger = ScaffoldMessenger.of(context);
 
+    setState(() => _isLoading = true);
     try {
-      if (_pickedImage != null) {
-        final bytes = await _pickedImage!.readAsBytes();
-        final filename =
-            'avatar_${DateTime.now().millisecondsSinceEpoch}${extension(_pickedImage!.path)}';
-        newAvatarUrl = await ProfileService.uploadAvatar(
-          bytes: bytes,
-          filename: filename,
-        );
+      String? finalAvatarUrl = _avatarUrl;
+
+      if (_imageFile != null) {
+        final path =
+            'avatars/${Supabase.instance.client.auth.currentUser!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+        await Supabase.instance.client.storage
+            .from('avatars')
+            .upload(path, _imageFile!);
+        finalAvatarUrl = Supabase.instance.client.storage
+            .from('avatars')
+            .getPublicUrl(path);
       }
 
-      String fullPhone = '';
-      final localPhone = _phoneController.text.trim();
-      if (localPhone.isNotEmpty) {
-        fullPhone = '${_selectedCountryCode.dialCode}$localPhone';
-        // Insert validation logic here similar to previous impl
-        final e164Pattern = RegExp(r'^\+[1-9]\d{7,14}$');
-        if (!e164Pattern.hasMatch(fullPhone)) {
-          setState(() => _saving = false);
-          messenger.showSnackBar(
-            const SnackBar(content: Text('Invalid international phone length')),
-          );
-          return;
-        }
-      }
+      final fullPhone =
+          '${_selectedCountryCode.dialCode}${_phoneController.text.trim()}';
 
-      final dobString = _dob != null
-          ? DateFormat('yyyy-MM-dd').format(_dob!)
-          : null;
-      final citizenshipVal = _citizenship?.name;
-
-      await ProfileRepository.updateOptimistic({
+      final values = {
         'full_name': _nameController.text.trim(),
-        'email': _emailController.text.trim(),
         'phone': fullPhone,
+        'avatar_url': finalAvatarUrl,
         'street': _streetController.text.trim(),
         'city': _cityController.text.trim(),
         'state_province': _stateController.text.trim(),
         'postal_code': _zipController.text.trim(),
         'country': _countryController.text.trim(),
-        'date_of_birth': dobString,
         'license_number': _licenseNumberController.text.trim(),
         'license_type': _licenseTypeController.text.trim(),
         'fast_id': _fastIdController.text.trim(),
-        'citizenship': citizenshipVal,
-        'avatar_url': newAvatarUrl,
-      });
+        'date_of_birth': _dob?.toIso8601String(),
+        'license_expiry_date': _licenseExpiryDate?.toIso8601String(),
+        'citizenship': _citizenship?.code,
+      };
+
+      await ProfileRepository.updateOptimistic(values);
 
       if (mounted) {
-        messenger.showSnackBar(
-          const SnackBar(content: Text('Profile updated')),
-        );
-        context.pop();
+        AppDialogs.showSuccess(context, 'Profile updated successfully!');
+        Navigator.pop(context);
       }
     } catch (e) {
       if (mounted) {
-        messenger.showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error_outline, color: Colors.white, size: 20),
-                const SizedBox(width: 12),
-                Expanded(child: Text(ErrorHandler.getErrorMessage(e))),
-              ],
-            ),
-            backgroundColor: Theme.of(context).colorScheme.error,
-          ),
-        );
+        AppDialogs.showError(context, 'Error updating profile: $e');
       }
     } finally {
-      if (mounted) setState(() => _saving = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
-  void _showImageOptions(BuildContext context, bool isDark) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(
-                  Icons.camera_alt,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-                title: Text(
-                  'Take Photo',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.camera);
-                },
-              ),
-              ListTile(
-                leading: Icon(
-                  Icons.photo_library,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
-                title: Text(
-                  'Choose from Gallery',
-                  style: TextStyle(
-                    color: isDark ? Colors.white : Colors.black87,
-                  ),
-                ),
-                onTap: () {
-                  Navigator.pop(context);
-                  _pickImage(ImageSource.gallery);
-                },
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<void> _pickImage(ImageSource source) async {
-    final picker = ImagePicker();
-    final image = await picker.pickImage(source: source, imageQuality: 80);
-    if (image != null) setState(() => _pickedImage = image);
-  }
-
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
+  void _selectDate() async {
+    final picked = await showDatePicker(
       context: context,
       initialDate: _dob ?? DateTime(1990),
-      firstDate: DateTime(1900),
+      firstDate: DateTime(1940),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: Theme.of(context).colorScheme.copyWith(
+              primary: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
-    if (picked != null && picked != _dob) {
-      setState(() {
-        _dob = picked;
-      });
+    if (picked != null) {
+      setState(() => _dob = picked);
     }
   }
 
-  /// Show confirmation dialog to leave the company
-  Future<void> _showLeaveCompanyDialog() async {
-    final companyName = _companyInfo?['name'] ?? 'this company';
-    final messenger = ScaffoldMessenger.of(context);
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    final confirmed = await showDialog<bool>(
+  void _selectLicenseExpiry() async {
+    final picked = await showDatePicker(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        title: Text(
-          'Leave Company?',
-          style: GoogleFonts.inter(
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : const Color(0xFF101828),
-          ),
-        ),
-        content: Text(
-          'Are you sure you want to leave "$companyName"?\n\n'
-          'The company will no longer see your data. '
-          'If you want to rejoin, they will need to send you a new invitation.',
-          style: GoogleFonts.inter(
-            color: isDark ? Colors.white70 : Colors.grey[700],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(false),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.inter(
-                color: isDark ? Colors.white60 : Colors.grey[600],
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(dialogContext).pop(true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.redAccent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
-              ),
-            ),
-            child: Text(
-              'Leave Company',
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      initialDate:
+          _licenseExpiryDate ?? DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 20)),
     );
-
-    if (confirmed == true) {
-      try {
-        await ProfileService.revokeCompany();
-        // Clear local company info and refresh
-        setState(() {
-          _companyInfo = null;
-        });
-        // Invalidate cache to ensure dashboard updates
-        await ProfileRepository.refresh();
-
-        if (mounted) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(Icons.check_circle, color: Colors.white, size: 20),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text('You have left $companyName')),
-                ],
-              ),
-              backgroundColor: const Color(0xFF10B981),
-            ),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          messenger.showSnackBar(
-            SnackBar(
-              content: Row(
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    color: Colors.white,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(child: Text(ErrorHandler.getErrorMessage(e))),
-                ],
-              ),
-              backgroundColor: Theme.of(context).colorScheme.error,
-            ),
-          );
-        }
-      }
+    if (picked != null) {
+      setState(() => _licenseExpiryDate = picked);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final backgroundColor = isDark
+        ? const Color(0xFF0A0A0A)
+        : const Color(0xFFF9FAFB);
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    const Color(0xFF1a1a2e),
-                    const Color(0xFF16213e),
-                    const Color(0xFF0f0f1a),
-                  ]
-                : [
-                    const Color(0xFFF0F4FF),
-                    const Color(0xFFFDF2F8),
-                    const Color(0xFFF0FDF4),
-                  ],
-            stops: const [0.0, 0.5, 1.0],
+      backgroundColor: backgroundColor,
+      appBar: AppBar(
+        backgroundColor: backgroundColor,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'Edit Profile',
+          style: GoogleFonts.outfit(
+            color: textColor,
+            fontWeight: FontWeight.w600,
+            fontSize: 18,
           ),
         ),
-        child: Column(
-          children: [
-            _buildAppBar(context, textColor),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : SingleChildScrollView(
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const SizedBox(height: 8),
-                            _buildAvatarSection(context, isDark),
-                            const SizedBox(height: 32),
-
-                            _buildSectionHeader('PERSONAL INFORMATION', isDark),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: GlassyCard(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  children: [
-                                    _buildTextField(
-                                      controller: _nameController,
-                                      label: 'Full Name',
-                                      icon: Icons.person_outline,
-                                      validator: (v) =>
-                                          v!.isEmpty ? 'Name Required' : null,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _emailController,
-                                      label: 'Email Address',
-                                      icon: Icons.email_outlined,
-                                      keyboardType: TextInputType.emailAddress,
-                                      validator: (v) =>
-                                          (!RegExp(
-                                            r'\S+@\S+\.\S+',
-                                          ).hasMatch(v!))
-                                          ? 'Invalid Email'
-                                          : null,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildPhoneField(
-                                      context,
-                                      isDark,
-                                      textColor,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-                            _buildSectionHeader('ADDRESS', isDark),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: GlassyCard(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  children: [
-                                    _buildTextField(
-                                      controller: _streetController,
-                                      label: 'Street',
-                                      icon: Icons.home_outlined,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildTextField(
-                                            controller: _cityController,
-                                            label: 'City',
-                                            icon: Icons.location_city,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _buildTextField(
-                                            controller: _stateController,
-                                            label: 'State/Prov',
-                                            icon: Icons.map_outlined,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildTextField(
-                                            controller: _zipController,
-                                            label: 'Zip/Postal',
-                                            icon: Icons.pin_drop_outlined,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _buildTextField(
-                                            controller: _countryController,
-                                            label: 'Country',
-                                            icon: Icons.public_outlined,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-                            _buildSectionHeader('DRIVER INFORMATION', isDark),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                              child: GlassyCard(
-                                padding: const EdgeInsets.all(20),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildDateField(
-                                      context,
-                                      'Date of Birth',
-                                      _dob,
-                                      () => _selectDate(context),
-                                      isDark,
-                                      textColor,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _licenseNumberController,
-                                      label: "Driver's License Number",
-                                      icon: Icons.badge_outlined,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    _buildTextField(
-                                      controller: _licenseTypeController,
-                                      label: "Driver's License Type",
-                                      icon: Icons.local_shipping_outlined,
-                                    ),
-                                    const SizedBox(height: 16),
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          child: _buildCountrySelectorField(
-                                            context,
-                                            'Citizenship',
-                                            _citizenship,
-                                            (c) => setState(
-                                              () => _citizenship = c,
-                                            ),
-                                            isDark,
-                                            textColor,
-                                          ),
-                                        ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
-                                          child: _buildTextField(
-                                            controller: _fastIdController,
-                                            label: 'Fast ID (Optional)',
-                                            icon: Icons.card_membership,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 24),
-                            /* Company Info Card - Only show if user has a company */
-                            if (_companyInfo != null) ...[
-                              _buildSectionHeader(
-                                'COMPANY INFORMATION',
-                                isDark,
-                              ),
-                              Padding(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                ),
-                                child: GlassyCard(
-                                  padding: const EdgeInsets.all(20),
-                                  child: Column(
-                                    children: [
-                                      _buildReadOnlyField(
-                                        'Company Name',
-                                        _companyInfo!['name'] ?? '',
-                                        Icons.business,
-                                        isDark,
-                                        textColor,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      _buildReadOnlyField(
-                                        'Address',
-                                        _formatCompanyAddress(_companyInfo!),
-                                        Icons.location_on_outlined,
-                                        isDark,
-                                        textColor,
-                                      ),
-                                      const SizedBox(height: 16),
-                                      _buildReadOnlyField(
-                                        'Contact',
-                                        _companyInfo!['phone'] ??
-                                            _companyInfo!['email'] ??
-                                            '-',
-                                        Icons.contact_phone_outlined,
-                                        isDark,
-                                        textColor,
-                                      ),
-                                      const SizedBox(height: 24),
-                                      // Leave Company Button
-                                      SizedBox(
-                                        width: double.infinity,
-                                        child: OutlinedButton.icon(
-                                          onPressed: _showLeaveCompanyDialog,
-                                          icon: const Icon(
-                                            Icons.exit_to_app,
-                                            color: Colors.redAccent,
-                                          ),
-                                          label: Text(
-                                            'Leave Company',
-                                            style: GoogleFonts.inter(
-                                              color: Colors.redAccent,
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                          ),
-                                          style: OutlinedButton.styleFrom(
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 14,
-                                            ),
-                                            side: const BorderSide(
-                                              color: Colors.redAccent,
-                                            ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(12),
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ],
-
-                            const SizedBox(height: 32),
-                            _buildActionButtons(context, isDark, textColor),
-                            const SizedBox(height: 32),
-                          ],
-                        ),
-                      ),
-                    ),
-            ),
-          ],
-        ),
+        centerTitle: true,
       ),
-    );
-  }
-
-  Widget _buildAppBar(BuildContext context, Color textColor) {
-    return AppBar(
-      title: Text(
-        AppLocalizations.of(context)?.editProfile ?? 'Edit Profile',
-        style: GoogleFonts.inter(
-          fontSize: 18,
-          fontWeight: FontWeight.w600,
-          color: textColor,
-        ),
-      ),
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: IconButton(
-        icon: Icon(Icons.arrow_back, color: textColor),
-        onPressed: () => context.pop(),
-      ),
-    );
-  }
-
-  Widget _buildAvatarSection(BuildContext context, bool isDark) {
-    return Center(
-      child: Column(
+      body: Stack(
         children: [
-          GestureDetector(
-            onTap: () => _showImageOptions(context, isDark),
-            child: Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF007AFF).withValues(alpha: 0.2),
-                    blurRadius: 20,
-                    offset: const Offset(0, 4),
+          SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildAvatarSection(primaryColor, backgroundColor),
+                  const SizedBox(height: 40),
+
+                  _buildSectionCard(
+                    title: 'Personal Information',
+                    children: [
+                      _buildLabel('Full Name'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _nameController,
+                        hint: 'Enter your name',
+                        icon: Icons.person_outline,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildLabel('Email Address'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _emailController,
+                        hint: 'Email',
+                        icon: Icons.email_outlined,
+                        isDark: isDark,
+                        enabled: false,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildLabel('Phone Number'),
+                      const SizedBox(height: 8),
+                      _buildPhoneField(isDark),
+                    ],
                   ),
+
+                  const SizedBox(height: 24),
+
+                  _buildSectionCard(
+                    title: 'Address Information',
+                    children: [
+                      _buildLabel('Street Address'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _streetController,
+                        hint: '123 Trucker Way',
+                        icon: Icons.home_outlined,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('City'),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: _cityController,
+                                  hint: 'Toronto',
+                                  icon: Icons.location_city_outlined,
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('State / Province'),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: _stateController,
+                                  hint: 'ON',
+                                  icon: Icons.map_outlined,
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Postal Code'),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: _zipController,
+                                  hint: 'M1B 2C3',
+                                  icon: Icons.pin_drop_outlined,
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Country'),
+                                const SizedBox(height: 8),
+                                _buildTextField(
+                                  controller: _countryController,
+                                  hint: 'Canada',
+                                  icon: Icons.public_outlined,
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  _buildSectionCard(
+                    title: 'Driver Documents',
+                    children: [
+                      _buildLabel('License Number'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _licenseNumberController,
+                        hint: 'A1234-56789-01234',
+                        icon: Icons.badge_outlined,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildLabel('License Expiry Date'),
+                      const SizedBox(height: 8),
+                      _buildClickableField(
+                        text: _licenseExpiryDate != null
+                            ? DateFormat.yMMMd().format(_licenseExpiryDate!)
+                            : 'Select Expiry Date',
+                        icon: Icons.event_available_outlined,
+                        onTap: _selectLicenseExpiry,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildLabel('License Type (Class)'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _licenseTypeController,
+                        hint: 'Class AZ',
+                        icon: Icons.category_outlined,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildLabel('FAST ID (Optional)'),
+                      const SizedBox(height: 8),
+                      _buildTextField(
+                        controller: _fastIdController,
+                        hint: '12345678',
+                        icon: Icons.security_outlined,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildLabel('Date of Birth'),
+                      const SizedBox(height: 8),
+                      _buildClickableField(
+                        text: _dob != null
+                            ? DateFormat.yMMMd().format(_dob!)
+                            : 'Select Date',
+                        icon: Icons.calendar_today_outlined,
+                        onTap: _selectDate,
+                        isDark: isDark,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildLabel('Citizenship'),
+                      const SizedBox(height: 8),
+                      _buildCitizenshipSelector(isDark),
+                    ],
+                  ),
+
+                  const SizedBox(height: 120),
                 ],
               ),
-              child: CircleAvatar(
-                radius: 60,
-                backgroundColor: const Color(0xFFBFDBFE),
-                backgroundImage: _pickedImage != null
-                    ? FileImage(File(_pickedImage!.path))
-                    : (_avatarUrl != null && _avatarUrl!.isNotEmpty)
-                    ? NetworkImage(_avatarUrl!)
-                    : null,
-                child: (_avatarUrl == null && _pickedImage == null)
-                    ? const Icon(
-                        Icons.person,
-                        size: 60,
-                        color: Color(0xFF3B82F6),
-                      )
-                    : null,
+            ),
+          ),
+
+          if (_isLoading) const Center(child: CircularProgressIndicator()),
+        ],
+      ),
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+        ),
+        child: SafeArea(
+          child: FilledButton(
+            onPressed: _isLoading ? null : _saveProfile,
+            style: FilledButton.styleFrom(
+              minimumSize: const Size(double.infinity, 56),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: Text(
+              'Save Changes',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Tap to change photo',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: isDark ? Colors.white70 : const Color(0xFF667085),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatarSection(Color primaryColor, Color backgroundColor) {
+    final subtext = Theme.of(context).brightness == Brightness.dark
+        ? const Color(0xFF94A3B8)
+        : const Color(0xFF667085);
+
+    return Center(
+      child: Stack(
+        children: [
+          Container(
+            width: 120,
+            height: 120,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: primaryColor.withOpacity(0.2),
+                width: 4,
+              ),
+            ),
+            child: CircleAvatar(
+              radius: 56,
+              backgroundColor: Theme.of(context).cardColor,
+              backgroundImage: _imageFile != null
+                  ? FileImage(_imageFile!)
+                  : (_avatarUrl != null ? NetworkImage(_avatarUrl!) : null)
+                        as ImageProvider?,
+              child: _imageFile == null && _avatarUrl == null
+                  ? Icon(Icons.person, size: 60, color: subtext)
+                  : null,
+            ),
+          ),
+          Positioned(
+            bottom: 0,
+            right: 0,
+            child: GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: backgroundColor, width: 2),
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ),
             ),
           ),
         ],
@@ -809,349 +553,191 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildReadOnlyField(
-    String label,
-    String value,
-    IconData icon,
-    bool isDark,
-    Color textColor,
-  ) {
-    return Row(
+  Widget _buildSectionCard({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
+        Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text(
+            title,
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              color: Theme.of(context).colorScheme.primary,
+            ),
           ),
-          child: Icon(icon, color: const Color(0xFF007AFF), size: 20),
         ),
-        const SizedBox(width: 16),
-        Expanded(
+        Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: isDark ? Colors.white60 : Colors.grey[600],
-                ),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                value,
-                style: GoogleFonts.inter(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                  color: textColor,
-                ),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
+            children: children,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionHeader(String title, bool isDark) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Text(
-        title,
-        style: GoogleFonts.inter(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: isDark ? Colors.white60 : const Color(0xFF98A2B3),
-          letterSpacing: 0.5,
+  Widget _buildPhoneField(bool isDark) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          child: CountryCodeSelector(
+            selectedCountry: _selectedCountryCode,
+            onCountryChanged: (c) => setState(() => _selectedCountryCode = c),
+          ),
         ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: _buildTextField(
+            controller: _phoneController,
+            hint: 'Phone number',
+            icon: Icons.phone_outlined,
+            isDark: isDark,
+            keyboardType: TextInputType.phone,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCitizenshipSelector(bool isDark) {
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: CountryCodeSelector(
+        selectedCountry: _citizenship ?? countryCodes[0],
+        onCountryChanged: (c) => setState(() => _citizenship = c),
+        showCountryName: true,
+        showDialCode: false,
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: GoogleFonts.outfit(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.white70
+            : const Color(0xFF475467),
       ),
     );
   }
 
   Widget _buildTextField({
     required TextEditingController controller,
-    required String label,
+    required String hint,
     required IconData icon,
-    String? hintText,
-    TextInputType? keyboardType,
-    String? Function(String?)? validator,
+    required bool isDark,
     bool enabled = true,
+    int maxLines = 1,
+    TextInputType? keyboardType,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
+    return TextFormField(
+      controller: controller,
+      enabled: enabled,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: GoogleFonts.outfit(
+        color: enabled
+            ? (isDark ? Colors.white : const Color(0xFF101828))
+            : (isDark ? Colors.white38 : Colors.black26),
+        fontSize: 15,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: GoogleFonts.outfit(
+          color: const Color(0xFF98A2B3),
+          fontSize: 14,
         ),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          enabled: enabled,
-          keyboardType: keyboardType,
-          validator: validator,
-          style: GoogleFonts.inter(fontSize: 15, color: textColor),
-          decoration: _inputDecoration(context, icon, hintText, isDark),
+        prefixIcon: Icon(icon, color: primaryColor, size: 20),
+        filled: true,
+        fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: outlineVariant),
         ),
-      ],
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: outlineVariant),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: primaryColor, width: 2),
+        ),
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: outlineVariant.withOpacity(0.5)),
+        ),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 16,
+        ),
+      ),
     );
   }
 
-  Widget _buildDateField(
-    BuildContext context,
-    String label,
-    DateTime? date,
-    VoidCallback onTap,
-    bool isDark,
-    Color textColor,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        GestureDetector(
-          onTap: onTap,
-          child: AbsorbPointer(
-            child: TextFormField(
-              controller: TextEditingController(
-                text: date != null ? DateFormat.yMMMd().format(date) : '',
-              ),
-              style: GoogleFonts.inter(fontSize: 15, color: textColor),
-              decoration: _inputDecoration(
-                context,
-                Icons.calendar_today_outlined,
-                'Select Date',
-                isDark,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+  Widget _buildClickableField({
+    required String text,
+    required IconData icon,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
-  Widget _buildCountrySelectorField(
-    BuildContext context,
-    String label,
-    CountryCode? selected,
-    ValueChanged<CountryCode> onChanged,
-    bool isDark,
-    Color textColor,
-  ) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: outlineVariant),
         ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB),
-            ),
-          ),
-          child: CountryCodeSelector(
-            selectedCountry: selected ?? countryCodes[0],
-            onCountryChanged: onChanged,
-            showCountryName: true,
-            showDialCode: false,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPhoneField(BuildContext context, bool isDark, Color textColor) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'Contact Number',
-          style: GoogleFonts.inter(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: textColor,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Row(
           children: [
-            CountryCodeSelector(
-              selectedCountry: _selectedCountryCode,
-              onCountryChanged: (c) => setState(() => _selectedCountryCode = c),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: TextFormField(
-                controller: _phoneController,
-                keyboardType: TextInputType.phone,
-                validator: (v) {
-                  // Logic from previous impl
-                  if (v == null || v.trim().isEmpty) return null;
-                  if (!RegExp(r'^\d{4,15}$').hasMatch(v.trim())) {
-                    return 'Enter digits (4-15)';
-                  }
-                  final lengths =
-                      _countryLocalLengths[_selectedCountryCode.dialCode];
-                  if (lengths != null && !lengths.contains(v.trim().length)) {
-                    return 'Expect ${lengths.join(' or ')} digits';
-                  }
-                  return null;
-                },
-                style: GoogleFonts.inter(fontSize: 15, color: textColor),
-                decoration: _inputDecoration(
-                  context,
-                  Icons.phone_outlined,
-                  'Phone number',
-                  isDark,
-                ),
+            Icon(icon, color: primaryColor, size: 20),
+            const SizedBox(width: 12),
+            Text(
+              text,
+              style: GoogleFonts.outfit(
+                color: isDark ? Colors.white : const Color(0xFF101828),
+                fontSize: 15,
               ),
             ),
           ],
         ),
-      ],
-    );
-  }
-
-  // Reusable decoration
-  InputDecoration _inputDecoration(
-    BuildContext context,
-    IconData? icon,
-    String? hint,
-    bool isDark,
-  ) {
-    return InputDecoration(
-      hintText: hint,
-      hintStyle: GoogleFonts.inter(
-        fontSize: 15,
-        color: const Color(0xFF98A2B3),
-      ),
-      prefixIcon: icon != null
-          ? Icon(icon, color: const Color(0xFF007AFF), size: 20)
-          : null,
-      filled: true,
-      fillColor: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF9FAFB),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB),
-        ),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB),
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF007AFF), width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red),
-      ),
-      focusedErrorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Colors.red, width: 2),
-      ),
-      errorStyle: GoogleFonts.inter(fontSize: 12, color: Colors.red),
-    );
-  }
-
-  Widget _buildActionButtons(
-    BuildContext context,
-    bool isDark,
-    Color textColor,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: () => context.pop(),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                side: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF3A3A3A)
-                      : const Color(0xFFE5E7EB),
-                ),
-                backgroundColor: isDark ? Colors.black12 : Colors.white54,
-              ),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: textColor,
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: ElevatedButton(
-              onPressed: _saving ? null : _save,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                backgroundColor: const Color(0xFF007AFF),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-              child: _saving
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        color: Colors.white,
-                      ),
-                    )
-                  : Text(
-                      'Save',
-                      style: GoogleFonts.inter(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-            ),
-          ),
-        ],
       ),
     );
   }

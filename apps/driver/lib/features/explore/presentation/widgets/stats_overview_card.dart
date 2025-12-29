@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:milow/core/widgets/glassy_card.dart';
 
@@ -7,13 +6,11 @@ class StatsOverviewCard extends StatelessWidget {
   final double totalMiles;
   final double totalFuelCost;
   final int tripCount;
-  final bool isDark;
 
   const StatsOverviewCard({
     required this.totalMiles,
     required this.totalFuelCost,
     required this.tripCount,
-    required this.isDark,
     super.key,
   });
 
@@ -29,47 +26,52 @@ class StatsOverviewCard extends StatelessWidget {
         children: [
           Text(
             'This Month',
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 16),
           Row(
             children: [
               Expanded(
                 child: _buildStatItem(
+                  context,
                   icon: Icons.speed,
                   label: 'Miles',
                   value: numberFormat.format(totalMiles),
-                  color: Colors.blue,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
-              Container(
+              VerticalDivider(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                thickness: 1,
                 width: 1,
-                height: 40,
-                color: isDark ? Colors.grey[800] : Colors.grey[200],
+                indent: 8,
+                endIndent: 8,
               ),
               Expanded(
                 child: _buildStatItem(
+                  context,
                   icon: Icons.local_gas_station,
                   label: 'Fuel Cost',
                   value: currencyFormat.format(totalFuelCost),
-                  color: Colors.orange,
+                  color: Theme.of(context).colorScheme.secondary,
                 ),
               ),
-              Container(
+              VerticalDivider(
+                color: Theme.of(context).colorScheme.outlineVariant,
+                thickness: 1,
                 width: 1,
-                height: 40,
-                color: isDark ? Colors.grey[800] : Colors.grey[200],
+                indent: 8,
+                endIndent: 8,
               ),
               Expanded(
                 child: _buildStatItem(
+                  context,
                   icon: Icons.local_shipping,
                   label: 'Trips',
                   value: '$tripCount',
-                  color: Colors.purple,
+                  color: Theme.of(context).colorScheme.tertiary,
                 ),
               ),
             ],
@@ -79,7 +81,8 @@ class StatsOverviewCard extends StatelessWidget {
     );
   }
 
-  Widget _buildStatItem({
+  Widget _buildStatItem(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
@@ -90,7 +93,7 @@ class StatsOverviewCard extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
+            color: color.withOpacity(0.1),
             shape: BoxShape.circle,
           ),
           child: Icon(icon, color: color, size: 20),
@@ -98,17 +101,14 @@ class StatsOverviewCard extends StatelessWidget {
         const SizedBox(height: 8),
         Text(
           value,
-          style: GoogleFonts.outfit(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-            color: isDark ? Colors.white : Colors.black87,
-          ),
+          style: Theme.of(
+            context,
+          ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
         ),
         Text(
           label,
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            color: isDark ? Colors.grey[400] : Colors.grey[600],
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
       ],

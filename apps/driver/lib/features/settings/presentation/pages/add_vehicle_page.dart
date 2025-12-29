@@ -182,7 +182,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     onPressed: () => Navigator.pop(context),
                     child: Text(
                       'Cancel',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         color: const Color(0xFF667085),
                         fontSize: 16,
                       ),
@@ -190,7 +190,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                   ),
                   Text(
                     'Add Truck',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 18,
                       fontWeight: FontWeight.w600,
                       color: textColor,
@@ -224,8 +224,8 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     },
                     child: Text(
                       'Save',
-                      style: GoogleFonts.inter(
-                        color: const Color(0xFF3B82F6),
+                      style: GoogleFonts.outfit(
+                        color: const Color(0xFF007AFF),
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -398,7 +398,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                       onPressed: () => Navigator.pop(context),
                       child: Text(
                         'Cancel',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           color: const Color(0xFF667085),
                           fontSize: 16,
                         ),
@@ -406,7 +406,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     ),
                     Text(
                       'Add Trailer',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 18,
                         fontWeight: FontWeight.w600,
                         color: textColor,
@@ -441,8 +441,8 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                       },
                       child: Text(
                         'Save',
-                        style: GoogleFonts.inter(
-                          color: const Color(0xFF3B82F6),
+                        style: GoogleFonts.outfit(
+                          color: const Color(0xFF007AFF),
                           fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
@@ -461,7 +461,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     children: [
                       Text(
                         'Trailer Type',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w500,
                           color: textColor,
@@ -600,14 +600,14 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? const Color(0xFF3B82F6)
+                  ? const Color(0xFF007AFF)
                   : (isDark
                         ? const Color(0xFF2A2A2A)
                         : const Color(0xFFF3F4F6)),
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
                 color: isSelected
-                    ? const Color(0xFF3B82F6)
+                    ? const Color(0xFF007AFF)
                     : (isDark
                           ? const Color(0xFF404040)
                           : const Color(0xFFE5E7EB)),
@@ -615,7 +615,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             ),
             child: Text(
               type,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 14,
                 fontWeight: FontWeight.w500,
                 color: isSelected
@@ -651,7 +651,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
       children: [
         Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 14,
             fontWeight: FontWeight.w500,
             color: textColor,
@@ -662,10 +662,10 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
-          style: GoogleFonts.inter(fontSize: 16, color: textColor),
+          style: GoogleFonts.outfit(fontSize: 16, color: textColor),
           decoration: InputDecoration(
             hintText: hint,
-            hintStyle: GoogleFonts.inter(fontSize: 14, color: hintColor),
+            hintStyle: GoogleFonts.outfit(fontSize: 14, color: hintColor),
             prefixIcon: Icon(icon, color: const Color(0xFF9CA3AF), size: 20),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -689,18 +689,18 @@ class _AddVehiclePageState extends State<AddVehiclePage>
       builder: (context) => AlertDialog(
         title: Text(
           'Delete Truck',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
         ),
         content: Text(
           'Are you sure you want to delete this truck?',
-          style: GoogleFonts.inter(),
+          style: GoogleFonts.outfit(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: GoogleFonts.inter(color: const Color(0xFF667085)),
+              style: GoogleFonts.outfit(color: const Color(0xFF667085)),
             ),
           ),
           TextButton(
@@ -708,7 +708,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
               _trucks.removeWhere((t) => (t['id'] as String) == id);
               Navigator.pop(context);
             },
-            child: Text('Delete', style: GoogleFonts.inter(color: Colors.red)),
+            child: Text('Delete', style: GoogleFonts.outfit(color: Colors.red)),
           ),
         ],
       ),
@@ -721,18 +721,18 @@ class _AddVehiclePageState extends State<AddVehiclePage>
       builder: (context) => AlertDialog(
         title: Text(
           'Delete Trailer',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
         ),
         content: Text(
           'Are you sure you want to delete this trailer?',
-          style: GoogleFonts.inter(),
+          style: GoogleFonts.outfit(),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: GoogleFonts.inter(color: const Color(0xFF667085)),
+              style: GoogleFonts.outfit(color: const Color(0xFF667085)),
             ),
           ),
           TextButton(
@@ -740,7 +740,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
               _trailers.removeWhere((t) => (t['id'] as String) == id);
               Navigator.pop(context);
             },
-            child: Text('Delete', style: GoogleFonts.inter(color: Colors.red)),
+            child: Text('Delete', style: GoogleFonts.outfit(color: Colors.red)),
           ),
         ],
       ),
@@ -770,7 +770,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
         ),
         title: Text(
           'My Vehicles',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 18,
             fontWeight: FontWeight.w600,
             color: textColor,
@@ -779,15 +779,15 @@ class _AddVehiclePageState extends State<AddVehiclePage>
         centerTitle: true,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: const Color(0xFF3B82F6),
+          labelColor: const Color(0xFF007AFF),
           unselectedLabelColor: subtitleColor,
-          indicatorColor: const Color(0xFF3B82F6),
+          indicatorColor: const Color(0xFF007AFF),
           indicatorWeight: 3,
-          labelStyle: GoogleFonts.inter(
+          labelStyle: GoogleFonts.outfit(
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
-          unselectedLabelStyle: GoogleFonts.inter(
+          unselectedLabelStyle: GoogleFonts.outfit(
             fontSize: 14,
             fontWeight: FontWeight.w500,
           ),
@@ -812,7 +812,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             _showAddTrailerDialog();
           }
         },
-        backgroundColor: const Color(0xFF3B82F6),
+        backgroundColor: const Color(0xFF007AFF),
         child: const Icon(Icons.add, color: Colors.white),
       ),
     );
@@ -893,15 +893,15 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+              color: const Color(0xFF007AFF).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, size: 48, color: const Color(0xFF3B82F6)),
+            child: Icon(icon, size: 48, color: const Color(0xFF007AFF)),
           ),
           const SizedBox(height: 24),
           Text(
             title,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 18,
               fontWeight: FontWeight.w600,
               color: isDark ? Colors.white : const Color(0xFF101828),
@@ -910,7 +910,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           const SizedBox(height: 8),
           Text(
             subtitle,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 14,
               color: const Color(0xFF667085),
             ),
@@ -934,7 +934,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -947,7 +947,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
+                color: const Color(0xFF007AFF).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -963,7 +963,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                 children: [
                   Text(
                     '${truck['year']} ${truck['make']} ${truck['model']}',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: textColor,
@@ -976,7 +976,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                       const SizedBox(width: 4),
                       Text(
                         '${truck['plate']} (${truck['plateState']})',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 13,
                           color: subtitleColor,
                         ),
@@ -988,7 +988,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         const SizedBox(width: 4),
                         Text(
                           truck['color'],
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 13,
                             color: subtitleColor,
                           ),
@@ -1023,7 +1023,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            color: Colors.black.withOpacity(isDark ? 0.3 : 0.05),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -1036,7 +1036,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                color: const Color(0xFF10B981).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: const Icon(
@@ -1058,12 +1058,12 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                           vertical: 2,
                         ),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                          color: const Color(0xFF10B981).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           trailer['type'] ?? 'Unknown',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                             color: const Color(0xFF10B981),
@@ -1075,7 +1075,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         const SizedBox(width: 8),
                         Text(
                           "${trailer['length']}' ft",
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 12,
                             color: subtitleColor,
                           ),
@@ -1086,7 +1086,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                   const SizedBox(height: 6),
                   Text(
                     '${trailer['year']} ${trailer['make']} ${trailer['model']}',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: textColor,
@@ -1099,7 +1099,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                       const SizedBox(width: 4),
                       Text(
                         '${trailer['plate']} (${trailer['plateState']})',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 13,
                           color: subtitleColor,
                         ),

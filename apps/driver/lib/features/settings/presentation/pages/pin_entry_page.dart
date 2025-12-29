@@ -144,7 +144,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
             // Title
             Text(
               'Enter your PIN',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 24,
                 fontWeight: FontWeight.w600,
                 color: textColor,
@@ -153,7 +153,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
             const SizedBox(height: 12),
             Text(
               'Enter your 4-digit PIN to continue',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 16,
                 color: const Color(0xFF667085),
               ),
@@ -190,7 +190,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Text(
                   _errorMessage!,
-                  style: GoogleFonts.inter(fontSize: 14, color: Colors.red),
+                  style: GoogleFonts.outfit(fontSize: 14, color: Colors.red),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -216,7 +216,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                         : (_hasFaceRecognition
                               ? 'Use Face ID'
                               : 'Use Fingerprint'),
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF007AFF),
@@ -275,7 +275,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
@@ -284,7 +284,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
         child: Center(
           child: Text(
             number,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 28,
               fontWeight: FontWeight.w600,
               color: textColor,
@@ -311,7 +311,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
+              color: Colors.black.withOpacity(0.05),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),

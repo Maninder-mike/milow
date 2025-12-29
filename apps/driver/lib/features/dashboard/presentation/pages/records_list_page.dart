@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:milow/core/utils/address_utils.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -8,6 +9,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
+import 'package:csv/csv.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
@@ -280,7 +282,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey[400],
+                    color: Theme.of(context).colorScheme.outlineVariant,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -288,7 +290,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
               const SizedBox(height: 20),
               Text(
                 'Filter Records',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: textColor,
@@ -324,12 +326,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
           children: [
             Icon(
               isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: isSelected ? const Color(0xFF007AFF) : Colors.grey,
+              color: isSelected
+                  ? Theme.of(context).colorScheme.primary
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 12),
             Text(
               filter,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
                 color: textColor,
@@ -344,570 +348,534 @@ class _RecordsListPageState extends State<RecordsListPage> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
+    // final backgroundColor = isDark ? const Color(0xFF121212) : const Color(0xFFF9FAFB);
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
     final secondaryTextColor = isDark
         ? const Color(0xFF9CA3AF)
         : const Color(0xFF667085);
-    final borderColor = isDark
-        ? const Color(0xFF3A3A3A)
-        : const Color(0xFFD0D5DD);
+    final borderColor = Theme.of(context).colorScheme.outlineVariant;
 
-    return Container(
-      color: backgroundColor,
-      child: SafeArea(
-        top: false,
-        bottom: false,
-        child: Scaffold(
-          backgroundColor: backgroundColor,
-          body: NestedScrollView(
-            headerSliverBuilder: (context, innerBoxIsScrolled) {
-              return [
-                // Main AppBar (always visible)
-                SliverAppBar(
-                  backgroundColor: backgroundColor,
-                  elevation: 0,
-                  floating: false,
-                  pinned: true,
-                  leading: IconButton(
-                    icon: Icon(Icons.arrow_back, color: textColor),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                  title: Text(
-                    'All Records',
-                    style: GoogleFonts.inter(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                      color: textColor,
-                    ),
-                  ),
-                  actions: [
-                    IconButton(
-                      icon: Icon(Icons.save_alt, color: textColor),
-                      onPressed: () => _showDownloadBottomSheet(
-                        textColor,
-                        secondaryTextColor,
-                        cardColor,
-                        borderColor,
-                      ),
-                    ),
-                    IconButton(
-                      icon: Badge(
-                        isLabelVisible: _selectedFilter != 'All',
-                        child: Icon(Icons.filter_list, color: textColor),
-                      ),
-                      onPressed: _showFilterBottomSheet,
-                    ),
-                  ],
+    return Scaffold(
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) {
+          return [
+            // Main AppBar (always visible)
+            SliverAppBar(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              elevation: 0,
+              floating: false,
+              pinned: true,
+              leading: IconButton(
+                icon: Icon(Icons.arrow_back, color: textColor),
+                onPressed: () => Navigator.pop(context),
+              ),
+              title: Text(
+                'All Records',
+                style: GoogleFonts.outfit(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                  color: textColor,
                 ),
-                // Search bar (hides on scroll up)
-                SliverAppBar(
-                  backgroundColor: backgroundColor,
-                  elevation: 0,
-                  floating: true,
-                  pinned: false,
-                  toolbarHeight: 72,
-                  automaticallyImplyLeading: false,
-                  flexibleSpace: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                    child: TextField(
-                      controller: _searchController,
-                      onChanged: (value) {
-                        setState(() {
-                          _searchQuery = value;
-                        });
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Search by load ID or route...',
-                        hintStyle: GoogleFonts.inter(color: secondaryTextColor),
-                        prefixIcon: Icon(
-                          Icons.search,
-                          color: secondaryTextColor,
-                        ),
-                        suffixIcon: _searchQuery.isNotEmpty
-                            ? IconButton(
-                                icon: Icon(
-                                  Icons.clear,
-                                  color: secondaryTextColor,
-                                ),
-                                onPressed: () {
-                                  setState(() {
-                                    _searchController.clear();
-                                    _searchQuery = '';
-                                  });
-                                },
-                              )
-                            : null,
-                        filled: true,
-                        fillColor: cardColor,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: borderColor),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide(color: borderColor),
-                        ),
-                        focusedBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: const BorderSide(
-                            color: Color(0xFF007AFF),
-                          ),
-                        ),
-                        contentPadding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 14,
-                        ),
-                      ),
-                      style: GoogleFonts.inter(color: textColor),
-                    ),
+              ),
+              actions: [
+                IconButton(
+                  icon: Icon(Icons.save_alt, color: textColor),
+                  onPressed: () => _showDownloadBottomSheet(
+                    textColor,
+                    secondaryTextColor,
+                    cardColor,
+                    borderColor,
                   ),
                 ),
-                // Filter chip (shown when filter is active)
-                if (_selectedFilter != 'All')
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
-                      child: Row(
-                        children: [
-                          Chip(
-                            label: Text(
-                              _selectedFilter,
-                              style: GoogleFonts.inter(
-                                fontSize: 12,
-                                color: const Color(0xFF007AFF),
-                              ),
-                            ),
-                            backgroundColor: const Color(
-                              0xFF007AFF,
-                            ).withValues(alpha: 0.1),
-                            deleteIcon: const Icon(
-                              Icons.close,
-                              size: 16,
-                              color: Color(0xFF007AFF),
-                            ),
-                            onDeleted: () {
+                IconButton(
+                  icon: Badge(
+                    isLabelVisible: _selectedFilter != 'All',
+                    child: Icon(Icons.filter_list, color: textColor),
+                  ),
+                  onPressed: _showFilterBottomSheet,
+                ),
+              ],
+            ),
+            // Search bar (hides on scroll up)
+            SliverAppBar(
+              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+              elevation: 0,
+              floating: true,
+              pinned: false,
+              toolbarHeight: 72,
+              automaticallyImplyLeading: false,
+              flexibleSpace: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (value) {
+                    setState(() {
+                      _searchQuery = value;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search by load ID or route...',
+                    hintStyle: GoogleFonts.outfit(color: secondaryTextColor),
+                    prefixIcon: Icon(Icons.search, color: secondaryTextColor),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: Icon(Icons.clear, color: secondaryTextColor),
+                            onPressed: () {
                               setState(() {
-                                _selectedFilter = 'All';
+                                _searchController.clear();
+                                _searchQuery = '';
                               });
                             },
-                            side: BorderSide.none,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            '${_filteredRecords.length} results',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: secondaryTextColor,
-                            ),
-                          ),
-                        ],
-                      ),
+                          )
+                        : null,
+                    filled: true,
+                    fillColor: Theme.of(
+                      context,
+                    ).colorScheme.surfaceContainerLow,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: borderColor),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: Color(0xFF007AFF)),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
                     ),
                   ),
-                const SliverToBoxAdapter(child: SizedBox(height: 8)),
-              ];
-            },
-            body: Container(
-              color: backgroundColor,
-              child: RefreshIndicator(
-                onRefresh: _onRefresh,
-                displacement: 60,
-                strokeWidth: 3.0,
-                color: const Color(0xFF007AFF),
-                backgroundColor: isDark
-                    ? const Color(0xFF1E1E1E)
-                    : Colors.white,
-                child: _isLoading
-                    ? const Center(
-                        child: CircularProgressIndicator(strokeWidth: 3.0),
-                      )
-                    : _filteredRecords.isEmpty
-                    ? ListView(
-                        children: [
-                          SizedBox(
-                            height: MediaQuery.of(context).size.height * 0.5,
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    Icons.inbox_outlined,
-                                    size: 64,
-                                    color: secondaryTextColor,
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    'No records found',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                      color: textColor,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    _searchQuery.isNotEmpty ||
-                                            _selectedFilter != 'All'
-                                        ? 'Try adjusting your search or filter'
-                                        : 'Add your first trip or fuel entry',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 14,
-                                      color: secondaryTextColor,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+                  style: GoogleFonts.outfit(color: textColor),
+                ),
+              ),
+            ),
+            // Filter chip (shown when filter is active)
+            if (_selectedFilter != 'All')
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Chip(
+                        label: Text(
+                          _selectedFilter,
+                          style: GoogleFonts.outfit(
+                            fontSize: 12,
+                            color: const Color(0xFF007AFF),
                           ),
-                        ],
-                      )
-                    : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _filteredRecords.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 12),
-                        itemBuilder: (context, index) {
-                          final record = _filteredRecords[index];
-                          return Dismissible(
-                            key: Key('${record['type']}_${record['id']}'),
-                            background: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3B82F6),
-                                borderRadius: BorderRadius.circular(12),
+                        ),
+                        backgroundColor: const Color(
+                          0xFF007AFF,
+                        ).withOpacity(0.1),
+                        deleteIcon: const Icon(
+                          Icons.close,
+                          size: 16,
+                          color: Color(0xFF007AFF),
+                        ),
+                        onDeleted: () {
+                          setState(() {
+                            _selectedFilter = 'All';
+                          });
+                        },
+                        side: BorderSide.none,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${_filteredRecords.length} results',
+                        style: GoogleFonts.outfit(
+                          fontSize: 12,
+                          color: secondaryTextColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+          ];
+        },
+        body: Container(
+          color: Colors.transparent,
+          child: RefreshIndicator(
+            onRefresh: _onRefresh,
+            displacement: 60,
+            strokeWidth: 3.0,
+            color: const Color(0xFF007AFF),
+            backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            child: _isLoading
+                ? const Center(
+                    child: CircularProgressIndicator(strokeWidth: 3.0),
+                  )
+                : _filteredRecords.isEmpty
+                ? ListView(
+                    children: [
+                      SizedBox(
+                        height: MediaQuery.of(context).size.height * 0.5,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.inbox_outlined,
+                                size: 64,
+                                color: secondaryTextColor,
                               ),
-                              alignment: Alignment.centerLeft,
-                              padding: const EdgeInsets.only(left: 20),
-                              child: Row(
-                                children: [
-                                  const Icon(Icons.edit, color: Colors.white),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    'Modify',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ],
+                              const SizedBox(height: 16),
+                              Text(
+                                'No records found',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
                               ),
-                            ),
-                            secondaryBackground: Container(
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFEF4444),
-                                borderRadius: BorderRadius.circular(12),
+                              const SizedBox(height: 8),
+                              Text(
+                                _searchQuery.isNotEmpty ||
+                                        _selectedFilter != 'All'
+                                    ? 'Try adjusting your search or filter'
+                                    : 'Add your first trip or fuel entry',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 14,
+                                  color: secondaryTextColor,
+                                ),
                               ),
-                              alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.only(right: 20),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  Text(
-                                    'Delete',
-                                    style: GoogleFonts.inter(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 8),
-                                  const Icon(Icons.delete, color: Colors.white),
-                                ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _filteredRecords.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 12),
+                    itemBuilder: (context, index) {
+                      final record = _filteredRecords[index];
+                      return Dismissible(
+                        key: Key('${record['type']}_${record['id']}'),
+                        background: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF3B82F6),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.only(left: 20),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.edit, color: Colors.white),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Modify',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
-                            ),
-                            confirmDismiss: (direction) async {
-                              if (direction == DismissDirection.endToStart) {
-                                // Capture scaffold messenger before async gap
-                                final scaffoldMessenger = ScaffoldMessenger.of(
-                                  context,
-                                );
+                            ],
+                          ),
+                        ),
+                        secondaryBackground: Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEF4444),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          alignment: Alignment.centerRight,
+                          padding: const EdgeInsets.only(right: 20),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Delete',
+                                style: GoogleFonts.outfit(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Icon(Icons.delete, color: Colors.white),
+                            ],
+                          ),
+                        ),
+                        confirmDismiss: (direction) async {
+                          if (direction == DismissDirection.endToStart) {
+                            // Capture scaffold messenger before async gap
+                            final scaffoldMessenger = ScaffoldMessenger.of(
+                              context,
+                            );
 
-                                // Delete action - show beautiful confirmation dialog
-                                final confirmed = await showModalBottomSheet<bool>(
-                                  context: context,
-                                  backgroundColor: Colors.transparent,
-                                  builder: (dialogContext) {
-                                    final dialogIsDark =
-                                        Theme.of(dialogContext).brightness ==
-                                        Brightness.dark;
-                                    final dialogCardColor = dialogIsDark
-                                        ? const Color(0xFF1E1E1E)
-                                        : Theme.of(
-                                                dialogContext,
-                                              ).dialogTheme.backgroundColor ??
-                                              Colors.white;
-                                    final dialogTextColor = dialogIsDark
-                                        ? Colors.white
-                                        : const Color(0xFF101828);
-                                    final dialogSecondaryColor = dialogIsDark
-                                        ? const Color(0xFF9CA3AF)
-                                        : const Color(0xFF667085);
+                            // Delete action - show beautiful confirmation dialog
+                            final confirmed = await showModalBottomSheet<bool>(
+                              context: context,
+                              backgroundColor: Colors.transparent,
+                              builder: (dialogContext) {
+                                final dialogIsDark =
+                                    Theme.of(dialogContext).brightness ==
+                                    Brightness.dark;
+                                final dialogCardColor = dialogIsDark
+                                    ? const Color(0xFF1E1E1E)
+                                    : Theme.of(
+                                            dialogContext,
+                                          ).dialogTheme.backgroundColor ??
+                                          Colors.white;
+                                final dialogTextColor = dialogIsDark
+                                    ? Colors.white
+                                    : const Color(0xFF101828);
+                                final dialogSecondaryColor = dialogIsDark
+                                    ? const Color(0xFF9CA3AF)
+                                    : const Color(0xFF667085);
 
-                                    return Container(
-                                      margin: const EdgeInsets.all(16),
-                                      decoration: BoxDecoration(
-                                        color: dialogCardColor,
-                                        borderRadius: BorderRadius.circular(24),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(
-                                              alpha: 0.15,
-                                            ),
-                                            blurRadius: 20,
-                                            offset: const Offset(0, -5),
-                                          ),
-                                        ],
+                                return Container(
+                                  margin: const EdgeInsets.all(16),
+                                  decoration: BoxDecoration(
+                                    color: dialogCardColor,
+                                    borderRadius: BorderRadius.circular(24),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.15),
+                                        blurRadius: 20,
+                                        offset: const Offset(0, -5),
                                       ),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          const SizedBox(height: 12),
-                                          // Handle bar
-                                          Container(
-                                            width: 40,
-                                            height: 4,
-                                            decoration: BoxDecoration(
-                                              color: dialogSecondaryColor
-                                                  .withValues(alpha: 0.3),
-                                              borderRadius:
-                                                  BorderRadius.circular(2),
-                                            ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const SizedBox(height: 12),
+                                      // Handle bar
+                                      Container(
+                                        width: 40,
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: dialogSecondaryColor
+                                              .withOpacity(0.3),
+                                          borderRadius: BorderRadius.circular(
+                                            2,
                                           ),
-                                          const SizedBox(height: 24),
-                                          // Warning icon
-                                          Container(
-                                            width: 64,
-                                            height: 64,
-                                            decoration: BoxDecoration(
-                                              color: const Color(
-                                                0xFFEF4444,
-                                              ).withValues(alpha: 0.1),
-                                              shape: BoxShape.circle,
-                                            ),
-                                            child: const Icon(
-                                              Icons.delete_outline_rounded,
-                                              color: Color(0xFFEF4444),
-                                              size: 32,
-                                            ),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 24),
+                                      // Warning icon
+                                      Container(
+                                        width: 64,
+                                        height: 64,
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFFEF4444,
+                                          ).withOpacity(0.1),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.delete_outline_rounded,
+                                          color: Color(0xFFEF4444),
+                                          size: 32,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 20),
+                                      // Title
+                                      Text(
+                                        'Delete Record',
+                                        style: GoogleFonts.outfit(
+                                          fontSize: 20,
+                                          fontWeight: FontWeight.w700,
+                                          color: dialogTextColor,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 8),
+                                      // Message
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24,
+                                        ),
+                                        child: Text(
+                                          'Are you sure you want to delete ${record['id']}? This action cannot be undone.',
+                                          textAlign: TextAlign.center,
+                                          style: GoogleFonts.outfit(
+                                            fontSize: 14,
+                                            color: dialogSecondaryColor,
+                                            height: 1.5,
                                           ),
-                                          const SizedBox(height: 20),
-                                          // Title
-                                          Text(
-                                            'Delete Record',
-                                            style: GoogleFonts.inter(
-                                              fontSize: 20,
-                                              fontWeight: FontWeight.w700,
-                                              color: dialogTextColor,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 8),
-                                          // Message
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 24,
-                                            ),
-                                            child: Text(
-                                              'Are you sure you want to delete ${record['id']}? This action cannot be undone.',
-                                              textAlign: TextAlign.center,
-                                              style: GoogleFonts.inter(
-                                                fontSize: 14,
-                                                color: dialogSecondaryColor,
-                                                height: 1.5,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 28),
+                                      // Buttons
+                                      Padding(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            // Cancel button
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () => Navigator.pop(
+                                                  dialogContext,
+                                                  false,
+                                                ),
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 14,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: dialogIsDark
+                                                        ? const Color(
+                                                            0xFF2A2A2A,
+                                                          )
+                                                        : const Color(
+                                                            0xFFF3F4F6,
+                                                          ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      'Cancel',
+                                                      style: GoogleFonts.outfit(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: dialogTextColor,
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
                                               ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 28),
-                                          // Buttons
-                                          Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                              horizontal: 16,
-                                            ),
-                                            child: Row(
-                                              children: [
-                                                // Cancel button
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () => Navigator.pop(
-                                                      dialogContext,
-                                                      false,
-                                                    ),
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 14,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: dialogIsDark
-                                                            ? const Color(
-                                                                0xFF2A2A2A,
-                                                              )
-                                                            : const Color(
-                                                                0xFFF3F4F6,
-                                                              ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                      ),
-                                                      child: Center(
-                                                        child: Text(
-                                                          'Cancel',
-                                                          style: GoogleFonts.inter(
-                                                            fontSize: 16,
-                                                            fontWeight:
-                                                                FontWeight.w600,
-                                                            color:
-                                                                dialogTextColor,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
+                                            const SizedBox(width: 12),
+                                            // Delete button
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () => Navigator.pop(
+                                                  dialogContext,
+                                                  true,
                                                 ),
-                                                const SizedBox(width: 12),
-                                                // Delete button
-                                                Expanded(
-                                                  child: GestureDetector(
-                                                    onTap: () => Navigator.pop(
-                                                      dialogContext,
-                                                      true,
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        vertical: 14,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFFEF4444,
                                                     ),
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 14,
-                                                          ),
-                                                      decoration: BoxDecoration(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    boxShadow: [
+                                                      BoxShadow(
                                                         color: const Color(
                                                           0xFFEF4444,
+                                                        ).withOpacity(0.3),
+                                                        blurRadius: 8,
+                                                        offset: const Offset(
+                                                          0,
+                                                          4,
                                                         ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                        boxShadow: [
-                                                          BoxShadow(
-                                                            color:
-                                                                const Color(
-                                                                  0xFFEF4444,
-                                                                ).withValues(
-                                                                  alpha: 0.3,
-                                                                ),
-                                                            blurRadius: 8,
-                                                            offset:
-                                                                const Offset(
-                                                                  0,
-                                                                  4,
-                                                                ),
-                                                          ),
-                                                        ],
                                                       ),
-                                                      child: Center(
-                                                        child: Text(
-                                                          'Delete',
-                                                          style:
-                                                              GoogleFonts.inter(
-                                                                fontSize: 16,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .w600,
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                        ),
+                                                    ],
+                                                  ),
+                                                  child: Center(
+                                                    child: Text(
+                                                      'Delete',
+                                                      style: GoogleFonts.outfit(
+                                                        fontSize: 16,
+                                                        fontWeight:
+                                                            FontWeight.w600,
+                                                        color: Colors.white,
                                                       ),
                                                     ),
                                                   ),
                                                 ),
-                                              ],
+                                              ),
                                             ),
-                                          ),
-                                          const SizedBox(height: 24),
-                                        ],
+                                          ],
+                                        ),
                                       ),
-                                    );
-                                  },
+                                      const SizedBox(height: 24),
+                                    ],
+                                  ),
                                 );
+                              },
+                            );
 
-                                if (confirmed == true) {
-                                  // Delete from Supabase
-                                  try {
-                                    final isTrip = record['type'] == 'trip';
-                                    final data = record['data'];
+                            if (confirmed == true) {
+                              // Delete from Supabase
+                              try {
+                                final isTrip = record['type'] == 'trip';
+                                final data = record['data'];
 
-                                    if (isTrip) {
-                                      final trip = data as Trip;
-                                      if (trip.id != null) {
-                                        await TripService.deleteTrip(trip.id!);
-                                      }
-                                    } else {
-                                      final fuel = data as FuelEntry;
-                                      if (fuel.id != null) {
-                                        await FuelService.deleteFuelEntry(
-                                          fuel.id!,
-                                        );
-                                      }
-                                    }
-
-                                    // Remove from local list
-                                    setState(() {
-                                      _allRecords.removeWhere(
-                                        (r) =>
-                                            r['type'] == record['type'] &&
-                                            r['id'] == record['id'],
-                                      );
-                                    });
-
-                                    scaffoldMessenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          '${record['id']} deleted',
-                                        ),
-                                        backgroundColor: const Color(
-                                          0xFF10B981,
-                                        ),
-                                      ),
-                                    );
-                                    return false; // Don't auto-dismiss, we already removed it
-                                  } catch (e) {
-                                    scaffoldMessenger.showSnackBar(
-                                      SnackBar(
-                                        content: Text('Failed to delete: $e'),
-                                        backgroundColor: const Color(
-                                          0xFFEF4444,
-                                        ),
-                                      ),
-                                    );
-                                    return false;
+                                if (isTrip) {
+                                  final trip = data as Trip;
+                                  if (trip.id != null) {
+                                    await TripService.deleteTrip(trip.id!);
+                                  }
+                                } else {
+                                  final fuel = data as FuelEntry;
+                                  if (fuel.id != null) {
+                                    await FuelService.deleteFuelEntry(fuel.id!);
                                   }
                                 }
-                                return false;
-                              } else {
-                                // Modify action - show bottom sheet
-                                _showModifyBottomSheet(
-                                  record,
-                                  textColor,
-                                  secondaryTextColor,
-                                  cardColor,
-                                  borderColor,
+
+                                // Remove from local list
+                                setState(() {
+                                  _allRecords.removeWhere(
+                                    (r) =>
+                                        r['type'] == record['type'] &&
+                                        r['id'] == record['id'],
+                                  );
+                                });
+
+                                scaffoldMessenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('${record['id']} deleted'),
+                                    backgroundColor: const Color(0xFF10B981),
+                                  ),
+                                );
+                                return false; // Don't auto-dismiss, we already removed it
+                              } catch (e) {
+                                scaffoldMessenger.showSnackBar(
+                                  SnackBar(
+                                    content: Text('Failed to delete: $e'),
+                                    backgroundColor: const Color(0xFFEF4444),
+                                  ),
                                 );
                                 return false;
                               }
-                            },
-                            child: _buildExpandableCard(
+                            }
+                            return false;
+                          } else {
+                            // Modify action - show bottom sheet
+                            _showModifyBottomSheet(
                               record,
-                              cardColor,
-                              borderColor,
                               textColor,
                               secondaryTextColor,
-                            ),
-                          );
+                              cardColor,
+                              borderColor,
+                            );
+                            return false;
+                          }
                         },
-                      ),
-              ),
-            ),
+                        child: _buildExpandableCard(
+                          record,
+                          cardColor,
+                          borderColor,
+                          textColor,
+                          secondaryTextColor,
+                        ),
+                      );
+                    },
+                  ),
           ),
         ),
       ),
@@ -940,8 +908,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20),
           border: Border.all(color: borderColor),
         ),
         child: Column(
@@ -958,7 +926,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         (isTrip
                                 ? const Color(0xFF3B82F6)
                                 : const Color(0xFFF59E0B))
-                            .withValues(alpha: 0.1),
+                            .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(
@@ -979,7 +947,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         children: [
                           Text(
                             record['id'] as String? ?? '',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: textColor,
@@ -987,7 +955,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           ),
                           Text(
                             record['value'] as String? ?? '',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF3B82F6),
@@ -1003,7 +971,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           Expanded(
                             child: Text(
                               record['description'] as String? ?? '',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.outfit(
                                 fontSize: 13,
                                 color: secondaryTextColor,
                               ),
@@ -1016,7 +984,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             children: [
                               Text(
                                 record['date'] as String? ?? '',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 13,
                                   color: secondaryTextColor,
                                 ),
@@ -1233,13 +1201,13 @@ class _RecordsListPageState extends State<RecordsListPage> {
           width: 80,
           child: Text(
             label,
-            style: GoogleFonts.inter(fontSize: 13, color: secondaryTextColor),
+            style: GoogleFonts.outfit(fontSize: 13, color: secondaryTextColor),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 13,
               fontWeight: FontWeight.w500,
               color: valueColor ?? textColor,
@@ -1267,7 +1235,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
           width: 80,
           child: Text(
             label,
-            style: GoogleFonts.inter(fontSize: 13, color: secondaryTextColor),
+            style: GoogleFonts.outfit(fontSize: 13, color: secondaryTextColor),
           ),
         ),
         Expanded(
@@ -1279,7 +1247,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       item,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
                         color: textColor,
@@ -1369,7 +1337,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Colors.grey[400],
+                            color: Theme.of(context).colorScheme.outlineVariant,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -1380,9 +1348,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           Container(
                             padding: const EdgeInsets.all(10),
                             decoration: BoxDecoration(
-                              color: const Color(
-                                0xFF007AFF,
-                              ).withValues(alpha: 0.1),
+                              color: const Color(0xFF007AFF).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: const Icon(
@@ -1398,15 +1364,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               children: [
                                 Text(
                                   'Export Records',
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.outfit(
                                     fontSize: 18,
                                     fontWeight: FontWeight.w600,
                                     color: textColor,
                                   ),
                                 ),
                                 Text(
-                                  'Download as PDF file',
-                                  style: GoogleFonts.inter(
+                                  'Download as PDF or CSV',
+                                  style: GoogleFonts.outfit(
                                     fontSize: 13,
                                     color: secondaryTextColor,
                                   ),
@@ -1421,7 +1387,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       // Date Range Section
                       Text(
                         'Date Range',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: textColor,
@@ -1601,7 +1567,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       // Filter Selection
                       Text(
                         'Record Type',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: textColor,
@@ -1629,7 +1595,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               color: secondaryTextColor,
                             ),
                             dropdownColor: cardColor,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 14,
                               color: textColor,
                             ),
@@ -1673,34 +1639,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: exportCount > 0
-                                ? [
-                                    const Color(
-                                      0xFF007AFF,
-                                    ).withValues(alpha: 0.1),
-                                    const Color(
-                                      0xFF007AFF,
-                                    ).withValues(alpha: 0.05),
-                                  ]
-                                : [
-                                    const Color(
-                                      0xFFEF4444,
-                                    ).withValues(alpha: 0.1),
-                                    const Color(
-                                      0xFFEF4444,
-                                    ).withValues(alpha: 0.05),
-                                  ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
+                          color: exportCount > 0
+                              ? const Color(0xFF007AFF).withOpacity(0.1)
+                              : const Color(0xFFEF4444).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                           border: Border.all(
                             color: exportCount > 0
-                                ? const Color(0xFF007AFF).withValues(alpha: 0.3)
-                                : const Color(
-                                    0xFFEF4444,
-                                  ).withValues(alpha: 0.3),
+                                ? const Color(0xFF007AFF).withOpacity(0.3)
+                                : const Color(0xFFEF4444).withOpacity(0.3),
                           ),
                         ),
                         child: Row(
@@ -1709,12 +1655,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               padding: const EdgeInsets.all(8),
                               decoration: BoxDecoration(
                                 color: exportCount > 0
-                                    ? const Color(
-                                        0xFF007AFF,
-                                      ).withValues(alpha: 0.2)
-                                    : const Color(
-                                        0xFFEF4444,
-                                      ).withValues(alpha: 0.2),
+                                    ? const Color(0xFF007AFF).withOpacity(0.2)
+                                    : const Color(0xFFEF4444).withOpacity(0.2),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
@@ -1736,7 +1678,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     exportCount > 0
                                         ? '$exportCount Records found'
                                         : 'No records found',
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.outfit(
                                       fontSize: 14,
                                       fontWeight: FontWeight.w600,
                                       color: textColor,
@@ -1746,7 +1688,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     exportCount > 0
                                         ? 'Ready to export'
                                         : 'Adjust filters',
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.outfit(
                                       fontSize: 12,
                                       color: secondaryTextColor,
                                     ),
@@ -1763,7 +1705,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       if (selectedExportFilter != 'Fuel Only') ...[
                         Text(
                           'Trip Columns',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: textColor,
@@ -1780,7 +1722,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             return FilterChip(
                               label: Text(
                                 entry.value,
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 12,
                                   color: isSelected ? Colors.white : textColor,
                                 ),
@@ -1822,7 +1764,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           !selectedExportFilter.contains('mi)')) ...[
                         Text(
                           'Fuel Columns',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                             color: textColor,
@@ -1839,7 +1781,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             return FilterChip(
                               label: Text(
                                 entry.value,
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 12,
                                   color: isSelected ? Colors.white : textColor,
                                 ),
@@ -1877,46 +1819,76 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       ],
 
                       // Download Button
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: exportCount > 0
-                              ? () {
-                                  setState(() {
-                                    _selectedDateRange = tempDateRange;
-                                  });
-                                  Navigator.pop(context);
-                                  _downloadPDF(
-                                    selectedExportFilter,
-                                    tempDateRange,
-                                  );
-                                }
-                              : null,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF007AFF),
-                            disabledBackgroundColor: isDark
-                                ? const Color(0xFF3A3A3A)
-                                : const Color(0xFFE5E5E5),
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            elevation: 0,
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.download_rounded,
-                                color: exportCount > 0
-                                    ? Colors.white
-                                    : secondaryTextColor,
-                                size: 20,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: exportCount > 0
+                                  ? () {
+                                      setState(() {
+                                        _selectedDateRange = tempDateRange;
+                                      });
+                                      Navigator.pop(context);
+                                      _downloadCSV(
+                                        selectedExportFilter,
+                                        tempDateRange,
+                                      );
+                                    }
+                                  : null,
+                              style: OutlinedButton.styleFrom(
+                                side: BorderSide(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.outlineVariant,
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              Text(
+                              child: Text(
+                                'Download CSV',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: textColor,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: ElevatedButton(
+                              onPressed: exportCount > 0
+                                  ? () {
+                                      setState(() {
+                                        _selectedDateRange = tempDateRange;
+                                      });
+                                      Navigator.pop(context);
+                                      _downloadPDF(
+                                        selectedExportFilter,
+                                        tempDateRange,
+                                      );
+                                    }
+                                  : null,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF007AFF),
+                                disabledBackgroundColor: isDark
+                                    ? const Color(0xFF3A3A3A)
+                                    : const Color(0xFFE5E5E5),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 16,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: Text(
                                 'Download PDF',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w600,
                                   color: exportCount > 0
@@ -1924,9 +1896,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                       : secondaryTextColor,
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -1963,7 +1935,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 11,
                 fontWeight: FontWeight.w500,
                 color: secondaryTextColor,
@@ -1983,7 +1955,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                 Expanded(
                   child: Text(
                     date != null ? _formatDate(date) : 'Select',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                       color: date != null ? textColor : secondaryTextColor,
@@ -2016,7 +1988,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
         ),
         child: Text(
           label,
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: secondaryTextColor,
@@ -2104,6 +2076,141 @@ class _RecordsListPageState extends State<RecordsListPage> {
       'Dec',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  Future<void> _downloadCSV(String filter, DateTimeRange? dateRange) async {
+    // Show loading indicator
+    unawaited(
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            color: Color(0xFF007AFF),
+            strokeWidth: 3.0,
+          ),
+        ),
+      ),
+    );
+
+    try {
+      // Get records to export
+      final recordsToExport = _getExportRecords(filter, dateRange);
+
+      // Prepare CSV data
+      List<List<dynamic>> rows = [];
+
+      // Add Header
+      rows.add([
+        'Date',
+        'Type',
+        'ID/Truck',
+        'Description/Location',
+        'Distance/Quantity',
+        'Unit',
+        'Cost',
+        'Notes',
+        'From',
+        'To',
+        'Odometer',
+      ]);
+
+      // Add Rows
+      for (var record in recordsToExport) {
+        final date = DateFormat('yyyy-MM-dd').format(record['rawDate']);
+        final type = record['type'] == 'trip' ? 'Trip' : 'Fuel';
+        final data = record['data'];
+
+        if (record['type'] == 'trip') {
+          final trip = data as Trip;
+          final distance = trip.totalDistance?.toStringAsFixed(1) ?? '';
+          final unit = trip.distanceUnitLabel;
+          final from = trip.pickupLocations.isNotEmpty
+              ? AddressUtils.formatForPdf(trip.pickupLocations.first)
+              : '';
+          final to = trip.deliveryLocations.isNotEmpty
+              ? AddressUtils.formatForPdf(trip.deliveryLocations.last)
+              : '';
+
+          rows.add([
+            date,
+            type,
+            'Trip #${trip.tripNumber}',
+            trip.notes ?? '', // Description used for notes here or route?
+            // Actually `record['description']` has route.
+            // But let's use specific fields.
+            distance,
+            unit,
+            '', // Cost
+            trip.notes ?? '',
+            from,
+            to,
+            '', // Odometer
+          ]);
+        } else {
+          final fuel = data as FuelEntry;
+          final quantity = fuel.fuelQuantity.toStringAsFixed(1);
+          final unit = fuel.fuelUnitLabel;
+          final cost = fuel.totalCost.toStringAsFixed(2);
+          final truck = fuel.isTruckFuel
+              ? (fuel.truckNumber ?? 'Truck')
+              : (fuel.reeferNumber ?? 'Reefer');
+          final location = AddressUtils.formatForPdf(fuel.location ?? '');
+          final odometer =
+              fuel.odometerReading?.toStringAsFixed(0) ??
+              (fuel.reeferHours?.toStringAsFixed(1) ?? '');
+
+          rows.add([
+            date,
+            type,
+            truck,
+            location,
+            quantity,
+            unit,
+            cost,
+            '', // Notes
+            '', // From
+            '', // To
+            odometer,
+          ]);
+        }
+      }
+
+      final csvData = const ListToCsvConverter().convert(rows);
+
+      // Save file
+      final fileName =
+          'Milow_Records_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
+
+      Directory? directory;
+      if (Platform.isAndroid) {
+        directory = Directory('/storage/emulated/0/Download');
+        if (!await directory.exists()) {
+          directory = await getExternalStorageDirectory();
+        }
+      } else {
+        directory = await getApplicationDocumentsDirectory();
+      }
+
+      final path = '${directory!.path}/$fileName';
+      final file = File(path);
+      await file.writeAsString(csvData);
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        _showExportSuccessDialog(path, fileName);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error generating CSV: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   Future<void> _downloadPDF(String filter, DateTimeRange? dateRange) async {
@@ -2592,7 +2699,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
       // Show success dialog with options
       if (mounted) {
-        _showPdfSuccessDialog(filePath, fileName);
+        _showExportSuccessDialog(filePath, fileName);
       }
     } catch (e) {
       // Close loading dialog
@@ -2912,13 +3019,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
     }).toList();
   }
 
-  void _showPdfSuccessDialog(String filePath, String fileName) {
+  void _showExportSuccessDialog(String filePath, String fileName) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
     final secondaryTextColor = isDark
         ? const Color(0xFF9CA3AF)
         : const Color(0xFF667085);
+
+    final isPdf = fileName.toLowerCase().endsWith('.pdf');
+    final type = isPdf ? 'PDF' : 'CSV';
 
     showModalBottomSheet(
       context: context,
@@ -2935,7 +3045,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  color: const Color(0xFF10B981).withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
@@ -2946,8 +3056,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
               ),
               const SizedBox(height: 20),
               Text(
-                'PDF Generated Successfully!',
-                style: GoogleFonts.inter(
+                '$type Generated Successfully!',
+                style: GoogleFonts.outfit(
                   fontSize: 18,
                   fontWeight: FontWeight.w600,
                   color: textColor,
@@ -2956,7 +3066,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
               const SizedBox(height: 8),
               Text(
                 fileName,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: secondaryTextColor,
                 ),
@@ -2968,7 +3078,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+                  color: const Color(0xFF007AFF).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -2982,8 +3092,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     const SizedBox(width: 8),
                     Flexible(
                       child: Text(
-                        'Saved to: Documents folder',
-                        style: GoogleFonts.inter(
+                        'Saved to device storage',
+                        style: GoogleFonts.outfit(
                           fontSize: 12,
                           color: const Color(0xFF007AFF),
                         ),
@@ -3008,7 +3118,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       icon: const Icon(Icons.share, color: Color(0xFF007AFF)),
                       label: Text(
                         'Share',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           color: const Color(0xFF007AFF),
                           fontWeight: FontWeight.w600,
                         ),
@@ -3032,7 +3142,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       icon: const Icon(Icons.open_in_new, color: Colors.white),
                       label: Text(
                         'Open',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
                         ),

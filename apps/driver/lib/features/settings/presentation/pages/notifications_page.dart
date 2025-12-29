@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -108,10 +107,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
+    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -142,18 +138,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
               children: [
                 Text(
                   'Notifications',
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: Theme.of(context).textTheme.bodyLarge?.color,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
                 if (unread > 0)
                   Text(
                     '$unread unread',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: const Color(0xFF98A2B3),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
                     ),
                   ),
               ],
@@ -165,10 +159,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
             onPressed: _markAllAsRead,
             child: Text(
               'Mark all read',
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: const Color(0xFF007AFF),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: Theme.of(context).colorScheme.primary,
               ),
             ),
           ),
@@ -321,8 +314,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   Widget _buildFilterChip(String label, int count) {
     final isSelected = _selectedFilter == label;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -333,17 +324,13 @@ class _NotificationsPageState extends State<NotificationsPage> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF007AFF)
-              : isDark
-              ? const Color(0xFF2A2A2A)
-              : Colors.white,
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: isSelected
-                ? const Color(0xFF007AFF)
-                : isDark
-                ? const Color(0xFF3A3A3A)
-                : const Color(0xFFE5E7EB),
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
         child: Row(
@@ -351,12 +338,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.bold,
                 color: isSelected
-                    ? Colors.white
-                    : Theme.of(context).textTheme.bodyLarge?.color,
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: 6),
@@ -364,16 +350,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : const Color(0xFF007AFF).withValues(alpha: 0.1),
+                    ? Colors.white.withOpacity(0.2)
+                    : const Color(0xFF007AFF).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
                 '$count',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                  color: isSelected ? Colors.white : const Color(0xFF007AFF),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: isSelected
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.primary,
                 ),
               ),
             ),
@@ -384,30 +371,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Widget _buildNotificationCard(NotificationItem notification) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-
     return GestureDetector(
       onTap: () => _markAsRead(notification.id),
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: cardColor,
-          borderRadius: BorderRadius.circular(12),
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(20), // Standard M3 20px
           border: Border.all(
-            color: !notification.isRead
-                ? const Color(0xFF007AFF).withValues(alpha: 0.3)
-                : Colors.transparent,
-            width: !notification.isRead ? 1.5 : 0,
+            color: Theme.of(context).colorScheme.outlineVariant,
+            width: 1,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          // No shadow, flat M3 style or minimal elevation if needed
         ),
         child: Column(
           children: [
@@ -419,7 +395,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   decoration: BoxDecoration(
                     color: _getNotificationColor(
                       notification.type,
-                    ).withValues(alpha: 0.1),
+                    ).withOpacity(0.1),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Icon(
@@ -438,15 +414,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           Expanded(
                             child: Text(
                               notification.title,
-                              style: GoogleFonts.inter(
-                                fontSize: 15,
-                                fontWeight: notification.isRead
-                                    ? FontWeight.w600
-                                    : FontWeight.w700,
-                                color: Theme.of(
-                                  context,
-                                ).textTheme.bodyLarge?.color,
-                              ),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontWeight: notification.isRead
+                                        ? FontWeight.bold
+                                        : FontWeight.w900,
+                                  ),
                             ),
                           ),
                           if (!notification.isRead)
@@ -463,10 +436,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       const SizedBox(height: 6),
                       Text(
                         notification.message,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          color: const Color(0xFF667085),
-                          height: 1.5,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
@@ -482,10 +453,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
                           const SizedBox(width: 4),
                           Text(
                             _formatTimestamp(notification.timestamp),
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              color: const Color(0xFF98A2B3),
-                            ),
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
                           ),
                           const SizedBox(width: 12),
                           Container(
@@ -496,16 +469,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             decoration: BoxDecoration(
                               color: _getNotificationColor(
                                 notification.type,
-                              ).withValues(alpha: 0.1),
+                              ).withOpacity(0.1),
                               borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               _getNotificationLabel(notification.type),
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: _getNotificationColor(notification.type),
-                              ),
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                    color: _getNotificationColor(
+                                      notification.type,
+                                    ),
+                                  ),
                             ),
                           ),
                         ],
@@ -563,26 +538,25 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  color: const Color(0xFF10B981).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    color: const Color(0xFF10B981).withOpacity(0.3),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
+                    const Icon(
                       Icons.check_circle_outline,
                       size: 16,
-                      color: const Color(0xFF10B981),
+                      color: Color(0xFF10B981),
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Response Submitted',
-                      style: GoogleFonts.inter(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
                         color: const Color(0xFF10B981),
                       ),
                     ),
@@ -705,7 +679,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF007AFF).withValues(alpha: 0.1),
+              color: const Color(0xFF007AFF).withOpacity(0.1),
               shape: BoxShape.circle,
             ),
             child: const Icon(
@@ -717,18 +691,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
           const SizedBox(height: 24),
           Text(
             'No notifications',
-            style: GoogleFonts.inter(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).textTheme.bodyLarge?.color,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Text(
             'You\'re all caught up!',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: const Color(0xFF667085),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
         ],

@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:go_router/go_router.dart';
@@ -154,19 +153,20 @@ class _SignUpPageState extends State<SignUpPage>
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          backgroundColor: Theme.of(context).brightness == Brightness.dark
-              ? const Color(0xFF1E1E1E)
-              : Colors.white,
+          backgroundColor: Theme.of(context).cardColor,
           title: Text(
             'Resend Verification',
-            style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600),
+            style: GoogleFonts.outfit(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
                 "Enter your email address and we'll resend the verification link.",
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 14,
                   color: const Color(0xFF667085),
                 ),
@@ -175,6 +175,7 @@ class _SignUpPageState extends State<SignUpPage>
               TextField(
                 controller: verifyEmailController,
                 keyboardType: TextInputType.emailAddress,
+                style: GoogleFonts.outfit(fontSize: 16),
                 decoration: _inputDecoration(
                   hint: 'Email address',
                   prefixIcon: Icons.alternate_email,
@@ -188,8 +189,8 @@ class _SignUpPageState extends State<SignUpPage>
                     vertical: 8,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.red.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   child: Row(
                     children: [
@@ -202,7 +203,7 @@ class _SignUpPageState extends State<SignUpPage>
                       Expanded(
                         child: Text(
                           verifyError!,
-                          style: const TextStyle(
+                          style: GoogleFonts.outfit(
                             color: Colors.red,
                             fontSize: 12,
                           ),
@@ -219,92 +220,78 @@ class _SignUpPageState extends State<SignUpPage>
               onPressed: () => Navigator.pop(dialogContext),
               child: Text(
                 'Cancel',
-                style: GoogleFonts.inter(color: const Color(0xFF667085)),
+                style: GoogleFonts.outfit(color: const Color(0xFF667085)),
               ),
             ),
-            Container(
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF007AFF), Color(0xFF00D4AA)],
-                ),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: ElevatedButton(
-                onPressed: isSending
-                    ? null
-                    : () async {
-                        final email = verifyEmailController.text.trim();
-                        if (email.isEmpty ||
-                            !RegExp(
-                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                            ).hasMatch(email)) {
-                          setDialogState(
-                            () => verifyError = 'Please enter a valid email',
-                          );
-                          return;
-                        }
-                        setDialogState(() {
-                          isSending = true;
-                          verifyError = null;
-                        });
-                        try {
-                          await Supabase.instance.client.auth.resend(
-                            type: OtpType.signup,
-                            email: email,
-                            emailRedirectTo: 'milow://login',
-                          );
-                          if (dialogContext.mounted) {
-                            Navigator.pop(dialogContext);
-                            messenger.showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  'Verification email sent to $email',
-                                ),
-                                backgroundColor: const Color(0xFF10B981),
+            FilledButton(
+              onPressed: isSending
+                  ? null
+                  : () async {
+                      final email = verifyEmailController.text.trim();
+                      if (email.isEmpty ||
+                          !RegExp(
+                            r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                          ).hasMatch(email)) {
+                        setDialogState(
+                          () => verifyError = 'Please enter a valid email',
+                        );
+                        return;
+                      }
+                      setDialogState(() {
+                        isSending = true;
+                        verifyError = null;
+                      });
+                      try {
+                        await Supabase.instance.client.auth.resend(
+                          type: OtpType.signup,
+                          email: email,
+                          emailRedirectTo: 'milow://login',
+                        );
+                        if (dialogContext.mounted) {
+                          Navigator.pop(dialogContext);
+                          messenger.showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Verification email sent to $email',
+                                style: GoogleFonts.outfit(),
                               ),
-                            );
-                          }
-                        } catch (e) {
-                          final message = e is AuthException
-                              ? e.message
-                              : e.toString();
-                          if (dialogContext.mounted) {
-                            setDialogState(() {
-                              isSending = false;
-                              verifyError = message.isNotEmpty
-                                  ? message
-                                  : 'Failed to send verification email';
-                            });
-                          }
-                        } finally {
-                          if (dialogContext.mounted) {
-                            setDialogState(() => isSending = false);
-                          }
+                              backgroundColor: const Color(0xFF10B981),
+                            ),
+                          );
                         }
-                      },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.transparent,
-                  shadowColor: Colors.transparent,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
+                      } catch (e) {
+                        final message = e is AuthException
+                            ? e.message
+                            : e.toString();
+                        if (dialogContext.mounted) {
+                          setDialogState(() {
+                            isSending = false;
+                            verifyError = message.isNotEmpty
+                                ? message
+                                : 'Failed to send verification email';
+                          });
+                        }
+                      } finally {
+                        if (dialogContext.mounted) {
+                          setDialogState(() => isSending = false);
+                        }
+                      }
+                    },
+              style: FilledButton.styleFrom(
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3.0,
-                          color: Colors.white,
-                        ),
-                      )
-                    : const Text('Resend'),
               ),
+              child: isSending
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 3.0,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Text('Resend'),
             ),
           ],
         ),
@@ -330,560 +317,457 @@ class _SignUpPageState extends State<SignUpPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDark
         ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF0F4F8);
+        : const Color(0xFFF9FAFB);
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: Stack(
-        children: [
-          // Futuristic background with gradient orbs
-          Positioned(
-            top: -100,
-            right: -100,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF007AFF).withValues(alpha: 0.3),
-                    const Color(0xFF007AFF).withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 100,
-            left: -80,
-            child: Container(
-              width: 200,
-              height: 200,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(0xFF00D4AA).withValues(alpha: 0.25),
-                    const Color(0xFF00D4AA).withValues(alpha: 0.0),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          SafeArea(
-            child: FadeTransition(
-              opacity: _fadeAnim,
-              child: Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
+      body: SafeArea(
+        child: FadeTransition(
+          opacity: _fadeAnim,
+          child: Column(
+            children: [
+              // Header
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    _buildNavButton(
+                      icon: Icons.arrow_back_ios_new,
+                      onTap: () => context.go('/login'),
+                      isDark: isDark,
+                    ),
+                    const SizedBox(width: 16),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _buildGlassButton(
-                          icon: Icons.arrow_back_ios_new,
-                          onTap: () => context.go('/login'),
-                          isDark: isDark,
+                        Text(
+                          'Create Account',
+                          style: GoogleFonts.outfit(
+                            fontSize: 24,
+                            fontWeight: FontWeight.w700,
+                            color: textColor,
+                          ),
                         ),
-                        const SizedBox(width: 16),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Create Account',
-                              style: GoogleFonts.inter(
-                                fontSize: 24,
-                                fontWeight: FontWeight.w700,
-                                color: textColor,
-                              ),
+                        Text(
+                          'Join Milow today',
+                          style: GoogleFonts.outfit(
+                            fontSize: 14,
+                            color: const Color(0xFF667085),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              // Form
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // Name Field
+                      _buildLabel('Full Name'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _nameController,
+                        textCapitalization: TextCapitalization.words,
+                        style: GoogleFonts.outfit(
+                          color: textColor,
+                          fontSize: 16,
+                        ),
+                        decoration: _inputDecoration(
+                          hint: 'John Doe',
+                          prefixIcon: Icons.person_outline,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Email Field
+                      _buildLabel('Email Address'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _emailController,
+                        keyboardType: TextInputType.emailAddress,
+                        style: GoogleFonts.outfit(
+                          color: textColor,
+                          fontSize: 16,
+                        ),
+                        decoration: _inputDecoration(
+                          hint: 'name@email.com',
+                          prefixIcon: Icons.alternate_email,
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+
+                      // Password Field
+                      _buildLabel('Password'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _passwordController,
+                        obscureText: _obscurePassword,
+                        onChanged: _calculatePasswordStrength,
+                        style: GoogleFonts.outfit(
+                          color: textColor,
+                          fontSize: 16,
+                        ),
+                        decoration: _inputDecoration(
+                          hint: 'Create a strong password',
+                          prefixIcon: Icons.lock_outline,
+                          suffixIcon: _obscurePassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          onSuffixTap: () {
+                            setState(
+                              () => _obscurePassword = !_obscurePassword,
+                            );
+                          },
+                        ),
+                      ),
+
+                      // Password Strength Indicator
+                      if (_passwordController.text.isNotEmpty) ...[
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.outlineVariant,
                             ),
-                            Text(
-                              'Join Milow today',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: const Color(0xFF667085),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    _passwordStrength < 0.6
+                                        ? Icons.shield_outlined
+                                        : Icons.verified_user_outlined,
+                                    size: 16,
+                                    color: _strengthColor,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Password Strength: $_strengthText',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: _strengthColor,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: _passwordStrength,
+                                  backgroundColor: _strengthColor.withOpacity(
+                                    0.2,
+                                  ),
+                                  valueColor: AlwaysStoppedAnimation<Color>(
+                                    _strengthColor,
+                                  ),
+                                  minHeight: 6,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 20),
+
+                      // Confirm Password
+                      _buildLabel('Confirm Password'),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _confirmPasswordController,
+                        obscureText: _obscureConfirmPassword,
+                        style: GoogleFonts.outfit(
+                          color: textColor,
+                          fontSize: 16,
+                        ),
+                        decoration: _inputDecoration(
+                          hint: 'Re-enter your password',
+                          prefixIcon: Icons.lock_outline,
+                          suffixIcon: _obscureConfirmPassword
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
+                          onSuffixTap: () {
+                            setState(
+                              () => _obscureConfirmPassword =
+                                  !_obscureConfirmPassword,
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(height: 24),
+
+                      // Terms and Conditions
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _agreedToTerms = !_agreedToTerms);
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).cardColor,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: _agreedToTerms
+                                  ? Theme.of(context).colorScheme.primary
+                                  : Theme.of(
+                                      context,
+                                    ).colorScheme.outlineVariant,
+                              width: _agreedToTerms ? 2 : 1,
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              AnimatedContainer(
+                                duration: const Duration(milliseconds: 200),
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: _agreedToTerms
+                                      ? Theme.of(context).colorScheme.primary
+                                      : isDark
+                                      ? const Color(0xFF2A2A2A)
+                                      : const Color(0xFFF3F4F6),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: _agreedToTerms
+                                      ? null
+                                      : Border.all(
+                                          color: const Color(0xFF98A2B3),
+                                        ),
+                                ),
+                                child: _agreedToTerms
+                                    ? const Icon(
+                                        Icons.check,
+                                        size: 16,
+                                        color: Colors.white,
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: RichText(
+                                  text: TextSpan(
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 13,
+                                      color: const Color(0xFF667085),
+                                      height: 1.4,
+                                    ),
+                                    children: [
+                                      const TextSpan(text: 'I agree to the '),
+                                      TextSpan(
+                                        text: 'Terms & Conditions',
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const TermsPage(),
+                                              ),
+                                            );
+                                          },
+                                      ),
+                                      const TextSpan(text: ' and '),
+                                      TextSpan(
+                                        text: 'Privacy Policy',
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) =>
+                                                    const PrivacyPolicyPage(),
+                                              ),
+                                            );
+                                          },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+
+                      if (!_agreedToTerms) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.info_outline,
+                              size: 14,
+                              color: Colors.orange.shade400,
+                            ),
+                            const SizedBox(width: 6),
+                            Expanded(
+                              child: Text(
+                                'Required to create account',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 12,
+                                  color: Colors.orange.shade400,
+                                ),
                               ),
                             ),
                           ],
                         ),
                       ],
-                    ),
-                  ),
 
-                  // Form
-                  Expanded(
-                    child: SingleChildScrollView(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          // Name Field
-                          _buildLabel('Full Name'),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _nameController,
-                            textCapitalization: TextCapitalization.words,
-                            style: GoogleFonts.inter(color: textColor),
-                            decoration: _inputDecoration(
-                              hint: 'John Doe',
-                              prefixIcon: Icons.person_outline,
+                      const SizedBox(height: 24),
+
+                      // Resend Verification Link
+                      Center(
+                        child: TextButton(
+                          onPressed: _showResendVerificationDialog,
+                          child: Text(
+                            'Already registered? Resend verification email',
+                            style: GoogleFonts.outfit(
+                              fontSize: 13,
+                              color: const Color(0xFF667085),
                             ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Email Field
-                          _buildLabel('Email Address'),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _emailController,
-                            keyboardType: TextInputType.emailAddress,
-                            style: GoogleFonts.inter(color: textColor),
-                            decoration: _inputDecoration(
-                              hint: 'name@email.com',
-                              prefixIcon: Icons.alternate_email,
-                            ),
-                          ),
-
-                          const SizedBox(height: 20),
-
-                          // Password Field
-                          _buildLabel('Password'),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            onChanged: _calculatePasswordStrength,
-                            style: GoogleFonts.inter(color: textColor),
-                            decoration: _inputDecoration(
-                              hint: 'Create a strong password',
-                              prefixIcon: Icons.lock_outline,
-                              suffixIcon: _obscurePassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              onSuffixTap: () {
-                                setState(
-                                  () => _obscurePassword = !_obscurePassword,
-                                );
-                              },
-                            ),
-                          ),
-
-                          // Password Strength Indicator
-                          if (_passwordController.text.isNotEmpty) ...[
-                            const SizedBox(height: 12),
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF1E1E1E)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _strengthColor.withValues(alpha: 0.3),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        _passwordStrength < 0.6
-                                            ? Icons.shield_outlined
-                                            : Icons.verified_user_outlined,
-                                        size: 16,
-                                        color: _strengthColor,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        'Password Strength: $_strengthText',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: _strengthColor,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 8),
-                                  ClipRRect(
-                                    borderRadius: BorderRadius.circular(4),
-                                    child: LinearProgressIndicator(
-                                      value: _passwordStrength,
-                                      backgroundColor: _strengthColor
-                                          .withValues(alpha: 0.2),
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        _strengthColor,
-                                      ),
-                                      minHeight: 6,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-
-                          const SizedBox(height: 20),
-
-                          // Confirm Password
-                          _buildLabel('Confirm Password'),
-                          const SizedBox(height: 8),
-                          TextField(
-                            controller: _confirmPasswordController,
-                            obscureText: _obscureConfirmPassword,
-                            style: GoogleFonts.inter(color: textColor),
-                            decoration: _inputDecoration(
-                              hint: 'Re-enter your password',
-                              prefixIcon: Icons.lock_outline,
-                              suffixIcon: _obscureConfirmPassword
-                                  ? Icons.visibility_off_outlined
-                                  : Icons.visibility_outlined,
-                              onSuffixTap: () {
-                                setState(
-                                  () => _obscureConfirmPassword =
-                                      !_obscureConfirmPassword,
-                                );
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Terms and Conditions - Tappable!
-                          GestureDetector(
-                            onTap: () {
-                              setState(() => _agreedToTerms = !_agreedToTerms);
-                            },
-                            child: Container(
-                              padding: const EdgeInsets.all(16),
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? const Color(0xFF1A1A1A)
-                                    : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: _agreedToTerms
-                                      ? const Color(0xFF007AFF)
-                                      : isDark
-                                      ? const Color(0xFF3A3A3A)
-                                      : const Color(0xFFE5E7EB),
-                                  width: _agreedToTerms ? 2 : 1,
-                                ),
-                                boxShadow: _agreedToTerms
-                                    ? [
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFF007AFF,
-                                          ).withValues(alpha: 0.2),
-                                          blurRadius: 8,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : null,
-                              ),
-                              child: Row(
-                                children: [
-                                  AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    width: 24,
-                                    height: 24,
-                                    decoration: BoxDecoration(
-                                      gradient: _agreedToTerms
-                                          ? const LinearGradient(
-                                              colors: [
-                                                Color(0xFF007AFF),
-                                                Color(0xFF00D4AA),
-                                              ],
-                                            )
-                                          : null,
-                                      color: _agreedToTerms
-                                          ? null
-                                          : isDark
-                                          ? const Color(0xFF2A2A2A)
-                                          : const Color(0xFFF3F4F6),
-                                      borderRadius: BorderRadius.circular(6),
-                                      border: _agreedToTerms
-                                          ? null
-                                          : Border.all(
-                                              color: const Color(0xFF98A2B3),
-                                            ),
-                                    ),
-                                    child: _agreedToTerms
-                                        ? const Icon(
-                                            Icons.check,
-                                            size: 16,
-                                            color: Colors.white,
-                                          )
-                                        : null,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  Expanded(
-                                    child: RichText(
-                                      text: TextSpan(
-                                        style: GoogleFonts.inter(
-                                          fontSize: 13,
-                                          color: const Color(0xFF667085),
-                                          height: 1.4,
-                                        ),
-                                        children: [
-                                          const TextSpan(
-                                            text: 'I agree to the ',
-                                          ),
-                                          TextSpan(
-                                            text: 'Terms & Conditions',
-                                            style: const TextStyle(
-                                              color: Color(0xFF007AFF),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            recognizer: TapGestureRecognizer()
-                                              ..onTap = () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        const TermsPage(),
-                                                  ),
-                                                );
-                                              },
-                                          ),
-                                          const TextSpan(text: ' and '),
-                                          TextSpan(
-                                            text: 'Privacy Policy',
-                                            style: const TextStyle(
-                                              color: Color(0xFF007AFF),
-                                              fontWeight: FontWeight.w600,
-                                            ),
-                                            recognizer: TapGestureRecognizer()
-                                              ..onTap = () {
-                                                Navigator.push(
-                                                  context,
-                                                  MaterialPageRoute(
-                                                    builder: (_) =>
-                                                        const PrivacyPolicyPage(),
-                                                  ),
-                                                );
-                                              },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-
-                          if (!_agreedToTerms) ...[
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(
-                                  Icons.info_outline,
-                                  size: 14,
-                                  color: Colors.orange.shade400,
-                                ),
-                                const SizedBox(width: 6),
-                                Text(
-                                  'Required to create account',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 12,
-                                    color: Colors.orange.shade400,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-
-                          const SizedBox(height: 24),
-
-                          // Resend Verification Link
-                          Center(
-                            child: TextButton(
-                              onPressed: _showResendVerificationDialog,
-                              child: Text(
-                                'Already registered? Resend verification email',
-                                style: GoogleFonts.inter(
-                                  fontSize: 13,
-                                  color: const Color(0xFF667085),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Bottom Sign Up Button
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, -4),
-                  ),
-                ],
-              ),
-              child: SafeArea(
-                top: false,
-                child: Row(
-                  children: [
-                    // Cancel Button
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => context.go('/login'),
-                        style: OutlinedButton.styleFrom(
-                          minimumSize: const Size(0, 54),
-                          side: BorderSide(
-                            color: isDark
-                                ? const Color(0xFF3A3A3A)
-                                : const Color(0xFFE5E7EB),
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: Text(
-                          'Cancel',
-                          style: GoogleFonts.inter(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w600,
-                            color: const Color(0xFF667085),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    // Sign Up Button
-                    Expanded(
-                      flex: 2,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          gradient: _agreedToTerms
-                              ? const LinearGradient(
-                                  colors: [
-                                    Color(0xFF007AFF),
-                                    Color(0xFF00D4AA),
-                                  ],
-                                )
-                              : null,
-                          color: _agreedToTerms
-                              ? null
-                              : const Color(0xFF9CA3AF),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: _agreedToTerms
-                              ? [
-                                  BoxShadow(
-                                    color: const Color(
-                                      0xFF007AFF,
-                                    ).withValues(alpha: 0.4),
-                                    blurRadius: 12,
-                                    offset: const Offset(0, 4),
-                                  ),
-                                ]
-                              : null,
-                        ),
-                        child: ElevatedButton(
-                          onPressed: _isLoading || !_agreedToTerms
-                              ? null
-                              : _signUp,
-                          style: ElevatedButton.styleFrom(
-                            minimumSize: const Size(0, 54),
-                            backgroundColor: Colors.transparent,
-                            shadowColor: Colors.transparent,
-                            disabledBackgroundColor: Colors.transparent,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: _isLoading
-                              ? const SizedBox(
-                                  width: 24,
-                                  height: 24,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 3.0,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Create Account',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.w600,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    const Icon(
-                                      Icons.arrow_forward,
-                                      size: 20,
-                                      color: Colors.white,
-                                    ),
-                                  ],
-                                ),
-                        ),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
+            ],
+          ),
+        ),
+      ),
+
+      // Bottom Sign Up Button
+      bottomNavigationBar: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          border: Border(
+            top: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
             ),
           ),
-        ],
+        ),
+        child: SafeArea(
+          child: Row(
+            children: [
+              // Cancel Button
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => context.go('/login'),
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(0, 56),
+                    side: BorderSide(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.outfit(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF667085),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Sign Up Button
+              Expanded(
+                flex: 2,
+                child: FilledButton(
+                  onPressed: (_isLoading || !_agreedToTerms) ? null : _signUp,
+                  style: FilledButton.styleFrom(
+                    minimumSize: const Size(0, 56),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3.0,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Create Account',
+                              style: GoogleFonts.outfit(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.arrow_forward, size: 20),
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
 
-  Widget _buildGlassButton({
+  Widget _buildNavButton({
     required IconData icon,
     required VoidCallback onTap,
     required bool isDark,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: ClipRRect(
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.1)
-                  : Colors.black.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.1)
-                    : Colors.black.withValues(alpha: 0.1),
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 20,
-              color: isDark ? Colors.white : const Color(0xFF101828),
-            ),
-          ),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: IconButton(
+        icon: Icon(
+          icon,
+          size: 18,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
+        onPressed: onTap,
       ),
     );
   }
@@ -891,8 +775,8 @@ class _SignUpPageState extends State<SignUpPage>
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: GoogleFonts.inter(
-        fontSize: 14,
+      style: GoogleFonts.outfit(
+        fontSize: 15,
         fontWeight: FontWeight.w600,
         color: Theme.of(context).textTheme.bodyLarge?.color,
       ),
@@ -906,36 +790,38 @@ class _SignUpPageState extends State<SignUpPage>
     VoidCallback? onSuffixTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.inter(
+      hintStyle: GoogleFonts.outfit(
         color: const Color(0xFF98A2B3),
         fontSize: 14,
       ),
-      prefixIcon: Icon(prefixIcon, color: const Color(0xFF007AFF), size: 20),
+      prefixIcon: Icon(prefixIcon, color: primaryColor, size: 20),
       suffixIcon: suffixIcon != null
           ? IconButton(
-              icon: Icon(suffixIcon, color: const Color(0xFF007AFF), size: 20),
+              icon: Icon(suffixIcon, color: primaryColor, size: 20),
               onPressed: onSuffixTap,
             )
           : null,
       filled: true,
       fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB),
+          color: Theme.of(context).colorScheme.outlineVariant,
         ),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(
-          color: isDark ? const Color(0xFF3A3A3A) : const Color(0xFFE5E7EB),
+          color: Theme.of(context).colorScheme.outlineVariant,
         ),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: Color(0xFF007AFF), width: 2),
+        borderRadius: BorderRadius.circular(16),
+        borderSide: BorderSide(color: primaryColor, width: 2),
       ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
     );

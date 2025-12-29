@@ -1,6 +1,5 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:milow/core/models/border_wait_time.dart';
 
 class BorderWaitTimeCard extends StatefulWidget {
@@ -9,7 +8,8 @@ class BorderWaitTimeCard extends StatefulWidget {
   final VoidCallback? onRemove;
 
   const BorderWaitTimeCard({
-    required this.waitTime, super.key,
+    required this.waitTime,
+    super.key,
     this.onTap,
     this.onRemove,
   });
@@ -23,206 +23,155 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtextColor = isDark
-        ? Colors.white.withValues(alpha: 0.6)
-        : const Color(0xFF667085);
-    final dividerColor = isDark
-        ? Colors.white.withValues(alpha: 0.1)
-        : const Color(0xFFE2E8F0);
-
     // Determine delay color based on commercial truck delay
     final Color delayColor = _getDelayColor(
       widget.waitTime.commercialDelay,
       widget.waitTime.operationalStatus,
     );
 
-    return Container(
+    return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
+      elevation: 0,
+      color: Theme.of(context).brightness == Brightness.dark
+          ? Colors.black
+          : const Color(0xFFF5F5F5),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.3)
-                : Colors.black.withValues(alpha: 0.08),
-            blurRadius: 24,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
-          ),
-        ],
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
       ),
-      child: ClipRRect(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _isExpanded = !_isExpanded;
+          });
+        },
         borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        Colors.white.withValues(alpha: 0.15),
-                        Colors.white.withValues(alpha: 0.05),
-                      ]
-                    : [
-                        Colors.white.withValues(alpha: 0.9),
-                        Colors.white.withValues(alpha: 0.7),
-                      ],
-              ),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.8),
-                width: 1.5,
-              ),
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: () {
-                  setState(() {
-                    _isExpanded = !_isExpanded;
-                  });
-                },
-                borderRadius: BorderRadius.circular(24),
-                child: Column(
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        children: [
-                          // Delay section
-                          Container(
-                            width: 90,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text(
-                                  widget.waitTime.delayDisplay.split(' ').first,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    color: textColor,
-                                    height: 1,
-                                  ),
-                                ),
-                                const SizedBox(height: 2),
-                                Text(
-                                  _getDelayLabel(),
-                                  style: GoogleFonts.inter(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w500,
-                                    color: delayColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Divider
-                          Container(width: 1, height: 50, color: dividerColor),
-                          const SizedBox(width: 16),
-                          // Port info
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  widget.waitTime.crossingName.isNotEmpty
-                                      ? widget.waitTime.crossingName
-                                      : widget.waitTime.portName,
-                                  style: GoogleFonts.inter(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '${widget.waitTime.portName} • ${widget.waitTime.lanesOpen}/${widget.waitTime.maxLanes} lanes',
-                                  style: GoogleFonts.inter(
-                                    fontSize: 14,
-                                    color: subtextColor,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ],
-                            ),
-                          ),
-                          // Expand/remove icon
-                          if (widget.onRemove != null)
-                            IconButton(
-                              icon: Icon(
-                                Icons.close,
-                                size: 20,
-                                color: subtextColor,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  // Delay section
+                  Container(
+                    width: 90,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          widget.waitTime.delayDisplay.split(' ').first,
+                          style: Theme.of(context).textTheme.headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                height: 1,
                               ),
-                              onPressed: widget.onRemove,
-                              tooltip: 'Remove',
-                            )
-                          else
-                            AnimatedRotation(
-                              turns: _isExpanded ? 0.5 : 0,
-                              duration: const Duration(milliseconds: 200),
-                              child: Icon(
-                                Icons.keyboard_arrow_down,
-                                color: subtextColor,
-                              ),
-                            ),
+                        ),
+                        if (_getDelayLabel().isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            _getDelayLabel(),
+                            style: Theme.of(context).textTheme.labelMedium
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w500,
+                                  color: delayColor,
+                                ),
+                          ),
                         ],
-                      ),
+                      ],
                     ),
-                    // Expanded content
-                    AnimatedCrossFade(
-                      firstChild: const SizedBox.shrink(),
-                      secondChild: _buildExpandedContent(
-                        isDark: isDark,
-                        textColor: textColor,
-                        subtextColor: subtextColor,
-                        dividerColor: dividerColor,
+                  ),
+                  // Divider
+                  Container(
+                    width: 1,
+                    height: 50,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  const SizedBox(width: 16),
+                  // Port info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          widget.waitTime.crossingName.isNotEmpty
+                              ? widget.waitTime.crossingName
+                              : widget.waitTime.portName,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          '${widget.waitTime.portName} • ${widget.waitTime.lanesOpen}/${widget.waitTime.maxLanes} lanes',
+                          style: Theme.of(context).textTheme.bodyMedium
+                              ?.copyWith(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Expand/remove icon
+                  if (widget.onRemove != null)
+                    IconButton(
+                      icon: Icon(
+                        Icons.close,
+                        size: 20,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
-                      crossFadeState: _isExpanded
-                          ? CrossFadeState.showSecond
-                          : CrossFadeState.showFirst,
+                      onPressed: widget.onRemove,
+                      tooltip: 'Remove',
+                    )
+                  else
+                    AnimatedRotation(
+                      turns: _isExpanded ? 0.5 : 0,
                       duration: const Duration(milliseconds: 200),
+                      child: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
-                  ],
-                ),
+                ],
               ),
             ),
-          ),
+            // Expanded content
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: _buildExpandedContent(context),
+              crossFadeState: _isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: const Duration(milliseconds: 200),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildExpandedContent({
-    required bool isDark,
-    required Color textColor,
-    required Color subtextColor,
-    required Color dividerColor,
-  }) {
+  Widget _buildExpandedContent(BuildContext context) {
     final waitTime = widget.waitTime;
-    final accentColor = isDark
-        ? const Color(0xFF3B82F6)
-        : const Color(0xFF2563EB);
+    final accentColor = Theme.of(context).colorScheme.primary;
 
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       child: Column(
         children: [
-          Divider(color: dividerColor, height: 1),
+          Divider(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            height: 1,
+          ),
           const SizedBox(height: 16),
 
           // Standard Commercial Lanes
           _buildLaneSection(
+            context,
             title: 'Standard Commercial Lanes',
             icon: Icons.local_shipping_outlined,
             delay: waitTime.delayDisplay,
@@ -234,8 +183,6 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
               waitTime.commercialDelay,
               waitTime.operationalStatus,
             ),
-            textColor: textColor,
-            subtextColor: subtextColor,
             accentColor: accentColor,
           ),
 
@@ -243,6 +190,7 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
 
           // FAST Lanes
           _buildLaneSection(
+            context,
             title: 'FAST Lanes',
             icon: Icons.speed_outlined,
             delay: waitTime.fastDelayDisplay,
@@ -254,13 +202,16 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
               waitTime.fastLanesDelay,
               waitTime.fastOperationalStatus,
             ),
-            textColor: textColor,
-            subtextColor: subtextColor,
             accentColor: accentColor,
           ),
 
           const SizedBox(height: 16),
-          Divider(color: dividerColor, height: 1),
+          const SizedBox(height: 16),
+          Divider(
+            color: Theme.of(context).colorScheme.outlineVariant,
+            height: 1,
+          ),
+          const SizedBox(height: 12),
           const SizedBox(height: 12),
 
           // Port details
@@ -268,21 +219,19 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
             children: [
               Expanded(
                 child: _buildInfoChip(
+                  context,
                   icon: Icons.access_time_outlined,
                   label: 'Hours',
                   value: waitTime.hours ?? 'N/A',
-                  textColor: textColor,
-                  subtextColor: subtextColor,
                 ),
               ),
               const SizedBox(width: 12),
               Expanded(
                 child: _buildInfoChip(
+                  context,
                   icon: Icons.location_on_outlined,
                   label: 'Border',
                   value: waitTime.border ?? 'N/A',
-                  textColor: textColor,
-                  subtextColor: subtextColor,
                 ),
               ),
             ],
@@ -294,11 +243,10 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
             children: [
               Expanded(
                 child: _buildInfoChip(
+                  context,
                   icon: Icons.info_outline,
                   label: 'Status',
                   value: waitTime.portStatus,
-                  textColor: textColor,
-                  subtextColor: subtextColor,
                   valueColor: waitTime.portStatus == 'Open'
                       ? const Color(0xFF22C55E)
                       : const Color(0xFFEF4444),
@@ -307,11 +255,10 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildInfoChip(
+                  context,
                   icon: Icons.update_outlined,
                   label: 'Updated',
                   value: waitTime.time ?? 'N/A',
-                  textColor: textColor,
-                  subtextColor: subtextColor,
                 ),
               ),
             ],
@@ -326,7 +273,7 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEF3C7),
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
@@ -341,9 +288,8 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
                   Expanded(
                     child: Text(
                       waitTime.constructionNotice!,
-                      style: GoogleFonts.inter(
-                        fontSize: 12,
-                        color: const Color(0xFF92400E),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                       maxLines: 3,
                       overflow: TextOverflow.ellipsis,
@@ -358,7 +304,8 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
     );
   }
 
-  Widget _buildLaneSection({
+  Widget _buildLaneSection(
+    BuildContext context, {
     required String title,
     required IconData icon,
     required String delay,
@@ -367,16 +314,14 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
     required String status,
     required String? updateTime,
     required Color delayColor,
-    required Color textColor,
-    required Color subtextColor,
     required Color accentColor,
   }) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: delayColor.withValues(alpha: 0.1),
+        color: delayColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: delayColor.withValues(alpha: 0.2)),
+        border: Border.all(color: delayColor.withOpacity(0.2)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -388,11 +333,9 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w600),
                 ),
               ),
               Container(
@@ -403,9 +346,8 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
                 ),
                 child: Text(
                   delay,
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                 ),
@@ -417,12 +359,16 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
             children: [
               Text(
                 'Lanes: $lanesOpen/$maxLanes open',
-                style: GoogleFonts.inter(fontSize: 13, color: subtextColor),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(width: 16),
               Text(
                 'Status: $status',
-                style: GoogleFonts.inter(fontSize: 13, color: subtextColor),
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -430,9 +376,11 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
             const SizedBox(height: 4),
             Text(
               'Last updated: $updateTime',
-              style: GoogleFonts.inter(
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 fontSize: 11,
-                color: subtextColor.withValues(alpha: 0.7),
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withOpacity(0.7),
               ),
             ),
           ],
@@ -441,31 +389,35 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
     );
   }
 
-  Widget _buildInfoChip({
+  Widget _buildInfoChip(
+    BuildContext context, {
     required IconData icon,
     required String label,
     required String value,
-    required Color textColor,
-    required Color subtextColor,
     Color? valueColor,
   }) {
     return Row(
       children: [
-        Icon(icon, size: 16, color: subtextColor),
+        Icon(
+          icon,
+          size: 16,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         const SizedBox(width: 6),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: GoogleFonts.inter(fontSize: 11, color: subtextColor),
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             Text(
               value,
-              style: GoogleFonts.inter(
-                fontSize: 13,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: valueColor ?? textColor,
+                color: valueColor ?? Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ],
@@ -491,9 +443,9 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
     final delay = widget.waitTime.commercialDelay;
     final status = widget.waitTime.operationalStatus;
 
-    if (status == 'Lanes Closed') return 'Closed';
-    if (status == 'Update Pending') return 'Pending';
-    if (delay == null || delay == 0) return 'No Delay';
+    if (status == 'Lanes Closed') return '';
+    if (status == 'Update Pending') return '';
+    if (delay == null || delay == 0) return 'Delay';
     if (delay < 60) return 'min delay';
     final display = widget.waitTime.delayDisplay.split(' ');
     if (display.length > 1) {
@@ -509,19 +461,13 @@ class BorderWaitTimeCompactCard extends StatelessWidget {
   final VoidCallback? onTap;
 
   const BorderWaitTimeCompactCard({
-    required this.waitTime, super.key,
+    required this.waitTime,
+    super.key,
     this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtextColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF667085);
-
     // Determine delay color based on commercial truck delay
     Color delayColor;
     final delay = waitTime.commercialDelay ?? 0;
@@ -536,22 +482,17 @@ class BorderWaitTimeCompactCard extends StatelessWidget {
     return Container(
       width: 200,
       margin: const EdgeInsets.only(right: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
+      child: Card(
+        margin: EdgeInsets.zero,
+        elevation: 0,
+        color: Theme.of(context).colorScheme.surfaceContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
         child: InkWell(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(12),
             child: Column(
@@ -572,10 +513,8 @@ class BorderWaitTimeCompactCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         waitTime.portName,
-                        style: GoogleFonts.inter(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                          color: textColor,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -586,16 +525,17 @@ class BorderWaitTimeCompactCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   waitTime.delayDisplay,
-                  style: GoogleFonts.inter(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
                     color: delayColor,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${waitTime.lanesOpen} lanes open',
-                  style: GoogleFonts.inter(fontSize: 12, color: subtextColor),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),

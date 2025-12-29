@@ -70,7 +70,7 @@ class _CountryCodeSelectorState extends State<CountryCodeSelector> {
               Flexible(
                 child: Text(
                   widget.selectedCountry.name,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
                     color: isDark ? Colors.white : const Color(0xFF101828),
@@ -83,7 +83,7 @@ class _CountryCodeSelectorState extends State<CountryCodeSelector> {
               const SizedBox(width: 6),
               Text(
                 widget.selectedCountry.dialCode,
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
                   color: isDark ? Colors.white : const Color(0xFF101828),
@@ -176,7 +176,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               children: [
                 Text(
                   'Select Country',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 20,
                     fontWeight: FontWeight.w600,
                     color: textColor,
@@ -202,10 +202,13 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
             child: TextField(
               controller: _searchController,
               onChanged: _filterCountries,
-              style: GoogleFonts.inter(fontSize: 15, color: textColor),
+              style: GoogleFonts.outfit(fontSize: 15, color: textColor),
               decoration: InputDecoration(
                 hintText: 'Search country or code',
-                hintStyle: GoogleFonts.inter(fontSize: 15, color: subtextColor),
+                hintStyle: GoogleFonts.outfit(
+                  fontSize: 15,
+                  color: subtextColor,
+                ),
                 prefixIcon: Icon(Icons.search, color: subtextColor),
                 filled: true,
                 fillColor: widget.isDark
@@ -246,7 +249,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 ? Center(
                     child: Text(
                       'No countries found',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 15,
                         color: subtextColor,
                       ),
@@ -272,9 +275,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                             ),
                             decoration: BoxDecoration(
                               color: isSelected
-                                  ? const Color(
-                                      0xFF007AFF,
-                                    ).withValues(alpha: 0.1)
+                                  ? const Color(0xFF007AFF).withOpacity(0.1)
                                   : Colors.transparent,
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -292,7 +293,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                                     children: [
                                       Text(
                                         country.name,
-                                        style: GoogleFonts.inter(
+                                        style: GoogleFonts.outfit(
                                           fontSize: 15,
                                           fontWeight: isSelected
                                               ? FontWeight.w600
@@ -302,7 +303,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                                       ),
                                       Text(
                                         country.code,
-                                        style: GoogleFonts.inter(
+                                        style: GoogleFonts.outfit(
                                           fontSize: 13,
                                           color: subtextColor,
                                         ),
@@ -312,7 +313,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                                 ),
                                 Text(
                                   country.dialCode,
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.outfit(
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                     color: isSelected

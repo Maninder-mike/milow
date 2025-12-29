@@ -69,6 +69,14 @@ The `fluent_ui` package is the single source of truth for the Terminal app.
 - **Typography**: Prefer `GoogleFonts.outfit` or standard `Segoe UI`. Maintain a clean, legible hierarchy.
 - **Motion**: Use subtle micro-interactions (connected animations, drill-ins) for navigation.
 
+### E. Motion (Android - M3)
+
+- **Transitions**: Use the `animations` package for standard M3 transitions.
+  - **Shared Axis**: For forward/backward navigation (`SharedAxisTransition`).
+  - **Fade Through**: For switching between top-level destinations (`FadeThroughTransition`).
+  - **Container Transform**: For expanding elements (List -> Detail).
+- **Duration**: Standard durations (300ms) for most transitions.
+
 ---
 
 ## 4. Backend & Data Layer (Supabase)

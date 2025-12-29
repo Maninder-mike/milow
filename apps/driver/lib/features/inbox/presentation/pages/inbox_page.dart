@@ -1,12 +1,10 @@
 import 'dart:async';
-import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'package:milow/l10n/app_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart'; // Still used for fallback if needed, but we prefer Theme.
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class InboxPage extends StatefulWidget {
   const InboxPage({super.key});
@@ -26,168 +24,67 @@ class _InboxPageState extends State<InboxPage> {
   @override
   Widget build(BuildContext context) {
     _messagesFuture ??= _fetchMessages();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
 
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: isDark
-                ? [
-                    const Color(0xFF1a1a2e),
-                    const Color(0xFF16213e),
-                    const Color(0xFF0f0f1a),
-                  ]
-                : [
-                    const Color(0xFFF0F4FF),
-                    const Color(0xFFFDF2F8),
-                    const Color(0xFFF0FDF4),
-                  ],
-            stops: const [0.0, 0.5, 1.0],
-          ),
+      appBar: AppBar(
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () {
+            if (context.canPop()) {
+              context.pop();
+            } else {
+              context.go('/dashboard');
+            }
+          },
         ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.arrow_back, color: textColor),
-                          onPressed: () {
-                            if (context.canPop()) {
-                              context.pop();
-                            } else {
-                              context.go('/dashboard');
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AppLocalizations.of(context)?.inbox ?? 'Inbox',
-                              style: GoogleFonts.inter(
-                                fontSize: 28,
-                                fontWeight: FontWeight.w700,
-                                color: textColor,
-                              ),
-                            ),
-                            Text(
-                              'Messages and updates',
-                              style: GoogleFonts.inter(
-                                fontSize: 14,
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.6)
-                                    : const Color(0xFF667085),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        _buildGlassyIconButton(Icons.search, isDark, textColor),
-                        const SizedBox(width: 8),
-                        // Glassy Popup Menu for "Delete Chat"
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: BackdropFilter(
-                            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.1)
-                                    : Colors.black.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: PopupMenuButton<String>(
-                                icon: Icon(Icons.more_vert, color: textColor),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                color: isDark
-                                    ? const Color(0xFF1E293B)
-                                    : Colors.white,
-                                onSelected: (value) {
-                                  if (value == 'delete') {
-                                    _confirmDeleteChat();
-                                  }
-                                },
-                                itemBuilder: (context) => [
-                                  PopupMenuItem(
-                                    value: 'delete',
-                                    child: Row(
-                                      children: [
-                                        Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.red[400],
-                                          size: 20,
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          'Delete Chat',
-                                          style: GoogleFonts.inter(
-                                            color: Colors.red[400],
-                                            fontWeight: FontWeight.w500,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 16),
-              // Content
-              Expanded(child: _buildMessageList(isDark, textColor)),
-            ],
-          ),
+        title: Text(
+          'Inbox',
+          style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.w600),
         ),
-      ),
-    );
-  }
-
-  Widget _buildGlassyIconButton(IconData icon, bool isDark, Color textColor) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(12),
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          decoration: BoxDecoration(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.1)
-                : Colors.black.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: Icon(icon, color: textColor),
-            // TODO: Implement search functionality
+        centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.search),
             onPressed: () {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Search coming soon')),
               );
             },
           ),
-        ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert),
+            onSelected: (value) {
+              if (value == 'delete') {
+                _confirmDeleteChat();
+              }
+            },
+            itemBuilder: (context) => [
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_outline,
+                      color: Theme.of(context).colorScheme.error,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Delete Chat',
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.error,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(width: 8),
+        ],
       ),
+      body: _buildMessageList(),
     );
   }
 
@@ -195,41 +92,22 @@ class _InboxPageState extends State<InboxPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Delete Chat',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          content: Text(
+          title: const Text('Delete Chat'),
+          content: const Text(
             'Are you sure you want to delete all messages? This action cannot be undone.',
-            style: GoogleFonts.inter(
-              color: isDark ? Colors.grey[400] : Colors.grey[700],
-            ),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.inter(
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 'Delete',
-                style: GoogleFonts.inter(
-                  color: Colors.red[400],
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -248,41 +126,20 @@ class _InboxPageState extends State<InboxPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
         return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          title: Text(
-            'Delete Message',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.bold,
-              color: isDark ? Colors.white : Colors.black87,
-            ),
-          ),
-          content: Text(
-            'Delete this message?',
-            style: GoogleFonts.inter(
-              color: isDark ? Colors.grey[400] : Colors.grey[700],
-            ),
-          ),
+          title: const Text('Delete Message'),
+          content: const Text('Delete this message?'),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: Text(
-                'Cancel',
-                style: GoogleFonts.inter(
-                  color: isDark ? Colors.grey[400] : Colors.grey[600],
-                ),
-              ),
+              child: const Text('Cancel'),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 'Delete',
-                style: GoogleFonts.inter(
-                  color: Colors.red[400],
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.error,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -325,7 +182,7 @@ class _InboxPageState extends State<InboxPage> {
       });
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Message deleted', style: GoogleFonts.inter()),
+          content: Text('Message deleted', style: GoogleFonts.outfit()),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
           duration: const Duration(seconds: 1),
@@ -390,7 +247,7 @@ class _InboxPageState extends State<InboxPage> {
           SnackBar(
             content: Text(
               'Chat deleted successfully',
-              style: GoogleFonts.inter(),
+              style: GoogleFonts.outfit(),
             ),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
@@ -404,7 +261,7 @@ class _InboxPageState extends State<InboxPage> {
           SnackBar(
             content: Text(
               'Failed to delete chat: $e',
-              style: GoogleFonts.inter(),
+              style: GoogleFonts.outfit(),
             ),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
@@ -454,7 +311,7 @@ class _InboxPageState extends State<InboxPage> {
     }
   }
 
-  Widget _buildMessageList(bool isDark, Color textColor) {
+  Widget _buildMessageList() {
     final myId = Supabase.instance.client.auth.currentUser?.id;
     if (myId == null) return const Center(child: Text('Not logged in'));
 
@@ -479,12 +336,10 @@ class _InboxPageState extends State<InboxPage> {
               await _messagesFuture;
             },
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 _buildPlaceholderCard(
-                  isDark,
-                  textColor,
                   'No new messages',
                   Icons.chat_bubble_outline,
                 ),
@@ -538,88 +393,114 @@ class _InboxPageState extends State<InboxPage> {
                       ? Alignment.centerRight
                       : Alignment.centerLeft,
                   child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    constraints: BoxConstraints(
-                      maxWidth: MediaQuery.of(context).size.width * 0.75,
-                    ),
+                    margin: const EdgeInsets.symmetric(vertical: 4),
                     decoration: BoxDecoration(
                       color: isMe
-                          ? const Color(0xFF6C5CE7)
-                          : (isDark
-                                ? Colors.white.withValues(alpha: 0.1)
-                                : Colors.white),
+                          ? Theme.of(context).colorScheme.primary
+                          : Theme.of(
+                              context,
+                            ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(16),
-                        topRight: const Radius.circular(16),
-                        bottomLeft: Radius.circular(isMe ? 16 : 4),
-                        bottomRight: Radius.circular(isMe ? 4 : 16),
+                        topLeft: const Radius.circular(20),
+                        topRight: const Radius.circular(20),
+                        bottomLeft: Radius.circular(isMe ? 20 : 4),
+                        bottomRight: Radius.circular(isMe ? 4 : 20),
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.05),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                      border: Border.all(
+                        color: isMe
+                            ? Theme.of(context).colorScheme.primary
+                            : Theme.of(context).colorScheme.outlineVariant,
+                        width: 1,
+                      ),
                     ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (!isMe) ...[
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                senderRole?.toUpperCase() ?? 'DISPATCH',
-                                style: GoogleFonts.inter(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: const Color(0xFF6C5CE7),
-                                ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (!isMe) ...[
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    senderRole?.toUpperCase() ?? 'DISPATCH',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                        ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '•',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onSurfaceVariant,
+                                        ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      senderName ?? 'Support',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .labelSmall
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '•',
-                                style: TextStyle(
-                                  color: isDark
-                                      ? Colors.white54
-                                      : Colors.black45,
-                                  fontSize: 10,
-                                ),
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                senderName ?? 'Support',
-                                style: GoogleFonts.inter(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white : Colors.black87,
-                                ),
-                              ),
+                              const SizedBox(height: 4),
                             ],
-                          ),
-                          const SizedBox(height: 6),
-                        ],
-                        Text(
-                          content,
-                          style: GoogleFonts.inter(
-                            color: isMe ? Colors.white : textColor,
-                            fontSize: 15,
-                          ),
+                            Text(
+                              content,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(
+                                    color: isMe
+                                        ? Colors.white
+                                        : Theme.of(
+                                            context,
+                                          ).colorScheme.onSurface,
+                                  ),
+                            ),
+                            const SizedBox(height: 4),
+                            Align(
+                              alignment: Alignment.bottomRight,
+                              child: Text(
+                                DateFormat.jm().format(date),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      fontSize: 10,
+                                      color: isMe
+                                          ? Colors.white.withOpacity(0.7)
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                    ),
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          DateFormat.jm().format(date),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            color: isMe ? Colors.white70 : Colors.grey,
-                          ),
-                        ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
@@ -631,89 +512,48 @@ class _InboxPageState extends State<InboxPage> {
     );
   }
 
-  Widget _buildPlaceholderCard(
-    bool isDark,
-    Color textColor,
-    String message,
-    IconData icon,
-  ) {
-    return Container(
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: isDark
-                ? Colors.black.withValues(alpha: 0.3)
-                : Colors.black.withValues(alpha: 0.08),
-            blurRadius: 24,
-            spreadRadius: 0,
-            offset: const Offset(0, 8),
+  Widget _buildPlaceholderCard(String message, IconData icon) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final secondaryTextColor = isDark
+        ? const Color(0xFF9CA3AF)
+        : const Color(0xFF667085);
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Theme.of(context).colorScheme.surfaceContainerHighest,
+              border: Border.all(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 48,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'No content yet',
+            style: GoogleFonts.outfit(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: textColor,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            message,
+            style: GoogleFonts.outfit(fontSize: 14, color: secondaryTextColor),
+            textAlign: TextAlign.center,
           ),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 40, sigmaY: 40),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(48),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? [
-                        Colors.white.withValues(alpha: 0.15),
-                        Colors.white.withValues(alpha: 0.05),
-                      ]
-                    : [
-                        Colors.white.withValues(alpha: 0.9),
-                        Colors.white.withValues(alpha: 0.7),
-                      ],
-              ),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.8),
-                width: 1.5,
-              ),
-            ),
-            child: Column(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF6C5CE7).withValues(alpha: 0.15),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(icon, size: 48, color: const Color(0xFF6C5CE7)),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'No content yet',
-                  style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w600,
-                    color: textColor,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  message,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.6)
-                        : const Color(0xFF667085),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }

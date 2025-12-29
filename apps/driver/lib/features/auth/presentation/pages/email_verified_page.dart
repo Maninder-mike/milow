@@ -8,60 +8,62 @@ class EmailVerifiedPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? const Color(0xFF0F172A) : const Color(0xFFF9FAFB);
-    final card = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final primary = const Color(0xFF007AFF);
+    final backgroundColor = isDark
+        ? const Color(0xFF0A0A0A)
+        : const Color(0xFFF9FAFB);
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
     final subText = isDark ? const Color(0xFF94A3B8) : const Color(0xFF667085);
 
     return Scaffold(
-      backgroundColor: bg,
+      backgroundColor: backgroundColor,
       body: SafeArea(
         child: Center(
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 400),
-                curve: Curves.easeOut,
+              child: Container(
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: card,
-                  borderRadius: BorderRadius.circular(28),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.07),
-                      blurRadius: 22,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  color: Theme.of(context).cardColor,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Image.asset(
-                      'assets/images/milow_icon.png',
-                      width: 80,
-                      height: 80,
-                      fit: BoxFit.contain,
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      decoration: BoxDecoration(
+                        color: backgroundColor,
+                        borderRadius: BorderRadius.circular(32),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.verified_outlined,
+                        size: 64,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
                     ),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 32),
                     Text(
                       'Email Verified!',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
-                        fontSize: 30,
+                      style: GoogleFonts.outfit(
+                        fontSize: 28,
                         fontWeight: FontWeight.w700,
                         color: textColor,
-                        letterSpacing: -0.5,
                       ),
                     ),
                     const SizedBox(height: 16),
                     Text(
                       'Your account email has been successfully confirmed. You now have full access to Milow features.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 16,
                         height: 1.4,
                         color: subText,
@@ -71,27 +73,34 @@ class EmailVerifiedPage extends StatelessWidget {
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 16,
-                        vertical: 12,
+                        vertical: 16,
                       ),
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
-                        color: primary.withValues(alpha: 0.06),
+                        color: Theme.of(
+                          context,
+                        ).colorScheme.primary.withOpacity(0.06),
+                        border: Border.all(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.primary.withOpacity(0.1),
+                        ),
                       ),
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Image.asset(
-                            'assets/images/milow_icon.png',
-                            width: 20,
-                            height: 20,
+                          Icon(
+                            Icons.security_outlined,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                          const SizedBox(width: 8),
-                          Flexible(
+                          const SizedBox(width: 12),
+                          Expanded(
                             child: Text(
                               'Security tip: Keep your email updated to ensure uninterrupted access.',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.outfit(
                                 fontSize: 13,
                                 color: subText,
+                                height: 1.4,
                               ),
                             ),
                           ),
@@ -101,22 +110,19 @@ class EmailVerifiedPage extends StatelessWidget {
                     const SizedBox(height: 32),
                     SizedBox(
                       width: double.infinity,
-                      child: ElevatedButton(
+                      child: FilledButton(
                         onPressed: () => context.go('/dashboard'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: primary,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(0, 56),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: Text(
                           'Continue to Dashboard',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.outfit(
                             fontSize: 16,
                             fontWeight: FontWeight.w600,
-                            color: Colors.white,
                           ),
                         ),
                       ),
@@ -126,10 +132,9 @@ class EmailVerifiedPage extends StatelessWidget {
                       onPressed: () => context.go('/settings'),
                       child: Text(
                         'Manage Profile',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.outfit(
                           fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                          color: primary,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
                     ),

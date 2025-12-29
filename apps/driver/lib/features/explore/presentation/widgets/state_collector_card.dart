@@ -1,15 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/widgets/glassy_card.dart';
 
 class StateCollectorCard extends StatelessWidget {
   final Set<String> visitedStates;
-  final bool isDark;
   final VoidCallback? onTap;
 
   const StateCollectorCard({
     required this.visitedStates,
-    required this.isDark,
     this.onTap,
     super.key,
   });
@@ -17,7 +14,7 @@ class StateCollectorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final count = visitedStates.length;
-    final total = 50; // Assuming US states for now
+    const total = 50; // Assuming US states for now
     final progress = count / total;
 
     return GlassyCard(
@@ -31,13 +28,11 @@ class StateCollectorCard extends StatelessWidget {
             children: [
               Text(
                 'State Collector',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? Colors.white : Colors.black87,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const Icon(Icons.map, color: Colors.blueAccent),
+              Icon(Icons.map, color: Theme.of(context).colorScheme.primary),
             ],
           ),
           const SizedBox(height: 16),
@@ -46,19 +41,17 @@ class StateCollectorCard extends StatelessWidget {
             children: [
               Text(
                 '$count',
-                style: GoogleFonts.outfit(
-                  fontSize: 32,
+                style: Theme.of(context).textTheme.displayMedium?.copyWith(
                   fontWeight: FontWeight.bold,
-                  color: Colors.blueAccent,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.only(bottom: 6, left: 4),
+                padding: const EdgeInsets.only(bottom: 8, left: 4),
                 child: Text(
                   '/ $total States',
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
-                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
               ),
@@ -69,9 +62,11 @@ class StateCollectorCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(4),
             child: LinearProgressIndicator(
               value: progress,
-              backgroundColor: isDark ? Colors.grey[800] : Colors.grey[200],
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Colors.blueAccent,
+              backgroundColor: Theme.of(
+                context,
+              ).colorScheme.surfaceContainerHighest,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                Theme.of(context).colorScheme.primary,
               ),
               minHeight: 8,
             ),
@@ -79,9 +74,8 @@ class StateCollectorCard extends StatelessWidget {
           const SizedBox(height: 16),
           Text(
             'Keep trucking to unlock more states!',
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              color: isDark ? Colors.grey[400] : Colors.grey[600],
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
           if (visitedStates.isNotEmpty) ...[
@@ -96,18 +90,19 @@ class StateCollectorCard extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: Colors.blueAccent.withValues(alpha: 0.1),
+                    color: Theme.of(context).colorScheme.primaryContainer,
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color: Colors.blueAccent.withValues(alpha: 0.3),
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.primary.withOpacity(0.3),
                     ),
                   ),
                   child: Text(
                     state,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.blueAccent,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Theme.of(context).colorScheme.onPrimaryContainer,
                     ),
                   ),
                 );
