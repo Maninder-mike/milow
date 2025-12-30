@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:local_auth/local_auth.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/local_auth_service.dart';
 import 'package:milow/features/settings/presentation/pages/pin_setup_page.dart';
 
@@ -218,15 +219,11 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final secondaryTextColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
+    final tokens = context.tokens;
+    final backgroundColor = tokens.scaffoldAltBackground;
+    final cardColor = tokens.surfaceContainer;
+    final textColor = tokens.textPrimary;
+    final secondaryTextColor = tokens.textSecondary;
 
     return Scaffold(
       backgroundColor: backgroundColor,
@@ -306,7 +303,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                         Switch(
                           value: _pinEnabled,
                           onChanged: _togglePin,
-                          activeColor: Theme.of(context).colorScheme.primary,
+                          activeTrackColor: Theme.of(
+                            context,
+                          ).colorScheme.primary,
                         ),
                       ],
                     ),
@@ -315,12 +314,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                   if (_pinEnabled)
                     Column(
                       children: [
-                        Divider(
-                          height: 1,
-                          color: isDark
-                              ? const Color(0xFF3A3A3A)
-                              : const Color(0xFFE5E7EB),
-                        ),
+                        Divider(height: 1, color: tokens.subtleBorderColor),
                         InkWell(
                           onTap: _changePin,
                           child: Padding(
@@ -348,13 +342,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                         ),
                       ],
                     ),
-                  // Divider
-                  Divider(
-                    height: 1,
-                    color: isDark
-                        ? const Color(0xFF3A3A3A)
-                        : const Color(0xFFE5E7EB),
-                  ),
+                  Divider(height: 1, color: tokens.subtleBorderColor),
                   // Biometric Authentication
                   Padding(
                     padding: const EdgeInsets.all(16.0),

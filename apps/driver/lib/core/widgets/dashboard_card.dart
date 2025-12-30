@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class DashboardCard extends StatelessWidget {
   final String value;
@@ -19,95 +20,94 @@ class DashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-          width: 1,
+    return Semantics(
+      label: '$title: $value${trend != null ? ', trend $trend' : ''}',
+      child: Container(
+        padding: EdgeInsets.all(tokens.spacingM),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(tokens.radiusXL),
+          border: Border.all(color: colorScheme.outlineVariant, width: 1),
         ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color, size: 26),
-          ),
-          const SizedBox(height: 14),
-          Text(
-            value,
-            style: GoogleFonts.outfit(
-              fontSize: 24,
-              fontWeight: FontWeight.w800,
-              color: textColor,
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontSize: 11,
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.6)
-                  : textColor.withValues(alpha: 0.6),
-              fontWeight: FontWeight.w500,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          if (trend != null) ...[
-            const SizedBox(height: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: EdgeInsets.all(tokens.radiusM),
               decoration: BoxDecoration(
-                color:
-                    (trend!.startsWith('+')
-                            ? const Color(0xFF10B981)
-                            : const Color(0xFFEF4444))
-                        .withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(tokens.radiusL),
               ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    trend!.startsWith('+')
-                        ? Icons.arrow_upward
-                        : Icons.arrow_downward,
-                    size: 12,
-                    color: trend!.startsWith('+')
-                        ? const Color(0xFF10B981)
-                        : const Color(0xFFEF4444),
-                  ),
-                  const SizedBox(width: 3),
-                  Text(
-                    trend!,
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: trend!.startsWith('+')
-                          ? const Color(0xFF10B981)
-                          : const Color(0xFFEF4444),
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                ],
+              child: Icon(icon, color: color, size: 26),
+            ),
+            SizedBox(height: tokens.spacingM - 2),
+            Text(
+              value,
+              style: GoogleFonts.outfit(
+                fontSize: 24,
+                fontWeight: FontWeight.w800,
+                color: tokens.textPrimary,
+                letterSpacing: -0.5,
               ),
             ),
+            SizedBox(height: tokens.spacingXS),
+            Text(
+              title,
+              style: GoogleFonts.outfit(
+                fontSize: 11,
+                color: tokens.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            if (trend != null) ...[
+              SizedBox(height: tokens.spacingS),
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: tokens.spacingS + 2,
+                  vertical: tokens.spacingXS + 1,
+                ),
+                decoration: BoxDecoration(
+                  color:
+                      (trend!.startsWith('+') ? tokens.success : tokens.error)
+                          .withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(tokens.radiusS + 2),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      trend!.startsWith('+')
+                          ? Icons.arrow_upward
+                          : Icons.arrow_downward,
+                      size: 12,
+                      color: trend!.startsWith('+')
+                          ? tokens.success
+                          : tokens.error,
+                    ),
+                    SizedBox(width: tokens.spacingXS - 1),
+                    Text(
+                      trend!,
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: trend!.startsWith('+')
+                            ? tokens.success
+                            : tokens.error,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }

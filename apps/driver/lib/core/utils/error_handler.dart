@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow/core/services/logging_service.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 /// Utility class for handling errors and displaying user-friendly messages
 class ErrorHandler {
@@ -220,7 +221,7 @@ class ErrorHandler {
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: const Color(0xFF10B981),
+        backgroundColor: context.tokens.success,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         duration: const Duration(seconds: 3),
@@ -245,7 +246,7 @@ class ErrorHandler {
             Expanded(child: Text(message)),
           ],
         ),
-        backgroundColor: const Color(0xFFF59E0B),
+        backgroundColor: context.tokens.warning,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
         duration: const Duration(seconds: 4),

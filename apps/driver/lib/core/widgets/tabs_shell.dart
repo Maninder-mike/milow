@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:animations/animations.dart';
 import 'package:milow/features/explore/presentation/pages/explore_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/dashboard_page.dart';
@@ -44,8 +45,8 @@ class _TabsShellState extends State<TabsShell> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final background = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
+        ? context.tokens.scaffoldAltBackground
+        : context.tokens.scaffoldAltBackground;
 
     return Scaffold(
       backgroundColor: background,

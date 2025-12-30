@@ -28,14 +28,23 @@ Take control of your trucking business with Milow, the all-in-one app designed s
 • Track your earnings and expenses
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🎨 BEAUTIFUL & PERSONALIZED
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✓ Dynamic colors that match your phone's theme
+✓ Smooth, fluid animations throughout
+✓ Modern Material 3 design
+✓ Dark mode that's easy on the eyes
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔒 BUILT FOR PROFESSIONALS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 ✓ Secure cloud sync - your data is always safe
 ✓ Works offline - log entries anywhere
 ✓ Export to PDF/Excel for records
-✓ Multi-language support
-✓ Dark mode for night driving
+✓ Multi-language support (English, Punjabi, Hindi, Urdu)
+✓ Accessible for screen readers
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🚀 GET STARTED IN SECONDS

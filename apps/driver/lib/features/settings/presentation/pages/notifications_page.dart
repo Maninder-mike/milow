@@ -510,12 +510,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
+                    child: FilledButton(
+                      style: FilledButton.styleFrom(
                         backgroundColor: const Color(0xFF10B981),
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
-                        elevation: 0,
                       ),
                       onPressed: () {
                         final adminId =

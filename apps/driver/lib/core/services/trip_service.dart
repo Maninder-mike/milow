@@ -235,4 +235,30 @@ class TripService {
       throw Exception('Failed to search trips: $e');
     }
   }
+
+  /// Get the most recent active trip (trip without end odometer)
+  /// Returns null if no active trip exists
+  static Future<Trip?> getActiveTrip() async {
+    final userId = _userId;
+    if (userId == null) {
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final response = await _client
+          .from('trips')
+          .select()
+          .eq('user_id', userId)
+          .isFilter('end_odometer', null)
+          .order('trip_date', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response == null) return null;
+      return Trip.fromJson(response);
+    } catch (e) {
+      // Return null on error - active trip is optional
+      return null;
+    }
+  }
 }

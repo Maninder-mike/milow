@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/utils/error_handler.dart';
 
 import 'package:geolocator/geolocator.dart';
@@ -41,11 +41,9 @@ class _AddEntryPageState extends State<AddEntryPage>
   late AnimationController _headerAnimationController;
   late Animation<double> _headerAnimation;
 
-  // Scroll-to-hide header
+  // Scroll-to-hide header disabled per user request
   final ScrollController _tripScrollController = ScrollController();
   final ScrollController _fuelScrollController = ScrollController();
-  bool _isHeaderVisible = true;
-  double _lastScrollOffset = 0;
 
   // Unit system
   String _distanceUnit = 'mi';
@@ -114,7 +112,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     _tabController = TabController(
       length: 2,
       vsync: this,
-      initialIndex: widget.initialTab,
+      initialIndex: widget.editingFuel != null ? 1 : widget.initialTab,
     );
 
     // Initialize header animation
@@ -129,8 +127,8 @@ class _AddEntryPageState extends State<AddEntryPage>
     );
     _headerAnimationController.value = 1.0; // Start visible
 
-    _tripScrollController.addListener(_onTripScroll);
-    _fuelScrollController.addListener(_onFuelScroll);
+    // _tripScrollController.addListener(_onTripScroll);
+    // _fuelScrollController.addListener(_onFuelScroll);
     _loadUnitPreferences();
     _prefillBorderCrossing();
 
@@ -407,19 +405,16 @@ class _AddEntryPageState extends State<AddEntryPage>
   /// Show dialog to add a new border crossing
   Future<void> _showAddBorderCrossingDialog() async {
     final controller = TextEditingController();
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = context.tokens;
 
     final result = await showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+        backgroundColor: tokens.surfaceContainer,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Text(
           'Add Border Crossing',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w600,
-            color: isDark ? Colors.white : const Color(0xFF101828),
-          ),
+          style: Theme.of(context).textTheme.titleLarge,
         ),
         content: TextField(
           controller: controller,
@@ -428,24 +423,14 @@ class _AddEntryPageState extends State<AddEntryPage>
           decoration: InputDecoration(
             hintText: 'e.g., Windsor-Detroit',
             filled: true,
-            fillColor: isDark
-                ? const Color(0xFF0F172A)
-                : const Color(0xFFF8FAFC),
+            fillColor: tokens.inputBackground,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: isDark
-                    ? const Color(0xFF334155)
-                    : const Color(0xFFE2E8F0),
-              ),
+              borderSide: BorderSide(color: tokens.inputBorder),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
-              borderSide: BorderSide(
-                color: isDark
-                    ? const Color(0xFF334155)
-                    : const Color(0xFFE2E8F0),
-              ),
+              borderSide: BorderSide(color: tokens.inputBorder),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
@@ -460,7 +445,9 @@ class _AddEntryPageState extends State<AddEntryPage>
             onPressed: () => Navigator.pop(context),
             child: Text(
               'Cancel',
-              style: GoogleFonts.outfit(color: Colors.grey),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
           TextButton(
@@ -472,9 +459,8 @@ class _AddEntryPageState extends State<AddEntryPage>
             },
             child: Text(
               'Add',
-              style: GoogleFonts.outfit(
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.w600,
               ),
             ),
           ),
@@ -501,8 +487,8 @@ class _AddEntryPageState extends State<AddEntryPage>
   @override
   void dispose() {
     _headerAnimationController.dispose();
-    _tripScrollController.removeListener(_onTripScroll);
-    _fuelScrollController.removeListener(_onFuelScroll);
+    // _tripScrollController.removeListener(_onTripScroll);
+    // _fuelScrollController.removeListener(_onFuelScroll);
     _fuelQuantityController.removeListener(_onFuelFieldChanged);
     _fuelPriceController.removeListener(_onFuelFieldChanged);
     _defQuantityController.removeListener(_onFuelFieldChanged); // [NEW]
@@ -602,15 +588,11 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   // Build border crossing dropdown with add/edit capability
   Widget _buildBorderCrossingDropdown() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final borderColor = isDark
-        ? const Color(0xFF334155)
-        : const Color(0xFFE2E8F0);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final hintColor = isDark
-        ? const Color(0xFF64748B)
-        : const Color(0xFF94A3B8);
+    final tokens = context.tokens;
+    final bgColor = tokens.surfaceContainer;
+    final borderColor = tokens.inputBorder;
+    final textColor = tokens.textPrimary;
+    final hintColor = tokens.textTertiary;
 
     return Container(
       decoration: BoxDecoration(
@@ -638,10 +620,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                       const SizedBox(width: 12),
                       Text(
                         'Select or add border',
-                        style: GoogleFonts.outfit(
-                          color: hintColor,
-                          fontSize: 14,
-                        ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.bodyMedium?.copyWith(color: hintColor),
                       ),
                     ],
                   ),
@@ -664,10 +645,8 @@ class _AddEntryPageState extends State<AddEntryPage>
                             Expanded(
                               child: Text(
                                 border,
-                                style: GoogleFonts.outfit(
-                                  color: textColor,
-                                  fontSize: 14,
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: textColor),
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ),
@@ -715,7 +694,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 },
                 icon: Icon(
                   Icons.clear_rounded,
-                  color: Colors.red.shade400,
+                  color: Theme.of(context).colorScheme.error,
                   size: 20,
                 ),
                 tooltip: 'Clear selection',
@@ -733,11 +712,11 @@ class _AddEntryPageState extends State<AddEntryPage>
     required String hint,
     required IconData prefixIcon,
     required Future<Iterable<String>> Function(String) optionsBuilder,
+    String? label,
     IconData? suffixIcon,
     VoidCallback? onSuffixTap,
     TextCapitalization textCapitalization = TextCapitalization.sentences,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return LayoutBuilder(
       builder: (context, constraints) {
         return RawAutocomplete<String>(
@@ -761,6 +740,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                   focusNode: fieldFocusNode,
                   textCapitalization: textCapitalization,
                   decoration: _inputDecoration(
+                    label: label,
                     hint: hint,
                     prefixIcon: prefixIcon,
                     suffixIcon: suffixIcon,
@@ -781,7 +761,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                   alignment: Alignment.topLeft,
                   child: Material(
                     elevation: 8.0,
-                    color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                    color: context.tokens.surfaceContainer,
                     borderRadius: const BorderRadius.vertical(
                       bottom: Radius.circular(12),
                     ),
@@ -805,11 +785,10 @@ class _AddEntryPageState extends State<AddEntryPage>
                               ),
                               child: Text(
                                 option,
-                                style: GoogleFonts.outfit(
-                                  color: isDark
-                                      ? Colors.white
-                                      : const Color(0xFF101828),
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(
+                                      color: context.tokens.textPrimary,
+                                    ),
                               ),
                             ),
                           );
@@ -821,6 +800,135 @@ class _AddEntryPageState extends State<AddEntryPage>
               },
         );
       },
+    );
+  }
+
+  // [NEW] Quick Actions Section (Capsules)
+  Widget _buildQuickActions() {
+    // Only show for existing trips
+    if (widget.editingTrip == null) return const SizedBox.shrink();
+
+    final hasPickups =
+        _pickupControllers.isNotEmpty &&
+        _pickupControllers.any((c) => c.text.isNotEmpty);
+
+    final actions = <Widget>[];
+
+    if (hasPickups) {
+      // Pickup Mode Actions
+      actions.add(
+        _buildActionChip(
+          label: 'Picked up load',
+          icon: Icons.check_circle_outlined,
+          color: Theme.of(context).colorScheme.primary,
+          onTap: () {
+            // Remove first pickup location
+            if (_pickupControllers.isNotEmpty) {
+              final removedLocation = _pickupControllers[0].text;
+              _removePickupLocation(0);
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Marked picked up at $removedLocation. Save to persist.',
+                  ),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            }
+          },
+        ),
+      );
+      actions.add(
+        _buildActionChip(
+          label: 'Add pickup time',
+          icon: Icons.access_time_rounded,
+          color: Theme.of(context).colorScheme.tertiary,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Select "Date & Time" field below')),
+            );
+            // Optionally scroll to date field
+          },
+        ),
+      );
+      actions.add(
+        _buildActionChip(
+          label: 'Add documents BOL',
+          icon: Icons.upload_file_rounded,
+          color: Theme.of(context).colorScheme.secondary,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Document upload coming soon')),
+            );
+          },
+        ),
+      );
+    } else {
+      // Delivery Mode Actions
+      actions.add(
+        _buildActionChip(
+          label: 'Arrived at delivery',
+          icon: Icons.location_on_outlined,
+          color: context.tokens.info,
+          onTap: () {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Marked as arrived')));
+          },
+        ),
+      );
+      actions.add(
+        _buildActionChip(
+          label: 'Deliver load',
+          icon: Icons.check_circle_rounded,
+          color: context.tokens.success,
+          onTap: () {
+            // Logic to complete trip or remove delivery
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Delivery logic pending')),
+            );
+          },
+        ),
+      );
+    }
+
+    if (actions.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: actions
+              .map(
+                (w) =>
+                    Padding(padding: const EdgeInsets.only(right: 8), child: w),
+              )
+              .toList(),
+        ),
+      ),
+    );
+  }
+
+  // Build generic action chip
+  Widget _buildActionChip({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return ActionChip(
+      avatar: Icon(icon, size: 18, color: color),
+      label: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelLarge?.copyWith(color: context.tokens.textPrimary),
+      ),
+      backgroundColor: context.tokens.surfaceContainer,
+      side: BorderSide(color: color.withValues(alpha: 0.5)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      onPressed: onTap,
     );
   }
 
@@ -842,7 +950,8 @@ class _AddEntryPageState extends State<AddEntryPage>
                 child: _buildAutocompleteField(
                   controller: _pickupControllers[i],
                   focusNode: _pickupFocusNodes[i],
-                  hint: i == 0 ? 'City, State' : 'Additional pickup ${i + 1}',
+                  label: i == 0 ? 'Pickup Location' : 'Pickup ${i + 1}',
+                  hint: i == 0 ? 'City, State' : 'City, State',
                   prefixIcon: Icons.location_on,
                   suffixIcon: Icons.my_location,
                   onSuffixTap: () => _getLocationFor(_pickupControllers[i]),
@@ -860,14 +969,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Icon(
-                        Icons.remove,
-                        size: 20,
-                        color: Colors.red.shade600,
+                        color: Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ),
@@ -883,14 +985,16 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF81C784)),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.tertiary,
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add,
                         size: 20,
-                        color: Color(0xFF43A047),
+                        color: Theme.of(context).colorScheme.tertiary,
                       ),
                     ),
                   ),
@@ -923,7 +1027,8 @@ class _AddEntryPageState extends State<AddEntryPage>
                   controller: _deliveryControllers[i],
                   focusNode: _deliveryFocusNodes[i],
                   textCapitalization: TextCapitalization.words,
-                  hint: i == 0 ? 'City, State' : 'Additional delivery ${i + 1}',
+                  label: i == 0 ? 'Delivery Location' : 'Delivery ${i + 1}',
+                  hint: i == 0 ? 'City, State' : 'City, State',
                   prefixIcon: Icons.location_on,
                   suffixIcon: Icons.my_location,
                   onSuffixTap: () => _getLocationFor(_deliveryControllers[i]),
@@ -941,14 +1046,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Icon(
-                        Icons.remove,
-                        size: 20,
-                        color: Colors.red.shade600,
+                        color: Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ),
@@ -964,14 +1062,16 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF81C784)),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.tertiary,
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add,
                         size: 20,
-                        color: Color(0xFF43A047),
+                        color: Theme.of(context).colorScheme.tertiary,
                       ),
                     ),
                   ),
@@ -985,35 +1085,17 @@ class _AddEntryPageState extends State<AddEntryPage>
     return fields;
   }
 
-  void _onTripScroll() {
-    _handleScroll(_tripScrollController);
-  }
+  // void _onTripScroll() {
+  //   _handleScroll(_tripScrollController);
+  // }
 
-  void _onFuelScroll() {
-    _handleScroll(_fuelScrollController);
-  }
+  // void _onFuelScroll() {
+  //   _handleScroll(_fuelScrollController);
+  // }
 
-  void _handleScroll(ScrollController controller) {
-    final currentOffset = controller.offset;
-    final scrollDelta = currentOffset - _lastScrollOffset;
-
-    // Only trigger hide/show after scrolling a threshold amount
-    if (scrollDelta > 3 && currentOffset > 50 && _isHeaderVisible) {
-      // Scrolling down - hide header
-      _isHeaderVisible = false;
-      _headerAnimationController.reverse();
-    } else if (scrollDelta < -3 && !_isHeaderVisible) {
-      // Scrolling up - show header
-      _isHeaderVisible = true;
-      _headerAnimationController.forward();
-    } else if (currentOffset <= 0 && !_isHeaderVisible) {
-      // Always show header when at top
-      _isHeaderVisible = true;
-      _headerAnimationController.forward();
-    }
-
-    _lastScrollOffset = currentOffset;
-  }
+  // void _handleScroll(ScrollController controller) {
+  //   // Disabled header hiding on scroll per user request
+  // }
 
   String _formatDateTime(DateTime dateTime) {
     final months = [
@@ -1141,8 +1223,6 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -1227,12 +1307,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                 tooltip: 'Cancel',
                               ),
                               const SizedBox(width: 4),
-                              IconButton(
-                                icon: Icon(
-                                  Icons.flag_rounded,
-                                  color: Theme.of(context).colorScheme.primary,
-                                  size: 20,
-                                ),
+                              FilledButton(
                                 onPressed: () {
                                   if (_tabController.index == 0) {
                                     _validateAndSaveTrip();
@@ -1240,7 +1315,31 @@ class _AddEntryPageState extends State<AddEntryPage>
                                     _validateAndSaveFuel();
                                   }
                                 },
-                                tooltip: 'Save',
+                                style: FilledButton.styleFrom(
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                  foregroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(20),
+                                  ),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24,
+                                    vertical: 8,
+                                  ),
+                                ),
+                                child: Text(
+                                  'Save',
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
+                                      ),
+                                ),
                               ),
                             ],
                           ),
@@ -1248,57 +1347,43 @@ class _AddEntryPageState extends State<AddEntryPage>
                       ),
                     ),
                     // Tabs
-                    Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 16),
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF1E293B)
-                            : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(
-                          color: isDark
-                              ? const Color(0xFF334155)
-                              : const Color(0xFFE2E8F0),
-                          width: 1,
+                    if (widget.editingTrip == null &&
+                        widget.editingFuel == null) ...[
+                      Container(
+                        margin: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: const EdgeInsets.all(4),
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerHighest,
+                          borderRadius: BorderRadius.circular(24),
                         ),
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        indicator: BoxDecoration(
-                          color: const Color(0xFF3B82F6),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: const Color(
-                                0xFF3B82F6,
-                              ).withValues(alpha: 0.3),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
+                        child: TabBar(
+                          controller: _tabController,
+                          indicator: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.secondaryContainer,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          indicatorSize: TabBarIndicatorSize.tab,
+                          dividerColor: Colors.transparent,
+                          labelColor: Theme.of(
+                            context,
+                          ).colorScheme.onSecondaryContainer,
+                          unselectedLabelColor: context.tokens.textSecondary,
+                          labelStyle: Theme.of(context).textTheme.labelLarge,
+                          unselectedLabelStyle: Theme.of(
+                            context,
+                          ).textTheme.labelLarge,
+                          tabs: const [
+                            Tab(text: 'Add Trip'),
+                            Tab(text: 'Add Fuel'),
                           ],
                         ),
-                        indicatorSize: TabBarIndicatorSize.tab,
-                        dividerColor: Colors.transparent,
-                        labelColor: Colors.white,
-                        unselectedLabelColor: isDark
-                            ? const Color(0xFF94A3B8)
-                            : const Color(0xFF64748B),
-                        labelStyle: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                        unselectedLabelStyle: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w500,
-                        ),
-                        tabs: const [
-                          Tab(text: 'Add Trip'),
-                          Tab(text: 'Add Fuel'),
-                        ],
                       ),
-                    ),
-                    const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                    ],
                   ],
                 ),
               ),
@@ -1307,6 +1392,10 @@ class _AddEntryPageState extends State<AddEntryPage>
             Expanded(
               child: TabBarView(
                 controller: _tabController,
+                physics:
+                    (widget.editingTrip != null || widget.editingFuel != null)
+                    ? const NeverScrollableScrollPhysics()
+                    : null,
                 children: [_buildAddTripTab(), _buildAddFuelTab()],
               ),
             ),
@@ -1324,64 +1413,54 @@ class _AddEntryPageState extends State<AddEntryPage>
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Quick Actions for existing trips (Capsules)
+            _buildQuickActions(),
             _buildSectionCard(
               title: 'Trip Details',
               children: [
                 Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Trip Number'),
-                          TextField(
-                            controller: _tripNumberController,
-                            textCapitalization: TextCapitalization.characters,
-                            keyboardType: TextInputType.text,
-                            decoration: _inputDecoration(
-                              hint: 'e.g., TR-12345',
-                              prefixIcon: Icons.tag,
-                            ),
-                          ),
-                        ],
+                      child: TextField(
+                        controller: _tripNumberController,
+                        textCapitalization: TextCapitalization.characters,
+                        keyboardType: TextInputType.text,
+                        decoration: _inputDecoration(
+                          label: 'Trip Number',
+                          hint: 'e.g., TR-12345',
+                          prefixIcon: Icons.tag,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Truck Number'),
-                          _buildAutocompleteField(
-                            controller: _tripTruckNumberController,
-                            focusNode: _tripTruckFocusNode,
-                            textCapitalization: TextCapitalization.characters,
-                            hint: 'e.g., T-101',
-                            prefixIcon: Icons.local_shipping,
-                            optionsBuilder:
-                                PredictionService.instance.getTruckSuggestions,
-                          ),
-                        ],
+                      child: _buildAutocompleteField(
+                        controller: _tripTruckNumberController,
+                        focusNode: _tripTruckFocusNode,
+                        textCapitalization: TextCapitalization.characters,
+                        hint: 'e.g., T-101',
+                        prefixIcon: Icons.local_shipping,
+                        label: 'Truck Number',
+                        optionsBuilder:
+                            PredictionService.instance.getTruckSuggestions,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                _buildLabel('Trailer Number'),
+                const SizedBox(height: 12),
                 ..._buildTrailerFields(),
-                const SizedBox(height: 16),
-                _buildLabel('Border Crossing (Optional)'),
+                const SizedBox(height: 12),
                 _buildBorderCrossingDropdown(),
               ],
             ),
             _buildSectionCard(
               title: 'Schedule',
               children: [
-                _buildLabel('Date & Time'),
                 TextField(
                   controller: _tripDateController,
                   readOnly: true,
                   decoration: _inputDecoration(
+                    label: 'Date & Time',
                     hint: 'Tap to select',
                     prefixIcon: Icons.calendar_today,
                   ),
@@ -1392,14 +1471,8 @@ class _AddEntryPageState extends State<AddEntryPage>
             _buildSectionCard(
               title: 'Route',
               children: [
-                _buildLabel(
-                  'Pickup Location${_pickupControllers.length > 1 ? 's' : ''}',
-                ),
                 ..._buildPickupLocationFields(),
-                const SizedBox(height: 16),
-                _buildLabel(
-                  'Delivery Location${_deliveryControllers.length > 1 ? 's' : ''}',
-                ),
+                const SizedBox(height: 12),
                 ..._buildDeliveryLocationFields(),
               ],
             ),
@@ -1409,48 +1482,38 @@ class _AddEntryPageState extends State<AddEntryPage>
                 Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Start Odometer'),
-                          TextField(
-                            controller: _tripStartOdometerController,
-                            keyboardType: TextInputType.number,
-                            decoration: _inputDecoration(
-                              hint: _distanceUnit,
-                              prefixIcon: Icons.speed,
-                            ),
-                          ),
-                        ],
+                      child: TextField(
+                        controller: _tripStartOdometerController,
+                        keyboardType: TextInputType.number,
+                        decoration: _inputDecoration(
+                          label: 'Start Odometer',
+                          hint: _distanceUnit,
+                          prefixIcon: Icons.speed,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('End Odometer'),
-                          TextField(
-                            controller: _tripEndOdometerController,
-                            keyboardType: TextInputType.number,
-                            decoration: _inputDecoration(
-                              hint: _distanceUnit,
-                              prefixIcon: Icons.speed,
-                            ),
-                          ),
-                        ],
+                      child: TextField(
+                        controller: _tripEndOdometerController,
+                        keyboardType: TextInputType.number,
+                        decoration: _inputDecoration(
+                          label: 'End Odometer',
+                          hint: _distanceUnit,
+                          prefixIcon: Icons.speed,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
-                _buildLabel('Notes'),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _tripNotesController,
                   textCapitalization: TextCapitalization.sentences,
                   maxLines: 3,
                   keyboardType: TextInputType.text,
                   decoration: _inputDecoration(
+                    label: 'Notes',
                     hint: 'Additional details...',
                     prefixIcon: Icons.notes,
                   ),
@@ -1678,7 +1741,6 @@ class _AddEntryPageState extends State<AddEntryPage>
             _buildSectionCard(
               title: 'Fuel Details',
               children: [
-                _buildLabel('Fuel Type'),
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(16),
@@ -1709,19 +1771,20 @@ class _AddEntryPageState extends State<AddEntryPage>
                                   Icons.local_gas_station,
                                   size: 20,
                                   color: !_isReeferFuel
-                                      ? Colors.white
-                                      : const Color(0xFF667085),
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : context.tokens.textSecondary,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Truck Fuel',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: !_isReeferFuel
-                                        ? Colors.white
-                                        : const Color(0xFF667085),
-                                  ),
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        color: !_isReeferFuel
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimary
+                                            : context.tokens.textSecondary,
+                                      ),
                                 ),
                               ],
                             ),
@@ -1749,19 +1812,21 @@ class _AddEntryPageState extends State<AddEntryPage>
                                   Icons.ac_unit,
                                   size: 20,
                                   color: _isReeferFuel
-                                      ? Colors.white
-                                      : const Color(0xFF667085),
+                                      ? Theme.of(context).colorScheme.onPrimary
+                                      : context.tokens.textSecondary,
                                 ),
                                 const SizedBox(width: 8),
                                 Text(
                                   'Reefer Fuel',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w600,
-                                    color: _isReeferFuel
-                                        ? Colors.white
-                                        : const Color(0xFF667085),
-                                  ),
+                                  style: Theme.of(context).textTheme.labelLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: _isReeferFuel
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.onPrimary
+                                            : context.tokens.textSecondary,
+                                      ),
                                 ),
                               ],
                             ),
@@ -1771,12 +1836,12 @@ class _AddEntryPageState extends State<AddEntryPage>
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
-                _buildLabel(_isReeferFuel ? 'Reefer Number' : 'Truck Number'),
+                const SizedBox(height: 12),
                 _buildAutocompleteField(
                   controller: _truckNumberController,
                   focusNode: _truckFocusNode,
                   textCapitalization: TextCapitalization.characters,
+                  label: _isReeferFuel ? 'Reefer Number' : 'Truck Number',
                   hint: _isReeferFuel ? 'e.g., R-101' : 'e.g., T-101',
                   prefixIcon: _isReeferFuel
                       ? Icons.ac_unit
@@ -1784,12 +1849,12 @@ class _AddEntryPageState extends State<AddEntryPage>
                   optionsBuilder:
                       PredictionService.instance.getTruckSuggestions,
                 ),
-                const SizedBox(height: 16),
-                _buildLabel(_isReeferFuel ? 'Fuel Location' : 'Location'),
+                const SizedBox(height: 12),
                 _buildAutocompleteField(
                   controller: _locationController,
                   focusNode: _locationFocusNode,
                   textCapitalization: TextCapitalization.words,
+                  label: _isReeferFuel ? 'Fuel Location' : 'Location',
                   hint: _isReeferFuel
                       ? 'Reefer fuel station'
                       : 'Station or city',
@@ -1804,80 +1869,68 @@ class _AddEntryPageState extends State<AddEntryPage>
             _buildSectionCard(
               title: 'Schedule & Metrics',
               children: [
-                _buildLabel('Date & Time'),
                 TextField(
                   controller: _fuelDateController,
                   readOnly: true,
                   decoration: _inputDecoration(
+                    label: 'Date & Time',
                     hint: 'Tap to select',
                     prefixIcon: Icons.calendar_today,
                   ),
                   onTap: () => _selectDateTime(_fuelDateController),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel(_isReeferFuel ? 'Hours' : 'Odometer'),
-                          TextField(
-                            controller: _odometerController,
-                            keyboardType: TextInputType.number,
-                            decoration: _inputDecoration(
-                              hint: _isReeferFuel ? 'Hours' : _distanceUnit,
-                              prefixIcon: _isReeferFuel
-                                  ? Icons.timer
-                                  : Icons.speed,
-                            ),
-                          ),
-                        ],
+                      child: TextField(
+                        controller: _odometerController,
+                        keyboardType: TextInputType.number,
+                        decoration: _inputDecoration(
+                          label: _isReeferFuel ? 'Hours' : 'Odometer',
+                          hint: _isReeferFuel ? 'Hours' : _distanceUnit,
+                          prefixIcon: _isReeferFuel ? Icons.timer : Icons.speed,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Currency'),
-                          DropdownButtonFormField<String>(
-                            initialValue: _currency,
-                            decoration: _inputDecoration(
-                              hint: 'Select',
-                              prefixIcon: Icons.attach_money,
-                            ),
-                            dropdownColor: Theme.of(context).cardColor,
-                            items: [
-                              const DropdownMenuItem(
-                                value: 'USD',
-                                child: Text('USD (\$)'),
-                              ),
-                              const DropdownMenuItem(
-                                value: 'CAD',
-                                child: Text('CAD (C\$)'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null && value != _currency) {
-                                setState(() {
-                                  _currency = value;
-                                  if (value == 'USD') {
-                                    _fuelUnit = 'gal';
-                                    _distanceUnit = 'mi';
-                                  } else if (value == 'CAD') {
-                                    _fuelUnit = 'L';
-                                    _distanceUnit = 'km';
-                                  }
-                                });
-                              }
-                            },
-                            icon: Icon(
-                              Icons.keyboard_arrow_down,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                      child: DropdownButtonFormField<String>(
+                        initialValue: _currency,
+                        decoration: _inputDecoration(
+                          label: 'Currency',
+                          hint: 'Select',
+                          prefixIcon: Icons.attach_money,
+                        ),
+                        dropdownColor: Theme.of(context).cardColor,
+                        items: [
+                          const DropdownMenuItem(
+                            value: 'USD',
+                            child: Text('USD (\$)'),
+                          ),
+                          const DropdownMenuItem(
+                            value: 'CAD',
+                            child: Text('CAD (C\$)'),
                           ),
                         ],
+                        onChanged: (value) {
+                          if (value != null && value != _currency) {
+                            setState(() {
+                              _currency = value;
+                              if (value == 'USD') {
+                                _fuelUnit = 'gal';
+                                _distanceUnit = 'mi';
+                              } else if (value == 'CAD') {
+                                _fuelUnit = 'L';
+                                _distanceUnit = 'km';
+                              }
+                            });
+                          }
+                        },
+                        icon: Icon(
+                          Icons.keyboard_arrow_down,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                       ),
                     ),
                   ],
@@ -1890,99 +1943,77 @@ class _AddEntryPageState extends State<AddEntryPage>
                 Row(
                   children: [
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Fuel Quantity ($_fuelUnit)'),
-                          TextField(
-                            controller: _fuelQuantityController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: _inputDecoration(
-                              hint: '0.0',
-                              prefixIcon: _isReeferFuel
-                                  ? Icons.ac_unit
-                                  : Icons.local_gas_station,
-                            ),
-                          ),
-                        ],
+                      child: TextField(
+                        controller: _fuelQuantityController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: _inputDecoration(
+                          label: 'Fuel Qty ($_fuelUnit)',
+                          hint: '0.0',
+                          prefixIcon: _isReeferFuel
+                              ? Icons.ac_unit
+                              : Icons.local_gas_station,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          _buildLabel('Price/$_fuelUnit'),
-                          TextField(
-                            controller: _fuelPriceController,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            decoration: _inputDecoration(
-                              hint: '0.00',
-                              prefixIcon: Icons.attach_money,
-                            ),
-                          ),
-                        ],
+                      child: TextField(
+                        controller: _fuelPriceController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: _inputDecoration(
+                          label: 'Price/$_fuelUnit',
+                          hint: '0.00',
+                          prefixIcon: Icons.attach_money,
+                        ),
                       ),
                     ),
                   ],
                 ),
                 if (!_isReeferFuel) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   const Divider(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     children: [
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('DEF Qty ($_fuelUnit)'),
-                            TextField(
-                              controller: _defQuantityController,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration: _inputDecoration(
-                                hint: '0.0',
-                                prefixIcon: Icons.water_drop,
-                              ),
-                              onChanged: (val) => setState(() {}),
-                            ),
-                          ],
+                        child: TextField(
+                          controller: _defQuantityController,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration: _inputDecoration(
+                            label: 'DEF Qty ($_fuelUnit)',
+                            hint: '0.0',
+                            prefixIcon: Icons.water_drop,
+                          ),
+                          onChanged: (val) => setState(() {}),
                         ),
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildLabel('DEF Price/$_fuelUnit'),
-                            TextField(
-                              controller: _defPriceController,
-                              enabled: !_defFromYard,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              decoration:
-                                  _inputDecoration(
-                                    hint: '0.00',
-                                    prefixIcon: Icons.attach_money,
-                                  ).copyWith(
-                                    fillColor: _defFromYard
-                                        ? Theme.of(
-                                            context,
-                                          ).disabledColor.withValues(alpha: 0.1)
-                                        : null,
-                                  ),
-                              onChanged: (val) => setState(() {}),
-                            ),
-                          ],
+                        child: TextField(
+                          controller: _defPriceController,
+                          enabled: !_defFromYard,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          decoration:
+                              _inputDecoration(
+                                label: 'DEF Price/$_fuelUnit',
+                                hint: '0.00',
+                                prefixIcon: Icons.attach_money,
+                              ).copyWith(
+                                fillColor: _defFromYard
+                                    ? Theme.of(
+                                        context,
+                                      ).disabledColor.withValues(alpha: 0.1)
+                                    : null,
+                              ),
+                          onChanged: (val) => setState(() {}),
                         ),
                       ),
                     ],
@@ -1991,9 +2022,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                   SwitchListTile(
                     title: Text(
                       'Filled at home terminal (no cost)',
-                      style: GoogleFonts.outfit(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         fontSize: 13,
-                        color: const Color(0xFF667085),
+                        color: context.tokens.textSecondary,
                       ),
                     ),
                     value: _defFromYard,
@@ -2184,58 +2215,28 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
-  Widget _buildLabel(String text, {bool isRequired = false}) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            text,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-          if (isRequired)
-            Text(
-              ' *',
-              style: GoogleFonts.outfit(
-                fontSize: 14,
-                fontWeight: FontWeight.w600,
-                color: Theme.of(context).colorScheme.error,
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSectionCard({
     required String title,
     required List<Widget> children,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          padding: const EdgeInsets.only(left: 4, bottom: 8),
           child: Text(
             title,
-            style: GoogleFonts.outfit(
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
               fontSize: 16,
-              fontWeight: FontWeight.w700,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
+            color: context.tokens.surfaceContainer,
+            borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: Theme.of(context).colorScheme.outlineVariant,
             ),
@@ -2245,7 +2246,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             children: children,
           ),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
       ],
     );
   }
@@ -2253,17 +2254,23 @@ class _AddEntryPageState extends State<AddEntryPage>
   InputDecoration _inputDecoration({
     required String hint,
     required IconData prefixIcon,
+    String? label,
     IconData? suffixIcon,
     VoidCallback? onSuffixTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = Theme.of(context).colorScheme.primary;
     final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
     return InputDecoration(
+      labelText: label,
+      labelStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: context.tokens.textSecondary,
+        fontSize: 14,
+      ),
+      floatingLabelBehavior: FloatingLabelBehavior.always,
       hintText: hint,
-      hintStyle: GoogleFonts.outfit(
-        color: const Color(0xFF98A2B3),
+      hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        color: context.tokens.textTertiary,
         fontSize: 14,
       ),
       prefixIcon: Icon(prefixIcon, color: primaryColor, size: 20),
@@ -2274,20 +2281,21 @@ class _AddEntryPageState extends State<AddEntryPage>
             )
           : null,
       filled: true,
-      fillColor: isDark ? const Color(0xFF2A2A2A) : Colors.white,
+      fillColor: context.tokens.inputBackground,
+      isDense: true,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         borderSide: BorderSide(color: primaryColor, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
     );
   }
 
@@ -2324,17 +2332,16 @@ class _AddEntryPageState extends State<AddEntryPage>
             children: [
               Text(
                 'Total Cost',
-                style: GoogleFonts.outfit(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
-                  color: const Color(0xFF667085),
+                  color: context.tokens.textSecondary,
                 ),
               ),
               const SizedBox(height: 4),
               Text(
                 '$currencySymbol${grandTotal.toStringAsFixed(2)}',
-                style: GoogleFonts.outfit(
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                   fontSize: 24,
-                  fontWeight: FontWeight.w700,
                   color: Theme.of(context).colorScheme.primary,
                 ),
               ),
@@ -2345,16 +2352,16 @@ class _AddEntryPageState extends State<AddEntryPage>
             children: [
               Text(
                 '${quantity.toStringAsFixed(1)} $_fuelUnit',
-                style: GoogleFonts.outfit(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
-                  color: const Color(0xFF667085),
+                  color: context.tokens.textSecondary,
                 ),
               ),
               Text(
                 '@ $currencySymbol${price.toStringAsFixed(3)}/$_fuelUnit',
-                style: GoogleFonts.outfit(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   fontSize: 14,
-                  color: const Color(0xFF667085),
+                  color: context.tokens.textSecondary,
                 ),
               ),
               if (!_isReeferFuel &&
@@ -2364,27 +2371,26 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(height: 4),
                 Text(
                   '+ DEF: ${double.parse(_defQuantityController.text).toStringAsFixed(1)} $_fuelUnit',
-                  style: GoogleFonts.outfit(
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     fontSize: 12,
-                    color: const Color(0xFF667085),
+                    color: context.tokens.textSecondary,
                     fontStyle: FontStyle.italic,
                   ),
                 ),
                 if (!_defFromYard)
                   Text(
                     '@ $currencySymbol${(double.tryParse(_defPriceController.text) ?? 0).toStringAsFixed(3)}',
-                    style: GoogleFonts.outfit(
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontSize: 12,
-                      color: const Color(0xFF667085),
+                      color: context.tokens.textSecondary,
                       fontStyle: FontStyle.italic,
                     ),
                   )
                 else
                   Text(
                     '(Yard)',
-                    style: GoogleFonts.outfit(
-                      fontSize: 12,
-                      color: Colors.green,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.tokens.success,
                       fontStyle: FontStyle.italic,
                     ),
                   ),
@@ -2435,6 +2441,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                   focusNode: _trailerFocusNodes[i],
                   textCapitalization: TextCapitalization.characters,
                   decoration: _inputDecoration(
+                    label: i == 0 ? 'Trailer Number' : 'Trailer ${i + 1}',
                     hint: 'e.g., 5301',
                     prefixIcon: Icons.grid_3x3,
                   ),
@@ -2450,14 +2457,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade50,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: Colors.red.shade200),
-                      ),
-                      child: Icon(
-                        Icons.remove,
-                        size: 20,
-                        color: Colors.red.shade600,
+                        color: Theme.of(context).colorScheme.error,
                       ),
                     ),
                   ),
@@ -2473,14 +2473,16 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE8F5E9),
+                        color: Theme.of(context).colorScheme.tertiaryContainer,
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: const Color(0xFF81C784)),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.tertiary,
+                        ),
                       ),
-                      child: const Icon(
+                      child: Icon(
                         Icons.add,
                         size: 20,
-                        color: Color(0xFF43A047),
+                        color: Theme.of(context).colorScheme.tertiary,
                       ),
                     ),
                   ),

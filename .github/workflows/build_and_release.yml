@@ -182,10 +182,19 @@ jobs:
         run: |
           echo "📝 Updating Play Store listing..."
           cd apps/driver
+          
+          # Create temporary service account file for Fastlane
+          echo "$ANDROID_SERVICE_ACCOUNT_JSON" > service-account.json
+          
           export GEM_HOME="$HOME/.gem"
           export PATH="$GEM_HOME/bin:$PATH"
           gem install fastlane
+          
+          # Run fastlane with explicit json_key path
           fastlane update_metadata
+          
+          # Cleanup
+          rm service-account.json
           echo "✅ Play Store metadata updated!"
 
       # Prepare build output (APK only for GitHub Release, AAB went to Play Store)

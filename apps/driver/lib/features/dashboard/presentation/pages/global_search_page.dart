@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'package:milow_core/milow_core.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
@@ -140,7 +141,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               date: trip.tripDate,
               data: trip,
               icon: Icons.local_shipping_outlined,
-              iconColor: const Color(0xFF3B82F6),
+              iconColor: context.tokens.info,
             ),
           );
         }
@@ -191,7 +192,7 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
               date: fuel.fuelDate,
               data: fuel,
               icon: Icons.local_gas_station_outlined,
-              iconColor: const Color(0xFFF59E0B),
+              iconColor: context.tokens.warning,
             ),
           );
         }

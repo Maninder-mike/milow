@@ -1,20 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
-/// A gradient used for the shimmer effect
-const _shimmerGradient = LinearGradient(
-  colors: [Color(0xFFEBEBF4), Color(0xFFF4F4F4), Color(0xFFEBEBF4)],
-  stops: [0.1, 0.3, 0.4],
-  begin: Alignment(-1.0, -0.3),
-  end: Alignment(1.0, 0.3),
-  tileMode: TileMode.clamp,
-);
-
-/// Dark mode gradient for shimmer effect
-const _shimmerGradientDark = LinearGradient(
-  colors: [Color(0xFF2A2A2A), Color(0xFF3A3A3A), Color(0xFF2A2A2A)],
-  stops: [0.1, 0.3, 0.4],
-  begin: Alignment(-1.0, -0.3),
-  end: Alignment(1.0, 0.3),
+/// A gradient used for the shimmer effect - using semantic colors
+LinearGradient _getShimmerGradient(DesignTokens tokens) => LinearGradient(
+  colors: [
+    tokens.inputBackground,
+    tokens.surfaceContainerHigh,
+    tokens.inputBackground,
+  ],
+  stops: const [0.1, 0.3, 0.4],
+  begin: const Alignment(-1.0, -0.3),
+  end: const Alignment(1.0, 0.3),
   tileMode: TileMode.clamp,
 );
 
@@ -63,8 +59,8 @@ class ShimmerState extends State<Shimmer> with SingleTickerProviderStateMixin {
   Listenable get shimmerChanges => _shimmerController;
 
   LinearGradient get gradient {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseGradient = isDark ? _shimmerGradientDark : _shimmerGradient;
+    final tokens = context.tokens;
+    final baseGradient = _getShimmerGradient(tokens);
     return LinearGradient(
       colors: baseGradient.colors,
       stops: baseGradient.stops,
@@ -191,16 +187,14 @@ class ShimmerDashboardCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark
-        ? const Color(0xFF2A2A2A)
-        : const Color(0xFFE0E0E0);
+    final tokens = context.tokens;
+    final baseColor = tokens.inputBorder;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(tokens.radiusM),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.radiusL),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Column(
@@ -213,20 +207,20 @@ class ShimmerDashboardCard extends StatelessWidget {
             height: 44,
             decoration: BoxDecoration(
               color: baseColor,
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(tokens.radiusM),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: tokens.radiusM),
           // Value placeholder
           Container(
             width: 60,
             height: 24,
             decoration: BoxDecoration(
               color: baseColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(tokens.radiusS),
             ),
           ),
-          const SizedBox(height: 4),
+          SizedBox(height: tokens.spacingXS),
           // Title placeholder
           Container(
             width: 80,
@@ -236,14 +230,14 @@ class ShimmerDashboardCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(6),
             ),
           ),
-          const SizedBox(height: 6),
+          SizedBox(height: tokens.spacingXS + 2),
           // Trend placeholder
           Container(
             width: 40,
             height: 16,
             decoration: BoxDecoration(
               color: baseColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(tokens.radiusS),
             ),
           ),
         ],
@@ -258,17 +252,15 @@ class ShimmerBorderWaitCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark
-        ? const Color(0xFF2A2A2A)
-        : const Color(0xFFE0E0E0);
+    final tokens = context.tokens;
+    final baseColor = tokens.inputBorder;
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: tokens.radiusM),
+      padding: EdgeInsets.all(tokens.spacingM),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.radiusL),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: Row(
@@ -279,10 +271,10 @@ class ShimmerBorderWaitCard extends StatelessWidget {
             height: 24,
             decoration: BoxDecoration(
               color: baseColor,
-              borderRadius: BorderRadius.circular(4),
+              borderRadius: BorderRadius.circular(tokens.spacingXS),
             ),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: tokens.radiusM),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -296,14 +288,14 @@ class ShimmerBorderWaitCard extends StatelessWidget {
                     borderRadius: BorderRadius.circular(6),
                   ),
                 ),
-                const SizedBox(height: 6),
+                SizedBox(height: tokens.spacingXS + 2),
                 // Subtitle placeholder
                 Container(
                   width: 80,
                   height: 10,
                   decoration: BoxDecoration(
                     color: baseColor,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(tokens.spacingXS),
                   ),
                 ),
               ],
@@ -315,7 +307,7 @@ class ShimmerBorderWaitCard extends StatelessWidget {
             height: 20,
             decoration: BoxDecoration(
               color: baseColor,
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(tokens.radiusS),
             ),
           ),
         ],
@@ -332,15 +324,16 @@ class ShimmerEntryItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final baseColor = isDark
-        ? const Color(0xFF2A2A2A)
-        : const Color(0xFFE0E0E0);
+    final tokens = context.tokens;
+    final baseColor = tokens.inputBorder;
 
     return Column(
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: tokens.spacingM,
+            vertical: tokens.radiusM,
+          ),
           child: Row(
             children: [
               // Icon placeholder
@@ -349,10 +342,10 @@ class ShimmerEntryItem extends StatelessWidget {
                 height: 40,
                 decoration: BoxDecoration(
                   color: baseColor,
-                  borderRadius: BorderRadius.circular(10),
+                  borderRadius: BorderRadius.circular(tokens.radiusS + 2),
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: tokens.radiusM),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -366,14 +359,14 @@ class ShimmerEntryItem extends StatelessWidget {
                         borderRadius: BorderRadius.circular(6),
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: tokens.spacingXS + 2),
                     // Subtitle placeholder
                     Container(
                       width: 150,
                       height: 10,
                       decoration: BoxDecoration(
                         color: baseColor,
-                        borderRadius: BorderRadius.circular(4),
+                        borderRadius: BorderRadius.circular(tokens.spacingXS),
                       ),
                     ),
                   ],
@@ -391,14 +384,14 @@ class ShimmerEntryItem extends StatelessWidget {
                       borderRadius: BorderRadius.circular(6),
                     ),
                   ),
-                  const SizedBox(height: 6),
+                  SizedBox(height: tokens.spacingXS + 2),
                   // Date placeholder
                   Container(
                     width: 70,
                     height: 10,
                     decoration: BoxDecoration(
                       color: baseColor,
-                      borderRadius: BorderRadius.circular(4),
+                      borderRadius: BorderRadius.circular(tokens.spacingXS),
                     ),
                   ),
                 ],

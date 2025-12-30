@@ -1,7 +1,16 @@
-• Material 3 Theme Alignment: Complete visual refresh with dynamic theming.
-• Consistent Icons: Standardized to Material 3 rounded icon variants.
-• Dynamic Colors: All accent colors now adapt to light/dark mode seamlessly.
-• Records Export: Improved PDF/CSV export dialogs with refined styling.
-• Bottom Navigation: Updated active/inactive states for better visibility.
-• Performance: Optimized widget rebuilds and reduced memory usage.
-• Bug fixes and stability improvements.
+🎨 PERSONALIZED COLORS
+Your app now adapts to your phone's theme! On Android 12+, Milow picks up colors from your wallpaper for a personalized look.
+
+✨ SMOOTHER ANIMATIONS
+Enjoy a more polished experience with fluid transitions and subtle motion effects throughout the app.
+
+🌙 BETTER DARK MODE
+Dark mode looks even better with enhanced contrast and vibrant accent colors.
+
+📱 MODERN DESIGN
+Updated buttons, cards, and dialogs with rounded corners for a fresh, modern feel.
+
+🔙 IMPROVED NAVIGATION
+Swipe back feels more natural with predictive gestures on newer Android phones.
+
+🐛 Bug fixes and performance improvements.

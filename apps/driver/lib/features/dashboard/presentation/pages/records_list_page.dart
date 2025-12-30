@@ -587,7 +587,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           padding: const EdgeInsets.only(left: 20),
                           child: Row(
                             children: [
-                              Icon(Icons.edit_rounded, color: Colors.white),
+                              const Icon(
+                                Icons.edit_rounded,
+                                color: Colors.white,
+                              ),
                               const SizedBox(width: 8),
                               Text(
                                 'Modify',
@@ -617,7 +620,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Icon(Icons.delete_rounded, color: Colors.white),
+                              const Icon(
+                                Icons.delete_rounded,
+                                color: Colors.white,
+                              ),
                             ],
                           ),
                         ),
@@ -1900,7 +1906,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           ),
                           const SizedBox(width: 12),
                           Expanded(
-                            child: ElevatedButton(
+                            child: FilledButton(
                               onPressed: exportCount > 0
                                   ? () {
                                       setState(() {
@@ -1913,7 +1919,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                       );
                                     }
                                   : null,
-                              style: ElevatedButton.styleFrom(
+                              style: FilledButton.styleFrom(
                                 backgroundColor: Theme.of(
                                   context,
                                 ).colorScheme.primary,
@@ -1926,7 +1932,6 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
-                                elevation: 0,
                               ),
                               child: Text(
                                 'Download PDF',
@@ -3183,7 +3188,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: ElevatedButton.icon(
+                    child: FilledButton.icon(
                       onPressed: () async {
                         Navigator.pop(context);
                         await OpenFile.open(filePath);
@@ -3199,7 +3204,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      style: ElevatedButton.styleFrom(
+                      style: FilledButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:animations/animations.dart';
 import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -211,11 +212,20 @@ final GoRouter _router = GoRouter(
     GoRoute(
       path: '/add-entry',
       pageBuilder: (context, state) {
-        final initialData = state.extra as Map<String, dynamic>?;
+        final extra = state.extra as Map<String, dynamic>?;
+        final editingTrip = extra?['editingTrip'] as Trip?;
+        final editingFuel = extra?['editingFuel'] as FuelEntry?;
+
         return _buildTransitionPage(
           context,
           state,
-          AuthWrapper(child: AddEntryPage(initialData: initialData)),
+          AuthWrapper(
+            child: AddEntryPage(
+              initialData: extra,
+              editingTrip: editingTrip,
+              editingFuel: editingFuel,
+            ),
+          ),
         );
       },
     ),
@@ -417,16 +427,25 @@ class _MyAppState extends State<MyApp> {
     final themeService = Provider.of<ThemeService>(context);
     final localeService = Provider.of<LocaleService>(context);
 
-    return MaterialApp.router(
-      title: 'Milow',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: themeService.themeMode,
-      locale: localeService.locale,
-      supportedLocales: AppLocalizations.supportedLocales,
-      localizationsDelegates: AppLocalizations.localizationsDelegates,
-      routerConfig: _router,
-      debugShowCheckedModeBanner: false,
+    return DynamicColorBuilder(
+      builder: (ColorScheme? lightDynamic, ColorScheme? darkDynamic) {
+        // Use dynamic colors from wallpaper if available, otherwise fallback to app theme
+        final lightColorScheme =
+            lightDynamic ?? AppTheme.lightTheme.colorScheme;
+        final darkColorScheme = darkDynamic ?? AppTheme.darkTheme.colorScheme;
+
+        return MaterialApp.router(
+          title: 'Milow',
+          theme: AppTheme.lightTheme.copyWith(colorScheme: lightColorScheme),
+          darkTheme: AppTheme.darkTheme.copyWith(colorScheme: darkColorScheme),
+          themeMode: themeService.themeMode,
+          locale: localeService.locale,
+          supportedLocales: AppLocalizations.supportedLocales,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          routerConfig: _router,
+          debugShowCheckedModeBanner: false,
+        );
+      },
     );
   }
 }

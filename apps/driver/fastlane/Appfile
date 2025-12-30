@@ -1,2 +1,7 @@
-json_key_data(ENV["ANDROID_SERVICE_ACCOUNT_JSON"])
+if File.exist?("service-account.json")
+  json_key("service-account.json")
+else
+  json_key_data(ENV["ANDROID_SERVICE_ACCOUNT_JSON"])
+end
+
 package_name("maninder.co.in.milow")

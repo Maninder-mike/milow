@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -67,14 +68,11 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
+    final tokens = context.tokens;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       body: Center(
         child: FadeTransition(
           opacity: _opacity,
@@ -88,10 +86,10 @@ class _SplashScreenState extends State<SplashScreen>
                   width: 120,
                   height: 120,
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(tokens.radiusXL),
                   ),
                   child: ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(tokens.radiusXL),
                     child: Image.asset(
                       'assets/images/milow_icon.png',
                       width: 120,
@@ -100,7 +98,7 @@ class _SplashScreenState extends State<SplashScreen>
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                SizedBox(height: tokens.spacingXL),
                 // App Name
                 Text(
                   'MILOW',
@@ -111,20 +109,18 @@ class _SplashScreenState extends State<SplashScreen>
                     letterSpacing: 8,
                   ),
                 ),
-                const SizedBox(height: 12),
+                SizedBox(height: tokens.spacingM - 4),
                 // Tagline
                 Text(
                   'Trucking Made Simple',
                   style: GoogleFonts.outfit(
                     fontSize: 14,
                     fontWeight: FontWeight.w400,
-                    color: isDark
-                        ? const Color(0xFF9CA3AF)
-                        : const Color(0xFF667085),
+                    color: tokens.textSecondary,
                     letterSpacing: 2,
                   ),
                 ),
-                const SizedBox(height: 64),
+                SizedBox(height: tokens.spacingXL * 2),
                 // Minimal solid loading indicator
                 SizedBox(
                   width: 40,

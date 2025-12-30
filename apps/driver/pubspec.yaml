@@ -1,7 +1,7 @@
 name: milow
 description: "A Semi Trucking app for drivers and companies to manage trips, track fuel, and export reports"
 publish_to: "none"
-version: 0.0.4+4
+version: 0.0.5+5
 
 homepage: https://maninder.co.in/milow
 repository: https://github.com/maninder-mike/milow
@@ -25,6 +25,8 @@ dependencies:
   # UI
   cupertino_icons: ^1.0.8
   google_fonts: ^6.3.2
+  dynamic_color: ^1.7.0
+  cached_network_image: ^3.3.1
 
   # Backend
   supabase_flutter: ^2.10.3

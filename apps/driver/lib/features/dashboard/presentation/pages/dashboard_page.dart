@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 // TabsShell provides navigation; this page returns content only
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
@@ -16,9 +17,11 @@ import 'package:milow/features/dashboard/presentation/pages/global_search_page.d
 import 'package:milow/core/services/border_wait_time_service.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/utils/error_handler.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
+import 'package:milow/features/dashboard/presentation/widgets/active_trip_card.dart';
 import 'package:intl/intl.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -40,6 +43,9 @@ class _DashboardPageState extends State<DashboardPage>
   List<Map<String, dynamic>> _recentEntries = [];
   bool _isLoadingEntries = true;
 
+  // Active trip (trip without end odometer)
+  Trip? _activeTrip;
+
   // Notification state
   int _unreadNotificationCount = 0;
   StreamSubscription<int>? _notificationSubscription;
@@ -53,31 +59,11 @@ class _DashboardPageState extends State<DashboardPage>
   late List<Color> _currentGradientColors;
 
   static const List<List<Color>> _gradientPalettes = [
-    // Dark Red (Original)
-    [Color(0xFF2E0213), Color(0xFF8B2C4B), Color(0xFFA66C44)],
-    // Pistachio (Green)
+    // Reference Image Gradient (Burnt Orange -> Peach)
     [
-      Color(0xFF1A4D2E), // Deep forest green
-      Color(0xFF4F6F52), // Sage green
-      Color(0xFFE8DFCA), // Cream/Beige for warmth
-    ],
-    // Orange / Embers
-    [
-      Color(0xFF431407), // Dark burnt orange
-      Color(0xFF9A3412), // Rust
-      Color(0xFFF59E0B), // Vibrant amber
-    ],
-    // Dark Yellow / Gold
-    [
-      Color(0xFF422006), // Dark brown
-      Color(0xFF854D0E), // Bronze
-      Color(0xFFEAB308), // Gold
-    ],
-    // Midnight Blue
-    [
-      Color(0xFF0F172A), // Slate 900
-      Color(0xFF1E3A8A), // Blue 900
-      Color(0xFF3B82F6), // Blue 500
+      Color(0xFF172554), // Blue 950 (Deep Blue)
+      Color(0xFF2563EB), // Blue 600 (Vibrant Blue)
+      Color(0xFF60A5FA), // Blue 400 (Light Blue)
     ],
   ];
 
@@ -267,6 +253,9 @@ class _DashboardPageState extends State<DashboardPage>
 
   Future<void> _loadRecentEntries() async {
     try {
+      // Load active trip (trip without end odometer)
+      final activeTrip = await TripService.getActiveTrip();
+
       final prefetch = DataPrefetchService.instance;
       List<Trip> trips;
       List<FuelEntry> fuelEntries;
@@ -304,6 +293,7 @@ class _DashboardPageState extends State<DashboardPage>
 
       if (mounted) {
         setState(() {
+          _activeTrip = activeTrip;
           _recentEntries = List<Map<String, dynamic>>.from(recent);
           _isLoadingEntries = false;
         });
@@ -335,182 +325,146 @@ class _DashboardPageState extends State<DashboardPage>
     return 'Something went wrong. Please try again.';
   }
 
-  Widget _buildHeroSection(BuildContext context, double margin) {
-    // Base background color to fade into
-    final baseColor = Theme.of(context).scaffoldBackgroundColor;
-
-    return Stack(
+  Widget _buildHeroContent(BuildContext context, double margin) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Extended Gradient Background with Fade
-        Container(
-          height: 540,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: _currentGradientColors,
-            ),
-          ),
-          child: Container(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.0, 0.5, 0.8, 1.0],
-                colors: [
-                  Colors.black.withValues(alpha: 0.1),
-                  Colors.black.withValues(alpha: 0.3),
-                  baseColor.withValues(alpha: 0.8),
-                  baseColor,
+        // Hero Content (Veo 3)
+        SizedBox(
+          height: 340, // Reduced height to remove excess spacing
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: margin, vertical: 24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // Push content down significantly to create the gap
+                const Spacer(),
+                if (_activeTrip == null) ...[
+                  Text(
+                    'Track Your Journey',
+                    style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Log fuel, mileage, and border crossings effortlessly.',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.9),
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(
+                    height: 48,
+                  ), // Increased spacing before card/button
                 ],
-              ),
-            ),
-          ),
-        ),
-
-        // Combined Content
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero Content (Veo 3)
-            SizedBox(
-              height: 380,
-              child: Padding(
-                padding: EdgeInsets.symmetric(horizontal: margin, vertical: 24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Track Your Journey',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Log fuel, mileage, and border crossings effortlessly.',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withValues(alpha: 0.9),
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    FilledButton(
-                      onPressed: () => context.push('/add-entry'),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: Colors.white,
-                        foregroundColor: Colors.black,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
-                        ),
-                      ),
-                      child: Text(
-                        'Start New Entry',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    // Page Indicators
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _buildPageIndicator(true),
-                        const SizedBox(width: 8),
-                        _buildPageIndicator(false),
-                        const SizedBox(width: 8),
-                        _buildPageIndicator(false),
-                        const SizedBox(width: 8),
-                        _buildPageIndicator(false),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            // Get Started Section
-            Padding(
-              padding: EdgeInsets.symmetric(horizontal: margin),
-              child: Text(
-                'Get started',
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Theme.of(context).colorScheme.onSurface,
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              padding: EdgeInsets.symmetric(horizontal: margin),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildGetStartedCard(
-                    context,
-                    'Add Data',
-                    Icons.add,
-                    () => context.push('/add-entry'),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildGetStartedCard(
-                    context,
-                    'Explore',
-                    Icons.explore_outlined,
-                    () => context.go('/explore'),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildGetStartedCard(
-                    context,
-                    'Inbox',
-                    Icons.inbox_outlined,
-                    () => context.go('/inbox'),
-                  ),
-                  const SizedBox(width: 12),
-                  _buildGetStartedCard(
-                    context,
-                    'Settings',
-                    Icons.settings_outlined,
-                    () => context.go('/settings'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-
-        // Header Icons Overlay
-        Positioned(
-          top: 0,
-          left: 0,
-          right: 0,
-          child: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: margin, vertical: 8),
-              child: Row(
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      Navigator.push(
+                // Show ActiveTripCard if there's an active trip, otherwise show Start New Entry button
+                if (_activeTrip != null)
+                  GestureDetector(
+                    onLongPressStart: (details) {
+                      _showActivityMenu(
                         context,
-                        MaterialPageRoute(
-                          builder: (context) => const GlobalSearchPage(),
-                        ),
+                        _activeTrip!,
+                        details.globalPosition,
                       );
                     },
-                    icon: const Icon(Icons.search),
-                    style: IconButton.styleFrom(foregroundColor: Colors.white),
+                    child: ActiveTripCard(
+                      trip: _activeTrip!,
+                      onComplete: () {
+                        // Navigate to complete trip
+                        context.push(
+                          '/add-entry',
+                          extra: {'editingTrip': _activeTrip},
+                        );
+                      },
+                    ),
+                  )
+                else
+                  FilledButton(
+                    onPressed: () => context.push('/add-entry'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 16,
+                      ),
+                    ),
+                    child: Text(
+                      'Start New Entry',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                  const Spacer(),
-                  _buildNotificationBell(context),
-                ],
-              ),
+                const SizedBox(
+                  height: 16,
+                ), // Tightened spacing below card/button
+                // Page Indicators
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _buildPageIndicator(true),
+                    const SizedBox(width: 8),
+                    _buildPageIndicator(false),
+                    const SizedBox(width: 8),
+                    _buildPageIndicator(false),
+                    const SizedBox(width: 8),
+                    _buildPageIndicator(false),
+                  ],
+                ),
+              ],
             ),
+          ),
+        ),
+        // Get Started Section
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: margin),
+          child: Text(
+            'Get started',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          padding: EdgeInsets.symmetric(horizontal: margin),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildGetStartedCard(
+                context,
+                'Add Data',
+                Icons.add,
+                () => context.push('/add-entry'),
+              ),
+              const SizedBox(width: 12),
+              _buildGetStartedCard(
+                context,
+                'Explore',
+                Icons.explore_outlined,
+                () => context.go('/explore'),
+              ),
+              const SizedBox(width: 12),
+              _buildGetStartedCard(
+                context,
+                'Inbox',
+                Icons.inbox_outlined,
+                () => context.go('/inbox'),
+              ),
+              const SizedBox(width: 12),
+              _buildGetStartedCard(
+                context,
+                'Settings',
+                Icons.settings_outlined,
+                () => context.go('/settings'),
+              ),
+            ],
           ),
         ),
       ],
@@ -618,183 +572,231 @@ class _DashboardPageState extends State<DashboardPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final margin = ResponsiveLayout.getMargin(context);
+    final baseColor = Theme.of(context).scaffoldBackgroundColor;
 
     return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isDark
-              ? [
-                  const Color(0xFF1a1a2e),
-                  const Color(0xFF16213e),
-                  const Color(0xFF0f0f23),
-                ]
-              : [Colors.white, const Color(0xFFF5F5F5), Colors.white],
-        ),
-      ),
+      color: baseColor,
       child: Shimmer(
-        child: RefreshIndicator(
-          onRefresh: _onRefresh,
-          displacement: 60,
-          strokeWidth: 3.0,
-          color: Theme.of(context).colorScheme.primary,
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildHeroSection(context, margin),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Gradient Background (Fixed height behind content)
 
-                Container(
-                  transform: Matrix4.translationValues(0, -32, 0),
-                  width: double.infinity,
-                  padding: const EdgeInsets.only(top: 24),
+            // Scrollable Content
+            Positioned.fill(
+              child: RefreshIndicator(
+                onRefresh: _onRefresh,
+                displacement: 60,
+                strokeWidth: 3.0,
+                color: Theme.of(context).colorScheme.primary,
+                backgroundColor: isDark
+                    ? const Color(0xFF1E1E1E)
+                    : Colors.white,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
                   child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Border Wait Times Section
-                      if (_isLoadingBorders) ...[
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: margin),
-                          child: const ShimmerLoading(
-                            isLoading: true,
-                            child: Column(
-                              children: [
-                                ShimmerBorderWaitCard(),
-                                ShimmerBorderWaitCard(),
-                              ],
-                            ),
+                      // Gradient Section (Hero + Border Wait Times)
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [..._currentGradientColors, baseColor],
+                            stops: const [0.0, 0.6, 0.9, 1.0],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                      ] else if (_borderError != null &&
-                          _borderWaitTimes.isEmpty) ...[
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: margin),
-                          child: Container(
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainer,
-                              borderRadius: BorderRadius.circular(16),
-                              border: Border.all(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.outlineVariant,
+                        child: Column(
+                          children: [
+                            _buildHeroContent(context, margin),
+
+                            // Border Wait Times Section
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.only(
+                                top: 24,
+                                bottom: 24,
                               ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFFFEE2E2),
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: const Icon(
-                                    Icons.error_outline,
-                                    color: Color(0xFFDC2626),
-                                    size: 20,
-                                  ),
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        'Border Wait Times Unavailable',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleSmall
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
+                              child: Column(
+                                children: [
+                                  // Border Wait Times Section
+                                  if (_isLoadingBorders) ...[
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: margin,
                                       ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        _borderError!,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(
-                                              color: Theme.of(
-                                                context,
-                                              ).colorScheme.onSurfaceVariant,
-                                            ),
+                                      child: const ShimmerLoading(
+                                        isLoading: true,
+                                        child: Column(
+                                          children: [
+                                            ShimmerBorderWaitCard(),
+                                            ShimmerBorderWaitCard(),
+                                          ],
+                                        ),
                                       ),
-                                    ],
-                                  ),
-                                ),
-                                TextButton(
-                                  onPressed: () =>
-                                      _loadBorderWaitTimes(forceRefresh: true),
-                                  child: Text(
-                                    'Retry',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelLarge
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ] else if (_borderError != null &&
+                                      _borderWaitTimes.isEmpty) ...[
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: margin,
+                                      ),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
                                           color: Theme.of(
                                             context,
-                                          ).colorScheme.primary,
+                                          ).colorScheme.surfaceContainer,
+                                          borderRadius: BorderRadius.circular(
+                                            16,
+                                          ),
+                                          border: Border.all(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.outlineVariant,
+                                          ),
                                         ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ] else if (_borderWaitTimes.isNotEmpty) ...[
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: margin),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Border Wait Times',
-                                style: Theme.of(context).textTheme.titleLarge
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              TextButton.icon(
-                                onPressed: () =>
-                                    _loadBorderWaitTimes(forceRefresh: true),
-                                icon: Icon(
-                                  Icons.refresh_rounded,
-                                  size: 16,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                                label: Text(
-                                  'Refresh',
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(8),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFFFEE2E2),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                              child: const Icon(
+                                                Icons.error_outline,
+                                                color: Color(0xFFDC2626),
+                                                size: 20,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    'Border Wait Times Unavailable',
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .titleSmall
+                                                        ?.copyWith(
+                                                          fontWeight:
+                                                              FontWeight.bold,
+                                                        ),
+                                                  ),
+                                                  const SizedBox(height: 4),
+                                                  Text(
+                                                    _borderError!,
+                                                    style: Theme.of(context)
+                                                        .textTheme
+                                                        .bodySmall
+                                                        ?.copyWith(
+                                                          color: Theme.of(context)
+                                                              .colorScheme
+                                                              .onSurfaceVariant,
+                                                        ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            TextButton(
+                                              onPressed: () =>
+                                                  _loadBorderWaitTimes(
+                                                    forceRefresh: true,
+                                                  ),
+                                              child: Text(
+                                                'Retry',
+                                                style: Theme.of(context)
+                                                    .textTheme
+                                                    .labelLarge
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.primary,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ),
-                                ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ] else if (_borderWaitTimes.isNotEmpty) ...[
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: margin,
+                                      ),
+                                      child: Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Text(
+                                            'Border Wait Times',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleLarge
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                          ),
+                                          TextButton.icon(
+                                            onPressed: () =>
+                                                _loadBorderWaitTimes(
+                                                  forceRefresh: true,
+                                                ),
+                                            icon: Icon(
+                                              Icons.refresh_rounded,
+                                              size: 16,
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                            ),
+                                            label: Text(
+                                              'Refresh',
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .labelLarge
+                                                  ?.copyWith(
+                                                    fontWeight: FontWeight.bold,
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Padding(
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: margin,
+                                      ),
+                                      child: Column(
+                                        children: _borderWaitTimes
+                                            .map(
+                                              (bwt) => BorderWaitTimeCard(
+                                                waitTime: bwt,
+                                              ),
+                                            )
+                                            .toList(),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 16),
+                                  ],
+                                ],
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 8),
-                        Padding(
-                          padding: EdgeInsets.symmetric(horizontal: margin),
-                          child: Column(
-                            children: _borderWaitTimes
-                                .map((bwt) => BorderWaitTimeCard(waitTime: bwt))
-                                .toList(),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                      ],
-
+                      ),
                       // Last Record Entries
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: margin),
@@ -1049,9 +1051,43 @@ class _DashboardPageState extends State<DashboardPage>
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
+            // Header Icons Overlay (Positioned on top of ScrollView)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              child: SafeArea(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: margin,
+                    vertical: 8,
+                  ),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const GlobalSearchPage(),
+                            ),
+                          );
+                        },
+                        icon: const Icon(Icons.search),
+                        style: IconButton.styleFrom(
+                          foregroundColor: Colors.white,
+                        ),
+                      ),
+                      const Spacer(),
+                      _buildNotificationBell(context),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -1135,6 +1171,170 @@ class _DashboardPageState extends State<DashboardPage>
         ],
       ),
     );
+  }
+
+  void _showActivityMenu(BuildContext context, Trip trip, Offset position) {
+    final tokens = Theme.of(context).extension<DesignTokens>()!;
+    // Logic matches ActiveTripCard: if pickup locations exist, we are in pickup mode.
+    final isPickup = trip.pickupLocations.isNotEmpty;
+    final items = <PopupMenuEntry<String>>[];
+
+    if (isPickup) {
+      items.addAll([
+        _buildMenuItem(
+          'Add you in pickup location',
+          Icons.location_on_outlined,
+          'pickup_location',
+        ),
+        _buildMenuItem(
+          'Picked up load',
+          Icons.local_shipping_outlined,
+          'picked_up',
+        ),
+        _buildMenuItem(
+          'Add pickup or loading time',
+          Icons.access_time,
+          'pickup_time',
+        ),
+        _buildMenuItem(
+          'Add documents BOL',
+          Icons.description_outlined,
+          'add_bol',
+        ),
+      ]);
+    } else {
+      items.addAll([
+        _buildMenuItem(
+          'Are you in delivery location',
+          Icons.location_searching,
+          'delivery_location',
+        ),
+        _buildMenuItem(
+          'Deliver load',
+          Icons.check_circle_outlined,
+          'deliver_load',
+        ),
+        _buildMenuItem(
+          'Add delivery or unloading time',
+          Icons.access_time,
+          'delivery_time',
+        ),
+        _buildMenuItem('Add documents POD', Icons.attachment, 'add_pod'),
+        _buildMenuItem(
+          'Are you complete this trip',
+          Icons.flag_outlined,
+          'complete_trip',
+        ),
+      ]);
+    }
+
+    showMenu<String>(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        position.dx,
+        position.dy,
+        position.dx + 1,
+        position.dy + 1,
+      ),
+      items: items,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.shapeM),
+      ),
+      elevation: tokens.elevationLevel2,
+      color: tokens.surfaceContainer,
+      surfaceTintColor: Colors.transparent, // Clean look
+    ).then((value) {
+      if (value != null) {
+        _handleMenuAction(value);
+      }
+    });
+  }
+
+  PopupMenuItem<String> _buildMenuItem(
+    String label,
+    IconData icon,
+    String value,
+  ) {
+    final tokens = Theme.of(context).extension<DesignTokens>()!;
+    return PopupMenuItem<String>(
+      value: value,
+      child: Row(
+        children: [
+          Icon(icon, color: tokens.textSecondary, size: 24),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: tokens.textPrimary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _handleMenuAction(String value) async {
+    final trip = _activeTrip;
+    if (trip == null) return;
+
+    switch (value) {
+      case 'picked_up':
+        // 1. Visually optimistically update
+        final List<String> updatedPickups = List.from(trip.pickupLocations);
+        if (updatedPickups.isNotEmpty) {
+          final removed = updatedPickups.removeAt(0);
+
+          final updatedTrip = trip.copyWith(pickupLocations: updatedPickups);
+
+          setState(() {
+            _activeTrip = updatedTrip;
+          });
+
+          // 2. Persist to DB
+          try {
+            await TripService.updateTrip(updatedTrip);
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Picked up at $removed'),
+                  behavior: SnackBarBehavior.floating,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                ),
+              );
+            }
+          } catch (e) {
+            // Revert on failure
+            if (mounted) {
+              setState(() {
+                _activeTrip = trip;
+              });
+              ErrorHandler.showError(context, e);
+            }
+          }
+        }
+        break;
+
+      case 'delivered':
+        // Similar logic for delivery if needed, or open a dialog
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Delivery logic pending implementation'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        break;
+
+      default:
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Selected action: $value'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+    }
   }
 
   IconData _getIconForType(NotificationType type) {

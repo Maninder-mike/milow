@@ -7,6 +7,27 @@ allprojects {
         mavenCentral()
     }
     
+    // Force Kotlin 17 target for all projects
+    afterEvaluate {
+        tasks.withType<KotlinCompile> {
+            kotlinOptions {
+                jvmTarget = "17"
+            }
+        }
+    }
+
+    // Force strict Java 17 compatibility for all Android plugins
+    afterEvaluate {
+        if (project.extensions.findByName("android") != null) {
+            configure<com.android.build.gradle.BaseExtension> {
+                compileOptions {
+                    sourceCompatibility = JavaVersion.VERSION_17
+                    targetCompatibility = JavaVersion.VERSION_17
+                }
+            }
+        }
+    }
+
     // Force Java 17 for all projects including plugins
     afterEvaluate {
         tasks.withType<JavaCompile>().configureEach {
@@ -37,11 +58,7 @@ subprojects {
         options.compilerArgs.add("-Xlint:-options")
     }
     
-    tasks.withType<KotlinCompile> {
-        kotlinOptions {
-            jvmTarget = "17"
-        }
-    }
+
 }
 
 tasks.register<Delete>("clean") {

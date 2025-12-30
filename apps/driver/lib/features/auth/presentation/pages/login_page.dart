@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -457,11 +458,13 @@ class _LoginPageState extends State<LoginPage>
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Image.network(
-                    'https://www.google.com/favicon.ico',
+                  CachedNetworkImage(
+                    imageUrl: 'https://www.google.com/favicon.ico',
                     width: 20,
                     height: 20,
-                    errorBuilder: (context, error, stackTrace) {
+                    memCacheHeight: 40,
+                    memCacheWidth: 40,
+                    errorWidget: (context, url, error) {
                       return Text(
                         'G',
                         style: GoogleFonts.roboto(
