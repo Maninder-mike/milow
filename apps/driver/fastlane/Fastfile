@@ -10,7 +10,8 @@ platform :android do
       skip_upload_changelogs: false,
       skip_upload_images: true,
       skip_upload_screenshots: true,
-      track: "alpha"
+      track: "alpha",
+      json_key_data: ENV["ANDROID_SERVICE_ACCOUNT_JSON"]
     )
   end
 end

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:milow/core/utils/address_utils.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
@@ -16,6 +15,7 @@ import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:intl/intl.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 
 class RecordsListPage extends StatefulWidget {
@@ -259,15 +259,17 @@ class _RecordsListPageState extends State<RecordsListPage> {
   }
 
   void _showFilterBottomSheet() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final textColor = tokens.textPrimary;
+    final cardColor = tokens.surfaceContainer;
 
     showModalBottomSheet(
       context: context,
       backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.shapeXL),
+        ),
       ),
       builder: (context) {
         return Padding(
@@ -281,7 +283,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+                    color: tokens.subtleBorderColor,
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -289,19 +291,18 @@ class _RecordsListPageState extends State<RecordsListPage> {
               const SizedBox(height: 20),
               Text(
                 'Filter Records',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                   color: textColor,
                 ),
               ),
               const SizedBox(height: 16),
-              _buildFilterOption('All', textColor),
-              _buildFilterOption('Trips Only', textColor),
-              _buildFilterOption('Fuel Only', textColor),
-              _buildFilterOption('Short (<100 mi)', textColor),
-              _buildFilterOption('Medium (100-200 mi)', textColor),
-              _buildFilterOption('Long (>200 mi)', textColor),
+              _buildFilterOption('All', textColor, context),
+              _buildFilterOption('Trips Only', textColor, context),
+              _buildFilterOption('Fuel Only', textColor, context),
+              _buildFilterOption('Short (<100 mi)', textColor, context),
+              _buildFilterOption('Medium (100-200 mi)', textColor, context),
+              _buildFilterOption('Long (>200 mi)', textColor, context),
               const SizedBox(height: 20),
             ],
           ),
@@ -310,7 +311,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
     );
   }
 
-  Widget _buildFilterOption(String filter, Color textColor) {
+  Widget _buildFilterOption(
+    String filter,
+    Color textColor,
+    BuildContext context,
+  ) {
     final isSelected = _selectedFilter == filter;
     return InkWell(
       onTap: () {
@@ -332,9 +337,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
             const SizedBox(width: 12),
             Text(
               filter,
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 color: textColor,
               ),
             ),
@@ -346,14 +350,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final tokens = context.tokens;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    // final backgroundColor = isDark ? const Color(0xFF121212) : const Color(0xFFF9FAFB);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final secondaryTextColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
-    final borderColor = Theme.of(context).colorScheme.outlineVariant;
+    final textColor = tokens.textPrimary;
+    final secondaryTextColor = tokens.textSecondary;
+    final cardColor = tokens.surfaceContainer;
+    final borderColor = tokens.subtleBorderColor;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -376,9 +378,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
               ),
               title: Text(
                 'All Records',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
               actions: [
                 IconButton(
@@ -424,18 +427,18 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   },
                   decoration: InputDecoration(
                     hintText: 'Search by load ID or route...',
-                    hintStyle: GoogleFonts.outfit(color: secondaryTextColor),
+                    hintStyle: Theme.of(
+                      context,
+                    ).textTheme.bodyLarge?.copyWith(color: secondaryTextColor),
                     prefixIcon: Icon(
                       Icons.search_rounded,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      color: secondaryTextColor,
                     ),
                     suffixIcon: _searchQuery.isNotEmpty
                         ? IconButton(
                             icon: Icon(
                               Icons.close_rounded,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+                              color: secondaryTextColor,
                             ),
                             onPressed: () {
                               setState(() {
@@ -450,15 +453,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       context,
                     ).colorScheme.surfaceContainerLow,
                     border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(tokens.shapeM),
                       borderSide: BorderSide(color: borderColor),
                     ),
                     enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(tokens.shapeM),
                       borderSide: BorderSide(color: borderColor),
                     ),
                     focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(tokens.shapeM),
                       borderSide: BorderSide(
                         color: Theme.of(context).colorScheme.primary,
                       ),
@@ -468,7 +471,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       vertical: 14,
                     ),
                   ),
-                  style: GoogleFonts.outfit(color: textColor),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(color: textColor),
                 ),
               ),
             ),
@@ -482,10 +487,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       Chip(
                         label: Text(
                           _selectedFilter,
-                          style: GoogleFonts.outfit(
-                            fontSize: 12,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
+                          style: Theme.of(context).textTheme.labelSmall
+                              ?.copyWith(
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
                         ),
                         backgroundColor: Theme.of(
                           context,
@@ -501,12 +506,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           });
                         },
                         side: BorderSide.none,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(tokens.shapeXS),
+                        ),
                       ),
                       const SizedBox(width: 8),
                       Text(
                         '${_filteredRecords.length} results',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: secondaryTextColor,
                         ),
                       ),
@@ -546,11 +553,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               const SizedBox(height: 16),
                               Text(
                                 'No records found',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
-                                ),
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
                               ),
                               const SizedBox(height: 8),
                               Text(
@@ -558,10 +565,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                         _selectedFilter != 'All'
                                     ? 'Try adjusting your search or filter'
                                     : 'Add your first trip or fuel entry',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: secondaryTextColor,
-                                ),
+                                style: Theme.of(context).textTheme.bodyMedium
+                                    ?.copyWith(color: secondaryTextColor),
                               ),
                             ],
                           ),
@@ -581,7 +586,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         background: Container(
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(tokens.shapeM),
                           ),
                           alignment: Alignment.centerLeft,
                           padding: const EdgeInsets.only(left: 20),
@@ -594,18 +599,19 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               const SizedBox(width: 8),
                               Text(
                                 'Modify',
-                                style: GoogleFonts.outfit(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                               ),
                             ],
                           ),
                         ),
                         secondaryBackground: Container(
                           decoration: BoxDecoration(
-                            color: const Color(0xFFEF4444),
-                            borderRadius: BorderRadius.circular(20),
+                            color: tokens.error,
+                            borderRadius: BorderRadius.circular(tokens.shapeM),
                           ),
                           alignment: Alignment.centerRight,
                           padding: const EdgeInsets.only(right: 20),
@@ -614,10 +620,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             children: [
                               Text(
                                 'Delete',
-                                style: GoogleFonts.outfit(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold,
+                                    ),
                               ),
                               const SizedBox(width: 8),
                               const Icon(
@@ -639,31 +646,22 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               context: context,
                               backgroundColor: Colors.transparent,
                               builder: (dialogContext) {
-                                final dialogIsDark =
-                                    Theme.of(dialogContext).brightness ==
-                                    Brightness.dark;
-                                final dialogCardColor = dialogIsDark
-                                    ? const Color(0xFF1E1E1E)
-                                    : Theme.of(
-                                            dialogContext,
-                                          ).dialogTheme.backgroundColor ??
-                                          Colors.white;
-                                final dialogTextColor = dialogIsDark
-                                    ? Colors.white
-                                    : const Color(0xFF101828);
-                                final dialogSecondaryColor = dialogIsDark
-                                    ? const Color(0xFF9CA3AF)
-                                    : const Color(0xFF667085);
+                                final tokens = dialogContext.tokens;
+                                final dialogTextColor = tokens.textPrimary;
+                                final dialogSecondaryColor =
+                                    tokens.textSecondary;
 
                                 return Container(
                                   margin: const EdgeInsets.all(16),
                                   decoration: BoxDecoration(
-                                    color: dialogCardColor,
-                                    borderRadius: BorderRadius.circular(24),
+                                    color: tokens.surfaceContainer,
+                                    borderRadius: BorderRadius.circular(
+                                      tokens.shapeXL,
+                                    ),
                                     boxShadow: [
                                       BoxShadow(
                                         color: Colors.black.withValues(
-                                          alpha: 0.15,
+                                          alpha: 0.1,
                                         ),
                                         blurRadius: 20,
                                         offset: const Offset(0, -5),
@@ -692,14 +690,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                         width: 64,
                                         height: 64,
                                         decoration: BoxDecoration(
-                                          color: const Color(
-                                            0xFFEF4444,
-                                          ).withValues(alpha: 0.1),
+                                          color: tokens.error.withValues(
+                                            alpha: 0.1,
+                                          ),
                                           shape: BoxShape.circle,
                                         ),
-                                        child: const Icon(
+                                        child: Icon(
                                           Icons.delete_outline_rounded,
-                                          color: Color(0xFFEF4444),
+                                          color: tokens.error,
                                           size: 32,
                                         ),
                                       ),
@@ -707,11 +705,13 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                       // Title
                                       Text(
                                         'Delete Record',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 20,
-                                          fontWeight: FontWeight.w700,
-                                          color: dialogTextColor,
-                                        ),
+                                        style: Theme.of(dialogContext)
+                                            .textTheme
+                                            .titleLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                              color: dialogTextColor,
+                                            ),
                                       ),
                                       const SizedBox(height: 8),
                                       // Message
@@ -722,11 +722,13 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                         child: Text(
                                           'Are you sure you want to delete ${record['id']}? This action cannot be undone.',
                                           textAlign: TextAlign.center,
-                                          style: GoogleFonts.outfit(
-                                            fontSize: 14,
-                                            color: dialogSecondaryColor,
-                                            height: 1.5,
-                                          ),
+                                          style: Theme.of(dialogContext)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: dialogSecondaryColor,
+                                                height: 1.5,
+                                              ),
                                         ),
                                       ),
                                       const SizedBox(height: 28),
@@ -750,27 +752,26 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                                         vertical: 14,
                                                       ),
                                                   decoration: BoxDecoration(
-                                                    color: dialogIsDark
-                                                        ? const Color(
-                                                            0xFF2A2A2A,
-                                                          )
-                                                        : const Color(
-                                                            0xFFF3F4F6,
-                                                          ),
+                                                    color: Theme.of(dialogContext)
+                                                        .colorScheme
+                                                        .surfaceContainerHighest,
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                          12,
+                                                          tokens.shapeM,
                                                         ),
                                                   ),
                                                   child: Center(
                                                     child: Text(
                                                       'Cancel',
-                                                      style: GoogleFonts.outfit(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: dialogTextColor,
-                                                      ),
+                                                      style: Theme.of(dialogContext)
+                                                          .textTheme
+                                                          .labelLarge
+                                                          ?.copyWith(
+                                                            fontWeight:
+                                                                FontWeight.bold,
+                                                            color:
+                                                                dialogTextColor,
+                                                          ),
                                                     ),
                                                   ),
                                                 ),
@@ -790,20 +791,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                                         vertical: 14,
                                                       ),
                                                   decoration: BoxDecoration(
-                                                    color: const Color(
-                                                      0xFFEF4444,
-                                                    ),
+                                                    color: tokens.error,
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                          12,
+                                                          tokens.shapeM,
                                                         ),
                                                     boxShadow: [
                                                       BoxShadow(
-                                                        color:
-                                                            const Color(
-                                                              0xFFEF4444,
-                                                            ).withValues(
-                                                              alpha: 0.3,
+                                                        color: tokens.error
+                                                            .withValues(
+                                                              alpha: 0.2,
                                                             ),
                                                         blurRadius: 8,
                                                         offset: const Offset(
@@ -816,12 +813,19 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                                   child: Center(
                                                     child: Text(
                                                       'Delete',
-                                                      style: GoogleFonts.outfit(
-                                                        fontSize: 16,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Colors.white,
-                                                      ),
+                                                      style:
+                                                          Theme.of(
+                                                                dialogContext,
+                                                              )
+                                                              .textTheme
+                                                              .labelLarge
+                                                              ?.copyWith(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                color: Colors
+                                                                    .white,
+                                                              ),
                                                     ),
                                                   ),
                                                 ),
@@ -917,6 +921,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
     Color textColor,
     Color secondaryTextColor,
   ) {
+    final tokens = context.tokens;
     final cardKey = '${record['type']}_${record['id']}';
     final isExpanded = _expandedCards.contains(cardKey);
     final isTrip = record['type'] == 'trip';
@@ -937,7 +942,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(tokens.shapeM),
           border: Border.all(color: borderColor),
         ),
         child: Column(
@@ -953,15 +958,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     color:
                         (isTrip
                                 ? Theme.of(context).colorScheme.primary
-                                : const Color(0xFFF59E0B))
+                                : tokens.warning)
                             .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(tokens.shapeM),
                   ),
                   child: Icon(
                     isTrip ? Icons.local_shipping : Icons.local_gas_station,
                     color: isTrip
                         ? Theme.of(context).colorScheme.primary
-                        : const Color(0xFFF59E0B),
+                        : tokens.warning,
                     size: 24,
                   ),
                 ),
@@ -975,19 +980,19 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         children: [
                           Text(
                             record['id'] as String? ?? '',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: textColor,
-                            ),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: textColor,
+                                ),
                           ),
                           Text(
                             record['value'] as String? ?? '',
-                            style: GoogleFonts.outfit(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: Theme.of(context).colorScheme.primary,
-                            ),
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
                           ),
                         ],
                       ),
@@ -999,10 +1004,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           Expanded(
                             child: Text(
                               record['description'] as String? ?? '',
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                color: secondaryTextColor,
-                              ),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: secondaryTextColor),
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
@@ -1012,10 +1015,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             children: [
                               Text(
                                 record['date'] as String? ?? '',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 13,
-                                  color: secondaryTextColor,
-                                ),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: secondaryTextColor),
                               ),
                               const SizedBox(width: 4),
                               AnimatedRotation(
@@ -1023,7 +1024,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 duration: const Duration(milliseconds: 200),
                                 child: Icon(
                                   Icons.keyboard_arrow_down,
-                                  size: 20,
+                                  size: 16,
                                   color: secondaryTextColor,
                                 ),
                               ),
@@ -1061,6 +1062,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
     Color textColor,
     Color secondaryTextColor,
   ) {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1100,7 +1102,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
             Icons.arrow_upward,
             'Pickup${trip.pickupLocations.length > 1 ? 's' : ''}',
             trip.pickupLocations,
-            const Color(0xFF10B981),
+            tokens.success,
             textColor,
             secondaryTextColor,
           ),
@@ -1112,7 +1114,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
             Icons.arrow_downward,
             'Deliver${trip.deliveryLocations.length > 1 ? 'ies' : 'y'}',
             trip.deliveryLocations,
-            const Color(0xFFEF4444),
+            tokens.error,
             textColor,
             secondaryTextColor,
           ),
@@ -1137,6 +1139,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
     Color textColor,
     Color secondaryTextColor,
   ) {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1185,7 +1188,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
           fuel.formattedTotalCost,
           textColor,
           secondaryTextColor,
-          valueColor: const Color(0xFF10B981),
+          valueColor: tokens.success,
         ),
         // Odometer / Reefer Hours
         if (fuel.isTruckFuel && fuel.odometerReading != null) ...[
@@ -1229,15 +1232,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
           width: 80,
           child: Text(
             label,
-            style: GoogleFonts.outfit(fontSize: 13, color: secondaryTextColor),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: secondaryTextColor),
           ),
         ),
         Expanded(
           child: Text(
             value,
-            style: GoogleFonts.outfit(
-              fontSize: 13,
-              fontWeight: FontWeight.w500,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              fontWeight: FontWeight.bold,
               color: valueColor ?? textColor,
             ),
           ),
@@ -1263,7 +1267,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
           width: 80,
           child: Text(
             label,
-            style: GoogleFonts.outfit(fontSize: 13, color: secondaryTextColor),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: secondaryTextColor),
           ),
         ),
         Expanded(
@@ -1275,9 +1281,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     padding: const EdgeInsets.only(bottom: 4),
                     child: Text(
                       item,
-                      style: GoogleFonts.outfit(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontWeight: FontWeight.bold,
                         color: textColor,
                       ),
                     ),
@@ -1324,6 +1329,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
     Color cardColor,
     Color borderColor,
   ) {
+    final tokens = context.tokens;
     DateTimeRange? tempDateRange = _selectedDateRange;
     String selectedExportFilter = _selectedFilter;
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1331,9 +1337,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      backgroundColor: tokens.surfaceContainer,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.shapeXL),
+        ),
       ),
       builder: (context) {
         return StatefulBuilder(
@@ -1365,7 +1373,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.outlineVariant,
+                            color: tokens.subtleBorderColor,
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -1379,7 +1387,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               color: Theme.of(
                                 context,
                               ).colorScheme.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(12),
+                              borderRadius: BorderRadius.circular(
+                                tokens.shapeM,
+                              ),
                             ),
                             child: Icon(
                               Icons.flag_rounded,
@@ -1394,18 +1404,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               children: [
                                 Text(
                                   'Export Records',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w600,
-                                    color: textColor,
-                                  ),
+                                  style: Theme.of(context).textTheme.titleLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.bold,
+                                        color: textColor,
+                                      ),
                                 ),
                                 Text(
                                   'Download as PDF or CSV',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 13,
-                                    color: secondaryTextColor,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(color: secondaryTextColor),
                                 ),
                               ],
                             ),
@@ -1417,9 +1425,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       // Date Range Section
                       Text(
                         'Date Range',
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                           color: textColor,
                         ),
                       ),
@@ -1597,9 +1604,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       // Filter Selection
                       Text(
                         'Record Type',
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
                           color: textColor,
                         ),
                       ),
@@ -1610,11 +1616,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           vertical: 4,
                         ),
                         decoration: BoxDecoration(
-                          color: isDark
-                              ? const Color(0xFF2A2A2A)
-                              : const Color(0xFFF5F5F5),
-                          border: Border.all(color: borderColor),
-                          borderRadius: BorderRadius.circular(12),
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerLow,
+                          border: Border.all(color: tokens.subtleBorderColor),
+                          borderRadius: BorderRadius.circular(tokens.shapeM),
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String>(
@@ -1622,13 +1628,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             isExpanded: true,
                             icon: Icon(
                               Icons.keyboard_arrow_down,
-                              color: secondaryTextColor,
+                              color: tokens.textSecondary,
                             ),
-                            dropdownColor: cardColor,
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: textColor,
-                            ),
+                            dropdownColor: tokens.surfaceContainer,
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(color: textColor),
                             items:
                                 [
                                       'All',
@@ -1673,22 +1678,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               ? Theme.of(
                                   context,
                                 ).colorScheme.primary.withValues(alpha: 0.1)
-                              : const Color(0xFFEF4444).withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: exportCount > 0
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.primary.withValues(alpha: 0.3)
-                                  : const Color(
-                                      0xFFEF4444,
-                                    ).withValues(alpha: 0.3),
-                              blurRadius: 4,
-                              spreadRadius: 0,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
+                              : tokens.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(tokens.shapeM),
                         ),
                         child: Row(
                           children: [
@@ -1698,10 +1689,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 color: exportCount > 0
                                     ? Theme.of(context).colorScheme.primary
                                           .withValues(alpha: 0.2)
-                                    : const Color(
-                                        0xFFEF4444,
-                                      ).withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(8),
+                                    : tokens.error.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(
+                                  tokens.shapeS,
+                                ),
                               ),
                               child: Icon(
                                 exportCount > 0
@@ -1709,7 +1700,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     : Icons.error_outline,
                                 color: exportCount > 0
                                     ? Theme.of(context).colorScheme.primary
-                                    : const Color(0xFFEF4444),
+                                    : tokens.error,
                                 size: 24,
                               ),
                             ),
@@ -1722,20 +1713,20 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     exportCount > 0
                                         ? '$exportCount Records found'
                                         : 'No records found',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.w600,
-                                      color: textColor,
-                                    ),
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                          color: textColor,
+                                        ),
                                   ),
                                   Text(
                                     exportCount > 0
                                         ? 'Ready to export'
                                         : 'Adjust filters',
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 12,
-                                      color: secondaryTextColor,
-                                    ),
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(color: secondaryTextColor),
                                   ),
                                 ],
                               ),
@@ -1749,11 +1740,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       if (selectedExportFilter != 'Fuel Only') ...[
                         Text(
                           'Trip Columns',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
                         ),
                         const SizedBox(height: 12),
                         Wrap(
@@ -1766,10 +1757,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             return FilterChip(
                               label: Text(
                                 entry.value,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: isSelected ? Colors.white : textColor,
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: isSelected
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary
+                                          : textColor,
+                                    ),
                               ),
                               selected: isSelected,
                               onSelected: (selected) {
@@ -1787,16 +1782,20 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               selectedColor: Theme.of(
                                 context,
                               ).colorScheme.primary,
-                              checkmarkColor: Colors.white,
-                              backgroundColor: isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF5F5F5),
+                              checkmarkColor: Theme.of(
+                                context,
+                              ).colorScheme.onPrimary,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerLow,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(
+                                  tokens.shapeS,
+                                ),
                                 side: BorderSide(
                                   color: isSelected
                                       ? Theme.of(context).colorScheme.primary
-                                      : borderColor,
+                                      : tokens.subtleBorderColor,
                                 ),
                               ),
                             );
@@ -1810,11 +1809,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           !selectedExportFilter.contains('mi)')) ...[
                         Text(
                           'Fuel Columns',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: textColor,
+                              ),
                         ),
                         const SizedBox(height: 12),
                         Wrap(
@@ -1827,10 +1826,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             return FilterChip(
                               label: Text(
                                 entry.value,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  color: isSelected ? Colors.white : textColor,
-                                ),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(
+                                      color: isSelected
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onSecondary
+                                          : textColor,
+                                    ),
                               ),
                               selected: isSelected,
                               onSelected: (selected) {
@@ -1845,17 +1848,23 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                   }
                                 });
                               },
-                              selectedColor: const Color(0xFFF97316),
-                              checkmarkColor: Colors.white,
-                              backgroundColor: isDark
-                                  ? const Color(0xFF1E293B)
-                                  : const Color(0xFFF5F5F5),
+                              selectedColor: Theme.of(
+                                context,
+                              ).colorScheme.secondary,
+                              checkmarkColor: Theme.of(
+                                context,
+                              ).colorScheme.onSecondary,
+                              backgroundColor: Theme.of(
+                                context,
+                              ).colorScheme.surfaceContainerLow,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(
+                                  tokens.shapeS,
+                                ),
                                 side: BorderSide(
                                   color: isSelected
-                                      ? const Color(0xFFF97316)
-                                      : borderColor,
+                                      ? Theme.of(context).colorScheme.secondary
+                                      : tokens.subtleBorderColor,
                                 ),
                               ),
                             );
@@ -1883,24 +1892,24 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                   : null,
                               style: OutlinedButton.styleFrom(
                                 side: BorderSide(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.outlineVariant,
+                                  color: tokens.subtleBorderColor,
                                 ),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    tokens.shapeM,
+                                  ),
                                 ),
                               ),
                               child: Text(
                                 'Download CSV',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: textColor,
-                                ),
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: textColor,
+                                    ),
                               ),
                             ),
                           ),
@@ -1923,25 +1932,28 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 backgroundColor: Theme.of(
                                   context,
                                 ).colorScheme.primary,
-                                disabledBackgroundColor: isDark
-                                    ? const Color(0xFF3A3A3A)
-                                    : const Color(0xFFE5E5E5),
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 16,
                                 ),
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(
+                                    tokens.shapeM,
+                                  ),
                                 ),
                               ),
                               child: Text(
                                 'Download PDF',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  color: exportCount > 0
-                                      ? Colors.white
-                                      : secondaryTextColor,
-                                ),
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: exportCount > 0
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary
+                                          : Theme.of(
+                                              context,
+                                            ).colorScheme.onSurfaceVariant,
+                                    ),
                               ),
                             ),
                           ),
@@ -1968,24 +1980,24 @@ class _RecordsListPageState extends State<RecordsListPage> {
     required bool isDark,
     required VoidCallback onTap,
   }) {
+    final tokens = context.tokens;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF2A2A2A) : const Color(0xFFF5F5F5),
-          border: Border.all(color: borderColor),
-          borderRadius: BorderRadius.circular(12),
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          border: Border.all(color: tokens.subtleBorderColor),
+          borderRadius: BorderRadius.circular(tokens.shapeM),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               label,
-              style: GoogleFonts.outfit(
-                fontSize: 11,
-                fontWeight: FontWeight.w500,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: secondaryTextColor,
+                fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 4),
@@ -2002,9 +2014,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                 Expanded(
                   child: Text(
                     date != null ? _formatDate(date) : 'Select',
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                       color: date != null ? textColor : secondaryTextColor,
                     ),
                   ),
@@ -2024,21 +2035,21 @@ class _RecordsListPageState extends State<RecordsListPage> {
     Color cardColor,
     Color borderColor,
   ) {
+    final tokens = context.tokens;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         decoration: BoxDecoration(
-          color: cardColor,
-          border: Border.all(color: borderColor),
-          borderRadius: BorderRadius.circular(20),
+          color: tokens.surfaceContainer,
+          border: Border.all(color: tokens.subtleBorderColor),
+          borderRadius: BorderRadius.circular(tokens.shapeFull),
         ),
         child: Text(
           label,
-          style: GoogleFonts.outfit(
-            fontSize: 12,
-            fontWeight: FontWeight.w500,
-            color: secondaryTextColor,
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+            color: tokens.textSecondary,
+            fontWeight: FontWeight.bold,
           ),
         ),
       ),
@@ -2249,11 +2260,21 @@ class _RecordsListPageState extends State<RecordsListPage> {
       }
     } catch (e) {
       if (mounted) {
+        final tokens = context.tokens;
         Navigator.pop(context); // Close loading
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error generating CSV: $e'),
-            backgroundColor: Colors.red,
+            content: Text(
+              'Error generating CSV: $e',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onError,
+              ),
+            ),
+            backgroundColor: tokens.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(tokens.shapeS),
+            ),
           ),
         );
       }
@@ -2754,16 +2775,20 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
       // Show error
       if (mounted) {
+        final tokens = context.tokens;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.error, color: Colors.white),
-                const SizedBox(width: 10),
-                Text('Failed to generate PDF: $e'),
-              ],
+            content: Text(
+              'Failed to generate PDF: $e',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onError,
+              ),
             ),
-            backgroundColor: const Color(0xFFEF4444),
+            backgroundColor: tokens.error,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(tokens.shapeS),
+            ),
           ),
         );
       }
@@ -3067,58 +3092,67 @@ class _RecordsListPageState extends State<RecordsListPage> {
   }
 
   void _showExportSuccessDialog(String filePath, String fileName) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final secondaryTextColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
-
+    final tokens = context.tokens;
+    final textColor = tokens.textPrimary;
+    final secondaryTextColor = tokens.textSecondary;
     final isPdf = fileName.toLowerCase().endsWith('.pdf');
     final type = isPdf ? 'PDF' : 'CSV';
 
     showModalBottomSheet(
       context: context,
-      backgroundColor: cardColor,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      isScrollControlled: true,
+      backgroundColor: tokens.surfaceContainer,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.shapeXL),
+        ),
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(24),
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               Container(
-                padding: const EdgeInsets.all(16),
+                width: 40,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  color: tokens.subtleBorderColor,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 32),
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: tokens.success.withValues(alpha: 0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Color(0xFF10B981),
-                  size: 48,
+                child: Center(
+                  child: Icon(
+                    Icons.check_circle_rounded,
+                    color: tokens.success,
+                    size: 40,
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
               Text(
                 '$type Generated Successfully!',
-                style: GoogleFonts.outfit(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w600,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
                   color: textColor,
                 ),
               ),
               const SizedBox(height: 8),
               Text(
                 fileName,
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: secondaryTextColor,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(color: secondaryTextColor),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 16),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -3128,7 +3162,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   color: Theme.of(
                     context,
                   ).colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(tokens.shapeS),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -3142,9 +3176,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     Flexible(
                       child: Text(
                         'Saved to device storage',
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -3152,7 +3186,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               Row(
                 children: [
                   Expanded(
@@ -3170,18 +3204,18 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       ),
                       label: Text(
                         'Share',
-                        style: GoogleFonts.outfit(
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
                           color: Theme.of(context).colorScheme.primary,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       style: OutlinedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(tokens.shapeM),
+                        ),
                         side: BorderSide(
                           color: Theme.of(context).colorScheme.primary,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                     ),
@@ -3193,22 +3227,22 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         Navigator.pop(context);
                         await OpenFile.open(filePath);
                       },
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.open_in_new_rounded,
-                        color: Colors.white,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                       label: Text(
                         'Open',
-                        style: GoogleFonts.outfit(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                       style: FilledButton.styleFrom(
                         backgroundColor: Theme.of(context).colorScheme.primary,
                         padding: const EdgeInsets.symmetric(vertical: 14),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
+                          borderRadius: BorderRadius.circular(tokens.shapeM),
                         ),
                       ),
                     ),

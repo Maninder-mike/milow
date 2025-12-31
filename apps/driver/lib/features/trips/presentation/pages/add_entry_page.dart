@@ -1406,122 +1406,120 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   Widget _buildAddTripTab() {
-    return Expanded(
-      child: SingleChildScrollView(
-        controller: _tripScrollController,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Quick Actions for existing trips (Capsules)
-            _buildQuickActions(),
-            _buildSectionCard(
-              title: 'Trip Details',
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _tripNumberController,
-                        textCapitalization: TextCapitalization.characters,
-                        keyboardType: TextInputType.text,
-                        decoration: _inputDecoration(
-                          label: 'Trip Number',
-                          hint: 'e.g., TR-12345',
-                          prefixIcon: Icons.tag,
-                        ),
+    return SingleChildScrollView(
+      controller: _tripScrollController,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Quick Actions for existing trips (Capsules)
+          _buildQuickActions(),
+          _buildSectionCard(
+            title: 'Trip Details',
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _tripNumberController,
+                      textCapitalization: TextCapitalization.characters,
+                      keyboardType: TextInputType.text,
+                      decoration: _inputDecoration(
+                        label: 'Trip Number',
+                        hint: 'e.g., TR-12345',
+                        prefixIcon: Icons.tag,
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _buildAutocompleteField(
-                        controller: _tripTruckNumberController,
-                        focusNode: _tripTruckFocusNode,
-                        textCapitalization: TextCapitalization.characters,
-                        hint: 'e.g., T-101',
-                        prefixIcon: Icons.local_shipping,
-                        label: 'Truck Number',
-                        optionsBuilder:
-                            PredictionService.instance.getTruckSuggestions,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                ..._buildTrailerFields(),
-                const SizedBox(height: 12),
-                _buildBorderCrossingDropdown(),
-              ],
-            ),
-            _buildSectionCard(
-              title: 'Schedule',
-              children: [
-                TextField(
-                  controller: _tripDateController,
-                  readOnly: true,
-                  decoration: _inputDecoration(
-                    label: 'Date & Time',
-                    hint: 'Tap to select',
-                    prefixIcon: Icons.calendar_today,
                   ),
-                  onTap: () => _selectDateTime(_tripDateController),
-                ),
-              ],
-            ),
-            _buildSectionCard(
-              title: 'Route',
-              children: [
-                ..._buildPickupLocationFields(),
-                const SizedBox(height: 12),
-                ..._buildDeliveryLocationFields(),
-              ],
-            ),
-            _buildSectionCard(
-              title: 'Operations',
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _tripStartOdometerController,
-                        keyboardType: TextInputType.number,
-                        decoration: _inputDecoration(
-                          label: 'Start Odometer',
-                          hint: _distanceUnit,
-                          prefixIcon: Icons.speed,
-                        ),
-                      ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildAutocompleteField(
+                      controller: _tripTruckNumberController,
+                      focusNode: _tripTruckFocusNode,
+                      textCapitalization: TextCapitalization.characters,
+                      hint: 'e.g., T-101',
+                      prefixIcon: Icons.local_shipping,
+                      label: 'Truck Number',
+                      optionsBuilder:
+                          PredictionService.instance.getTruckSuggestions,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _tripEndOdometerController,
-                        keyboardType: TextInputType.number,
-                        decoration: _inputDecoration(
-                          label: 'End Odometer',
-                          hint: _distanceUnit,
-                          prefixIcon: Icons.speed,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                TextField(
-                  controller: _tripNotesController,
-                  textCapitalization: TextCapitalization.sentences,
-                  maxLines: 3,
-                  keyboardType: TextInputType.text,
-                  decoration: _inputDecoration(
-                    label: 'Notes',
-                    hint: 'Additional details...',
-                    prefixIcon: Icons.notes,
                   ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ..._buildTrailerFields(),
+              const SizedBox(height: 12),
+              _buildBorderCrossingDropdown(),
+            ],
+          ),
+          _buildSectionCard(
+            title: 'Schedule',
+            children: [
+              TextField(
+                controller: _tripDateController,
+                readOnly: true,
+                decoration: _inputDecoration(
+                  label: 'Date & Time',
+                  hint: 'Tap to select',
+                  prefixIcon: Icons.calendar_today,
                 ),
-              ],
-            ),
-          ],
-        ),
+                onTap: () => _selectDateTime(_tripDateController),
+              ),
+            ],
+          ),
+          _buildSectionCard(
+            title: 'Route',
+            children: [
+              ..._buildPickupLocationFields(),
+              const SizedBox(height: 12),
+              ..._buildDeliveryLocationFields(),
+            ],
+          ),
+          _buildSectionCard(
+            title: 'Operations',
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _tripStartOdometerController,
+                      keyboardType: TextInputType.number,
+                      decoration: _inputDecoration(
+                        label: 'Start Odometer',
+                        hint: _distanceUnit,
+                        prefixIcon: Icons.speed,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _tripEndOdometerController,
+                      keyboardType: TextInputType.number,
+                      decoration: _inputDecoration(
+                        label: 'End Odometer',
+                        hint: _distanceUnit,
+                        prefixIcon: Icons.speed,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _tripNotesController,
+                textCapitalization: TextCapitalization.sentences,
+                maxLines: 3,
+                keyboardType: TextInputType.text,
+                decoration: _inputDecoration(
+                  label: 'Notes',
+                  hint: 'Additional details...',
+                  prefixIcon: Icons.notes,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1731,320 +1729,315 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   Widget _buildAddFuelTab() {
-    return Expanded(
-      child: SingleChildScrollView(
-        controller: _fuelScrollController,
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildSectionCard(
-              title: 'Fuel Details',
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: Theme.of(context).colorScheme.outlineVariant,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isReeferFuel = false),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            decoration: BoxDecoration(
-                              color: !_isReeferFuel
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Colors.transparent,
-                              borderRadius: const BorderRadius.only(
-                                topLeft: Radius.circular(15),
-                                bottomLeft: Radius.circular(15),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.local_gas_station,
-                                  size: 20,
-                                  color: !_isReeferFuel
-                                      ? Theme.of(context).colorScheme.onPrimary
-                                      : context.tokens.textSecondary,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Truck Fuel',
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        color: !_isReeferFuel
-                                            ? Theme.of(
-                                                context,
-                                              ).colorScheme.onPrimary
-                                            : context.tokens.textSecondary,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                      Expanded(
-                        child: GestureDetector(
-                          onTap: () => setState(() => _isReeferFuel = true),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            decoration: BoxDecoration(
-                              color: _isReeferFuel
-                                  ? Theme.of(context).colorScheme.primary
-                                  : Colors.transparent,
-                              borderRadius: const BorderRadius.only(
-                                topRight: Radius.circular(15),
-                                bottomRight: Radius.circular(15),
-                              ),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(
-                                  Icons.ac_unit,
-                                  size: 20,
-                                  color: _isReeferFuel
-                                      ? Theme.of(context).colorScheme.onPrimary
-                                      : context.tokens.textSecondary,
-                                ),
-                                const SizedBox(width: 8),
-                                Text(
-                                  'Reefer Fuel',
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                        color: _isReeferFuel
-                                            ? Theme.of(
-                                                context,
-                                              ).colorScheme.onPrimary
-                                            : context.tokens.textSecondary,
-                                      ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+    return SingleChildScrollView(
+      controller: _fuelScrollController,
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _buildSectionCard(
+            title: 'Fuel Details',
+            children: [
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
                   ),
                 ),
-                const SizedBox(height: 12),
-                _buildAutocompleteField(
-                  controller: _truckNumberController,
-                  focusNode: _truckFocusNode,
-                  textCapitalization: TextCapitalization.characters,
-                  label: _isReeferFuel ? 'Reefer Number' : 'Truck Number',
-                  hint: _isReeferFuel ? 'e.g., R-101' : 'e.g., T-101',
-                  prefixIcon: _isReeferFuel
-                      ? Icons.ac_unit
-                      : Icons.local_shipping,
-                  optionsBuilder:
-                      PredictionService.instance.getTruckSuggestions,
-                ),
-                const SizedBox(height: 12),
-                _buildAutocompleteField(
-                  controller: _locationController,
-                  focusNode: _locationFocusNode,
-                  textCapitalization: TextCapitalization.words,
-                  label: _isReeferFuel ? 'Fuel Location' : 'Location',
-                  hint: _isReeferFuel
-                      ? 'Reefer fuel station'
-                      : 'Station or city',
-                  prefixIcon: Icons.location_on,
-                  suffixIcon: Icons.my_location,
-                  onSuffixTap: () => _getLocationFor(_locationController),
-                  optionsBuilder:
-                      PredictionService.instance.getLocationSuggestions,
-                ),
-              ],
-            ),
-            _buildSectionCard(
-              title: 'Schedule & Metrics',
-              children: [
-                TextField(
-                  controller: _fuelDateController,
-                  readOnly: true,
-                  decoration: _inputDecoration(
-                    label: 'Date & Time',
-                    hint: 'Tap to select',
-                    prefixIcon: Icons.calendar_today,
-                  ),
-                  onTap: () => _selectDateTime(_fuelDateController),
-                ),
-                const SizedBox(height: 12),
-                Row(
+                child: Row(
                   children: [
                     Expanded(
-                      child: TextField(
-                        controller: _odometerController,
-                        keyboardType: TextInputType.number,
-                        decoration: _inputDecoration(
-                          label: _isReeferFuel ? 'Hours' : 'Odometer',
-                          hint: _isReeferFuel ? 'Hours' : _distanceUnit,
-                          prefixIcon: _isReeferFuel ? Icons.timer : Icons.speed,
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isReeferFuel = false),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: !_isReeferFuel
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.transparent,
+                            borderRadius: const BorderRadius.only(
+                              topLeft: Radius.circular(15),
+                              bottomLeft: Radius.circular(15),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.local_gas_station,
+                                size: 20,
+                                color: !_isReeferFuel
+                                    ? Theme.of(context).colorScheme.onPrimary
+                                    : context.tokens.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Truck Fuel',
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      color: !_isReeferFuel
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary
+                                          : context.tokens.textSecondary,
+                                    ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        initialValue: _currency,
-                        decoration: _inputDecoration(
-                          label: 'Currency',
-                          hint: 'Select',
-                          prefixIcon: Icons.attach_money,
-                        ),
-                        dropdownColor: Theme.of(context).cardColor,
-                        items: [
-                          const DropdownMenuItem(
-                            value: 'USD',
-                            child: Text('USD (\$)'),
+                      child: GestureDetector(
+                        onTap: () => setState(() => _isReeferFuel = true),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: _isReeferFuel
+                                ? Theme.of(context).colorScheme.primary
+                                : Colors.transparent,
+                            borderRadius: const BorderRadius.only(
+                              topRight: Radius.circular(15),
+                              bottomRight: Radius.circular(15),
+                            ),
                           ),
-                          const DropdownMenuItem(
-                            value: 'CAD',
-                            child: Text('CAD (C\$)'),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.ac_unit,
+                                size: 20,
+                                color: _isReeferFuel
+                                    ? Theme.of(context).colorScheme.onPrimary
+                                    : context.tokens.textSecondary,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Reefer Fuel',
+                                style: Theme.of(context).textTheme.labelLarge
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w600,
+                                      color: _isReeferFuel
+                                          ? Theme.of(
+                                              context,
+                                            ).colorScheme.onPrimary
+                                          : context.tokens.textSecondary,
+                                    ),
+                              ),
+                            ],
                           ),
-                        ],
-                        onChanged: (value) {
-                          if (value != null && value != _currency) {
-                            setState(() {
-                              _currency = value;
-                              if (value == 'USD') {
-                                _fuelUnit = 'gal';
-                                _distanceUnit = 'mi';
-                              } else if (value == 'CAD') {
-                                _fuelUnit = 'L';
-                                _distanceUnit = 'km';
-                              }
-                            });
-                          }
-                        },
-                        icon: Icon(
-                          Icons.keyboard_arrow_down,
-                          color: Theme.of(context).colorScheme.primary,
                         ),
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-            _buildSectionCard(
-              title: 'Quantities',
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: _fuelQuantityController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: _inputDecoration(
-                          label: 'Fuel Qty ($_fuelUnit)',
-                          hint: '0.0',
-                          prefixIcon: _isReeferFuel
-                              ? Icons.ac_unit
-                              : Icons.local_gas_station,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: _fuelPriceController,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        decoration: _inputDecoration(
-                          label: 'Price/$_fuelUnit',
-                          hint: '0.00',
-                          prefixIcon: Icons.attach_money,
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(height: 12),
+              _buildAutocompleteField(
+                controller: _truckNumberController,
+                focusNode: _truckFocusNode,
+                textCapitalization: TextCapitalization.characters,
+                label: _isReeferFuel ? 'Reefer Number' : 'Truck Number',
+                hint: _isReeferFuel ? 'e.g., R-101' : 'e.g., T-101',
+                prefixIcon: _isReeferFuel
+                    ? Icons.ac_unit
+                    : Icons.local_shipping,
+                optionsBuilder: PredictionService.instance.getTruckSuggestions,
+              ),
+              const SizedBox(height: 12),
+              _buildAutocompleteField(
+                controller: _locationController,
+                focusNode: _locationFocusNode,
+                textCapitalization: TextCapitalization.words,
+                label: _isReeferFuel ? 'Fuel Location' : 'Location',
+                hint: _isReeferFuel ? 'Reefer fuel station' : 'Station or city',
+                prefixIcon: Icons.location_on,
+                suffixIcon: Icons.my_location,
+                onSuffixTap: () => _getLocationFor(_locationController),
+                optionsBuilder:
+                    PredictionService.instance.getLocationSuggestions,
+              ),
+            ],
+          ),
+          _buildSectionCard(
+            title: 'Schedule & Metrics',
+            children: [
+              TextField(
+                controller: _fuelDateController,
+                readOnly: true,
+                decoration: _inputDecoration(
+                  label: 'Date & Time',
+                  hint: 'Tap to select',
+                  prefixIcon: Icons.calendar_today,
                 ),
-                if (!_isReeferFuel) ...[
-                  const SizedBox(height: 12),
-                  const Divider(),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _defQuantityController,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration: _inputDecoration(
-                            label: 'DEF Qty ($_fuelUnit)',
-                            hint: '0.0',
-                            prefixIcon: Icons.water_drop,
-                          ),
-                          onChanged: (val) => setState(() {}),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: TextField(
-                          controller: _defPriceController,
-                          enabled: !_defFromYard,
-                          keyboardType: const TextInputType.numberWithOptions(
-                            decimal: true,
-                          ),
-                          decoration:
-                              _inputDecoration(
-                                label: 'DEF Price/$_fuelUnit',
-                                hint: '0.00',
-                                prefixIcon: Icons.attach_money,
-                              ).copyWith(
-                                fillColor: _defFromYard
-                                    ? Theme.of(
-                                        context,
-                                      ).disabledColor.withValues(alpha: 0.1)
-                                    : null,
-                              ),
-                          onChanged: (val) => setState(() {}),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  SwitchListTile(
-                    title: Text(
-                      'Filled at home terminal (no cost)',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        fontSize: 13,
-                        color: context.tokens.textSecondary,
+                onTap: () => _selectDateTime(_fuelDateController),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _odometerController,
+                      keyboardType: TextInputType.number,
+                      decoration: _inputDecoration(
+                        label: _isReeferFuel ? 'Hours' : 'Odometer',
+                        hint: _isReeferFuel ? 'Hours' : _distanceUnit,
+                        prefixIcon: _isReeferFuel ? Icons.timer : Icons.speed,
                       ),
                     ),
-                    value: _defFromYard,
-                    onChanged: (val) {
-                      setState(() {
-                        _defFromYard = val;
-                        if (val) _defPriceController.clear();
-                      });
-                    },
-                    contentPadding: EdgeInsets.zero,
-                    activeThumbColor: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: DropdownButtonFormField<String>(
+                      initialValue: _currency,
+                      decoration: _inputDecoration(
+                        label: 'Currency',
+                        hint: 'Select',
+                        prefixIcon: Icons.attach_money,
+                      ),
+                      dropdownColor: Theme.of(context).cardColor,
+                      items: [
+                        const DropdownMenuItem(
+                          value: 'USD',
+                          child: Text('USD (\$)'),
+                        ),
+                        const DropdownMenuItem(
+                          value: 'CAD',
+                          child: Text('CAD (C\$)'),
+                        ),
+                      ],
+                      onChanged: (value) {
+                        if (value != null && value != _currency) {
+                          setState(() {
+                            _currency = value;
+                            if (value == 'USD') {
+                              _fuelUnit = 'gal';
+                              _distanceUnit = 'mi';
+                            } else if (value == 'CAD') {
+                              _fuelUnit = 'L';
+                              _distanceUnit = 'km';
+                            }
+                          });
+                        }
+                      },
+                      icon: Icon(
+                        Icons.keyboard_arrow_down,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
                   ),
                 ],
+              ),
+            ],
+          ),
+          _buildSectionCard(
+            title: 'Quantities',
+            children: [
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _fuelQuantityController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: _inputDecoration(
+                        label: 'Fuel Qty ($_fuelUnit)',
+                        hint: '0.0',
+                        prefixIcon: _isReeferFuel
+                            ? Icons.ac_unit
+                            : Icons.local_gas_station,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _fuelPriceController,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      decoration: _inputDecoration(
+                        label: 'Price/$_fuelUnit',
+                        hint: '0.00',
+                        prefixIcon: Icons.attach_money,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              if (!_isReeferFuel) ...[
+                const SizedBox(height: 12),
+                const Divider(),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _defQuantityController,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration: _inputDecoration(
+                          label: 'DEF Qty ($_fuelUnit)',
+                          hint: '0.0',
+                          prefixIcon: Icons.water_drop,
+                        ),
+                        onChanged: (val) => setState(() {}),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _defPriceController,
+                        enabled: !_defFromYard,
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
+                        decoration:
+                            _inputDecoration(
+                              label: 'DEF Price/$_fuelUnit',
+                              hint: '0.00',
+                              prefixIcon: Icons.attach_money,
+                            ).copyWith(
+                              fillColor: _defFromYard
+                                  ? Theme.of(
+                                      context,
+                                    ).disabledColor.withValues(alpha: 0.1)
+                                  : null,
+                            ),
+                        onChanged: (val) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SwitchListTile(
+                  title: Text(
+                    'Filled at home terminal (no cost)',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      fontSize: 13,
+                      color: context.tokens.textSecondary,
+                    ),
+                  ),
+                  value: _defFromYard,
+                  onChanged: (val) {
+                    setState(() {
+                      _defFromYard = val;
+                      if (val) _defPriceController.clear();
+                    });
+                  },
+                  contentPadding: EdgeInsets.zero,
+                  activeThumbColor: Theme.of(context).colorScheme.primary,
+                ),
               ],
-            ),
-            if (_fuelQuantityController.text.isNotEmpty &&
-                _fuelPriceController.text.isNotEmpty)
-              _buildTotalCostPreview(),
-          ],
-        ),
+            ],
+          ),
+          if (_fuelQuantityController.text.isNotEmpty &&
+              _fuelPriceController.text.isNotEmpty)
+            _buildTotalCostPreview(),
+        ],
       ),
     );
   }
