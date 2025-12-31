@@ -3,11 +3,13 @@ default_platform(:android)
 platform :android do
   desc "Upload metadata to Play Store"
   lane :update_metadata do
+    # Metadata updates should focus on store listing (Title, Descriptions)
+    # Changelogs are skipped here to avoid version-association errors.
     upload_to_play_store(
       skip_upload_apk: true,
       skip_upload_aab: true,
       skip_upload_metadata: false,
-      skip_upload_changelogs: false,
+      skip_upload_changelogs: true,
       skip_upload_images: true,
       skip_upload_screenshots: true,
       track: "alpha",
