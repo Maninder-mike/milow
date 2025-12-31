@@ -15,9 +15,15 @@ class Trip {
   final String? notes;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final bool isEmptyLeg;
 
   Trip({
-    required this.tripNumber, required this.truckNumber, required this.tripDate, required this.pickupLocations, required this.deliveryLocations, this.id,
+    required this.tripNumber,
+    required this.truckNumber,
+    required this.tripDate,
+    required this.pickupLocations,
+    required this.deliveryLocations,
+    this.id,
     this.userId,
     this.trailers = const [],
     this.startOdometer,
@@ -25,6 +31,7 @@ class Trip {
     this.distanceUnit = 'mi',
     this.borderCrossing,
     this.notes,
+    this.isEmptyLeg = false,
     this.createdAt,
     this.updatedAt,
   });
@@ -68,6 +75,7 @@ class Trip {
       distanceUnit: json['distance_unit'] as String? ?? 'mi',
       borderCrossing: json['border_crossing'] as String?,
       notes: json['notes'] as String?,
+      isEmptyLeg: json['is_empty_leg'] as bool? ?? false,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -93,6 +101,7 @@ class Trip {
       'distance_unit': distanceUnit,
       'border_crossing': borderCrossing,
       'notes': notes,
+      'is_empty_leg': isEmptyLeg,
     };
   }
 
@@ -111,6 +120,7 @@ class Trip {
     String? distanceUnit,
     String? borderCrossing,
     String? notes,
+    bool? isEmptyLeg,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -128,6 +138,7 @@ class Trip {
       distanceUnit: distanceUnit ?? this.distanceUnit,
       borderCrossing: borderCrossing ?? this.borderCrossing,
       notes: notes ?? this.notes,
+      isEmptyLeg: isEmptyLeg ?? this.isEmptyLeg,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
-import 'package:milow/core/services/trip_service.dart';
-import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/services/trip_repository.dart';
+import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
 import 'package:milow_core/milow_core.dart';
@@ -102,7 +102,7 @@ class DataPrefetchService {
 
   Future<void> _prefetchTrips() async {
     try {
-      _cachedTrips = await TripService.getTrips();
+      _cachedTrips = await TripRepository.getTrips();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('DataPrefetchService: Failed to prefetch trips: $e');
@@ -112,7 +112,7 @@ class DataPrefetchService {
 
   Future<void> _prefetchFuelEntries() async {
     try {
-      _cachedFuelEntries = await FuelService.getFuelEntries();
+      _cachedFuelEntries = await FuelRepository.getFuelEntries();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('DataPrefetchService: Failed to prefetch fuel entries: $e');

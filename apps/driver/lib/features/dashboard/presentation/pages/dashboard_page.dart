@@ -15,13 +15,15 @@ import 'package:milow/core/utils/address_utils.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
-import 'package:milow/core/services/trip_service.dart';
-import 'package:milow/core/services/fuel_service.dart';
+
 import 'package:milow/core/utils/error_handler.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
 import 'package:milow/features/dashboard/presentation/widgets/active_trip_card.dart';
+import 'package:milow/core/widgets/sync_status_indicator.dart';
+import 'package:milow/core/services/trip_repository.dart';
+import 'package:milow/core/services/fuel_repository.dart';
 import 'package:intl/intl.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -254,7 +256,7 @@ class _DashboardPageState extends State<DashboardPage>
   Future<void> _loadRecentEntries() async {
     try {
       // Load active trip (trip without end odometer)
-      final activeTrip = await TripService.getActiveTrip();
+      final activeTrip = await TripRepository.getActiveTrip();
 
       final prefetch = DataPrefetchService.instance;
       List<Trip> trips;
@@ -268,8 +270,13 @@ class _DashboardPageState extends State<DashboardPage>
         trips = prefetch.cachedTrips!.take(5).toList();
         fuelEntries = prefetch.cachedFuelEntries!.take(5).toList();
       } else {
-        trips = await TripService.getTrips(limit: 5);
-        fuelEntries = await FuelService.getFuelEntries(limit: 5);
+        // Fetch from repositories (offline-first)
+        // Note: Repositories return all items sorted by date
+        final allTrips = await TripRepository.getTrips(refresh: false);
+        final allFuel = await FuelRepository.getFuelEntries(refresh: false);
+
+        trips = allTrips.take(5).toList();
+        fuelEntries = allFuel.take(5).toList();
       }
 
       // Combine and sort by date
@@ -372,18 +379,26 @@ class _DashboardPageState extends State<DashboardPage>
                     },
                     child: ActiveTripCard(
                       trip: _activeTrip!,
-                      onComplete: () {
+                      onComplete: () async {
                         // Navigate to complete trip
-                        context.push(
+                        final result = await context.push(
                           '/add-entry',
                           extra: {'editingTrip': _activeTrip},
                         );
+                        if (result == true) {
+                          unawaited(_onRefresh());
+                        }
                       },
                     ),
                   )
                 else
                   FilledButton(
-                    onPressed: () => context.push('/add-entry'),
+                    onPressed: () async {
+                      final result = await context.push('/add-entry');
+                      if (result == true) {
+                        unawaited(_onRefresh());
+                      }
+                    },
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -437,12 +452,12 @@ class _DashboardPageState extends State<DashboardPage>
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildGetStartedCard(
-                context,
-                'Add Data',
-                Icons.add,
-                () => context.push('/add-entry'),
-              ),
+              _buildGetStartedCard(context, 'Add Data', Icons.add, () async {
+                final result = await context.push('/add-entry');
+                if (result == true) {
+                  unawaited(_onRefresh());
+                }
+              }),
               const SizedBox(width: 12),
               _buildGetStartedCard(
                 context,
@@ -1081,6 +1096,8 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                       ),
                       const Spacer(),
+                      const SyncStatusIndicator(),
+                      const SizedBox(width: 8),
                       _buildNotificationBell(context),
                     ],
                   ),
@@ -1295,7 +1312,7 @@ class _DashboardPageState extends State<DashboardPage>
 
           // 2. Persist to DB
           try {
-            await TripService.updateTrip(updatedTrip);
+            await TripRepository.updateTrip(updatedTrip);
             if (mounted) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(

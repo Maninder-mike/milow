@@ -50,7 +50,7 @@ class ProfileRepository {
     await LocalProfileStore.put(uid, optimistic);
 
     // Persist to Supabase; on success it remains consistent.
-    await ProfileService.upsertProfile(values);
+    await ProfileService.updateProfile(values);
 
     // Optionally refresh from server to pick any canonical fields (e.g., updated_at)
     await _refreshAndCache(uid);

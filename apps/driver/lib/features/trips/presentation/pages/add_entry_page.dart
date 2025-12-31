@@ -11,7 +11,9 @@ import 'package:go_router/go_router.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/trip_service.dart';
-import 'package:milow/core/services/fuel_service.dart';
+import 'package:milow/core/services/trip_repository.dart';
+import 'package:milow/core/services/fuel_repository.dart';
+import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/utils/unit_utils.dart';
@@ -51,6 +53,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   String _currency = 'USD';
   bool _isReeferFuel = false;
   bool _defFromYard = false; // [NEW] DEF from Yard toggle
+  bool _isEmptyLeg = false; // [NEW] Empty Leg toggle
   bool _isSaving = false;
 
   // Trip fields
@@ -292,6 +295,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Set distance unit
     _distanceUnit = trip.distanceUnit;
+    _isEmptyLeg = trip.isEmptyLeg;
   }
 
   void _prefillFuelData(FuelEntry fuel) {
@@ -1221,6 +1225,76 @@ class _AddEntryPageState extends State<AddEntryPage>
     return null;
   }
 
+  Future<void> _fetchLastDestination() async {
+    try {
+      // Get the most recent trip
+      final recentTrips = await TripService.getTrips(limit: 1);
+
+      if (recentTrips.isNotEmpty && mounted) {
+        final lastTrip = recentTrips.first;
+
+        if (lastTrip.deliveryLocations.isNotEmpty) {
+          final lastDestination = lastTrip.deliveryLocations.last;
+
+          if (lastDestination.isNotEmpty) {
+            setState(() {
+              // Assuming the first pickup location is where we want to prefill
+              if (_pickupControllers.isNotEmpty) {
+                _pickupControllers[0].text = lastDestination;
+              } else {
+                // Should exist by default, but just in case
+                _addPickupLocation();
+                _pickupControllers[0].text = lastDestination;
+              }
+            });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Prefilled pickup location from last trip: $lastDestination',
+                ),
+                behavior: SnackBarBehavior.floating,
+                backgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+              ),
+            );
+          }
+        }
+
+        // Autofill Truck Number
+        if (lastTrip.truckNumber.isNotEmpty) {
+          setState(() {
+            _tripTruckNumberController.text = lastTrip.truckNumber;
+          });
+        }
+
+        // Autofill Trailers
+        if (lastTrip.trailers.isNotEmpty) {
+          setState(() {
+            // Clear existing trailers
+            for (var controller in _trailerControllers) {
+              controller.dispose();
+            }
+            _trailerControllers.clear();
+            for (var node in _trailerFocusNodes) {
+              node.dispose();
+            }
+            _trailerFocusNodes.clear();
+
+            // Add trailers from last trip
+            for (var trailer in lastTrip.trailers) {
+              _addTrailer(trailer);
+            }
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Failed to fetch last destination: $e');
+      // Fail silently or show subtle error
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1449,6 +1523,48 @@ class _AddEntryPageState extends State<AddEntryPage>
               const SizedBox(height: 12),
               ..._buildTrailerFields(),
               const SizedBox(height: 12),
+
+              // Empty Leg Toggle
+              Container(
+                decoration: BoxDecoration(
+                  color: context.tokens.surfaceContainer,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: context.tokens.inputBorder),
+                ),
+                child: SwitchListTile(
+                  value: _isEmptyLeg,
+                  onChanged: (value) {
+                    setState(() => _isEmptyLeg = value);
+                    if (value) {
+                      _fetchLastDestination();
+                    }
+                  },
+                  title: Text(
+                    'Empty Leg',
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      color: context.tokens.textPrimary,
+                    ),
+                  ),
+                  subtitle: Text(
+                    'Driving without cargo (Deadhead)',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: context.tokens.textSecondary,
+                    ),
+                  ),
+                  secondary: Icon(
+                    Icons.no_luggage_outlined,
+                    color: _isEmptyLeg
+                        ? context.tokens.textPrimary
+                        : context.tokens.textTertiary,
+                  ),
+                  activeThumbColor: Theme.of(context).colorScheme.primary,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
               _buildBorderCrossingDropdown(),
             ],
           ),
@@ -1627,16 +1743,17 @@ class _AddEntryPageState extends State<AddEntryPage>
         notes: _tripNotesController.text.trim().isNotEmpty
             ? _tripNotesController.text.trim()
             : null,
+        isEmptyLeg: _isEmptyLeg,
       );
 
       if (_isEditMode && widget.editingTrip != null) {
-        await TripService.updateTrip(trip);
+        await TripRepository.updateTrip(trip);
       } else {
         // Get existing trips before creating new one
-        final existingTrips = await TripService.getTrips();
+        final existingTrips = await TripRepository.getTrips();
 
-        // Create the new trip
-        await TripService.createTrip(trip);
+        // Create the new trip (offline-first: saves locally, queues sync)
+        await TripRepository.createTrip(trip);
 
         // Check if previous trip (before this one) is missing end odometer
         if (existingTrips.isNotEmpty) {
@@ -1667,13 +1784,15 @@ class _AddEntryPageState extends State<AddEntryPage>
               ? 'Trip updated successfully!'
               : 'Trip saved successfully!',
         );
+
+        // Invalidate dashboard cache so it reloads from repository
+        DataPrefetchService.instance.invalidateCache();
+
         // Navigate to dashboard after saving
         // Use a small delay to ensure dialog is shown before navigation
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            context.go('/dashboard');
-          }
-        });
+        if (mounted) {
+          context.pop(true);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -2149,9 +2268,9 @@ class _AddEntryPageState extends State<AddEntryPage>
       );
 
       if (_isEditMode && widget.editingFuel != null) {
-        await FuelService.updateFuelEntry(fuelEntry);
+        await FuelRepository.updateFuelEntry(fuelEntry);
       } else {
-        await FuelService.createFuelEntry(fuelEntry);
+        await FuelRepository.createFuelEntry(fuelEntry);
       }
 
       if (mounted) {
@@ -2161,13 +2280,15 @@ class _AddEntryPageState extends State<AddEntryPage>
               ? 'Fuel entry updated successfully!'
               : 'Fuel entry saved successfully!',
         );
+
+        // Invalidate dashboard cache so it reloads from repository
+        DataPrefetchService.instance.invalidateCache();
+
         // Navigate to dashboard after saving
         // Use a small delay to ensure dialog is shown before navigation
-        Future.delayed(const Duration(milliseconds: 500), () {
-          if (mounted) {
-            context.go('/dashboard');
-          }
-        });
+        if (mounted) {
+          context.pop(true);
+        }
       }
     } catch (e) {
       if (mounted) {

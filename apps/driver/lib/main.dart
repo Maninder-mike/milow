@@ -17,6 +17,11 @@ import 'package:milow/core/services/locale_service.dart';
 import 'package:flutter/services.dart';
 import 'package:milow/core/services/trip_parser_service.dart';
 import 'package:milow/core/services/local_profile_store.dart';
+import 'package:milow/core/services/local_trip_store.dart';
+import 'package:milow/core/services/local_fuel_store.dart';
+import 'package:milow/core/services/connectivity_service.dart';
+import 'package:milow/core/services/sync_queue_service.dart';
+import 'package:milow/core/models/sync_operation.dart';
 import 'package:milow/l10n/app_localizations.dart';
 
 // Placeholder imports - will be replaced with actual pages
@@ -59,8 +64,16 @@ Future<void> main() async {
 
   // Initialize Hive for local caching
   await Hive.initFlutter();
+  Hive.registerAdapter(SyncOperationAdapter());
   await LocalProfileStore.init();
-  await logger.info('Init', 'Hive and LocalProfileStore initialized');
+  await LocalTripStore.init();
+  await LocalFuelStore.init();
+  await syncQueueService.init();
+  await logger.info('Init', 'Hive, local stores, and sync queue initialized');
+
+  // Initialize connectivity service for offline detection
+  await connectivityService.init();
+  await logger.info('Init', 'Connectivity service initialized');
 
   // Validate Supabase environment quickly to avoid silent issues
   final supabaseUrl = SupabaseConstants.supabaseUrl;

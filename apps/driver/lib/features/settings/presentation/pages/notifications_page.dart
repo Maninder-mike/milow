@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -82,13 +83,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
   Color _getNotificationColor(NotificationType type) {
     switch (type) {
       case NotificationType.reminder:
-        return const Color(0xFFF59E0B); // Amber/Orange for reminders
+        return context.tokens.warning; // Amber/Orange for reminders
       case NotificationType.company:
-        return const Color(0xFF007AFF); // Blue for company
+        return context.tokens.info; // Blue for company
       case NotificationType.news:
-        return const Color(0xFF10B981); // Green for news
+        return context.tokens.success; // Green for news
       case NotificationType.message:
-        return const Color(0xFF8B5CF6); // Violet for messages
+        return Theme.of(
+          context,
+        ).colorScheme.primary; // Violet/Primary for messages
     }
   }
 
@@ -187,11 +190,6 @@ class _NotificationsPageState extends State<NotificationsPage> {
               .toList();
 
           // Update local state for filtering
-          // Note: Avoid setting state in build, but for this simple filter logic it's okay to just reuse variable
-          // or we can use a separate variable in build.
-          // Better: just use `notifications` local var and filter it.
-          // But `_filteredNotifications` depends on `_notifications`.
-          // I'll assign it here but wrapped in a check to avoid rebuild loops if I was calling setState (I am not).
           _notifications = notifications;
 
           return Column(
@@ -256,10 +254,11 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 24,
                               ),
-                              color: const Color(0xFFEF4444),
-                              child: const Icon(
+                              color: context.tokens.error,
+                              child: Icon(
                                 Icons.delete_outline_rounded,
-                                color: Colors.white,
+                                color: Colors
+                                    .white, // Assuming white text on error bg
                                 size: 28,
                               ),
                             ),
@@ -281,7 +280,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                       onPressed: () =>
                                           Navigator.pop(context, true),
                                       style: TextButton.styleFrom(
-                                        foregroundColor: Colors.red,
+                                        foregroundColor: context.tokens.error,
                                       ),
                                       child: const Text('Delete'),
                                     ),
@@ -447,10 +446,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
                       const SizedBox(height: 8),
                       Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.access_time,
                             size: 14,
-                            color: Color(0xFF98A2B3),
+                            color: context.tokens.textTertiary,
                           ),
                           const SizedBox(width: 4),
                           Text(
@@ -500,8 +499,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.red,
-                        side: const BorderSide(color: Colors.red),
+                        foregroundColor: context.tokens.error,
+                        side: BorderSide(color: context.tokens.error),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                       onPressed: () => _rejectInvite(notification.id),
@@ -512,7 +511,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   Expanded(
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF10B981),
+                        backgroundColor: context.tokens.success,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -539,26 +538,26 @@ class _NotificationsPageState extends State<NotificationsPage> {
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                  color: context.tokens.success.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    color: context.tokens.success.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.check_circle_outline,
                       size: 16,
-                      color: Color(0xFF10B981),
+                      color: context.tokens.success,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Response Submitted',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF10B981),
+                        color: context.tokens.success,
                       ),
                     ),
                   ],
@@ -605,9 +604,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invitation accepted. Data sharing enabled.'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Invitation accepted. Data sharing enabled.'),
+            backgroundColor: context.tokens.success,
           ),
         );
       }
@@ -657,9 +656,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Invitation declined. Admin access revoked.'),
-            backgroundColor: Colors.red,
+          SnackBar(
+            content: const Text('Invitation declined. Admin access revoked.'),
+            backgroundColor: context.tokens.error,
           ),
         );
       }

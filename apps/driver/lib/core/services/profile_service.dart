@@ -39,11 +39,10 @@ class ProfileService {
     return publicUrl;
   }
 
-  static Future<void> upsertProfile(Map<String, dynamic> values) async {
+  static Future<void> updateProfile(Map<String, dynamic> values) async {
     final uid = currentUserId;
     if (uid == null) return;
-    final payload = {'id': uid, ...values};
-    await _client.from(_profilesTable).upsert(payload).eq('id', uid);
+    await _client.from(_profilesTable).update(values).eq('id', uid);
   }
 
   /// Revoke company association - driver leaves their current company.

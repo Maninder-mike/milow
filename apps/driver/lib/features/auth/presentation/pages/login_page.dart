@@ -129,7 +129,7 @@ class _LoginPageState extends State<LoginPage>
 
       if (response.session != null && mounted) {
         try {
-          await ProfileService.upsertProfile({
+          await ProfileService.updateProfile({
             'email': googleUser.email,
             'full_name': googleUser.displayName,
             'avatar_url': googleUser.photoUrl,

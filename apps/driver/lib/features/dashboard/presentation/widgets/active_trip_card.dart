@@ -6,6 +6,7 @@ import 'package:geocoding/geocoding.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/services/location_service.dart';
 import 'package:milow_core/milow_core.dart';
 
 /// Interactive card showing the current active trip (trip without end odometer)
@@ -30,15 +31,18 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
   // For now, assume going to first pickup if it exists, else first delivery
   bool get _isGoingToPickup => widget.trip.pickupLocations.isNotEmpty;
 
-  String get _destinationAddress {
-    String fullAddress;
+  String get _fullDestinationAddress {
     if (_isGoingToPickup && widget.trip.pickupLocations.isNotEmpty) {
-      fullAddress = widget.trip.pickupLocations.first;
+      return widget.trip.pickupLocations.first;
     } else if (widget.trip.deliveryLocations.isNotEmpty) {
-      fullAddress = widget.trip.deliveryLocations.first;
-    } else {
-      return 'Unknown destination';
+      return widget.trip.deliveryLocations.first;
     }
+    return '';
+  }
+
+  String get _destinationAddress {
+    final fullAddress = _fullDestinationAddress;
+    if (fullAddress.isEmpty) return 'Unknown destination';
     return _extractCityStateCountry(fullAddress);
   }
 
@@ -63,11 +67,16 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
     return parts.join(', ');
   }
 
-  String get _statusLabel =>
-      _isGoingToPickup ? 'EN ROUTE TO PICKUP' : 'EN ROUTE TO DELIVERY';
+  String get _statusLabel {
+    if (widget.trip.isEmptyLeg) return 'EMPTY LEG';
+    return _isGoingToPickup ? 'EN ROUTE TO PICKUP' : 'EN ROUTE TO DELIVERY';
+  }
 
-  Color get _statusColor =>
-      _isGoingToPickup ? const Color(0xFFEA580C) : const Color(0xFF2563EB);
+  Color get _statusColor {
+    // Empty Leg = Neutral/Text Secondary
+    if (widget.trip.isEmptyLeg) return context.tokens.textSecondary;
+    return _isGoingToPickup ? const Color(0xFFEA580C) : const Color(0xFF2563EB);
+  }
 
   @override
   void initState() {
@@ -117,8 +126,15 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
         ),
       );
 
-      // Geocode destination address to get coordinates
-      final locations = await locationFromAddress(_destinationAddress);
+      // Resolve address from DB if it's a name (e.g. "Yard" or Customer Name)
+      final resolvedAddress = await LocationService.resolveAddress(
+        _fullDestinationAddress,
+      );
+
+      // Use resolved address if found, otherwise use the raw input
+      final addressToGeocode = resolvedAddress ?? _fullDestinationAddress;
+
+      final locations = await locationFromAddress(addressToGeocode);
       if (locations.isNotEmpty) {
         final dest = locations.first;
         final distance = Geolocator.distanceBetween(

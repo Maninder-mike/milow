@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
@@ -8,6 +7,8 @@ import 'package:intl/intl.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/models/country_code.dart';
 import 'package:milow/core/widgets/country_code_selector.dart';
+import 'package:milow/core/constants/design_tokens.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -161,7 +162,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       if (_imageFile != null) {
         final path =
-            'avatars/${Supabase.instance.client.auth.currentUser!.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+            '${Supabase.instance.client.auth.currentUser!.id}/${DateTime.now().millisecondsSinceEpoch}.jpg';
         await Supabase.instance.client.storage
             .from('avatars')
             .upload(path, _imageFile!);
@@ -242,11 +243,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final backgroundColor = tokens.scaffoldAltBackground;
+    final textColor = tokens.textPrimary;
     final primaryColor = Theme.of(context).colorScheme.primary;
 
     return Scaffold(
@@ -254,253 +253,247 @@ class _EditProfilePageState extends State<EditProfilePage> {
       appBar: AppBar(
         backgroundColor: backgroundColor,
         elevation: 0,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
-          onPressed: () => Navigator.pop(context),
+        leading: Semantics(
+          label: 'Back',
+          hint: 'Go back to previous screen',
+          button: true,
+          child: IconButton(
+            icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
         ),
         title: Text(
           'Edit Profile',
-          style: GoogleFonts.outfit(
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
             color: textColor,
             fontWeight: FontWeight.w600,
-            fontSize: 18,
           ),
         ),
         centerTitle: true,
-      ),
-      body: Stack(
-        children: [
-          SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildAvatarSection(primaryColor, backgroundColor),
-                  const SizedBox(height: 40),
-
-                  _buildSectionCard(
-                    title: 'Personal Information',
-                    children: [
-                      _buildLabel('Full Name'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _nameController,
-                        hint: 'Enter your name',
-                        icon: Icons.person_outline,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildLabel('Email Address'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _emailController,
-                        hint: 'Email',
-                        icon: Icons.email_outlined,
-                        isDark: isDark,
-                        enabled: false,
-                      ),
-                      const SizedBox(height: 24),
-                      _buildLabel('Phone Number'),
-                      const SizedBox(height: 8),
-                      _buildPhoneField(isDark),
-                    ],
+        actions: [
+          Padding(
+            padding: EdgeInsets.only(right: tokens.spacingM),
+            child: Center(
+              child: Semantics(
+                label: 'Save Profile',
+                button: true,
+                child: FilledButton(
+                  onPressed: _isLoading ? null : _saveProfile,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
+                    minimumSize: const Size(0, 40),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  _buildSectionCard(
-                    title: 'Address Information',
-                    children: [
-                      _buildLabel('Street Address'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _streetController,
-                        hint: '123 Trucker Way',
-                        icon: Icons.home_outlined,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildLabel('City'),
-                                const SizedBox(height: 8),
-                                _buildTextField(
-                                  controller: _cityController,
-                                  hint: 'Toronto',
-                                  icon: Icons.location_city_outlined,
-                                  isDark: isDark,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildLabel('State / Province'),
-                                const SizedBox(height: 8),
-                                _buildTextField(
-                                  controller: _stateController,
-                                  hint: 'ON',
-                                  icon: Icons.map_outlined,
-                                  isDark: isDark,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildLabel('Postal Code'),
-                                const SizedBox(height: 8),
-                                _buildTextField(
-                                  controller: _zipController,
-                                  hint: 'M1B 2C3',
-                                  icon: Icons.pin_drop_outlined,
-                                  isDark: isDark,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildLabel('Country'),
-                                const SizedBox(height: 8),
-                                _buildTextField(
-                                  controller: _countryController,
-                                  hint: 'Canada',
-                                  icon: Icons.public_outlined,
-                                  isDark: isDark,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
+                  child: Text(
+                    'Save',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
                   ),
-
-                  const SizedBox(height: 24),
-
-                  _buildSectionCard(
-                    title: 'Driver Documents',
-                    children: [
-                      _buildLabel('License Number'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _licenseNumberController,
-                        hint: 'A1234-56789-01234',
-                        icon: Icons.badge_outlined,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildLabel('License Expiry Date'),
-                      const SizedBox(height: 8),
-                      _buildClickableField(
-                        text: _licenseExpiryDate != null
-                            ? DateFormat.yMMMd().format(_licenseExpiryDate!)
-                            : 'Select Expiry Date',
-                        icon: Icons.event_available_outlined,
-                        onTap: _selectLicenseExpiry,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildLabel('License Type (Class)'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _licenseTypeController,
-                        hint: 'Class AZ',
-                        icon: Icons.category_outlined,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildLabel('FAST ID (Optional)'),
-                      const SizedBox(height: 8),
-                      _buildTextField(
-                        controller: _fastIdController,
-                        hint: '12345678',
-                        icon: Icons.security_outlined,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildLabel('Date of Birth'),
-                      const SizedBox(height: 8),
-                      _buildClickableField(
-                        text: _dob != null
-                            ? DateFormat.yMMMd().format(_dob!)
-                            : 'Select Date',
-                        icon: Icons.calendar_today_outlined,
-                        onTap: _selectDate,
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildLabel('Citizenship'),
-                      const SizedBox(height: 8),
-                      _buildCitizenshipSelector(isDark),
-                    ],
-                  ),
-
-                  const SizedBox(height: 120),
-                ],
+                ),
               ),
             ),
           ),
-
-          if (_isLoading) const Center(child: CircularProgressIndicator()),
         ],
       ),
-      bottomNavigationBar: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: backgroundColor,
-          border: Border(
-            top: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-        ),
-        child: SafeArea(
-          child: FilledButton(
-            onPressed: _isLoading ? null : _saveProfile,
-            style: FilledButton.styleFrom(
-              minimumSize: const Size(double.infinity, 56),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: EdgeInsets.all(tokens.spacingL),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildAvatarSection(primaryColor, backgroundColor),
+                    SizedBox(height: tokens.spacingXL),
+
+                    _buildSectionCard(
+                      title: 'Personal Information',
+                      children: [
+                        _buildLabel('Full Name'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildTextField(
+                          controller: _nameController,
+                          hint: 'Enter your name',
+                          icon: Icons.person_outline,
+                        ),
+                        SizedBox(height: tokens.spacingL),
+                        _buildLabel('Email Address'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildTextField(
+                          controller: _emailController,
+                          hint: 'Email',
+                          icon: Icons.email_outlined,
+                          enabled: false,
+                        ),
+                        SizedBox(height: tokens.spacingL),
+                        _buildLabel('Phone Number'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildPhoneField(),
+                      ],
+                    ),
+
+                    SizedBox(height: tokens.spacingL),
+
+                    _buildSectionCard(
+                      title: 'Address Information',
+                      children: [
+                        _buildLabel('Street Address'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildTextField(
+                          controller: _streetController,
+                          hint: '123 Trucker Way',
+                          icon: Icons.home_outlined,
+                        ),
+                        SizedBox(height: tokens.spacingM),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel('City'),
+                                  SizedBox(height: tokens.spacingS),
+                                  _buildTextField(
+                                    controller: _cityController,
+                                    hint: 'Toronto',
+                                    icon: Icons.location_city_outlined,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: tokens.spacingM),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel('State / Province'),
+                                  SizedBox(height: tokens.spacingS),
+                                  _buildTextField(
+                                    controller: _stateController,
+                                    hint: 'ON',
+                                    icon: Icons.map_outlined,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        SizedBox(height: tokens.spacingM),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel('Postal Code'),
+                                  SizedBox(height: tokens.spacingS),
+                                  _buildTextField(
+                                    controller: _zipController,
+                                    hint: 'M1B 2C3',
+                                    icon: Icons.pin_drop_outlined,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            SizedBox(width: tokens.spacingM),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildLabel('Country'),
+                                  SizedBox(height: tokens.spacingS),
+                                  _buildTextField(
+                                    controller: _countryController,
+                                    hint: 'Canada',
+                                    icon: Icons.public_outlined,
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+
+                    SizedBox(height: tokens.spacingL),
+
+                    _buildSectionCard(
+                      title: 'Driver Documents',
+                      children: [
+                        _buildLabel('License Number'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildTextField(
+                          controller: _licenseNumberController,
+                          hint: 'A1234-56789-01234',
+                          icon: Icons.badge_outlined,
+                        ),
+                        SizedBox(height: tokens.spacingM),
+                        _buildLabel('License Expiry Date'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildClickableField(
+                          text: _licenseExpiryDate != null
+                              ? DateFormat.yMMMd().format(_licenseExpiryDate!)
+                              : 'Select Expiry Date',
+                          icon: Icons.event_available_outlined,
+                          onTap: _selectLicenseExpiry,
+                        ),
+                        SizedBox(height: tokens.spacingM),
+                        _buildLabel('License Type (Class)'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildTextField(
+                          controller: _licenseTypeController,
+                          hint: 'Class AZ',
+                          icon: Icons.category_outlined,
+                        ),
+                        SizedBox(height: tokens.spacingM),
+                        _buildLabel('FAST ID (Optional)'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildTextField(
+                          controller: _fastIdController,
+                          hint: '12345678',
+                          icon: Icons.security_outlined,
+                        ),
+                        SizedBox(height: tokens.spacingM),
+                        _buildLabel('Date of Birth'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildClickableField(
+                          text: _dob != null
+                              ? DateFormat.yMMMd().format(_dob!)
+                              : 'Select Date',
+                          icon: Icons.calendar_today_outlined,
+                          onTap: _selectDate,
+                        ),
+                        SizedBox(height: tokens.spacingM),
+                        _buildLabel('Citizenship'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildCitizenshipSelector(),
+                      ],
+                    ),
+
+                    SizedBox(height: tokens.spacingXL),
+                  ],
+                ),
               ),
             ),
-            child: Text(
-              'Save Changes',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
+
+            if (_isLoading) const Center(child: CircularProgressIndicator()),
+          ],
         ),
       ),
     );
   }
 
   Widget _buildAvatarSection(Color primaryColor, Color backgroundColor) {
-    final subtext = Theme.of(context).brightness == Brightness.dark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF667085);
+    final tokens = context.tokens;
+    final subtext = tokens.textSecondary;
 
     return Center(
       child: Stack(
@@ -515,34 +508,47 @@ class _EditProfilePageState extends State<EditProfilePage> {
                 width: 4,
               ),
             ),
-            child: CircleAvatar(
-              radius: 56,
-              backgroundColor: Theme.of(context).cardColor,
-              backgroundImage: _imageFile != null
-                  ? FileImage(_imageFile!)
-                  : (_avatarUrl != null ? NetworkImage(_avatarUrl!) : null)
-                        as ImageProvider?,
-              child: _imageFile == null && _avatarUrl == null
-                  ? Icon(Icons.person, size: 60, color: subtext)
-                  : null,
+            child: ClipOval(
+              child: _imageFile != null
+                  ? Image.file(_imageFile!, fit: BoxFit.cover)
+                  : (_avatarUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: _avatarUrl!,
+                            fit: BoxFit.cover,
+                            memCacheHeight: 240,
+                            memCacheWidth: 240,
+                            placeholder: (context, url) => Center(
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: primaryColor.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            errorWidget: (context, url, error) =>
+                                Icon(Icons.person, size: 60, color: subtext),
+                          )
+                        : Icon(Icons.person, size: 60, color: subtext)),
             ),
           ),
           Positioned(
             bottom: 0,
             right: 0,
-            child: GestureDetector(
-              onTap: _pickImage,
-              child: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: primaryColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: backgroundColor, width: 2),
-                ),
-                child: const Icon(
-                  Icons.camera_alt,
-                  color: Colors.white,
-                  size: 20,
+            child: Semantics(
+              label: 'Change profile picture',
+              button: true,
+              child: GestureDetector(
+                onTap: _pickImage,
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor,
+                    shape: BoxShape.circle,
+                    border: Border.all(color: backgroundColor, width: 2),
+                  ),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: Colors.white,
+                    size: 20,
+                  ),
                 ),
               ),
             ),
@@ -556,25 +562,28 @@ class _EditProfilePageState extends State<EditProfilePage> {
     required String title,
     required List<Widget> children,
   }) {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          padding: EdgeInsets.only(
+            left: tokens.spacingXS,
+            bottom: tokens.spacingS,
+          ),
           child: Text(
             title,
-            style: GoogleFonts.outfit(
-              fontSize: 16,
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
         ),
         Container(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(tokens.spacingM),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(20),
+            color: tokens.surfaceContainer,
+            borderRadius: BorderRadius.circular(tokens.shapeL),
             border: Border.all(
               color: Theme.of(context).colorScheme.outlineVariant,
             ),
@@ -588,14 +597,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildPhoneField(bool isDark) {
+  Widget _buildPhoneField() {
+    final tokens = context.tokens;
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: tokens.inputBackground,
+            borderRadius: BorderRadius.circular(tokens.shapeS),
             border: Border.all(
               color: Theme.of(context).colorScheme.outlineVariant,
             ),
@@ -605,13 +615,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
             onCountryChanged: (c) => setState(() => _selectedCountryCode = c),
           ),
         ),
-        const SizedBox(width: 8),
+        SizedBox(width: tokens.spacingS),
         Expanded(
           child: _buildTextField(
             controller: _phoneController,
             hint: 'Phone number',
             icon: Icons.phone_outlined,
-            isDark: isDark,
             keyboardType: TextInputType.phone,
           ),
         ),
@@ -619,12 +628,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildCitizenshipSelector(bool isDark) {
+  Widget _buildCitizenshipSelector() {
+    final tokens = context.tokens;
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        color: tokens.inputBackground,
+        borderRadius: BorderRadius.circular(tokens.shapeS),
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       ),
       child: CountryCodeSelector(
@@ -639,12 +649,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: GoogleFonts.outfit(
-        fontSize: 14,
+      style: Theme.of(context).textTheme.labelLarge?.copyWith(
         fontWeight: FontWeight.w600,
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white70
-            : const Color(0xFF475467),
+        color: context.tokens.textSecondary,
       ),
     );
   }
@@ -653,53 +660,52 @@ class _EditProfilePageState extends State<EditProfilePage> {
     required TextEditingController controller,
     required String hint,
     required IconData icon,
-    required bool isDark,
     bool enabled = true,
     int maxLines = 1,
     TextInputType? keyboardType,
   }) {
+    final tokens = context.tokens;
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
-    return TextFormField(
-      controller: controller,
+    return Semantics(
+      label: hint,
+      textField: true,
       enabled: enabled,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      style: GoogleFonts.outfit(
-        color: enabled
-            ? (isDark ? Colors.white : const Color(0xFF101828))
-            : (isDark ? Colors.white38 : Colors.black26),
-        fontSize: 15,
-      ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.outfit(
-          color: const Color(0xFF98A2B3),
-          fontSize: 14,
+      child: TextFormField(
+        controller: controller,
+        enabled: enabled,
+        maxLines: maxLines,
+        keyboardType: keyboardType,
+        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+          color: enabled ? tokens.textPrimary : tokens.disabled,
         ),
-        prefixIcon: Icon(icon, color: primaryColor, size: 20),
-        filled: true,
-        fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: outlineVariant),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: outlineVariant),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: primaryColor, width: 2),
-        ),
-        disabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(16),
-          borderSide: BorderSide(color: outlineVariant.withValues(alpha: 0.5)),
-        ),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 16,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: tokens.textTertiary),
+          prefixIcon: Icon(icon, color: primaryColor, size: 20),
+          filled: true,
+          fillColor: tokens.inputBackground,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(tokens.shapeS),
+            borderSide: BorderSide(color: tokens.inputBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(tokens.shapeS),
+            borderSide: BorderSide(color: tokens.inputBorder),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(tokens.shapeS),
+            borderSide: BorderSide(color: tokens.inputFocusedBorder, width: 2),
+          ),
+          disabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(tokens.shapeS),
+            borderSide: BorderSide(
+              color: tokens.disabled.withValues(alpha: 0.5),
+            ),
+          ),
+          contentPadding: EdgeInsets.all(tokens.spacingM),
         ),
       ),
     );
@@ -709,33 +715,37 @@ class _EditProfilePageState extends State<EditProfilePage> {
     required String text,
     required IconData icon,
     required VoidCallback onTap,
-    required bool isDark,
   }) {
+    final tokens = context.tokens;
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: outlineVariant),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: primaryColor, size: 20),
-            const SizedBox(width: 12),
-            Text(
-              text,
-              style: GoogleFonts.outfit(
-                color: isDark ? Colors.white : const Color(0xFF101828),
-                fontSize: 15,
+    return Semantics(
+      label: text,
+      button: true,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(tokens.shapeS),
+        child: Container(
+          padding: EdgeInsets.all(tokens.spacingM),
+          decoration: BoxDecoration(
+            color: tokens.inputBackground,
+            borderRadius: BorderRadius.circular(tokens.shapeS),
+            border: Border.all(color: tokens.inputBorder),
+          ),
+          child: Row(
+            children: [
+              Icon(icon, color: primaryColor, size: 20),
+              SizedBox(width: tokens.spacingS),
+              Expanded(
+                child: Text(
+                  text,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(color: tokens.textPrimary),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

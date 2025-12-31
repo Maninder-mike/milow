@@ -1,6 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:flutter/material.dart' show Material;
 
 enum ToastType { success, error, warning, info }
 
@@ -128,60 +127,57 @@ class _ToastWidgetState extends State<_ToastWidget>
         position: _slideAnimation,
         child: FadeTransition(
           opacity: _fadeAnimation,
-          child: Material(
-            color: Colors.transparent,
-            child: Container(
-              width: 360,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: _getBackgroundColor(),
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.2),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Icon(_getIcon(), color: Colors.white, size: 24),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          widget.title,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 14,
-                          ),
+          child: Container(
+            width: 360,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: _getBackgroundColor(),
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.2),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
+                ),
+              ],
+            ),
+            child: Row(
+              children: [
+                Icon(_getIcon(), color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 14,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          widget.message,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.9),
-                            fontSize: 13,
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        widget.message,
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.9),
+                          fontSize: 13,
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  GestureDetector(
-                    onTap: _dismiss,
-                    child: Icon(
-                      FluentIcons.dismiss_24_regular,
-                      color: Colors.white.withValues(alpha: 0.8),
-                      size: 18,
-                    ),
+                ),
+                GestureDetector(
+                  onTap: _dismiss,
+                  child: Icon(
+                    FluentIcons.dismiss_24_regular,
+                    color: Colors.white.withOpacity(0.8),
+                    size: 18,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ),

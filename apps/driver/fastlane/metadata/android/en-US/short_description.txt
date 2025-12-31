@@ -1,1 +1,1 @@
-Track trips, fuel & expenses. The #1 companion app for semi-truck drivers.
+Offline trip & fuel tracker. Syncs with dispatch to reduce check-in calls.

@@ -177,7 +177,14 @@ Legacy aliases: `radiusS`→`shapeS`, `radiusM`→`shapeM`, etc.
 ## 5. Backend (Supabase)
 
 - **Typing**: Use generated Dart types, no `Map<String, dynamic>`
-- **Security**: RLS mandatory on all tables
+- **Security**:
+  - RLS mandatory on all tables
+  - **Hardened Functions**: `SECURITY DEFINER` functions MUST include `SET search_path = public` to prevent Search Path Hijacking.
+  - **Leaked Password Protection**: Must be enabled in Supabase Auth settings.
+- **Performance**:
+  - **RLS Optimization**: Wrap `auth.uid()` and other volatile functions in subqueries (e.g., `(SELECT auth.uid())`) in RLS policies to enable caching and prevent per-row evaluation.
+  - **Indexing**: All foreign key columns MUST be indexed.
+  - **Hygiene**: No duplicate/redundant indexes.
 - **Realtime**: Dispose `StreamSubscriptions` in `dispose()`
 - **Auth**: Initialize `supabase_flutter` early
 

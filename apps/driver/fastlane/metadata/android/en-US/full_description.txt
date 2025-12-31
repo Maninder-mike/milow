@@ -1,61 +1,28 @@
-🚛 MILOW - YOUR ULTIMATE TRUCKING COMPANION
+Streamline your operation with Milow, the professional tool designed for drivers who mean business. Milow simplifies trip management and reduces unnecessary communication with dispatch so you can focus on the road.
 
-Take control of your trucking business with Milow, the all-in-one app designed specifically for professional drivers and owner-operators.
+OFFLINE-FIRST RELIABILITY
+Work confidently anywhere. Milow is built to function entirely offline, storing your data securely on your device and syncing automatically when you return to coverage.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✨ WHY DRIVERS LOVE MILOW
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEAMLESS TERMINAL SYNC
+Connect directly with your company's terminal system. Updates flow automatically to dispatch, significantly reducing check-in calls and keeping your fleet manager informed in real-time.
 
-📊 SMART TRIP TRACKING
-• Log trips with start/end locations
-• Track mileage automatically
-• Record multiple trailers per trip
-• Add pickup and delivery points
+KEY FEATURES
 
-⛽ FUEL MANAGEMENT
-• Track fuel purchases and costs
-• Calculate fuel efficiency (MPG/L per 100km)
-• Export fuel reports for tax season
+• One-Tap Fuel Logging
+Record fuel purchases instantly. Track gallons, DEF, and costs with a single tap to keep efficient records without slowing down.
 
-💰 EXPENSE TRACKING
-• Categorize all business expenses
-• Attach receipts with photos
-• Generate professional reports
+• Smart Trip Management
+Organize your loads, pickup numbers, and drop-off locations in a clean, professional interface. manage complex routes and multiple trailers with ease.
 
-📈 POWERFUL DASHBOARD
-• Real-time stats at a glance
-• Weekly and monthly summaries
-• Track your earnings and expenses
+• Professional Expense Tracking
+Capture receipts and categorize expenses immediately. Generate clear reports for your business records.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎨 BEAUTIFUL & PERSONALIZED
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+• Driver Performance Dashboard
+View your vital statistics at a glance, including miles driven, specialized earnings, and fuel efficiency trends.
 
-✓ Dynamic colors that match your phone's theme
-✓ Smooth, fluid animations throughout
-✓ Modern Material 3 design
-✓ Dark mode that's easy on the eyes
+BUILT FOR PROFESSIONALS
+• High-contrast dark mode for night driving safety
+• Large, accessible touch targets for ease of use
+• Secure, encrypted cloud backup
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔒 BUILT FOR PROFESSIONALS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-✓ Secure cloud sync - your data is always safe
-✓ Works offline - log entries anywhere
-✓ Export to PDF/Excel for records
-✓ Multi-language support (English, Punjabi, Hindi, Urdu)
-✓ Accessible for screen readers
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚀 GET STARTED IN SECONDS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. Sign up with Google or email
-2. Add your first trip
-3. Start tracking your business
-
-Join thousands of professional truck drivers who trust Milow to manage their business on the road.
-
-📧 Questions? Contact us at info@maninder.co.in
-
-Made with ❤️ for the trucking community
+Join the professional drivers upgrading their workflow with Milow. Download today.

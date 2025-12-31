@@ -9,8 +9,9 @@ import 'dart:io';
 import 'package:open_file/open_file.dart';
 import 'package:csv/csv.dart';
 import 'package:milow_core/milow_core.dart';
-import 'package:milow/core/services/trip_service.dart';
-import 'package:milow/core/services/fuel_service.dart';
+
+import 'package:milow/core/services/trip_repository.dart';
+import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
@@ -96,8 +97,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
   Future<void> _loadRecords() async {
     try {
-      final trips = await TripService.getTrips();
-      final fuelEntries = await FuelService.getFuelEntries();
+      final trips = await TripRepository.getTrips();
+      final fuelEntries = await FuelRepository.getFuelEntries();
 
       final List<Map<String, dynamic>> combined = [];
 
@@ -850,12 +851,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 if (isTrip) {
                                   final trip = data as Trip;
                                   if (trip.id != null) {
-                                    await TripService.deleteTrip(trip.id!);
+                                    await TripRepository.deleteTrip(trip.id!);
                                   }
                                 } else {
                                   final fuel = data as FuelEntry;
                                   if (fuel.id != null) {
-                                    await FuelService.deleteFuelEntry(fuel.id!);
+                                    await FuelRepository.deleteFuelEntry(
+                                      fuel.id!,
+                                    );
                                   }
                                 }
 

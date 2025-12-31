@@ -5,6 +5,8 @@ import 'package:go_router/go_router.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/fuel_service.dart';
 import 'package:milow/core/services/trip_service.dart';
+import 'package:milow/core/services/trip_repository.dart';
+import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/features/explore/presentation/pages/visited_states_map_page.dart';
@@ -2594,12 +2596,12 @@ class _AllActivityPageState extends State<_AllActivityPage> {
         if (isTrip) {
           final trip = item['trip'] as Trip;
           if (trip.id != null) {
-            await TripService.deleteTrip(trip.id!);
+            await TripRepository.deleteTrip(trip.id!);
           }
         } else {
           final fuel = item['fuel'] as FuelEntry;
           if (fuel.id != null) {
-            await FuelService.deleteFuelEntry(fuel.id!);
+            await FuelRepository.deleteFuelEntry(fuel.id!);
           }
         }
 
