@@ -523,7 +523,9 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
         return Card(
           elevation: 0,
           color: isVisited
-              ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3)
+              ? Theme.of(
+                  context,
+                ).colorScheme.primaryContainer.withValues(alpha: 0.3)
               : Colors.transparent,
           margin: const EdgeInsets.only(bottom: 8),
           shape: RoundedRectangleBorder(
@@ -541,7 +543,9 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
               height: 40,
               decoration: BoxDecoration(
                 color: isVisited
-                    ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.1)
                     : Theme.of(context).colorScheme.surfaceContainerHighest,
                 shape: BoxShape.circle,
               ),
@@ -716,7 +720,9 @@ class _RegionDetailsSheet extends StatelessWidget {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: stats != null
-                      ? Theme.of(context).colorScheme.primary.withValues(alpha: 0.1)
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1)
                       : Theme.of(context).colorScheme.surfaceContainerHighest,
                   shape: BoxShape.circle,
                 ),

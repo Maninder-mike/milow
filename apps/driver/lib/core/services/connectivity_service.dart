@@ -8,9 +8,15 @@ import 'package:flutter/foundation.dart';
 /// Provides a stream of connectivity changes and methods to check
 /// current online status.
 class ConnectivityService {
-  static final ConnectivityService _instance = ConnectivityService._internal();
+  static ConnectivityService _instance = ConnectivityService._internal();
   factory ConnectivityService() => _instance;
   ConnectivityService._internal();
+
+  /// Allow overriding the instance for tests
+  @visibleForTesting
+  static set instance(ConnectivityService mock) => _instance = mock;
+
+  static ConnectivityService get instance => _instance;
 
   final Connectivity _connectivity = Connectivity();
   final _controller = StreamController<bool>.broadcast();
@@ -63,4 +69,4 @@ class ConnectivityService {
 }
 
 /// Global instance for easy access
-final connectivityService = ConnectivityService();
+ConnectivityService get connectivityService => ConnectivityService.instance;

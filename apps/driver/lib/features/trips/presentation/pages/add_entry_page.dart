@@ -341,19 +341,85 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   Future<void> _loadUnitPreferences() async {
-    final distanceUnit = await PreferencesService.getDistanceUnit();
-    final fuelUnit = await PreferencesService.getVolumeUnit();
+    final prefDistanceUnit = await PreferencesService.getDistanceUnit();
+    final prefFuelUnit = await PreferencesService.getVolumeUnit();
 
     // Get currency from user profile country
     final profile = await ProfileService.getProfile();
     final country = profile?['country'] as String?;
-    final currency = UnitUtils.getCurrency(country);
+    final prefCurrency = UnitUtils.getCurrency(country);
 
-    setState(() {
-      _distanceUnit = distanceUnit;
-      _fuelUnit = fuelUnit;
-      _currency = currency;
-    });
+    if (mounted) {
+      setState(() {
+        if (!_isEditMode) {
+          // New Entry: Use global preferences
+          _distanceUnit = prefDistanceUnit;
+          _fuelUnit = prefFuelUnit;
+          _currency = prefCurrency;
+        } else {
+          // Edit Mode: Convert units if they differ from preference
+          // Preserve currency for historical accuracy
+
+          // 1. Convert Distance (mi <-> km)
+          if (_distanceUnit != prefDistanceUnit) {
+            final toMetric = prefDistanceUnit == 'km';
+            final factor = toMetric ? 1.60934 : 0.621371;
+
+            // Helper to convert text field
+            void convertField(TextEditingController controller) {
+              final val = double.tryParse(controller.text.replaceAll(',', ''));
+              if (val != null) {
+                final newVal = val * factor;
+                // Odometer usually int or 1 decimal
+                controller.text = newVal.toStringAsFixed(toMetric ? 1 : 0);
+              }
+            }
+
+            convertField(_tripStartOdometerController);
+            convertField(_tripEndOdometerController);
+            convertField(_odometerController); // For fuel entry
+
+            _distanceUnit = prefDistanceUnit;
+          }
+
+          // 2. Convert Volume (gal <-> L)
+          // Note: Fuel Price is also per unit, so it must be inverted/converted
+          if (_fuelUnit != prefFuelUnit) {
+            final toMetric = prefFuelUnit == 'L';
+            // 1 gal = 3.78541 L
+            final volumeFactor = toMetric ? 3.78541 : 0.264172;
+
+            // Price is currency/volume. So if volume increases (gal->L), price decreases.
+            // $/gal -> $/L. 1 gal = 3.78 L.
+            // $4/gal = $4 / 3.78 L = $1.05/L.
+            // So price factor is 1/volumeFactor.
+            final priceFactor = 1 / volumeFactor;
+
+            void convertVolume(TextEditingController controller) {
+              final val = double.tryParse(controller.text.replaceAll(',', ''));
+              if (val != null) {
+                controller.text = (val * volumeFactor).toStringAsFixed(2);
+              }
+            }
+
+            void convertPrice(TextEditingController controller) {
+              final val = double.tryParse(controller.text.replaceAll(',', ''));
+              if (val != null) {
+                controller.text = (val * priceFactor).toStringAsFixed(3);
+              }
+            }
+
+            convertVolume(_fuelQuantityController);
+            convertPrice(_fuelPriceController);
+
+            convertVolume(_defQuantityController);
+            convertPrice(_defPriceController);
+
+            _fuelUnit = prefFuelUnit;
+          }
+        }
+      });
+    }
   }
 
   /// Load border crossings and prefill with most frequently used
@@ -936,6 +1002,101 @@ class _AddEntryPageState extends State<AddEntryPage>
     );
   }
 
+  /// [NEW] Build trip timestamps display (created at, updated at)
+  Widget _buildTripTimestamps() {
+    if (widget.editingTrip == null) return const SizedBox.shrink();
+
+    final trip = widget.editingTrip!;
+    final tokens = context.tokens;
+
+    String formatTimestamp(DateTime? dt) {
+      if (dt == null) return '—';
+      final localDt = dt.toLocal();
+      return '${localDt.month}/${localDt.day}/${localDt.year} at '
+          '${localDt.hour.toString().padLeft(2, '0')}:'
+          '${localDt.minute.toString().padLeft(2, '0')}';
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: tokens.surfaceContainer.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: tokens.inputBorder.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Trip Record',
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+              color: tokens.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            children: [
+              Expanded(
+                child: _buildTimestampItem(
+                  icon: Icons.add_circle_outline,
+                  label: 'Created',
+                  value: formatTimestamp(trip.createdAt),
+                  color: tokens.success,
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: _buildTimestampItem(
+                  icon: Icons.edit_outlined,
+                  label: 'Last Modified',
+                  value: formatTimestamp(trip.updatedAt),
+                  color: tokens.info,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimestampItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    final tokens = context.tokens;
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: color),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelSmall?.copyWith(color: tokens.textTertiary),
+              ),
+              Text(
+                value,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodySmall?.copyWith(color: tokens.textPrimary),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
   // Build pickup location fields with add/remove buttons
   List<Widget> _buildPickupLocationFields() {
     final fields = <Widget>[];
@@ -1488,6 +1649,8 @@ class _AddEntryPageState extends State<AddEntryPage>
         children: [
           // Quick Actions for existing trips (Capsules)
           _buildQuickActions(),
+          // Trip timestamps (created/updated) for edit mode
+          _buildTripTimestamps(),
           _buildSectionCard(
             title: 'Trip Details',
             children: [

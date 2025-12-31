@@ -19,6 +19,7 @@ import 'package:milow/core/services/trip_parser_service.dart';
 import 'package:milow/core/services/local_profile_store.dart';
 import 'package:milow/core/services/local_trip_store.dart';
 import 'package:milow/core/services/local_fuel_store.dart';
+import 'package:milow/core/services/local_document_store.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/sync_queue_service.dart';
 import 'package:milow/core/models/sync_operation.dart';
@@ -36,6 +37,7 @@ import 'package:milow/features/settings/presentation/pages/notifications_page.da
 
 import 'package:milow/features/settings/presentation/pages/language_page.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
+import 'package:milow/features/trips/presentation/pages/scan_document_page.dart';
 // Note: tab pages are hosted via TabsShell
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/core/widgets/tabs_shell.dart';
@@ -68,6 +70,7 @@ Future<void> main() async {
   await LocalProfileStore.init();
   await LocalTripStore.init();
   await LocalFuelStore.init();
+  await LocalDocumentStore.init();
   await syncQueueService.init();
   await logger.info('Init', 'Hive, local stores, and sync queue initialized');
 
@@ -239,6 +242,17 @@ final GoRouter _router = GoRouter(
               editingFuel: editingFuel,
             ),
           ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/scan-document',
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return _buildTransitionPage(
+          context,
+          state,
+          AuthWrapper(child: ScanDocumentPage(extra: extra)),
         );
       },
     ),

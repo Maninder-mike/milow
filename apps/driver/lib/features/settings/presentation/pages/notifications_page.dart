@@ -255,7 +255,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                 horizontal: 24,
                               ),
                               color: context.tokens.error,
-                              child: Icon(
+                              child: const Icon(
                                 Icons.delete_outline_rounded,
                                 color: Colors
                                     .white, // Assuming white text on error bg

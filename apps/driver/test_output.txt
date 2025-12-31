@@ -1,0 +1,154 @@
+Resolving dependencies in `/Users/maninder/Developer/projects near edge/milow`...
+Downloading packages...
+  _fe_analyzer_shared 91.0.0 (92.0.0 available)
+  analyzer 8.4.0 (9.0.0 available)
+  analyzer_buffer 0.1.11 (0.2.0 available)
+  analyzer_plugin 0.13.10 (0.13.11 available)
+  app_links 6.4.1 (7.0.0 available)
+  characters 1.4.0 (1.4.1 available)
+  custom_lint_core 0.8.1 (0.8.2 available)
+  custom_lint_visitor 1.0.0+8.4.0 (1.0.0+9.0.0 available)
+  flutter_riverpod 3.0.3 (3.1.0 available)
+  geocoding_platform_interface 3.2.0 (5.0.0 available)
+  get_it 8.3.0 (9.2.0 available)
+  hive_ce_generator 1.10.0 (1.11.0 available)
+  image 4.5.4 (4.7.2 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  math_expressions 2.7.0 (3.1.0 available)
+  mgrs_dart 2.0.0 (3.0.0 available)
+  package_info_plus 8.3.1 (9.0.0 available)
+  petitparser 6.1.0 (7.0.1 available)
+  proj4dart 2.1.0 (3.0.0 available)
+  quantity 3.0.2 (4.0.0 available)
+  riverpod 3.0.3 (3.1.0 available)
+  riverpod_analyzer_utils 1.0.0-dev.7 (1.0.0-dev.8 available)
+  riverpod_annotation 3.0.3 (4.0.0 available)
+  riverpod_generator 3.0.3 (4.0.0+1 available)
+  source_helper 1.3.8 (1.3.9 available)
+  system_theme 3.1.2 (3.2.0 available)
+  system_theme_web 0.0.3 (0.0.4 available)
+  test 1.26.3 (1.28.0 available)
+  test_api 0.7.7 (0.7.8 available)
+  test_core 0.6.12 (0.6.14 available)
+  unicode 0.3.1 (1.1.8 available)
+  xml 6.5.0 (6.6.1 available)
+Got dependencies in `/Users/maninder/Developer/projects near edge/milow`!
+33 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /Users/maninder/Developer/projects near edge/milow/apps/driver/test/scan_document_page_test.dart                                                                                     00:01 +0: loading /Users/maninder/Developer/projects near edge/milow/apps/driver/test/scan_document_page_test.dart                                                                                     00:01 +0: (setUpAll)                                                                                                                                                                                   00:01 +0: (setUpAll)                                                                                                                                                                                   
+[LocalDocumentStore] Initialized, items: 0
+00:01 +0: ScanDocumentPage Tests Simple render test                                                                                                                                                    00:01 +0: ScanDocumentPage Tests Simple render test                                                                                                                                                    
+══╡ EXCEPTION CAUGHT BY WIDGETS LIBRARY ╞═══════════════════════════════════════════════════════════
+The following _TypeError was thrown building ScanDocumentPage(dirty, dependencies:
+[InheritedCupertinoTheme, _InheritedTheme, _LocalizationsScope-[GlobalKey#7fb2c]], state:
+_ScanDocumentPageState#ae79e):
+Null check operator used on a null value
+
+The relevant error-causing widget was:
+  ScanDocumentPage
+  ScanDocumentPage:file:///Users/maninder/Developer/projects%20near%20edge/milow/apps/driver/test/scan_document_page_test.dart:127:17
+
+When the exception was thrown, this was the stack:
+#0      _ScanDocumentPageState.build (package:milow/features/trips/presentation/pages/scan_document_page.dart:830:63)
+#1      StatefulElement.build (package:flutter/src/widgets/framework.dart:5934:27)
+#2      ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5820:15)
+#3      StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5985:11)
+#4      Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#5      ComponentElement._firstBuild (package:flutter/src/widgets/framework.dart:5802:5)
+#6      StatefulElement._firstBuild (package:flutter/src/widgets/framework.dart:5976:11)
+#7      ComponentElement.mount (package:flutter/src/widgets/framework.dart:5796:5)
+...     Normal element mounting (260 frames)
+#267    Element.inflateWidget (package:flutter/src/widgets/framework.dart:4590:20)
+#268    MultiChildRenderObjectElement.inflateWidget (package:flutter/src/widgets/framework.dart:7269:36)
+#269    MultiChildRenderObjectElement.mount (package:flutter/src/widgets/framework.dart:7285:32)
+...     Normal element mounting (465 frames)
+#734    Element.inflateWidget (package:flutter/src/widgets/framework.dart:4590:20)
+#735    Element.updateChild (package:flutter/src/widgets/framework.dart:4053:20)
+#736    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#737    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#738    ProxyElement.update (package:flutter/src/widgets/framework.dart:6152:5)
+#739    _InheritedNotifierElement.update (package:flutter/src/widgets/inherited_notifier.dart:108:11)
+#740    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#741    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#742    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5985:11)
+#743    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#744    StatefulElement.update (package:flutter/src/widgets/framework.dart:6010:5)
+#745    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#746    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#747    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#748    ProxyElement.update (package:flutter/src/widgets/framework.dart:6152:5)
+#749    _InheritedNotifierElement.update (package:flutter/src/widgets/inherited_notifier.dart:108:11)
+#750    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#751    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#752    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5985:11)
+#753    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#754    StatefulElement.update (package:flutter/src/widgets/framework.dart:6010:5)
+#755    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#756    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#757    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5985:11)
+#758    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#759    StatefulElement.update (package:flutter/src/widgets/framework.dart:6010:5)
+#760    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#761    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#762    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#763    ProxyElement.update (package:flutter/src/widgets/framework.dart:6152:5)
+#764    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#765    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#766    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5985:11)
+#767    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#768    StatefulElement.update (package:flutter/src/widgets/framework.dart:6010:5)
+#769    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#770    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#771    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#772    ProxyElement.update (package:flutter/src/widgets/framework.dart:6152:5)
+#773    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#774    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#775    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#776    ProxyElement.update (package:flutter/src/widgets/framework.dart:6152:5)
+#777    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#778    _RawViewElement._updateChild (package:flutter/src/widgets/view.dart:481:16)
+#779    _RawViewElement.update (package:flutter/src/widgets/view.dart:568:5)
+#780    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#781    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#782    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#783    StatelessElement.update (package:flutter/src/widgets/framework.dart:5898:5)
+#784    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#785    ComponentElement.performRebuild (package:flutter/src/widgets/framework.dart:5844:16)
+#786    StatefulElement.performRebuild (package:flutter/src/widgets/framework.dart:5985:11)
+#787    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#788    StatefulElement.update (package:flutter/src/widgets/framework.dart:6010:5)
+#789    Element.updateChild (package:flutter/src/widgets/framework.dart:4037:15)
+#790    RootElement._rebuild (package:flutter/src/widgets/binding.dart:1782:16)
+#791    RootElement.update (package:flutter/src/widgets/binding.dart:1760:5)
+#792    RootElement.performRebuild (package:flutter/src/widgets/binding.dart:1774:7)
+#793    Element.rebuild (package:flutter/src/widgets/framework.dart:5532:7)
+#794    BuildScope._tryRebuild (package:flutter/src/widgets/framework.dart:2750:15)
+#795    BuildScope._flushDirtyElements (package:flutter/src/widgets/framework.dart:2807:11)
+#796    BuildOwner.buildScope (package:flutter/src/widgets/framework.dart:3111:18)
+#797    AutomatedTestWidgetsFlutterBinding.drawFrame (package:flutter_test/src/binding.dart:1506:19)
+#798    RendererBinding._handlePersistentFrameCallback (package:flutter/src/rendering/binding.dart:495:5)
+#799    SchedulerBinding._invokeFrameCallback (package:flutter/src/scheduler/binding.dart:1434:15)
+#800    SchedulerBinding.handleDrawFrame (package:flutter/src/scheduler/binding.dart:1347:9)
+#801    AutomatedTestWidgetsFlutterBinding.pump.<anonymous closure> (package:flutter_test/src/binding.dart:1335:9)
+#804    TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#805    AutomatedTestWidgetsFlutterBinding.pump (package:flutter_test/src/binding.dart:1324:27)
+#806    WidgetTester.pumpWidget.<anonymous closure> (package:flutter_test/src/widget_tester.dart:598:22)
+#809    TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#810    WidgetTester.pumpWidget (package:flutter_test/src/widget_tester.dart:595:27)
+#811    main.<anonymous closure>.<anonymous closure> (file:///Users/maninder/Developer/projects%20near%20edge/milow/apps/driver/test/scan_document_page_test.dart:125:20)
+#812    testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:29)
+<asynchronous suspension>
+#813    TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided 5 frames from dart:async and package:stack_trace)
+
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:01 +0 -1: ScanDocumentPage Tests Simple render test [E]                                                                                                                                             
+  Test failed. See exception logs above.
+  The test description was: Simple render test
+  
+
+To run this test again: /opt/homebrew/Caskroom/flutter/3.32.5/flutter/bin/cache/dart-sdk/bin/dart test /Users/maninder/Developer/projects near edge/milow/apps/driver/test/scan_document_page_test.dart -p vm --plain-name 'ScanDocumentPage Tests Simple render test'
+00:01 +0 -1: (tearDownAll)                                                                                                                                                                             00:01 +0 -1: Some tests failed.                                                                                                                                                                        

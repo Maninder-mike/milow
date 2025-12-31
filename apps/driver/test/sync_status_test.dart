@@ -42,7 +42,7 @@ void main() {
     });
 
     test('toString provides readable output', () {
-      final status = SyncStatusInfo(
+      const status = SyncStatusInfo(
         status: SyncStatus.pending,
         pendingCount: 5,
         failedCount: 1,

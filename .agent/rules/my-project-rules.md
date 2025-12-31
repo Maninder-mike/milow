@@ -218,3 +218,5 @@ Legacy aliases: `radiusS`→`shapeS`, `radiusM`→`shapeM`, etc.
 - Protect critical paths with integration tests
 - Keep `fastlane` synced for both apps
 - Use Mica/Acrylic (Terminal), Material You (Driver)
+
+- app respect the selected unit system , forms preseclect that system

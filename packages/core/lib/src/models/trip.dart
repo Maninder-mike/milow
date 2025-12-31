@@ -8,6 +8,10 @@ class Trip {
   final DateTime tripDate;
   final List<String> pickupLocations;
   final List<String> deliveryLocations;
+  final List<DateTime?> pickupTimes;
+  final List<DateTime?> deliveryTimes;
+  final List<bool> pickupCompleted;
+  final List<bool> deliveryCompleted;
   final double? startOdometer;
   final double? endOdometer;
   final String distanceUnit; // 'mi' or 'km'
@@ -26,6 +30,10 @@ class Trip {
     this.id,
     this.userId,
     this.trailers = const [],
+    this.pickupTimes = const [],
+    this.deliveryTimes = const [],
+    this.pickupCompleted = const [],
+    this.deliveryCompleted = const [],
     this.startOdometer,
     this.endOdometer,
     this.distanceUnit = 'mi',
@@ -47,6 +55,23 @@ class Trip {
   /// Get distance unit label
   String get distanceUnitLabel => distanceUnit == 'km' ? 'km' : 'mi';
 
+  /// Check if all pickups are completed
+  bool get allPickupsCompleted {
+    if (pickupLocations.isEmpty) return true;
+    if (pickupCompleted.isEmpty) return false;
+    return pickupCompleted.every((c) => c);
+  }
+
+  /// Check if all deliveries are completed
+  bool get allDeliveriesCompleted {
+    if (deliveryLocations.isEmpty) return true;
+    if (deliveryCompleted.isEmpty) return false;
+    return deliveryCompleted.every((c) => c);
+  }
+
+  /// Check if trip is fully completed
+  bool get isCompleted => allPickupsCompleted && allDeliveriesCompleted;
+
   /// Create Trip from JSON (Supabase response)
   factory Trip.fromJson(Map<String, dynamic> json) {
     return Trip(
@@ -66,6 +91,26 @@ class Trip {
       deliveryLocations: (json['delivery_locations'] as List<dynamic>)
           .map((e) => e as String)
           .toList(),
+      pickupTimes:
+          (json['pickup_times'] as List<dynamic>?)
+              ?.map((e) => e != null ? DateTime.parse(e as String) : null)
+              .toList() ??
+          [],
+      deliveryTimes:
+          (json['delivery_times'] as List<dynamic>?)
+              ?.map((e) => e != null ? DateTime.parse(e as String) : null)
+              .toList() ??
+          [],
+      pickupCompleted:
+          (json['pickup_completed'] as List<dynamic>?)
+              ?.map((e) => e as bool)
+              .toList() ??
+          [],
+      deliveryCompleted:
+          (json['delivery_completed'] as List<dynamic>?)
+              ?.map((e) => e as bool)
+              .toList() ??
+          [],
       startOdometer: json['start_odometer'] != null
           ? (json['start_odometer'] as num).toDouble()
           : null,
@@ -96,6 +141,10 @@ class Trip {
       'trip_date': tripDate.toIso8601String(),
       'pickup_locations': pickupLocations,
       'delivery_locations': deliveryLocations,
+      'pickup_times': pickupTimes.map((t) => t?.toIso8601String()).toList(),
+      'delivery_times': deliveryTimes.map((t) => t?.toIso8601String()).toList(),
+      'pickup_completed': pickupCompleted,
+      'delivery_completed': deliveryCompleted,
       'start_odometer': startOdometer,
       'end_odometer': endOdometer,
       'distance_unit': distanceUnit,
@@ -115,6 +164,10 @@ class Trip {
     DateTime? tripDate,
     List<String>? pickupLocations,
     List<String>? deliveryLocations,
+    List<DateTime?>? pickupTimes,
+    List<DateTime?>? deliveryTimes,
+    List<bool>? pickupCompleted,
+    List<bool>? deliveryCompleted,
     double? startOdometer,
     double? endOdometer,
     String? distanceUnit,
@@ -133,6 +186,10 @@ class Trip {
       tripDate: tripDate ?? this.tripDate,
       pickupLocations: pickupLocations ?? this.pickupLocations,
       deliveryLocations: deliveryLocations ?? this.deliveryLocations,
+      pickupTimes: pickupTimes ?? this.pickupTimes,
+      deliveryTimes: deliveryTimes ?? this.deliveryTimes,
+      pickupCompleted: pickupCompleted ?? this.pickupCompleted,
+      deliveryCompleted: deliveryCompleted ?? this.deliveryCompleted,
       startOdometer: startOdometer ?? this.startOdometer,
       endOdometer: endOdometer ?? this.endOdometer,
       distanceUnit: distanceUnit ?? this.distanceUnit,

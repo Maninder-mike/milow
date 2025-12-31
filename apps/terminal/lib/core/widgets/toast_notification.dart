@@ -135,7 +135,7 @@ class _ToastWidgetState extends State<_ToastWidget>
               borderRadius: BorderRadius.circular(8),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.2),
+                  color: Colors.black.withValues(alpha: 0.2),
                   blurRadius: 12,
                   offset: const Offset(0, 4),
                 ),
@@ -162,7 +162,7 @@ class _ToastWidgetState extends State<_ToastWidget>
                       Text(
                         widget.message,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
+                          color: Colors.white.withValues(alpha: 0.9),
                           fontSize: 13,
                         ),
                       ),
@@ -173,7 +173,7 @@ class _ToastWidgetState extends State<_ToastWidget>
                   onTap: _dismiss,
                   child: Icon(
                     FluentIcons.dismiss_24_regular,
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withValues(alpha: 0.8),
                     size: 18,
                   ),
                 ),

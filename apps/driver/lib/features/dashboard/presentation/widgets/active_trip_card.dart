@@ -7,9 +7,10 @@ import 'package:go_router/go_router.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/location_service.dart';
+import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow_core/milow_core.dart';
 
-/// Interactive card showing the current active trip (trip without end odometer)
+/// Interactive swipeable card showing pickup and delivery destinations
 /// Displays destination info and dynamic distance using geolocator
 class ActiveTripCard extends StatefulWidget {
   final Trip trip;
@@ -22,36 +23,48 @@ class ActiveTripCard extends StatefulWidget {
 }
 
 class _ActiveTripCardState extends State<ActiveTripCard> {
-  double? _distanceToDestination;
-  bool _isLoadingDistance = true;
+  double? _pickupDistance;
+  double? _deliveryDistance;
+  bool _isLoadingPickup = true;
+  bool _isLoadingDelivery = true;
   Timer? _locationTimer;
+  late PageController _pageController;
+  int _currentPage = 0;
+  UnitSystem _unitSystem = UnitSystem.metric;
 
-  // Determine if we're going to pickup or delivery
-  // If no deliveries have been done yet, we're going to pickup
-  // For now, assume going to first pickup if it exists, else first delivery
-  bool get _isGoingToPickup => widget.trip.pickupLocations.isNotEmpty;
+  // Check which locations are available
+  bool get _hasPickup => widget.trip.pickupLocations.isNotEmpty;
+  bool get _hasDelivery => widget.trip.deliveryLocations.isNotEmpty;
+  int get _totalPages => (_hasPickup ? 1 : 0) + (_hasDelivery ? 1 : 0);
 
-  String get _fullDestinationAddress {
-    if (_isGoingToPickup && widget.trip.pickupLocations.isNotEmpty) {
-      return widget.trip.pickupLocations.first;
-    } else if (widget.trip.deliveryLocations.isNotEmpty) {
-      return widget.trip.deliveryLocations.first;
+  // Determine initial page based on trip state
+  // If pickup locations exist, we're in pickup mode (show pickup first)
+  // If no pickups, we're in delivery mode
+  int get _initialPage => _hasPickup ? 0 : 0;
+
+  String get _pickupAddress {
+    if (_hasPickup) {
+      return _extractCityStateCountry(widget.trip.pickupLocations.first);
     }
-    return '';
+    return 'No pickup';
   }
 
-  String get _destinationAddress {
-    final fullAddress = _fullDestinationAddress;
-    if (fullAddress.isEmpty) return 'Unknown destination';
-    return _extractCityStateCountry(fullAddress);
+  String get _deliveryAddress {
+    if (_hasDelivery) {
+      return _extractCityStateCountry(widget.trip.deliveryLocations.first);
+    }
+    return 'No delivery';
   }
+
+  String get _fullPickupAddress =>
+      _hasPickup ? widget.trip.pickupLocations.first : '';
+  String get _fullDeliveryAddress =>
+      _hasDelivery ? widget.trip.deliveryLocations.first : '';
 
   /// Extract city, state, country from full address
-  /// Example: "123 Main St, Dallas, TX, USA" -> "Dallas, TX, USA"
   String _extractCityStateCountry(String address) {
     if (address.isEmpty) return 'Unknown';
 
-    // Split by comma and filter out empty or numeric-only parts (like ZIP codes)
     final parts = address
         .split(',')
         .map((e) => e.trim())
@@ -59,82 +72,127 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
         .toList();
 
     if (parts.length >= 3) {
-      // If we have 4+ parts (e.g., Street, City, State, Country),
-      // the last 3 are usually City, State, Country.
       return parts.sublist(parts.length - 3).join(', ');
     }
 
     return parts.join(', ');
   }
 
-  String get _statusLabel {
-    if (widget.trip.isEmptyLeg) return 'EMPTY LEG';
-    return _isGoingToPickup ? 'EN ROUTE TO PICKUP' : 'EN ROUTE TO DELIVERY';
-  }
-
-  Color get _statusColor {
-    // Empty Leg = Neutral/Text Secondary
-    if (widget.trip.isEmptyLeg) return context.tokens.textSecondary;
-    return _isGoingToPickup ? const Color(0xFFEA580C) : const Color(0xFF2563EB);
-  }
-
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: _initialPage);
+    _currentPage = _initialPage;
     _initLocation();
     // Update location every 30 seconds
     _locationTimer = Timer.periodic(
       const Duration(seconds: 30),
-      (_) => _updateDistance(),
+      (_) => _updateDistances(),
     );
   }
 
   @override
   void dispose() {
     _locationTimer?.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
   Future<void> _initLocation() async {
     try {
-      // Check permissions
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied) {
-          setState(() => _isLoadingDistance = false);
+          setState(() {
+            _isLoadingPickup = false;
+            _isLoadingDelivery = false;
+          });
           return;
         }
       }
 
       if (permission == LocationPermission.deniedForever) {
-        setState(() => _isLoadingDistance = false);
+        setState(() {
+          _isLoadingPickup = false;
+          _isLoadingDelivery = false;
+        });
         return;
       }
 
-      await _updateDistance();
+      await _updateDistances();
     } catch (e) {
-      setState(() => _isLoadingDistance = false);
+      setState(() {
+        _isLoadingPickup = false;
+        _isLoadingDelivery = false;
+      });
     }
   }
 
-  Future<void> _updateDistance() async {
+  Future<void> _updateDistances() async {
     try {
+      final unitSystem = await PreferencesService.getUnitSystem();
+      if (mounted) {
+        setState(() => _unitSystem = unitSystem);
+      }
+
       final position = await Geolocator.getCurrentPosition(
         locationSettings: const LocationSettings(
           accuracy: LocationAccuracy.medium,
         ),
       );
 
-      // Resolve address from DB if it's a name (e.g. "Yard" or Customer Name)
-      final resolvedAddress = await LocationService.resolveAddress(
-        _fullDestinationAddress,
-      );
+      // Update pickup distance
+      if (_hasPickup) {
+        unawaited(
+          _updateDistanceForAddress(_fullPickupAddress, position, (distance) {
+            if (mounted) {
+              setState(() {
+                _pickupDistance = distance;
+                _isLoadingPickup = false;
+              });
+            }
+          }),
+        );
+      } else {
+        setState(() => _isLoadingPickup = false);
+      }
 
-      // Use resolved address if found, otherwise use the raw input
-      final addressToGeocode = resolvedAddress ?? _fullDestinationAddress;
+      // Update delivery distance
+      if (_hasDelivery) {
+        unawaited(
+          _updateDistanceForAddress(_fullDeliveryAddress, position, (distance) {
+            if (mounted) {
+              setState(() {
+                _deliveryDistance = distance;
+                _isLoadingDelivery = false;
+              });
+            }
+          }),
+        );
+      } else {
+        setState(() => _isLoadingDelivery = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoadingPickup = false;
+          _isLoadingDelivery = false;
+        });
+      }
+    }
+  }
 
+  Future<void> _updateDistanceForAddress(
+    String fullAddress,
+    Position position,
+    void Function(double) onDistance,
+  ) async {
+    try {
+      final resolvedAddress = await LocationService.resolveAddress(fullAddress);
+      final addressToGeocode = resolvedAddress ?? fullAddress;
       final locations = await locationFromAddress(addressToGeocode);
+
       if (locations.isNotEmpty) {
         final dest = locations.first;
         final distance = Geolocator.distanceBetween(
@@ -143,26 +201,15 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
           dest.latitude,
           dest.longitude,
         );
-
-        if (mounted) {
-          setState(() {
-            _distanceToDestination = distance;
-            _isLoadingDistance = false;
-          });
-        }
-      } else {
-        setState(() => _isLoadingDistance = false);
+        onDistance(distance);
       }
     } catch (e) {
-      if (mounted) {
-        setState(() => _isLoadingDistance = false);
-      }
+      // Silently fail for individual address
     }
   }
 
   String _formatDistance(double meters) {
-    // Use trip's distance unit preference
-    final useKm = widget.trip.distanceUnit == 'km';
+    final useKm = _unitSystem == UnitSystem.metric;
     if (useKm) {
       final km = meters / 1000;
       if (km < 1) {
@@ -179,14 +226,29 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
     }
   }
 
-  // Calculate progress (0.0 to 1.0) - placeholder for now
-  // In future, could use start location to calculate actual progress
-  double get _progress {
-    if (_distanceToDestination == null) return 0.3; // Default placeholder
-    // Assume max distance of 500km for progress calculation
-    const maxDistance = 500000.0; // 500km in meters
-    final progress =
-        1.0 - (_distanceToDestination! / maxDistance).clamp(0.0, 1.0);
+  String _formatETA(double meters) {
+    const avgSpeedMps = 26.82; // 60 mph
+    final seconds = meters / avgSpeedMps;
+    final minutes = (seconds / 60).round();
+
+    if (minutes < 1) {
+      return 'Arriving';
+    } else if (minutes < 60) {
+      return '~$minutes min';
+    } else {
+      final hours = minutes ~/ 60;
+      final remainingMins = minutes % 60;
+      if (remainingMins == 0) {
+        return '~${hours}h';
+      }
+      return '~${hours}h ${remainingMins}m';
+    }
+  }
+
+  double _calculateProgress(double? distance) {
+    if (distance == null) return 0.3;
+    const maxDistance = 500000.0;
+    final progress = 1.0 - (distance / maxDistance).clamp(0.0, 1.0);
     return progress.clamp(0.1, 0.95);
   }
 
@@ -194,15 +256,119 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
+    // Build list of pages based on available locations
+    final pages = <Widget>[];
+    if (_hasPickup) {
+      pages.add(
+        _buildCard(
+          context,
+          isPickup: true,
+          address: _pickupAddress,
+          distance: _pickupDistance,
+          isLoading: _isLoadingPickup,
+          statusLabel: widget.trip.isEmptyLeg
+              ? 'EMPTY LEG'
+              : 'EN ROUTE TO PICKUP',
+          statusColor: widget.trip.isEmptyLeg
+              ? tokens.textSecondary
+              : const Color(0xFFEA580C),
+          icon: Icons.store_rounded,
+        ),
+      );
+    }
+    if (_hasDelivery) {
+      pages.add(
+        _buildCard(
+          context,
+          isPickup: false,
+          address: _deliveryAddress,
+          distance: _deliveryDistance,
+          isLoading: _isLoadingDelivery,
+          statusLabel: widget.trip.isEmptyLeg
+              ? 'EMPTY LEG'
+              : 'EN ROUTE TO DELIVERY',
+          statusColor: widget.trip.isEmptyLeg
+              ? tokens.textSecondary
+              : const Color(0xFF2563EB),
+          icon: Icons.local_shipping_rounded,
+        ),
+      );
+    }
+
+    if (pages.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Swipeable Cards
+        SizedBox(
+          height: 175, // Fixed height for consistency
+          child: PageView(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() => _currentPage = index);
+            },
+            children: pages,
+          ),
+        ),
+        if (_totalPages > 1) ...[
+          const SizedBox(height: 12),
+          // Page Indicator Dots
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_totalPages, (index) {
+              final isActive = index == _currentPage;
+              return GestureDetector(
+                onTap: () {
+                  _pageController.animateToPage(
+                    index,
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                  );
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  margin: const EdgeInsets.symmetric(horizontal: 4),
+                  width: isActive ? 24 : 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? Colors.white
+                        : Colors.white.withValues(alpha: 0.4),
+                    borderRadius: BorderRadius.circular(tokens.shapeFull),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCard(
+    BuildContext context, {
+    required bool isPickup,
+    required String address,
+    required double? distance,
+    required bool isLoading,
+    required String statusLabel,
+    required Color statusColor,
+    required IconData icon,
+  }) {
+    final tokens = context.tokens;
+    final progress = _calculateProgress(distance);
+
     return GestureDetector(
       onTap: () {
         context.push('/add-entry', extra: {'editingTrip': widget.trip});
       },
       child: Card(
-        // Rules: Cards No elevation, shapeL (16px)
         elevation: 0,
         color: Theme.of(context).colorScheme.surface,
-        margin: EdgeInsets.zero,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.shapeL),
           side: BorderSide(color: tokens.subtleBorderColor, width: 1),
@@ -223,23 +389,23 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       vertical: 4,
                     ),
                     decoration: BoxDecoration(
-                      color: _statusColor.withValues(alpha: 0.1),
+                      color: statusColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(tokens.shapeFull),
                       border: Border.all(
-                        color: _statusColor.withValues(alpha: 0.2),
+                        color: statusColor.withValues(alpha: 0.2),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.circle, size: 8, color: _statusColor),
+                        Icon(Icons.circle, size: 8, color: statusColor),
                         const SizedBox(width: 6),
                         Text(
-                          _statusLabel,
+                          statusLabel,
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(
                                 fontWeight: FontWeight.w600,
-                                color: _statusColor,
+                                color: statusColor,
                                 letterSpacing: 0.3,
                               ),
                         ),
@@ -267,13 +433,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       color: tokens.surfaceContainer,
                       borderRadius: BorderRadius.circular(tokens.shapeS),
                     ),
-                    child: Icon(
-                      _isGoingToPickup
-                          ? Icons.store_rounded
-                          : Icons.local_shipping_rounded,
-                      size: 20,
-                      color: tokens.textPrimary,
-                    ),
+                    child: Icon(icon, size: 20, color: tokens.textPrimary),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -281,12 +441,12 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Destination',
+                          isPickup ? 'Pickup' : 'Delivery',
                           style: Theme.of(context).textTheme.labelSmall
                               ?.copyWith(color: tokens.textTertiary),
                         ),
                         Text(
-                          _destinationAddress,
+                          address,
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
                                 fontWeight: FontWeight.bold,
@@ -322,24 +482,24 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       // Progress
                       Container(
                         height: 6,
-                        width: width * _progress,
+                        width: width * progress,
                         decoration: BoxDecoration(
-                          color: _statusColor,
+                          color: statusColor,
                           borderRadius: BorderRadius.circular(tokens.shapeFull),
                         ),
                       ),
                       // Truck Icon
                       Positioned(
-                        left: (width * _progress) - 12,
+                        left: (width * progress) - 12,
                         child: Container(
                           padding: const EdgeInsets.all(4),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surface,
                             shape: BoxShape.circle,
-                            border: Border.all(color: _statusColor, width: 2),
+                            border: Border.all(color: statusColor, width: 2),
                             boxShadow: [
                               BoxShadow(
-                                color: _statusColor.withValues(alpha: 0.2),
+                                color: statusColor.withValues(alpha: 0.2),
                                 blurRadius: 4,
                                 offset: const Offset(0, 2),
                               ),
@@ -348,7 +508,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                           child: Icon(
                             Icons.local_shipping_rounded,
                             size: 12,
-                            color: _statusColor,
+                            color: statusColor,
                           ),
                         ),
                       ),
@@ -358,25 +518,27 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
               ),
               const SizedBox(height: 8),
 
-              // Footer: Distance & Label
+              // Footer: Distance & ETA
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _isLoadingDistance
+                    isLoading
                         ? 'Calculating...'
-                        : _formatDistance(_distanceToDestination ?? 0),
+                        : _formatDistance(distance ?? 0),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: tokens.textPrimary,
                     ),
                   ),
-                  Text(
-                    'Geofence Proximity',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: tokens.textTertiary,
+                  if (!isLoading && distance != null)
+                    Text(
+                      _formatETA(distance),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        color: tokens.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
                 ],
               ),
             ],

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -6,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/profile_service.dart';
+import 'package:milow/core/services/logging_service.dart';
 import 'package:milow/l10n/app_localizations.dart';
 
 class LoginPage extends StatefulWidget {
@@ -109,25 +112,47 @@ class _LoginPageState extends State<LoginPage>
     });
 
     try {
+      unawaited(logger.logAuth('google_sign_in_started'));
+
       const webClientId =
           '800960714534-bqjn3ba41jgnn3vr0t20org6h5d1titq.apps.googleusercontent.com';
 
+      unawaited(logger.debug('GoogleSignIn', 'Initializing with client ID'));
       await GoogleSignIn.instance.initialize(serverClientId: webClientId);
+
+      unawaited(logger.debug('GoogleSignIn', 'Starting authentication dialog'));
       final googleUser = await GoogleSignIn.instance.authenticate();
+      unawaited(
+        logger.info('GoogleSignIn', 'User authenticated: ${googleUser.email}'),
+      );
 
       final googleAuth = googleUser.authentication;
       final idToken = googleAuth.idToken;
 
       if (idToken == null) {
+        unawaited(
+          logger.error(
+            'GoogleSignIn',
+            'ID token is null',
+            extras: {'email': googleUser.email},
+          ),
+        );
         throw Exception('Failed to get Google ID token');
       }
 
+      unawaited(
+        logger.debug('GoogleSignIn', 'Signing in to Supabase with ID token'),
+      );
       final response = await Supabase.instance.client.auth.signInWithIdToken(
         provider: OAuthProvider.google,
         idToken: idToken,
       );
 
       if (response.session != null && mounted) {
+        unawaited(
+          logger.logAuth('google_sign_in_success', userId: response.user?.id),
+        );
+
         try {
           await ProfileService.updateProfile({
             'email': googleUser.email,
@@ -135,8 +160,15 @@ class _LoginPageState extends State<LoginPage>
             'avatar_url': googleUser.photoUrl,
             'role': 'driver',
           });
+          unawaited(logger.info('GoogleSignIn', 'Profile synced successfully'));
         } catch (e) {
-          debugPrint('Profile sync error: $e');
+          unawaited(
+            logger.warning(
+              'GoogleSignIn',
+              'Profile sync failed',
+              extras: {'error': e.toString()},
+            ),
+          );
         }
 
         if (mounted) {
@@ -147,15 +179,41 @@ class _LoginPageState extends State<LoginPage>
           context.go('/dashboard');
         }
       } else {
+        unawaited(
+          logger.error(
+            'GoogleSignIn',
+            'Session creation failed',
+            extras: {
+              'hasUser': response.user != null,
+              'hasSession': response.session != null,
+            },
+          ),
+        );
         throw Exception('Failed to create session');
       }
     } on AuthException catch (error) {
+      unawaited(
+        logger.error(
+          'GoogleSignIn',
+          'Auth exception',
+          error: error,
+          extras: {'message': error.message, 'statusCode': error.statusCode},
+        ),
+      );
       setState(() => _loginError = error.message);
-    } catch (error) {
+    } catch (error, stackTrace) {
+      unawaited(
+        logger.error(
+          'GoogleSignIn',
+          'Unexpected error during sign-in',
+          error: error,
+          stackTrace: stackTrace,
+          extras: {'errorType': error.runtimeType.toString()},
+        ),
+      );
       setState(
         () => _loginError = AppLocalizations.of(context)!.googleSignInFailed,
       );
-      debugPrint('Google sign-in error: $error');
     } finally {
       if (mounted) setState(() => _isGoogleLoading = false);
     }

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:hive_flutter/hive_flutter.dart';
@@ -15,9 +16,15 @@ import 'package:milow/core/services/connectivity_service.dart';
 /// Queues operations when offline and processes them when connectivity
 /// returns. Uses exponential backoff for retries.
 class SyncQueueService {
-  static final SyncQueueService _instance = SyncQueueService._internal();
+  static SyncQueueService _instance = SyncQueueService._internal();
   factory SyncQueueService() => _instance;
   SyncQueueService._internal();
+
+  /// Allow overriding the instance for tests
+  @visibleForTesting
+  static set instance(SyncQueueService mock) => _instance = mock;
+
+  static SyncQueueService get instance => _instance;
 
   static const String _boxName = 'sync_queue';
   static const _uuid = Uuid();
@@ -163,6 +170,37 @@ class SyncQueueService {
           if (id == null) throw Exception('Delete requires id in payload');
           await client.from(operation.tableName).delete().eq('id', id);
           break;
+        case 'upload_document':
+          // 1. Extract file path and metadata
+          final localFilePath = payload['local_file_path'] as String;
+          final storagePath = payload['storage_path'] as String;
+          final dbData = payload['db_data'] as Map<String, dynamic>;
+          final mimeType = payload['mime_type'] as String;
+
+          // 2. Upload to Storage
+          final file = File(localFilePath);
+          if (!await file.exists()) {
+            throw Exception('Local file not found for upload: $localFilePath');
+          }
+
+          await client.storage
+              .from('trip_documents')
+              .upload(
+                storagePath,
+                file,
+                fileOptions: FileOptions(contentType: mimeType, upsert: true),
+              );
+
+          // 3. Insert into Database
+          await client.from('trip_documents').insert(dbData);
+
+          // 4. Cleanup local file (optional, but good practice if it's a temp scan)
+          try {
+            await file.delete();
+          } catch (e) {
+            debugPrint('[SyncQueueService] Failed to delete temp file: $e');
+          }
+          break;
         default:
           throw Exception('Unknown operation type: ${operation.operationType}');
       }
@@ -239,4 +277,4 @@ class SyncQueueService {
 }
 
 /// Global instance for easy access
-final syncQueueService = SyncQueueService();
+SyncQueueService get syncQueueService => SyncQueueService.instance;

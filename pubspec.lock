@@ -813,6 +813,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.11.0"
+  google_mlkit_document_scanner:
+    dependency: transitive
+    description:
+      name: google_mlkit_document_scanner
+      sha256: "269089c523fd7d5b9e5ddf0819d8b23197cf34cc7d0ceb821ce442f66156a079"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.4.0"
   google_mlkit_text_recognition:
     dependency: transitive
     description:
@@ -1229,6 +1237,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "5.6.1"
+  mocktail:
+    dependency: transitive
+    description:
+      name: mocktail
+      sha256: "890df3f9688106f25755f26b1c60589a92b3ab91a22b8b224947ad041bf172d8"
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.0.4"
   msix:
     dependency: transitive
     description:

@@ -1,7 +1,7 @@
 import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart'; // Still used for fallback if needed, but we prefer Theme.
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -192,11 +192,11 @@ class _InboxPageState extends State<InboxPage> {
         _messagesFuture = _fetchMessages();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Message deleted', style: GoogleFonts.outfit()),
+        const SnackBar(
+          content: Text('Message deleted'),
           backgroundColor: Colors.green,
           behavior: SnackBarBehavior.floating,
-          duration: const Duration(seconds: 1),
+          duration: Duration(seconds: 1),
         ),
       );
     }
@@ -255,11 +255,8 @@ class _InboxPageState extends State<InboxPage> {
         }); // Refresh UI
 
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'Chat deleted successfully',
-              style: GoogleFonts.outfit(),
-            ),
+          const SnackBar(
+            content: Text('Chat deleted successfully'),
             backgroundColor: Colors.green,
             behavior: SnackBarBehavior.floating,
           ),
@@ -270,10 +267,7 @@ class _InboxPageState extends State<InboxPage> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Failed to delete chat: $e',
-              style: GoogleFonts.outfit(),
-            ),
+            content: Text('Failed to delete chat: $e'),
             backgroundColor: Colors.red,
             behavior: SnackBarBehavior.floating,
           ),
@@ -552,8 +546,7 @@ class _InboxPageState extends State<InboxPage> {
           const SizedBox(height: 24),
           Text(
             'No content yet',
-            style: GoogleFonts.outfit(
-              fontSize: 20,
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: textColor,
             ),
@@ -561,7 +554,9 @@ class _InboxPageState extends State<InboxPage> {
           const SizedBox(height: 8),
           Text(
             message,
-            style: GoogleFonts.outfit(fontSize: 14, color: secondaryTextColor),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: secondaryTextColor),
             textAlign: TextAlign.center,
           ),
         ],
