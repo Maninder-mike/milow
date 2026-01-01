@@ -3,13 +3,13 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/logging_service.dart';
 import 'package:milow/l10n/app_localizations.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -229,72 +229,75 @@ class _LoginPageState extends State<LoginPage>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final tokens = context.tokens;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+              padding: EdgeInsets.symmetric(
+                horizontal: tokens.spacingL,
+                vertical: tokens.spacingXL + tokens.spacingS,
+              ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   _buildLogo(),
-                  const SizedBox(height: 24),
+                  SizedBox(height: tokens.spacingL),
                   Text(
                     AppLocalizations.of(context)!.welcomeBack,
-                    style: GoogleFonts.outfit(
-                      fontSize: 32,
+                    style: textTheme.headlineLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: textColor,
+                      color: tokens.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: tokens.spacingS),
                   Text(
                     AppLocalizations.of(context)!.signInSubtitle,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      color: const Color(0xFF667085),
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: tokens.textSecondary,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(height: tokens.spacingXL + tokens.spacingS),
 
                   // Email Field
                   _buildLabel(AppLocalizations.of(context)!.emailAddress),
-                  const SizedBox(height: 8),
+                  SizedBox(height: tokens.spacingS),
                   TextField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
                     onChanged: _validateEmail,
-                    style: GoogleFonts.outfit(color: textColor, fontSize: 16),
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: tokens.textPrimary,
+                    ),
                     decoration: _inputDecoration(
                       hint: AppLocalizations.of(context)!.emailHint,
                       prefixIcon: Icons.alternate_email_rounded,
                       suffixIcon: _emailValid
                           ? Icons.check_circle_rounded
                           : null,
-                      suffixColor: const Color(0xFF10B981),
+                      suffixColor: tokens.success,
                     ),
                   ),
 
-                  const SizedBox(height: 20),
+                  SizedBox(height: tokens.spacingM + tokens.spacingXS),
 
                   // Password Field
                   _buildLabel(AppLocalizations.of(context)!.password),
-                  const SizedBox(height: 8),
+                  SizedBox(height: tokens.spacingS),
                   TextField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    style: GoogleFonts.outfit(color: textColor, fontSize: 16),
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: tokens.textPrimary,
+                    ),
                     decoration: _inputDecoration(
                       hint: AppLocalizations.of(context)!.enterPasswordHint,
                       prefixIcon: Icons.lock_rounded,
@@ -307,7 +310,7 @@ class _LoginPageState extends State<LoginPage>
                     ),
                   ),
 
-                  const SizedBox(height: 12),
+                  SizedBox(height: tokens.spacingM),
 
                   // Forgot Password
                   Align(
@@ -317,16 +320,18 @@ class _LoginPageState extends State<LoginPage>
                       style: TextButton.styleFrom(
                         padding: EdgeInsets.zero,
                         minimumSize: const Size(0, 30),
-                        foregroundColor: primaryColor,
+                        foregroundColor: colorScheme.primary,
                       ),
                       child: Text(
                         AppLocalizations.of(context)!.forgotPassword,
-                        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                        style: textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
                   ),
 
-                  const SizedBox(height: 24),
+                  SizedBox(height: tokens.spacingL),
 
                   // Sign In Button
                   SizedBox(
@@ -336,17 +341,18 @@ class _LoginPageState extends State<LoginPage>
                       onPressed: _isLoading ? null : _signIn,
                       style: FilledButton.styleFrom(
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(tokens.shapeL),
                         ),
-                        backgroundColor: primaryColor,
+                        backgroundColor: colorScheme.primary,
                       ),
                       child: _isLoading
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 24,
                               height: 24,
                               child: CircularProgressIndicator(
                                 strokeWidth: 3.0,
-                                color: Colors.white,
+                                strokeCap: StrokeCap.round,
+                                color: colorScheme.onPrimary,
                               ),
                             )
                           : Row(
@@ -354,13 +360,12 @@ class _LoginPageState extends State<LoginPage>
                               children: [
                                 Text(
                                   AppLocalizations.of(context)!.signIn,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 18,
+                                  style: textTheme.titleMedium?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: Colors.white,
+                                    color: colorScheme.onPrimary,
                                   ),
                                 ),
-                                const SizedBox(width: 8),
+                                SizedBox(width: tokens.spacingS),
                                 const Icon(
                                   Icons.arrow_forward_rounded,
                                   size: 20,
@@ -372,30 +377,29 @@ class _LoginPageState extends State<LoginPage>
 
                   // Error message
                   if (_loginError != null) ...[
-                    const SizedBox(height: 16),
+                    SizedBox(height: tokens.spacingM),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: EdgeInsets.all(tokens.spacingM),
                       decoration: BoxDecoration(
-                        color: Colors.red.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: tokens.errorContainer,
+                        borderRadius: BorderRadius.circular(tokens.shapeM),
                         border: Border.all(
-                          color: Colors.red.withValues(alpha: 0.2),
+                          color: tokens.error.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.error_outline_rounded,
-                            color: Colors.red,
+                            color: tokens.error,
                             size: 20,
                           ),
-                          const SizedBox(width: 10),
+                          SizedBox(width: tokens.spacingS + 2),
                           Expanded(
                             child: Text(
                               _loginError!,
-                              style: GoogleFonts.outfit(
-                                color: Colors.red,
-                                fontSize: 13,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: tokens.error,
                               ),
                             ),
                           ),
@@ -404,40 +408,37 @@ class _LoginPageState extends State<LoginPage>
                     ),
                   ],
 
-                  const SizedBox(height: 32),
+                  SizedBox(height: tokens.spacingXL),
 
                   // Or divider
                   Row(
                     children: [
                       Expanded(
-                        child: Divider(
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
+                        child: Divider(color: colorScheme.outlineVariant),
                       ),
                       Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tokens.spacingM,
+                        ),
                         child: Text(
                           AppLocalizations.of(context)!.orContinueWith,
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: const Color(0xFF667085),
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: tokens.textSecondary,
                           ),
                         ),
                       ),
                       Expanded(
-                        child: Divider(
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
+                        child: Divider(color: colorScheme.outlineVariant),
                       ),
                     ],
                   ),
 
-                  const SizedBox(height: 24),
+                  SizedBox(height: tokens.spacingL),
 
                   // Google Sign In
-                  _buildGoogleButton(isDark),
+                  _buildGoogleButton(),
 
-                  const SizedBox(height: 32),
+                  SizedBox(height: tokens.spacingXL),
 
                   // Sign up link
                   Row(
@@ -445,19 +446,17 @@ class _LoginPageState extends State<LoginPage>
                     children: [
                       Text(
                         '${AppLocalizations.of(context)!.dontHaveAccount} ',
-                        style: GoogleFonts.outfit(
-                          color: const Color(0xFF667085),
-                          fontSize: 15,
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: tokens.textSecondary,
                         ),
                       ),
                       GestureDetector(
                         onTap: () => context.go('/signup'),
                         child: Text(
                           AppLocalizations.of(context)!.signUp,
-                          style: GoogleFonts.outfit(
+                          style: textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: primaryColor,
-                            fontSize: 15,
+                            color: colorScheme.primary,
                           ),
                         ),
                       ),
@@ -473,12 +472,15 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Widget _buildLogo() {
+    final tokens = context.tokens;
     return Container(
       width: 100,
       height: 100,
-      decoration: BoxDecoration(borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
+      ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
         child: Image.asset(
           'assets/images/milow_icon.png',
           width: 100,
@@ -489,7 +491,12 @@ class _LoginPageState extends State<LoginPage>
     );
   }
 
-  Widget _buildGoogleButton(bool isDark) {
+  Widget _buildGoogleButton() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final tokens = context.tokens;
+
     return SizedBox(
       width: double.infinity,
       height: 56,
@@ -497,10 +504,10 @@ class _LoginPageState extends State<LoginPage>
         onPressed: _isGoogleLoading ? null : _signInWithGoogle,
         style: OutlinedButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(tokens.shapeL),
           ),
-          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          side: BorderSide(color: colorScheme.outlineVariant),
+          backgroundColor: tokens.surfaceContainer,
         ),
         child: _isGoogleLoading
             ? Center(
@@ -509,7 +516,8 @@ class _LoginPageState extends State<LoginPage>
                   height: 24,
                   child: CircularProgressIndicator(
                     strokeWidth: 3.0,
-                    color: Theme.of(context).colorScheme.primary,
+                    strokeCap: StrokeCap.round,
+                    color: colorScheme.primary,
                   ),
                 ),
               )
@@ -525,20 +533,18 @@ class _LoginPageState extends State<LoginPage>
                     errorWidget: (context, url, error) {
                       return Text(
                         'G',
-                        style: GoogleFonts.roboto(
-                          fontSize: 18,
+                        style: textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF4285F4),
+                          color: tokens.info,
                         ),
                       );
                     },
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: tokens.spacingM),
                   Text(
                     AppLocalizations.of(context)!.continueWithGoogle,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
-                      color: isDark ? Colors.white : const Color(0xFF101828),
+                    style: textTheme.bodyLarge?.copyWith(
+                      color: tokens.textPrimary,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
@@ -549,14 +555,16 @@ class _LoginPageState extends State<LoginPage>
   }
 
   Widget _buildLabel(String text) {
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(
         text,
-        style: GoogleFonts.outfit(
-          fontSize: 15,
+        style: textTheme.labelLarge?.copyWith(
           fontWeight: FontWeight.w600,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: tokens.textPrimary,
         ),
       ),
     );
@@ -569,45 +577,42 @@ class _LoginPageState extends State<LoginPage>
     VoidCallback? onSuffixTap,
     Color? suffixColor,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
 
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.outfit(
-        color: const Color(0xFF98A2B3),
-        fontSize: 14,
-      ),
-      prefixIcon: Icon(prefixIcon, color: primaryColor, size: 20),
+      hintStyle: textTheme.bodyMedium?.copyWith(color: tokens.textTertiary),
+      prefixIcon: Icon(prefixIcon, color: colorScheme.primary, size: 20),
       suffixIcon: suffixIcon != null
           ? IconButton(
               icon: Icon(
                 suffixIcon,
-                color: suffixColor ?? primaryColor,
+                color: suffixColor ?? colorScheme.primary,
                 size: 20,
               ),
               onPressed: onSuffixTap,
             )
           : null,
       filled: true,
-      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      fillColor: tokens.inputBackground,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryColor, width: 2),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: colorScheme.primary, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: tokens.spacingM,
+        vertical: tokens.spacingM,
+      ),
     );
   }
 }

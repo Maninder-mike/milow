@@ -271,7 +271,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
               : 'EN ROUTE TO PICKUP',
           statusColor: widget.trip.isEmptyLeg
               ? tokens.textSecondary
-              : const Color(0xFFEA580C),
+              : tokens.warning,
           icon: Icons.store_rounded,
         ),
       );
@@ -289,7 +289,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
               : 'EN ROUTE TO DELIVERY',
           statusColor: widget.trip.isEmptyLeg
               ? tokens.textSecondary
-              : const Color(0xFF2563EB),
+              : tokens.info,
           icon: Icons.local_shipping_rounded,
         ),
       );
@@ -314,7 +314,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
           ),
         ),
         if (_totalPages > 1) ...[
-          const SizedBox(height: 12),
+          SizedBox(height: tokens.spacingM),
           // Page Indicator Dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -330,13 +330,15 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                 },
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 200),
-                  margin: const EdgeInsets.symmetric(horizontal: 4),
-                  width: isActive ? 24 : 8,
-                  height: 8,
+                  margin: EdgeInsets.symmetric(horizontal: tokens.spacingXS),
+                  width: isActive ? tokens.spacingL : tokens.spacingS,
+                  height: tokens.spacingS,
                   decoration: BoxDecoration(
                     color: isActive
-                        ? Colors.white
-                        : Colors.white.withValues(alpha: 0.4),
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(
+                            context,
+                          ).colorScheme.onSurfaceVariant.withValues(alpha: 0.4),
                     borderRadius: BorderRadius.circular(tokens.shapeFull),
                   ),
                 ),
@@ -368,13 +370,13 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
       child: Card(
         elevation: 0,
         color: Theme.of(context).colorScheme.surface,
-        margin: const EdgeInsets.symmetric(horizontal: 4),
+        margin: EdgeInsets.symmetric(horizontal: tokens.spacingXS),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(tokens.shapeL),
           side: BorderSide(color: tokens.subtleBorderColor, width: 1),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(12),
+          padding: EdgeInsets.all(tokens.spacingM),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,9 +386,9 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: tokens.spacingS,
+                      vertical: tokens.spacingXS,
                     ),
                     decoration: BoxDecoration(
                       color: statusColor.withValues(alpha: 0.1),
@@ -398,8 +400,12 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.circle, size: 8, color: statusColor),
-                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.circle,
+                          size: tokens.spacingS,
+                          color: statusColor,
+                        ),
+                        SizedBox(width: tokens.spacingS),
                         Text(
                           statusLabel,
                           style: Theme.of(context).textTheme.labelSmall
@@ -421,21 +427,21 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: tokens.spacingM),
 
               // Destination
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: EdgeInsets.all(tokens.spacingS),
                     decoration: BoxDecoration(
                       color: tokens.surfaceContainer,
                       borderRadius: BorderRadius.circular(tokens.shapeS),
                     ),
                     child: Icon(icon, size: 20, color: tokens.textPrimary),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: tokens.spacingM),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -460,7 +466,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              SizedBox(height: tokens.spacingM),
 
               // Progress Bar
               LayoutBuilder(
@@ -492,7 +498,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       Positioned(
                         left: (width * progress) - 12,
                         child: Container(
-                          padding: const EdgeInsets.all(4),
+                          padding: EdgeInsets.all(tokens.spacingXS),
                           decoration: BoxDecoration(
                             color: Theme.of(context).colorScheme.surface,
                             shape: BoxShape.circle,
@@ -516,7 +522,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                   );
                 },
               ),
-              const SizedBox(height: 8),
+              SizedBox(height: tokens.spacingS),
 
               // Footer: Distance & ETA
               Row(

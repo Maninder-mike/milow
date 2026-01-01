@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
@@ -71,6 +71,18 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
     if (RegExp(r'[0-9]').hasMatch(password)) strength += 0.2;
     if (RegExp(r'[!@#$%^&*(),.?":{}|<>]').hasMatch(password)) strength += 0.2;
     setState(() => _passwordStrength = strength.clamp(0.0, 1.0));
+  }
+
+  Color _getStrengthColor(DesignTokens tokens) {
+    if (_passwordStrength < 0.3) return tokens.error;
+    if (_passwordStrength < 0.6) return tokens.warning;
+    return tokens.success;
+  }
+
+  String get _strengthText {
+    if (_passwordStrength < 0.3) return 'Weak';
+    if (_passwordStrength < 0.6) return 'Fair';
+    return 'Strong';
   }
 
   Future<void> _updatePassword() async {
@@ -147,14 +159,13 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final tokens = context.tokens;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
@@ -162,32 +173,28 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(tokens.spacingM),
                 child: Row(
                   children: [
                     _buildNavButton(
-                      context: context,
                       icon: Icons.arrow_back_ios_new,
                       onTap: () => context.go('/login'),
-                      isDark: isDark,
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: tokens.spacingM),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Reset Password',
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
+                          style: textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: textColor,
+                            color: tokens.textPrimary,
                           ),
                         ),
                         Text(
                           'Create a new password',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: const Color(0xFF667085),
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: tokens.textSecondary,
                           ),
                         ),
                       ],
@@ -199,21 +206,26 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
               // Content
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                  padding: EdgeInsets.fromLTRB(
+                    tokens.spacingM,
+                    tokens.spacingS,
+                    tokens.spacingM,
+                    120,
+                  ),
                   child: Column(
                     children: [
-                      const SizedBox(height: 32),
+                      SizedBox(height: tokens.spacingXL),
                       // Icon Header
                       Center(
                         child: Container(
-                          padding: const EdgeInsets.all(24),
+                          padding: EdgeInsets.all(tokens.spacingL),
                           decoration: BoxDecoration(
-                            color: Theme.of(context).cardColor,
-                            borderRadius: BorderRadius.circular(32),
+                            color: tokens.surfaceContainer,
+                            borderRadius: BorderRadius.circular(
+                              tokens.shapeXL + tokens.spacingXS,
+                            ),
                             border: Border.all(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.outlineVariant,
+                              color: colorScheme.outlineVariant,
                             ),
                           ),
                           child: Icon(
@@ -221,22 +233,21 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
                                 ? Icons.verified_user_outlined
                                 : Icons.lock_reset_outlined,
                             size: 64,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                           ),
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: tokens.spacingXL),
 
                       if (!_isSuccess) ...[
                         _buildLabel('New Password'),
-                        const SizedBox(height: 8),
+                        SizedBox(height: tokens.spacingS),
                         TextField(
                           controller: _passwordController,
                           obscureText: _obscurePassword,
                           onChanged: _calculatePasswordStrength,
-                          style: GoogleFonts.outfit(
-                            color: textColor,
-                            fontSize: 16,
+                          style: textTheme.bodyLarge?.copyWith(
+                            color: tokens.textPrimary,
                           ),
                           decoration: _inputDecoration(
                             hint: 'Enter your new password',
@@ -251,20 +262,19 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
                         ),
 
                         if (_passwordController.text.isNotEmpty) ...[
-                          const SizedBox(height: 12),
+                          SizedBox(height: tokens.spacingM),
                           _buildPasswordStrengthIndicator(),
                         ],
 
-                        const SizedBox(height: 20),
+                        SizedBox(height: tokens.spacingM + tokens.spacingXS),
 
                         _buildLabel('Confirm New Password'),
-                        const SizedBox(height: 8),
+                        SizedBox(height: tokens.spacingS),
                         TextField(
                           controller: _confirmPasswordController,
                           obscureText: _obscureConfirmPassword,
-                          style: GoogleFonts.outfit(
-                            color: textColor,
-                            fontSize: 16,
+                          style: textTheme.bodyLarge?.copyWith(
+                            color: tokens.textPrimary,
                           ),
                           decoration: _inputDecoration(
                             hint: 'Re-enter your new password',
@@ -280,44 +290,44 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
                         ),
 
                         if (_errorMessage != null) ...[
-                          const SizedBox(height: 20),
+                          SizedBox(height: tokens.spacingM + tokens.spacingXS),
                           _buildErrorMessage(),
                         ],
 
-                        const SizedBox(height: 40),
+                        SizedBox(height: tokens.spacingXL + tokens.spacingS),
 
                         // Back to login
                         TextButton(
                           onPressed: () => context.go('/login'),
                           child: Text(
                             'Cancel and return to login',
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              color: const Color(0xFF667085),
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: tokens.textSecondary,
                             ),
                           ),
                         ),
                       ] else ...[
-                        const SizedBox(height: 32),
+                        SizedBox(height: tokens.spacingXL),
                         Text(
                           'Password Updated!',
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
+                          style: textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: textColor,
+                            color: tokens.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 12),
+                        SizedBox(height: tokens.spacingM),
                         Text(
                           'Your password has been successfully updated. Redirecting to login...',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
-                            color: const Color(0xFF667085),
+                          style: textTheme.bodyLarge?.copyWith(
+                            color: tokens.textSecondary,
                           ),
                         ),
-                        const SizedBox(height: 40),
-                        const CircularProgressIndicator(),
+                        SizedBox(height: tokens.spacingXL + tokens.spacingS),
+                        CircularProgressIndicator(
+                          strokeCap: StrokeCap.round,
+                          color: colorScheme.primary,
+                        ),
                       ],
                     ],
                   ),
@@ -331,13 +341,11 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
       // Bottom Button
       bottomNavigationBar: !_isSuccess
           ? Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(tokens.spacingM),
               decoration: BoxDecoration(
-                color: backgroundColor,
+                color: tokens.scaffoldAltBackground,
                 border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
+                  top: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
               child: SafeArea(
@@ -346,23 +354,24 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(tokens.shapeL),
                     ),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 3.0,
-                            color: Colors.white,
+                            strokeCap: StrokeCap.round,
+                            color: colorScheme.onPrimary,
                           ),
                         )
                       : Text(
                           'Update Password',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
+                          style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
+                            color: colorScheme.onPrimary,
                           ),
                         ),
                 ),
@@ -373,40 +382,33 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
   }
 
   Widget _buildLabel(String text) {
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Text(
         text,
-        style: GoogleFonts.outfit(
-          fontSize: 15,
+        style: textTheme.labelLarge?.copyWith(
           fontWeight: FontWeight.w600,
-          color: Theme.of(context).textTheme.bodyLarge?.color,
+          color: tokens.textPrimary,
         ),
       ),
     );
   }
 
   Widget _buildPasswordStrengthIndicator() {
-    Color strengthColor;
-    String strengthText;
-
-    if (_passwordStrength < 0.3) {
-      strengthColor = const Color(0xFFEF4444);
-      strengthText = 'Weak';
-    } else if (_passwordStrength < 0.6) {
-      strengthColor = const Color(0xFFF59E0B);
-      strengthText = 'Fair';
-    } else {
-      strengthColor = const Color(0xFF10B981);
-      strengthText = 'Strong';
-    }
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+    final strengthColor = _getStrengthColor(tokens);
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(tokens.spacingM),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,20 +422,19 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
                 size: 16,
                 color: strengthColor,
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: tokens.spacingS),
               Text(
-                'Password Strength: $strengthText',
-                style: GoogleFonts.outfit(
-                  fontSize: 12,
+                'Password Strength: $_strengthText',
+                style: textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.w600,
                   color: strengthColor,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: tokens.spacingS),
           ClipRRect(
-            borderRadius: BorderRadius.circular(4),
+            borderRadius: BorderRadius.circular(tokens.shapeXS),
             child: LinearProgressIndicator(
               value: _passwordStrength,
               backgroundColor: strengthColor.withValues(alpha: 0.1),
@@ -447,23 +448,25 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
   }
 
   Widget _buildErrorMessage() {
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(tokens.spacingM),
       decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.1)),
+        color: tokens.errorContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        border: Border.all(color: tokens.error.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
-          const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 20),
-          const SizedBox(width: 12),
+          Icon(Icons.error_outline, color: tokens.error, size: 20),
+          SizedBox(width: tokens.spacingM),
           Expanded(
             child: Text(
               _errorMessage!,
-              style: GoogleFonts.outfit(
-                color: const Color(0xFFEF4444),
-                fontSize: 13,
+              style: textTheme.bodySmall?.copyWith(
+                color: tokens.error,
                 height: 1.4,
               ),
             ),
@@ -474,25 +477,22 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
   }
 
   Widget _buildNavButton({
-    required BuildContext context,
     required IconData icon,
     required VoidCallback onTap,
-    required bool isDark,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
+
     return Container(
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeM),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: IconButton(
-        icon: Icon(
-          icon,
-          size: 18,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
+        icon: Icon(icon, size: 18, color: colorScheme.onSurface),
         onPressed: onTap,
       ),
     );
@@ -504,41 +504,38 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
     IconData? suffixIcon,
     VoidCallback? onSuffixTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
 
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.outfit(
-        color: const Color(0xFF98A2B3),
-        fontSize: 14,
-      ),
-      prefixIcon: Icon(prefixIcon, color: primaryColor, size: 20),
+      hintStyle: textTheme.bodyMedium?.copyWith(color: tokens.textTertiary),
+      prefixIcon: Icon(prefixIcon, color: colorScheme.primary, size: 20),
       suffixIcon: suffixIcon != null
           ? IconButton(
-              icon: Icon(suffixIcon, color: primaryColor, size: 20),
+              icon: Icon(suffixIcon, color: colorScheme.primary, size: 20),
               onPressed: onSuffixTap,
             )
           : null,
       filled: true,
-      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      fillColor: tokens.inputBackground,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryColor, width: 2),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: colorScheme.primary, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: tokens.spacingM,
+        vertical: tokens.spacingM,
+      ),
     );
   }
 }

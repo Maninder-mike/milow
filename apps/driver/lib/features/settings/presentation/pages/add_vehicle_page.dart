@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class AddVehiclePage extends StatefulWidget {
   const AddVehiclePage({super.key});
@@ -143,31 +142,36 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     required TextEditingController vinController,
     required TextEditingController usdotController,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFF8FAFC);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Container(
       height: MediaQuery.of(context).size.height * 0.9,
       decoration: BoxDecoration(
-        color: backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        color: tokens.scaffoldAltBackground,
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.shapeXL),
+        ),
       ),
       child: Column(
         children: [
-          const SizedBox(height: 12),
+          SizedBox(height: tokens.spacingM),
           Container(
             width: 40,
             height: 4,
             decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
+              color: tokens.textTertiary.withValues(alpha: 0.3),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: EdgeInsets.fromLTRB(
+              tokens.spacingM,
+              tokens.spacingS,
+              tokens.spacingM,
+              tokens.spacingS,
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -175,22 +179,15 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                   onPressed: () => Navigator.pop(context),
                   icon: const Icon(Icons.close),
                   style: IconButton.styleFrom(
-                    backgroundColor: isDark
-                        ? const Color(0xFF1E293B)
-                        : Colors.white,
-                    side: BorderSide(
-                      color: isDark
-                          ? const Color(0xFF334155)
-                          : const Color(0xFFE2E8F0),
-                    ),
+                    backgroundColor: tokens.surfaceContainer,
+                    side: BorderSide(color: tokens.subtleBorderColor),
                   ),
                 ),
                 Text(
                   'Add Truck',
-                  style: GoogleFonts.outfit(
-                    fontSize: 18,
+                  style: textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.w700,
-                    color: textColor,
+                    color: tokens.textPrimary,
                   ),
                 ),
                 TextButton(
@@ -212,36 +209,39 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                       });
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Truck added successfully'),
-                          backgroundColor: Color(0xFF10B981),
+                        SnackBar(
+                          content: const Text('Truck added successfully'),
+                          backgroundColor: tokens.success,
                         ),
                       );
                     }
                   },
                   style: TextButton.styleFrom(
-                    backgroundColor: const Color(0xFF3B82F6),
+                    backgroundColor: colorScheme.primary,
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 24,
-                      vertical: 12,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: tokens.spacingL,
+                      vertical: tokens.spacingM,
                     ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(tokens.shapeM),
                     ),
                   ),
                   child: Text(
                     'Save',
-                    style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                    style: textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(height: 1),
+          Divider(height: 1, color: tokens.subtleBorderColor),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(tokens.spacingM),
               child: Column(
                 children: [
                   _buildSectionCard(
@@ -255,24 +255,20 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                               label: 'Make *',
                               hint: 'Freightliner',
                               icon: Icons.factory_outlined,
-                              isDark: isDark,
-                              textColor: textColor,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: tokens.spacingM),
                           Expanded(
                             child: _buildSheetTextField(
                               controller: modelController,
                               label: 'Model',
                               hint: 'Cascadia',
                               icon: Icons.directions_car_outlined,
-                              isDark: isDark,
-                              textColor: textColor,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: tokens.spacingM),
                       Row(
                         children: [
                           Expanded(
@@ -281,20 +277,16 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                               label: 'Year',
                               hint: '2024',
                               icon: Icons.calendar_today_outlined,
-                              isDark: isDark,
-                              textColor: textColor,
                               keyboardType: TextInputType.number,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: tokens.spacingM),
                           Expanded(
                             child: _buildSheetTextField(
                               controller: colorController,
                               label: 'Color',
                               hint: 'White',
                               icon: Icons.palette_outlined,
-                              isDark: isDark,
-                              textColor: textColor,
                             ),
                           ),
                         ],
@@ -309,11 +301,9 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         label: 'VIN',
                         hint: '17-character VIN',
                         icon: Icons.qr_code_outlined,
-                        isDark: isDark,
-                        textColor: textColor,
                         textCapitalization: TextCapitalization.characters,
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: tokens.spacingM),
                       Row(
                         children: [
                           Expanded(
@@ -323,33 +313,27 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                               label: 'License Plate',
                               hint: 'Plate number',
                               icon: Icons.credit_card_outlined,
-                              isDark: isDark,
-                              textColor: textColor,
                               textCapitalization: TextCapitalization.characters,
                             ),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: tokens.spacingM),
                           Expanded(
                             child: _buildSheetTextField(
                               controller: plateStateController,
                               label: 'State',
                               hint: 'CA',
                               icon: Icons.location_on_outlined,
-                              isDark: isDark,
-                              textColor: textColor,
                               textCapitalization: TextCapitalization.characters,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      SizedBox(height: tokens.spacingM),
                       _buildSheetTextField(
                         controller: usdotController,
                         label: 'USDOT Number',
                         hint: 'DOT number',
                         icon: Icons.numbers_outlined,
-                        isDark: isDark,
-                        textColor: textColor,
                         keyboardType: TextInputType.number,
                       ),
                     ],
@@ -376,35 +360,38 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     required TextEditingController vinController,
     required String initialType,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0F172A)
-        : const Color(0xFFF8FAFC);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
     String selectedType = initialType;
 
     return StatefulBuilder(
       builder: (context, setSheetState) => Container(
         height: MediaQuery.of(context).size.height * 0.9,
         decoration: BoxDecoration(
-          color: backgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          color: tokens.scaffoldAltBackground,
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(tokens.shapeXL),
+          ),
         ),
         child: Column(
           children: [
-            const SizedBox(height: 12),
+            SizedBox(height: tokens.spacingM),
             Container(
               width: 40,
               height: 4,
               decoration: BoxDecoration(
-                color: isDark
-                    ? const Color(0xFF334155)
-                    : const Color(0xFFE2E8F0),
+                color: tokens.textTertiary.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+              padding: EdgeInsets.fromLTRB(
+                tokens.spacingM,
+                tokens.spacingS,
+                tokens.spacingM,
+                tokens.spacingS,
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -412,22 +399,15 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     onPressed: () => Navigator.pop(context),
                     icon: const Icon(Icons.close),
                     style: IconButton.styleFrom(
-                      backgroundColor: isDark
-                          ? const Color(0xFF1E293B)
-                          : Colors.white,
-                      side: BorderSide(
-                        color: isDark
-                            ? const Color(0xFF334155)
-                            : const Color(0xFFE2E8F0),
-                      ),
+                      backgroundColor: tokens.surfaceContainer,
+                      side: BorderSide(color: tokens.subtleBorderColor),
                     ),
                   ),
                   Text(
                     'Add Trailer',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
+                    style: textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: textColor,
+                      color: tokens.textPrimary,
                     ),
                   ),
                   TextButton(
@@ -450,36 +430,39 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         });
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text('Trailer added successfully'),
-                            backgroundColor: Color(0xFF10B981),
+                          SnackBar(
+                            content: const Text('Trailer added successfully'),
+                            backgroundColor: tokens.success,
                           ),
                         );
                       }
                     },
                     style: TextButton.styleFrom(
-                      backgroundColor: const Color(0xFF3B82F6),
+                      backgroundColor: colorScheme.primary,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: tokens.spacingL,
+                        vertical: tokens.spacingM,
                       ),
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(tokens.shapeM),
                       ),
                     ),
                     child: Text(
                       'Save',
-                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                      style: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-            const Divider(height: 1),
+            Divider(height: 1, color: tokens.subtleBorderColor),
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(tokens.spacingM),
                 child: Column(
                   children: [
                     _buildSectionCard(
@@ -491,7 +474,6 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                           onChanged: (type) {
                             setSheetState(() => selectedType = type);
                           },
-                          isDark: isDark,
                         ),
                       ],
                     ),
@@ -506,24 +488,20 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                                 label: 'Make',
                                 hint: 'Wabash',
                                 icon: Icons.factory_outlined,
-                                isDark: isDark,
-                                textColor: textColor,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: tokens.spacingM),
                             Expanded(
                               child: _buildSheetTextField(
                                 controller: modelController,
                                 label: 'Model',
                                 hint: 'DuraPlate',
                                 icon: Icons.directions_car_outlined,
-                                isDark: isDark,
-                                textColor: textColor,
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: tokens.spacingM),
                         Row(
                           children: [
                             Expanded(
@@ -532,20 +510,16 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                                 label: 'Year',
                                 hint: '2024',
                                 icon: Icons.calendar_today_outlined,
-                                isDark: isDark,
-                                textColor: textColor,
                                 keyboardType: TextInputType.number,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: tokens.spacingM),
                             Expanded(
                               child: _buildSheetTextField(
                                 controller: lengthController,
                                 label: 'Length (ft)',
                                 hint: '53',
                                 icon: Icons.straighten_outlined,
-                                isDark: isDark,
-                                textColor: textColor,
                                 keyboardType: TextInputType.number,
                               ),
                             ),
@@ -561,11 +535,9 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                           label: 'VIN',
                           hint: '17-character VIN',
                           icon: Icons.qr_code_outlined,
-                          isDark: isDark,
-                          textColor: textColor,
                           textCapitalization: TextCapitalization.characters,
                         ),
-                        const SizedBox(height: 16),
+                        SizedBox(height: tokens.spacingM),
                         Row(
                           children: [
                             Expanded(
@@ -575,21 +547,17 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                                 label: 'License Plate',
                                 hint: 'Plate number',
                                 icon: Icons.credit_card_outlined,
-                                isDark: isDark,
-                                textColor: textColor,
                                 textCapitalization:
                                     TextCapitalization.characters,
                               ),
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: tokens.spacingM),
                             Expanded(
                               child: _buildSheetTextField(
                                 controller: plateStateController,
                                 label: 'State',
                                 hint: 'CA',
                                 icon: Icons.location_on_outlined,
-                                isDark: isDark,
-                                textColor: textColor,
                                 textCapitalization:
                                     TextCapitalization.characters,
                               ),
@@ -615,35 +583,38 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     required String title,
     required List<Widget> children,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 20),
+      margin: EdgeInsets.only(bottom: tokens.spacingL),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E293B) : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-          width: 1,
-        ),
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        border: Border.all(color: tokens.subtleBorderColor, width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            padding: EdgeInsets.fromLTRB(
+              tokens.spacingM,
+              tokens.spacingM,
+              tokens.spacingM,
+              tokens.spacingS,
+            ),
             child: Text(
               title,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.5,
-                color: const Color(0xFF3B82F6),
+                color: colorScheme.primary,
               ),
             ),
           ),
-          const Divider(height: 1, thickness: 1, color: Color(0xFFE2E8F0)),
+          Divider(height: 1, thickness: 1, color: tokens.subtleBorderColor),
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(tokens.spacingM),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: children,
@@ -655,15 +626,14 @@ class _AddVehiclePageState extends State<AddVehiclePage>
   }
 
   Widget _buildLabel(String label) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = context.tokens;
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, left: 4),
+      padding: EdgeInsets.only(bottom: tokens.spacingS, left: 4),
       child: Text(
         label,
-        style: GoogleFonts.outfit(
-          fontSize: 14,
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w500,
-          color: isDark ? const Color(0xFF94A3B8) : const Color(0xFF475569),
+          color: tokens.textSecondary,
         ),
       ),
     );
@@ -675,47 +645,48 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     IconData? suffixIcon,
     VoidCallback? onSuffixTap,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.outfit(
-        fontSize: 15,
-        color: isDark ? const Color(0xFF64748B) : const Color(0xFF94A3B8),
-      ),
-      prefixIcon: Icon(prefixIcon, color: const Color(0xFF3B82F6), size: 20),
+      hintStyle: Theme.of(
+        context,
+      ).textTheme.bodyMedium?.copyWith(color: tokens.textTertiary),
+      prefixIcon: Icon(prefixIcon, color: colorScheme.primary, size: 20),
       suffixIcon: suffixIcon != null
           ? IconButton(
-              icon: Icon(suffixIcon, color: const Color(0xFF64748B), size: 18),
+              icon: Icon(suffixIcon, color: tokens.textTertiary, size: 18),
               onPressed: onSuffixTap,
             )
           : null,
       filled: true,
-      fillColor: isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC),
+      fillColor: tokens.inputBackground,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeM),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeM),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
+        borderRadius: BorderRadius.circular(tokens.shapeM),
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.5),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: tokens.spacingM,
+        vertical: tokens.spacingM,
+      ),
     );
   }
 
   Widget _buildTrailerTypeSelector({
     required String selectedType,
     required ValueChanged<String> onChanged,
-    required bool isDark,
   }) {
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
     final types = [
       'Dry Van',
       'Flatbed',
@@ -727,37 +698,31 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     ];
 
     return Wrap(
-      spacing: 8,
-      runSpacing: 8,
+      spacing: tokens.spacingS,
+      runSpacing: tokens.spacingS,
       children: types.map((type) {
         final isSelected = selectedType == type;
         return GestureDetector(
           onTap: () => onChanged(type),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: EdgeInsets.symmetric(
+              horizontal: tokens.spacingM,
+              vertical: 10,
+            ),
             decoration: BoxDecoration(
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : (isDark
-                        ? const Color(0xFF2A2A2A)
-                        : const Color(0xFFF3F4F6)),
-              borderRadius: BorderRadius.circular(20),
+              color: isSelected ? colorScheme.primary : tokens.surfaceContainer,
+              borderRadius: BorderRadius.circular(tokens.shapeL),
               border: Border.all(
                 color: isSelected
-                    ? Theme.of(context).colorScheme.primary
-                    : (isDark
-                          ? const Color(0xFF404040)
-                          : const Color(0xFFE5E7EB)),
+                    ? colorScheme.primary
+                    : tokens.subtleBorderColor,
               ),
             ),
             child: Text(
               type,
-              style: GoogleFonts.outfit(
-                fontSize: 14,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.w500,
-                color: isSelected
-                    ? Colors.white
-                    : (isDark ? Colors.white : const Color(0xFF374151)),
+                color: isSelected ? colorScheme.onPrimary : tokens.textPrimary,
               ),
             ),
           ),
@@ -771,11 +736,10 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     required String label,
     required String hint,
     required IconData icon,
-    required bool isDark,
-    required Color textColor,
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
   }) {
+    final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -784,7 +748,9 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
-          style: GoogleFonts.outfit(fontSize: 16, color: textColor),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: tokens.textPrimary),
           decoration: _inputDecoration(hint: hint, prefixIcon: icon),
         ),
       ],
@@ -797,26 +763,25 @@ class _AddVehiclePageState extends State<AddVehiclePage>
       builder: (context) => AlertDialog(
         title: Text(
           'Delete Truck',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
-        content: Text(
-          'Are you sure you want to delete this truck?',
-          style: GoogleFonts.outfit(),
-        ),
+        content: const Text('Are you sure you want to delete this truck?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.outfit(color: const Color(0xFF667085)),
-            ),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              _trucks.removeWhere((t) => (t['id'] as String) == id);
+              setState(() {
+                _trucks.removeWhere((truck) => truck['id'] == id);
+              });
               Navigator.pop(context);
             },
-            child: Text('Delete', style: GoogleFonts.outfit(color: Colors.red)),
+            style: TextButton.styleFrom(foregroundColor: context.tokens.error),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -829,26 +794,25 @@ class _AddVehiclePageState extends State<AddVehiclePage>
       builder: (context) => AlertDialog(
         title: Text(
           'Delete Trailer',
-          style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+          style: Theme.of(
+            context,
+          ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
-        content: Text(
-          'Are you sure you want to delete this trailer?',
-          style: GoogleFonts.outfit(),
-        ),
+        content: const Text('Are you sure you want to delete this trailer?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text(
-              'Cancel',
-              style: GoogleFonts.outfit(color: const Color(0xFF667085)),
-            ),
+            child: const Text('Cancel'),
           ),
           TextButton(
             onPressed: () {
-              _trailers.removeWhere((t) => (t['id'] as String) == id);
+              setState(() {
+                _trailers.removeWhere((trailer) => trailer['id'] == id);
+              });
               Navigator.pop(context);
             },
-            child: Text('Delete', style: GoogleFonts.outfit(color: Colors.red)),
+            style: TextButton.styleFrom(foregroundColor: context.tokens.error),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -857,90 +821,95 @@ class _AddVehiclePageState extends State<AddVehiclePage>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtitleColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-        surfaceTintColor: Colors.transparent,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: IconButton(
-            icon: Icon(Icons.arrow_back, color: textColor, size: 20),
-            style: IconButton.styleFrom(
-              backgroundColor: isDark
-                  ? const Color(0xFF334155).withValues(alpha: 0.5)
-                  : const Color(0xFFF1F5F9),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            onPressed: () => context.pop(),
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: tokens.textPrimary,
           ),
+          onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'My Vehicles',
-          style: GoogleFonts.outfit(
-            fontSize: 20,
-            fontWeight: FontWeight.w700,
-            color: textColor,
+          style: textTheme.titleMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: tokens.textPrimary,
           ),
         ),
-        centerTitle: true,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: Container(
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF334155)
-                      : const Color(0xFFE2E8F0),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: TabBar(
-              controller: _tabController,
-              labelColor: const Color(0xFF3B82F6),
-              unselectedLabelColor: subtitleColor,
-              indicatorColor: const Color(0xFF3B82F6),
-              indicatorSize: TabBarIndicatorSize.label,
-              indicatorWeight: 3,
-              labelStyle: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-              unselectedLabelStyle: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-              tabs: const [
-                Tab(text: 'Trucks'),
-                Tab(text: 'Trailers'),
-              ],
-            ),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: colorScheme.primary,
+          unselectedLabelColor: tokens.textSecondary,
+          indicatorColor: colorScheme.primary,
+          indicatorSize: TabBarIndicatorSize.label,
+          labelStyle: textTheme.labelLarge?.copyWith(
+            fontWeight: FontWeight.bold,
           ),
+          tabs: const [
+            Tab(text: 'Trucks'),
+            Tab(text: 'Trailers'),
+          ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildTrucksList(cardColor, textColor, subtitleColor, isDark),
-          _buildTrailersList(cardColor, textColor, subtitleColor, isDark),
+          // Trucks Tab
+          _trucks.isEmpty
+              ? _buildEmptyState(
+                  'No trucks added yet',
+                  Icons.local_shipping_outlined,
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.all(tokens.spacingM),
+                  itemCount: _trucks.length,
+                  itemBuilder: (context, index) {
+                    final truck = _trucks[index];
+                    return _buildVehicleCard(
+                      title: '${truck['make']} ${truck['model']}',
+                      subtitle: '${truck['year']} • ${truck['color']}',
+                      details: [
+                        'Plate: ${truck['plate']} (${truck['plateState']})',
+                        'VIN: ${truck['vin'] ?? 'N/A'}',
+                      ],
+                      onDelete: () => _deleteTruck(truck['id']),
+                    );
+                  },
+                ),
+
+          // Trailers Tab
+          _trailers.isEmpty
+              ? _buildEmptyState(
+                  'No trailers added yet',
+                  Icons.local_shipping_outlined,
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.all(tokens.spacingM),
+                  itemCount: _trailers.length,
+                  itemBuilder: (context, index) {
+                    final trailer = _trailers[index];
+                    return _buildVehicleCard(
+                      title: '${trailer['make']} ${trailer['model']}',
+                      subtitle: '${trailer['year']} • ${trailer['type']}',
+                      details: [
+                        'Plate: ${trailer['plate']} (${trailer['plateState']})',
+                        'Length: ${trailer['length']} ft',
+                      ],
+                      onDelete: () => _deleteTrailer(trailer['id']),
+                    );
+                  },
+                ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           if (_tabController.index == 0) {
             _showAddTruckDialog();
@@ -948,402 +917,130 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             _showAddTrailerDialog();
           }
         },
-        backgroundColor: const Color(0xFF3B82F6),
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: colorScheme.primary,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add),
+        label: Text(
+          _tabController.index == 0 ? 'Add Truck' : 'Add Trailer',
+          style: textTheme.labelLarge?.copyWith(fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }
 
-  Widget _buildTrucksList(
-    Color cardColor,
-    Color textColor,
-    Color subtitleColor,
-    bool isDark,
-  ) {
-    if (_trucks.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.local_shipping_outlined,
-        title: 'No Trucks Added',
-        subtitle: 'Tap the + button to add your first truck',
-        isDark: isDark,
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _trucks.length,
-      itemBuilder: (context, index) {
-        final truck = _trucks[index];
-        return _buildTruckCard(
-          truck,
-          cardColor,
-          textColor,
-          subtitleColor,
-          isDark,
-        );
-      },
-    );
-  }
-
-  Widget _buildTrailersList(
-    Color cardColor,
-    Color textColor,
-    Color subtitleColor,
-    bool isDark,
-  ) {
-    if (_trailers.isEmpty) {
-      return _buildEmptyState(
-        icon: Icons.rv_hookup,
-        title: 'No Trailers Added',
-        subtitle: 'Tap the + button to add your first trailer',
-        isDark: isDark,
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _trailers.length,
-      itemBuilder: (context, index) {
-        final trailer = _trailers[index];
-        return _buildTrailerCard(
-          trailer,
-          cardColor,
-          textColor,
-          subtitleColor,
-          isDark,
-        );
-      },
-    );
-  }
-
-  Widget _buildEmptyState({
-    required IconData icon,
+  Widget _buildVehicleCard({
     required String title,
     required String subtitle,
-    required bool isDark,
+    required List<String> details,
+    required VoidCallback onDelete,
   }) {
-    return Center(
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    return Container(
+      margin: EdgeInsets.only(bottom: tokens.spacingM),
+      padding: EdgeInsets.all(tokens.spacingM),
+      decoration: BoxDecoration(
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        border: Border.all(color: tokens.subtleBorderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(
-              icon,
-              size: 48,
-              color: Theme.of(context).colorScheme.primary,
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: tokens.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: tokens.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, color: tokens.error),
+                onPressed: onDelete,
+              ),
+            ],
           ),
-          const SizedBox(height: 24),
-          Text(
-            title,
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white : const Color(0xFF101828),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            subtitle,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              color: const Color(0xFF667085),
-            ),
+          SizedBox(height: tokens.spacingM),
+          Wrap(
+            spacing: tokens.spacingS,
+            runSpacing: tokens.spacingXS,
+            children: details.map((detail) {
+              return Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: tokens.scaffoldAltBackground,
+                  borderRadius: BorderRadius.circular(tokens.shapeS),
+                  border: Border.all(color: tokens.subtleBorderColor),
+                ),
+                child: Text(
+                  detail,
+                  style: textTheme.bodySmall?.copyWith(
+                    color: tokens.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              );
+            }).toList(),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildTruckCard(
-    Map<String, dynamic> truck,
-    Color cardColor,
-    Color textColor,
-    Color subtitleColor,
-    bool isDark,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: InkWell(
-        onTap: () {}, // For future view details
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF3B82F6).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.local_shipping,
-                  color: Color(0xFF3B82F6),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      '${truck['year']} ${truck['make']} ${truck['model']}',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? const Color(0xFF0F172A)
-                                : const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.credit_card,
-                                size: 14,
-                                color: subtitleColor,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${truck['plate']} (${truck['plateState']})',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  color: subtitleColor,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        if (truck['color'] != null &&
-                            (truck['color'] as String).isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF0F172A)
-                                  : const Color(0xFFF1F5F9),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.palette,
-                                  size: 14,
-                                  color: subtitleColor,
-                                ),
-                                const SizedBox(width: 4),
-                                Text(
-                                  truck['color'],
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                    color: subtitleColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () => _deleteTruck(truck['id']),
-                icon: Icon(
-                  Icons.delete_outline,
-                  color: Colors.red.shade400,
-                  size: 20,
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.red.shade50.withValues(
-                    alpha: isDark ? 0.1 : 1,
-                  ),
-                  padding: const EdgeInsets.all(8),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
+  Widget _buildEmptyState(String message, IconData icon) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
-  Widget _buildTrailerCard(
-    Map<String, dynamic> trailer,
-    Color cardColor,
-    Color textColor,
-    Color subtitleColor,
-    bool isDark,
-  ) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: isDark ? const Color(0xFF334155) : const Color(0xFFE2E8F0),
-        ),
-      ),
-      child: InkWell(
-        onTap: () {},
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: const Icon(
-                  Icons.rv_hookup,
-                  color: Color(0xFF10B981),
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 2,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color(
-                              0xFF10B981,
-                            ).withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            trailer['type'] ?? 'Unknown',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF10B981),
-                            ),
-                          ),
-                        ),
-                        if (trailer['length'] != null &&
-                            (trailer['length'] as String).isNotEmpty) ...[
-                          const SizedBox(width: 8),
-                          Text(
-                            "${trailer['length']}' ft",
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              color: subtitleColor,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      '${trailer['year']} ${trailer['make']} ${trailer['model']}',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: textColor,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF0F172A)
-                            : const Color(0xFFF1F5F9),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.credit_card,
-                            size: 14,
-                            color: subtitleColor,
-                          ),
-                          const SizedBox(width: 4),
-                          Text(
-                            '${trailer['plate']} (${trailer['plateState']})',
-                            style: GoogleFonts.outfit(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                              color: subtitleColor,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              IconButton(
-                onPressed: () => _deleteTrailer(trailer['id']),
-                icon: Icon(
-                  Icons.delete_outline,
-                  color: Colors.red.shade400,
-                  size: 20,
-                ),
-                style: IconButton.styleFrom(
-                  backgroundColor: Colors.red.shade50.withValues(
-                    alpha: isDark ? 0.1 : 1,
-                  ),
-                  padding: const EdgeInsets.all(8),
-                ),
-              ),
-            ],
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(tokens.spacingXL),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, size: 48, color: colorScheme.primary),
           ),
-        ),
+          SizedBox(height: tokens.spacingL),
+          Text(
+            message,
+            style: textTheme.titleMedium?.copyWith(
+              color: tokens.textSecondary,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ),
     );
   }

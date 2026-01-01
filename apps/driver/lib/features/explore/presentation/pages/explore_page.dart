@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 // Tab shell provides nav; this page returns content only
@@ -563,7 +564,7 @@ class _ExplorePageState extends State<ExplorePage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final tokens = context.tokens;
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: Container(
@@ -573,7 +574,7 @@ class _ExplorePageState extends State<ExplorePage> {
           displacement: 60,
           strokeWidth: 3.0,
           color: Theme.of(context).colorScheme.primary,
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
           child: CustomScrollView(
             slivers: [
               SliverAppBar(
@@ -599,7 +600,7 @@ class _ExplorePageState extends State<ExplorePage> {
               SliverToBoxAdapter(
                 child: _isLoading
                     ? Padding(
-                        padding: const EdgeInsets.all(32.0),
+                        padding: EdgeInsets.all(tokens.spacingXL),
                         child: Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 3.0,
@@ -608,7 +609,7 @@ class _ExplorePageState extends State<ExplorePage> {
                         ),
                       )
                     : Padding(
-                        padding: const EdgeInsets.all(16.0),
+                        padding: EdgeInsets.all(tokens.spacingM),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
@@ -620,7 +621,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                 _selectedCategory == 'Regional' ||
                                 _selectedCategory == 'Local') ...[
                               const _SectionHeaderRow(title: 'Activity Map'),
-                              const SizedBox(height: 12),
+                              SizedBox(height: tokens.spacingM),
                               if (_isMapLoading)
                                 const Center(child: CircularProgressIndicator())
                               else
@@ -658,37 +659,37 @@ class _ExplorePageState extends State<ExplorePage> {
                                     );
                                   },
                                 ),
-                              const SizedBox(height: 24),
-                              StateCollectorCard(
-                                visitedStates: _visitedStates,
-                                onTap: () {
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(
-                                      builder: (_) => VisitedStatesMapPage(
-                                        trips: _allTrips,
-                                        fuelEntries: _allFuelEntries,
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                              const SizedBox(height: 24),
-
-                              // Personal Stats & Insights
-                              StatsOverviewCard(
-                                totalMiles: _statsTotalMiles,
-                                totalFuelCost: _statsFuelCost,
-                                tripCount: _statsTripCount,
-                              ),
-                              const SizedBox(height: 24),
-
-                              SmartSuggestionsCard(
-                                trips: _allTrips,
-                                fuelEntries: _allFuelEntries,
-                              ),
-                              const SizedBox(height: 24),
                             ],
+                            SizedBox(height: tokens.spacingL),
+                            StateCollectorCard(
+                              visitedStates: _visitedStates,
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => VisitedStatesMapPage(
+                                      trips: _allTrips,
+                                      fuelEntries: _allFuelEntries,
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                            SizedBox(height: tokens.spacingL),
+
+                            // Personal Stats & Insights
+                            StatsOverviewCard(
+                              totalMiles: _statsTotalMiles,
+                              totalFuelCost: _statsFuelCost,
+                              tripCount: _statsTripCount,
+                            ),
+                            SizedBox(height: tokens.spacingL),
+
+                            SmartSuggestionsCard(
+                              trips: _allTrips,
+                              fuelEntries: _allFuelEntries,
+                            ),
+                            SizedBox(height: tokens.spacingL),
 
                             _SectionHeaderRow(
                               title: AppLocalizations.of(
@@ -698,9 +699,10 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ? () => _navigateToAllDestinations()
                                   : null,
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: tokens.spacingM),
                             _buildDestinationsList(),
-                            const SizedBox(height: 24),
+                            SizedBox(height: tokens.spacingL),
+
                             _SectionHeaderRow(
                               title: AppLocalizations.of(
                                 context,
@@ -709,7 +711,7 @@ class _ExplorePageState extends State<ExplorePage> {
                                   ? () => _navigateToAllActivity()
                                   : null,
                             ),
-                            const SizedBox(height: 12),
+                            SizedBox(height: tokens.spacingM),
                             _buildActivityList(),
                             // Dynamic bottom padding for system navigation bar
                             SizedBox(
@@ -737,7 +739,7 @@ class _ExplorePageState extends State<ExplorePage> {
     return Column(
       children: _filteredDestinations.take(5).map((dest) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: EdgeInsets.only(bottom: context.tokens.spacingM),
           child: _SimpleDestinationCard(destination: dest),
         );
       }).toList(),
@@ -754,7 +756,7 @@ class _ExplorePageState extends State<ExplorePage> {
     return Column(
       children: _filteredActivity.take(5).map((activity) {
         return Padding(
-          padding: const EdgeInsets.only(bottom: 10),
+          padding: EdgeInsets.only(bottom: context.tokens.spacingM),
           child: _SimpleActivityCard(activity: activity),
         );
       }).toList(),

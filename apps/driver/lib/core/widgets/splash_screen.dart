@@ -1,6 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:milow/core/constants/design_tokens.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -102,8 +102,7 @@ class _SplashScreenState extends State<SplashScreen>
                 // App Name
                 Text(
                   'MILOW',
-                  style: GoogleFonts.outfit(
-                    fontSize: 40,
+                  style: Theme.of(context).textTheme.displayLarge?.copyWith(
                     fontWeight: FontWeight.w800,
                     color: primaryColor,
                     letterSpacing: 8,
@@ -113,8 +112,7 @@ class _SplashScreenState extends State<SplashScreen>
                 // Tagline
                 Text(
                   'Trucking Made Simple',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w400,
                     color: tokens.textSecondary,
                     letterSpacing: 2,

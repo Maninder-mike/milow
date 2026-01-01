@@ -281,9 +281,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   onPressed: _isLoading ? null : _saveProfile,
                   style: FilledButton.styleFrom(
                     backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
+                    foregroundColor: Theme.of(context).colorScheme.onPrimary,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(tokens.shapeL),
                     ),
                     padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
                     minimumSize: const Size(0, 40),
@@ -292,7 +292,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
                     'Save',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: Colors.white,
+                      color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
                 ),
@@ -538,15 +538,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: GestureDetector(
                 onTap: _pickImage,
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: EdgeInsets.all(tokens.spacingS),
                   decoration: BoxDecoration(
                     color: primaryColor,
                     shape: BoxShape.circle,
                     border: Border.all(color: backgroundColor, width: 2),
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.camera_alt,
-                    color: Colors.white,
+                    color: Theme.of(context).colorScheme.onPrimary,
                     size: 20,
                   ),
                 ),

@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:milow/core/services/locale_service.dart';
 import 'package:milow/l10n/app_localizations.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class LanguagePage extends StatefulWidget {
   const LanguagePage({super.key});
@@ -45,14 +45,20 @@ class _LanguagePageState extends State<LanguagePage> {
   ];
 
   Future<void> _setLanguage(String languageCode, bool isSupported) async {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
     if (!isSupported) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('This language is coming soon!'),
-          backgroundColor: const Color(0xFFF59E0B),
+          content: Text(
+            'This language is coming soon!',
+            style: textTheme.bodyMedium,
+          ),
+          backgroundColor: tokens.warning,
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
+            borderRadius: BorderRadius.circular(tokens.shapeS),
           ),
         ),
       );
@@ -66,41 +72,39 @@ class _LanguagePageState extends State<LanguagePage> {
     final language = _languages.firstWhere((l) => l['code'] == languageCode);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Language changed to ${language['name']}'),
-        backgroundColor: const Color(0xFF10B981),
+        content: Text(
+          'Language changed to ${language['name']}',
+          style: textTheme.bodyMedium?.copyWith(color: Colors.white),
+        ),
+        backgroundColor: tokens.success,
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.shapeS),
+        ),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtitleColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
-        backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+        backgroundColor: tokens.scaffoldAltBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: textColor),
+          icon: Icon(Icons.arrow_back, color: tokens.textPrimary),
           onPressed: () => context.pop(),
         ),
         title: Text(
           AppLocalizations.of(context)?.language ?? 'Language',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
+          style: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: tokens.textPrimary,
           ),
         ),
         centerTitle: true,
@@ -110,22 +114,22 @@ class _LanguagePageState extends State<LanguagePage> {
           final selectedLanguage = localeService.locale.languageCode;
 
           return ListView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(tokens.spacingM),
             children: [
               Text(
                 'Select your preferred language',
-                style: GoogleFonts.outfit(fontSize: 14, color: subtitleColor),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: tokens.textSecondary,
+                ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: tokens.spacingM),
               Container(
                 decoration: BoxDecoration(
-                  color: cardColor,
-                  borderRadius: BorderRadius.circular(16),
+                  color: tokens.surfaceContainer,
+                  borderRadius: BorderRadius.circular(tokens.shapeL),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(
-                        alpha: isDark ? 0.3 : 0.05,
-                      ),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 10,
                       offset: const Offset(0, 2),
                     ),
@@ -146,16 +150,16 @@ class _LanguagePageState extends State<LanguagePage> {
                               _setLanguage(language['code']!, isSupported),
                           borderRadius: BorderRadius.vertical(
                             top: index == 0
-                                ? const Radius.circular(16)
+                                ? Radius.circular(tokens.shapeL)
                                 : Radius.zero,
                             bottom: isLast
-                                ? const Radius.circular(16)
+                                ? Radius.circular(tokens.shapeL)
                                 : Radius.zero,
                           ),
                           child: Padding(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 14,
+                            padding: EdgeInsets.symmetric(
+                              horizontal: tokens.spacingM,
+                              vertical: tokens.spacingM - 2,
                             ),
                             child: Row(
                               children: [
@@ -163,7 +167,7 @@ class _LanguagePageState extends State<LanguagePage> {
                                   language['flag']!,
                                   style: const TextStyle(fontSize: 24),
                                 ),
-                                const SizedBox(width: 16),
+                                SizedBox(width: tokens.spacingM),
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment:
@@ -173,16 +177,16 @@ class _LanguagePageState extends State<LanguagePage> {
                                         children: [
                                           Text(
                                             language['name']!,
-                                            style: GoogleFonts.outfit(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w500,
-                                              color: isSupported
-                                                  ? textColor
-                                                  : subtitleColor,
-                                            ),
+                                            style: textTheme.bodyLarge
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w500,
+                                                  color: isSupported
+                                                      ? tokens.textPrimary
+                                                      : tokens.textSecondary,
+                                                ),
                                           ),
                                           if (!isSupported) ...[
-                                            const SizedBox(width: 8),
+                                            SizedBox(width: tokens.spacingS),
                                             Container(
                                               padding:
                                                   const EdgeInsets.symmetric(
@@ -190,21 +194,21 @@ class _LanguagePageState extends State<LanguagePage> {
                                                     vertical: 2,
                                                   ),
                                               decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFFF59E0B,
-                                                ).withValues(alpha: 0.1),
+                                                color: tokens.warning
+                                                    .withValues(alpha: 0.1),
                                                 borderRadius:
-                                                    BorderRadius.circular(4),
+                                                    BorderRadius.circular(
+                                                      tokens.shapeXS,
+                                                    ),
                                               ),
                                               child: Text(
                                                 'Soon',
-                                                style: GoogleFonts.outfit(
-                                                  fontSize: 10,
-                                                  fontWeight: FontWeight.w600,
-                                                  color: const Color(
-                                                    0xFFF59E0B,
-                                                  ),
-                                                ),
+                                                style: textTheme.labelSmall
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: tokens.warning,
+                                                    ),
                                               ),
                                             ),
                                           ],
@@ -213,9 +217,8 @@ class _LanguagePageState extends State<LanguagePage> {
                                       const SizedBox(height: 2),
                                       Text(
                                         language['nativeName']!,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 14,
-                                          color: subtitleColor,
+                                        style: textTheme.bodyMedium?.copyWith(
+                                          color: tokens.textSecondary,
                                         ),
                                       ),
                                     ],
@@ -223,15 +226,17 @@ class _LanguagePageState extends State<LanguagePage> {
                                 ),
                                 if (isSelected)
                                   Container(
-                                    padding: const EdgeInsets.all(4),
-                                    decoration: const BoxDecoration(
-                                      color: Color(0xFF3B82F6),
+                                    padding: EdgeInsets.all(
+                                      tokens.spacingXS - 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: colorScheme.primary,
                                       shape: BoxShape.circle,
                                     ),
-                                    child: const Icon(
+                                    child: Icon(
                                       Icons.check,
                                       size: 16,
-                                      color: Colors.white,
+                                      color: colorScheme.onPrimary,
                                     ),
                                   ),
                               ],
@@ -242,9 +247,7 @@ class _LanguagePageState extends State<LanguagePage> {
                           Divider(
                             height: 1,
                             thickness: 1,
-                            color: isDark
-                                ? const Color(0xFF2A2A2A)
-                                : const Color(0xFFEAECF0),
+                            color: tokens.subtleBorderColor,
                             indent: 56,
                           ),
                       ],
@@ -252,30 +255,29 @@ class _LanguagePageState extends State<LanguagePage> {
                   }).toList(),
                 ),
               ),
-              const SizedBox(height: 24),
+              SizedBox(height: tokens.spacingL),
               Container(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(tokens.spacingM),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: tokens.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(tokens.shapeM),
                   border: Border.all(
-                    color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                    color: tokens.success.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.check_circle_outline,
                       size: 24,
-                      color: Color(0xFF10B981),
+                      color: tokens.success,
                     ),
-                    const SizedBox(width: 12),
+                    SizedBox(width: tokens.spacingM),
                     Expanded(
                       child: Text(
                         'All languages are fully supported!',
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
-                          color: const Color(0xFF10B981),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: tokens.success,
                         ),
                       ),
                     ),

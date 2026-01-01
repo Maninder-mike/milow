@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -78,14 +78,13 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final tokens = context.tokens;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       body: SafeArea(
         child: FadeTransition(
           opacity: _fadeAnim,
@@ -93,31 +92,28 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             children: [
               // Header
               Padding(
-                padding: const EdgeInsets.all(16),
+                padding: EdgeInsets.all(tokens.spacingM),
                 child: Row(
                   children: [
                     _buildNavButton(
                       icon: Icons.arrow_back_ios_new,
                       onTap: () => context.go('/login'),
-                      isDark: isDark,
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: tokens.spacingM),
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           'Forgot Password',
-                          style: GoogleFonts.outfit(
-                            fontSize: 24,
+                          style: textTheme.headlineSmall?.copyWith(
                             fontWeight: FontWeight.w700,
-                            color: textColor,
+                            color: tokens.textPrimary,
                           ),
                         ),
                         Text(
                           'Recover your account',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
-                            color: const Color(0xFF667085),
+                          style: textTheme.bodyMedium?.copyWith(
+                            color: tokens.textSecondary,
                           ),
                         ),
                       ],
@@ -129,10 +125,15 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
               // Content
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 120),
+                  padding: EdgeInsets.fromLTRB(
+                    tokens.spacingM,
+                    tokens.spacingS,
+                    tokens.spacingM,
+                    120,
+                  ),
                   child: _emailSent
-                      ? _buildSuccessContent(isDark, textColor)
-                      : _buildFormContent(isDark, textColor),
+                      ? _buildSuccessContent()
+                      : _buildFormContent(),
                 ),
               ),
             ],
@@ -143,13 +144,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
       // Bottom Button
       bottomNavigationBar: !_emailSent
           ? Container(
-              padding: const EdgeInsets.all(16),
+              padding: EdgeInsets.all(tokens.spacingM),
               decoration: BoxDecoration(
-                color: backgroundColor,
+                color: tokens.scaffoldAltBackground,
                 border: Border(
-                  top: BorderSide(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
+                  top: BorderSide(color: colorScheme.outlineVariant),
                 ),
               ),
               child: SafeArea(
@@ -158,16 +157,17 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
                   style: FilledButton.styleFrom(
                     minimumSize: const Size(double.infinity, 56),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(tokens.shapeL),
                     ),
                   ),
                   child: _isLoading
-                      ? const SizedBox(
+                      ? SizedBox(
                           width: 24,
                           height: 24,
                           child: CircularProgressIndicator(
                             strokeWidth: 3.0,
-                            color: Colors.white,
+                            strokeCap: StrokeCap.round,
+                            color: colorScheme.onPrimary,
                           ),
                         )
                       : Row(
@@ -175,12 +175,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
                           children: [
                             Text(
                               'Send Reset Link',
-                              style: GoogleFonts.outfit(
-                                fontSize: 16,
+                              style: textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.w600,
+                                color: colorScheme.onPrimary,
                               ),
                             ),
-                            const SizedBox(width: 8),
+                            SizedBox(width: tokens.spacingS),
                             const Icon(Icons.send, size: 20),
                           ],
                         ),
@@ -191,22 +191,27 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     );
   }
 
-  Widget _buildFormContent(bool isDark, Color textColor) {
+  Widget _buildFormContent() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final tokens = context.tokens;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 40),
+        SizedBox(height: tokens.spacingXL + tokens.spacingS),
 
         // App Icon
         Center(
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(tokens.spacingL),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
+              color: tokens.surfaceContainer,
+              borderRadius: BorderRadius.circular(
+                tokens.shapeXL + tokens.spacingXS,
               ),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Image.asset(
               'assets/images/milow_icon.png',
@@ -217,45 +222,43 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
           ),
         ),
 
-        const SizedBox(height: 32),
+        SizedBox(height: tokens.spacingXL),
 
         // Description
         Text(
           'Forgot your password?',
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 20,
+          style: textTheme.titleLarge?.copyWith(
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: tokens.textPrimary,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: tokens.spacingS),
         Text(
           "No worries! Enter your email address and we'll send you a link to reset your password.",
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            color: const Color(0xFF667085),
+          style: textTheme.bodyMedium?.copyWith(
+            color: tokens.textSecondary,
             height: 1.5,
           ),
         ),
 
-        const SizedBox(height: 40),
+        SizedBox(height: tokens.spacingXL + tokens.spacingS),
 
         // Email Field
         _buildLabel('Email Address'),
-        const SizedBox(height: 8),
+        SizedBox(height: tokens.spacingS),
         TextField(
           controller: _emailController,
           keyboardType: TextInputType.emailAddress,
-          style: GoogleFonts.outfit(color: textColor, fontSize: 16),
+          style: textTheme.bodyLarge?.copyWith(color: tokens.textPrimary),
           decoration: _inputDecoration(
             hint: 'name@email.com',
             prefixIcon: Icons.alternate_email,
           ),
         ),
 
-        const SizedBox(height: 32),
+        SizedBox(height: tokens.spacingXL),
 
         // Back to login link
         Center(
@@ -265,11 +268,10 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
               mainAxisSize: MainAxisSize.min,
               children: [
                 const Icon(Icons.arrow_back, size: 16),
-                const SizedBox(width: 8),
+                SizedBox(width: tokens.spacingS),
                 Text(
                   'Back to Sign In',
-                  style: GoogleFonts.outfit(
-                    fontSize: 14,
+                  style: textTheme.labelLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -281,98 +283,95 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     );
   }
 
-  Widget _buildSuccessContent(bool isDark, Color textColor) {
+  Widget _buildSuccessContent() {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final tokens = context.tokens;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const SizedBox(height: 60),
+        SizedBox(height: tokens.spacingXL * 2),
 
         // Success Icon
         Center(
           child: Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(tokens.spacingL),
             decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(32),
-              border: Border.all(
-                color: Theme.of(context).colorScheme.outlineVariant,
+              color: tokens.surfaceContainer,
+              borderRadius: BorderRadius.circular(
+                tokens.shapeXL + tokens.spacingXS,
               ),
+              border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Icon(
               Icons.mark_email_read_outlined,
               size: 80,
-              color: Theme.of(context).colorScheme.primary,
+              color: colorScheme.primary,
             ),
           ),
         ),
 
-        const SizedBox(height: 32),
+        SizedBox(height: tokens.spacingXL),
 
         // Success Message
         Text(
           'Check Your Email',
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 24,
+          style: textTheme.headlineSmall?.copyWith(
             fontWeight: FontWeight.w700,
-            color: textColor,
+            color: tokens.textPrimary,
           ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: tokens.spacingM),
         Text(
           'We sent a password reset link to',
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 14,
-            color: const Color(0xFF667085),
-          ),
+          style: textTheme.bodyMedium?.copyWith(color: tokens.textSecondary),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: tokens.spacingXS),
         Text(
           _emailController.text.trim(),
           textAlign: TextAlign.center,
-          style: GoogleFonts.outfit(
-            fontSize: 16,
+          style: textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).colorScheme.primary,
+            color: colorScheme.primary,
           ),
         ),
 
-        const SizedBox(height: 40),
+        SizedBox(height: tokens.spacingXL + tokens.spacingS),
 
         // Info Card
         Container(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(tokens.spacingM),
           decoration: BoxDecoration(
-            color: Theme.of(context).cardColor,
-            borderRadius: BorderRadius.circular(20),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
+            color: tokens.surfaceContainer,
+            borderRadius: BorderRadius.circular(
+              tokens.shapeL + tokens.spacingXS,
             ),
+            border: Border.all(color: colorScheme.outlineVariant),
           ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(tokens.spacingS + 2),
                 decoration: BoxDecoration(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  color: colorScheme.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(tokens.shapeM),
                 ),
                 child: Icon(
                   Icons.info_outline,
-                  color: Theme.of(context).colorScheme.primary,
+                  color: colorScheme.primary,
                   size: 20,
                 ),
               ),
-              const SizedBox(width: 12),
+              SizedBox(width: tokens.spacingM),
               Expanded(
                 child: Text(
                   "Didn't receive the email? Check your spam folder or try again.",
-                  style: GoogleFonts.outfit(
-                    fontSize: 13,
-                    color: const Color(0xFF667085),
+                  style: textTheme.bodySmall?.copyWith(
+                    color: tokens.textSecondary,
                     height: 1.4,
                   ),
                 ),
@@ -381,7 +380,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
           ),
         ),
 
-        const SizedBox(height: 40),
+        SizedBox(height: tokens.spacingXL + tokens.spacingS),
 
         // Resend Button
         OutlinedButton(
@@ -389,23 +388,20 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(double.infinity, 56),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(tokens.shapeL),
             ),
-            side: BorderSide(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
+            side: BorderSide(color: colorScheme.outlineVariant),
           ),
           child: Text(
             'Resend Email',
-            style: GoogleFonts.outfit(
-              fontSize: 16,
+            style: textTheme.titleMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF667085),
+              color: tokens.textSecondary,
             ),
           ),
         ),
 
-        const SizedBox(height: 16),
+        SizedBox(height: tokens.spacingM),
 
         // Back to login
         FilledButton(
@@ -413,7 +409,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
           style: FilledButton.styleFrom(
             minimumSize: const Size(double.infinity, 56),
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(tokens.shapeL),
             ),
           ),
           child: Row(
@@ -421,12 +417,12 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
             children: [
               Text(
                 'Back to Sign In',
-                style: GoogleFonts.outfit(
-                  fontSize: 16,
+                style: textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: colorScheme.onPrimary,
                 ),
               ),
-              const SizedBox(width: 8),
+              SizedBox(width: tokens.spacingS),
               const Icon(Icons.arrow_forward, size: 20),
             ],
           ),
@@ -438,34 +434,34 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
   Widget _buildNavButton({
     required IconData icon,
     required VoidCallback onTap,
-    required bool isDark,
   }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
+
     return Container(
       width: 44,
       height: 44,
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeM),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: IconButton(
-        icon: Icon(
-          icon,
-          size: 18,
-          color: Theme.of(context).colorScheme.onSurface,
-        ),
+        icon: Icon(icon, size: 18, color: colorScheme.onSurface),
         onPressed: onTap,
       ),
     );
   }
 
   Widget _buildLabel(String text) {
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     return Text(
       text,
-      style: GoogleFonts.outfit(
-        fontSize: 15,
+      style: textTheme.labelLarge?.copyWith(
         fontWeight: FontWeight.w600,
-        color: Theme.of(context).textTheme.bodyLarge?.color,
+        color: tokens.textPrimary,
       ),
     );
   }
@@ -474,35 +470,32 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     required String hint,
     required IconData prefixIcon,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
 
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.outfit(
-        color: const Color(0xFF98A2B3),
-        fontSize: 14,
-      ),
-      prefixIcon: Icon(prefixIcon, color: primaryColor, size: 20),
+      hintStyle: textTheme.bodyMedium?.copyWith(color: tokens.textTertiary),
+      prefixIcon: Icon(prefixIcon, color: colorScheme.primary, size: 20),
       filled: true,
-      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      fillColor: tokens.inputBackground,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(
-          color: Theme.of(context).colorScheme.outlineVariant,
-        ),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: tokens.inputBorder),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryColor, width: 2),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: colorScheme.primary, width: 2),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: tokens.spacingM,
+        vertical: tokens.spacingM,
+      ),
     );
   }
 }

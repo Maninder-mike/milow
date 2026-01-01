@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:milow/core/services/local_auth_service.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class PinEntryPage extends StatefulWidget {
   const PinEntryPage({super.key});
@@ -120,14 +120,12 @@ class _PinEntryPageState extends State<PinEntryPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       body: SafeArea(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -140,57 +138,51 @@ class _PinEntryPageState extends State<PinEntryPage> {
               height: 100,
               fit: BoxFit.contain,
             ),
-            const SizedBox(height: 32),
+            SizedBox(height: tokens.spacingXL),
             // Title
             Text(
               'Enter your PIN',
-              style: GoogleFonts.outfit(
-                fontSize: 24,
+              style: textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.w600,
-                color: textColor,
+                color: tokens.textPrimary,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: tokens.spacingM),
             Text(
               'Enter your 4-digit PIN to continue',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
-                color: const Color(0xFF667085),
-              ),
+              style: textTheme.bodyLarge?.copyWith(color: tokens.textSecondary),
             ),
-            const SizedBox(height: 48),
+            SizedBox(height: tokens.spacingXL * 2),
             // PIN dots
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: List.generate(4, (index) {
                 final isFilled = index < _pin.length;
                 return Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  margin: EdgeInsets.symmetric(horizontal: tokens.spacingM),
                   width: 16,
                   height: 16,
                   decoration: BoxDecoration(
-                    color: isFilled
-                        ? Theme.of(context).colorScheme.primary
-                        : Colors.transparent,
+                    color: isFilled ? colorScheme.primary : Colors.transparent,
                     shape: BoxShape.circle,
                     border: Border.all(
                       color: _errorMessage != null
-                          ? Colors.red
-                          : Theme.of(context).colorScheme.primary,
+                          ? tokens.error
+                          : colorScheme.primary,
                       width: 2,
                     ),
                   ),
                 );
               }),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: tokens.spacingL),
             // Error message
             if (_errorMessage != null)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
+                padding: EdgeInsets.symmetric(horizontal: tokens.spacingXL),
                 child: Text(
                   _errorMessage!,
-                  style: GoogleFonts.outfit(fontSize: 14, color: Colors.red),
+                  style: textTheme.bodyMedium?.copyWith(color: tokens.error),
                   textAlign: TextAlign.center,
                 ),
               ),
@@ -198,7 +190,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
             // Biometric button
             if (_canUseBiometric)
               Padding(
-                padding: const EdgeInsets.only(bottom: 24),
+                padding: EdgeInsets.only(bottom: tokens.spacingL),
                 child: TextButton.icon(
                   onPressed: _authenticateWithBiometric,
                   icon: Icon(
@@ -207,7 +199,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
                         : (_hasFaceRecognition
                               ? Icons.face_rounded
                               : Icons.fingerprint_rounded),
-                    color: Theme.of(context).colorScheme.primary,
+                    color: colorScheme.primary,
                     size: 28,
                   ),
                   label: Text(
@@ -216,25 +208,27 @@ class _PinEntryPageState extends State<PinEntryPage> {
                         : (_hasFaceRecognition
                               ? 'Use Face ID'
                               : 'Use Fingerprint'),
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
+                    style: textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Theme.of(context).colorScheme.primary,
+                      color: colorScheme.primary,
                     ),
                   ),
                 ),
               ),
             // Number pad
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              padding: EdgeInsets.symmetric(
+                horizontal: tokens.spacingL,
+                vertical: tokens.spacingXL,
+              ),
               child: Column(
                 children: [
                   _buildNumberRow(['1', '2', '3']),
-                  const SizedBox(height: 16),
+                  SizedBox(height: tokens.spacingM),
                   _buildNumberRow(['4', '5', '6']),
-                  const SizedBox(height: 16),
+                  SizedBox(height: tokens.spacingM),
                   _buildNumberRow(['7', '8', '9']),
-                  const SizedBox(height: 16),
+                  SizedBox(height: tokens.spacingM),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                     children: [
@@ -260,9 +254,8 @@ class _PinEntryPageState extends State<PinEntryPage> {
   }
 
   Widget _buildNumberButton(String number) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final buttonColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
 
     return InkWell(
       onTap: () => _onNumberPressed(number),
@@ -271,7 +264,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
         width: 72,
         height: 72,
         decoration: BoxDecoration(
-          color: buttonColor,
+          color: tokens.surfaceContainer,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -284,10 +277,9 @@ class _PinEntryPageState extends State<PinEntryPage> {
         child: Center(
           child: Text(
             number,
-            style: GoogleFonts.outfit(
-              fontSize: 28,
+            style: textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: textColor,
+              color: tokens.textPrimary,
             ),
           ),
         ),
@@ -296,9 +288,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
   }
 
   Widget _buildBackspaceButton() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final buttonColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
-    final iconColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
 
     return InkWell(
       onTap: _onBackspacePressed,
@@ -307,7 +297,7 @@ class _PinEntryPageState extends State<PinEntryPage> {
         width: 72,
         height: 72,
         decoration: BoxDecoration(
-          color: buttonColor,
+          color: tokens.surfaceContainer,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -318,7 +308,11 @@ class _PinEntryPageState extends State<PinEntryPage> {
           ],
         ),
         child: Center(
-          child: Icon(Icons.backspace_rounded, color: iconColor, size: 28),
+          child: Icon(
+            Icons.backspace_rounded,
+            color: tokens.textPrimary,
+            size: 28,
+          ),
         ),
       ),
     );

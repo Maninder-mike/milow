@@ -1,89 +1,81 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class EmailVerifiedPage extends StatelessWidget {
   const EmailVerifiedPage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subText = isDark ? const Color(0xFF94A3B8) : const Color(0xFF667085);
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final textTheme = theme.textTheme;
+    final tokens = context.tokens;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       body: SafeArea(
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: EdgeInsets.symmetric(
+              horizontal: tokens.spacingL,
+              vertical: tokens.spacingXL,
+            ),
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 480),
               child: Container(
-                padding: const EdgeInsets.all(32),
+                padding: EdgeInsets.all(tokens.spacingXL),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
+                  color: tokens.surfaceContainer,
+                  borderRadius: BorderRadius.circular(
+                    tokens.shapeL + tokens.spacingXS,
                   ),
+                  border: Border.all(color: colorScheme.outlineVariant),
                 ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Container(
-                      padding: const EdgeInsets.all(24),
+                      padding: EdgeInsets.all(tokens.spacingL),
                       decoration: BoxDecoration(
-                        color: backgroundColor,
-                        borderRadius: BorderRadius.circular(32),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.outlineVariant,
+                        color: tokens.scaffoldAltBackground,
+                        borderRadius: BorderRadius.circular(
+                          tokens.shapeXL + tokens.spacingXS,
                         ),
+                        border: Border.all(color: colorScheme.outlineVariant),
                       ),
                       child: Icon(
                         Icons.verified_outlined,
                         size: 64,
-                        color: Theme.of(context).colorScheme.primary,
+                        color: colorScheme.primary,
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: tokens.spacingXL),
                     Text(
                       'Email Verified!',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 28,
+                      style: textTheme.headlineMedium?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: textColor,
+                        color: tokens.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: tokens.spacingM),
                     Text(
                       'Your account email has been successfully confirmed. You now have full access to Milow features.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
+                      style: textTheme.bodyLarge?.copyWith(
                         height: 1.4,
-                        color: subText,
+                        color: tokens.textSecondary,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    SizedBox(height: tokens.spacingL),
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 16,
-                      ),
+                      padding: EdgeInsets.all(tokens.spacingM),
                       decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(16),
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(tokens.shapeL),
+                        color: colorScheme.primary.withValues(alpha: 0.06),
                         border: Border.all(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.primary.withValues(alpha: 0.1),
+                          color: colorScheme.primary.withValues(alpha: 0.1),
                         ),
                       ),
                       child: Row(
@@ -91,15 +83,14 @@ class EmailVerifiedPage extends StatelessWidget {
                           Icon(
                             Icons.security_outlined,
                             size: 20,
-                            color: Theme.of(context).colorScheme.primary,
+                            color: colorScheme.primary,
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: tokens.spacingM),
                           Expanded(
                             child: Text(
                               'Security tip: Keep your email updated to ensure uninterrupted access.',
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                color: subText,
+                              style: textTheme.bodySmall?.copyWith(
+                                color: tokens.textSecondary,
                                 height: 1.4,
                               ),
                             ),
@@ -107,7 +98,7 @@ class EmailVerifiedPage extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(height: 32),
+                    SizedBox(height: tokens.spacingXL),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton(
@@ -115,25 +106,24 @@ class EmailVerifiedPage extends StatelessWidget {
                         style: FilledButton.styleFrom(
                           minimumSize: const Size(0, 56),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(16),
+                            borderRadius: BorderRadius.circular(tokens.shapeL),
                           ),
                         ),
                         child: Text(
                           'Continue to Dashboard',
-                          style: GoogleFonts.outfit(
-                            fontSize: 16,
+                          style: textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.w600,
+                            color: colorScheme.onPrimary,
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    SizedBox(height: tokens.spacingM),
                     TextButton(
                       onPressed: () => context.go('/settings'),
                       child: Text(
                         'Manage Profile',
-                        style: GoogleFonts.outfit(
-                          fontSize: 14,
+                        style: textTheme.labelLarge?.copyWith(
                           fontWeight: FontWeight.w600,
                         ),
                       ),

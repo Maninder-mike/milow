@@ -274,7 +274,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
       ),
       builder: (context) {
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(tokens.spacingL),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -289,7 +289,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   ),
                 ),
               ),
-              const SizedBox(height: 20),
+              SizedBox(height: tokens.spacingL),
               Text(
                 'Filter Records',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -297,14 +297,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   color: textColor,
                 ),
               ),
-              const SizedBox(height: 16),
+              SizedBox(height: tokens.spacingM),
               _buildFilterOption('All', textColor, context),
               _buildFilterOption('Trips Only', textColor, context),
               _buildFilterOption('Fuel Only', textColor, context),
               _buildFilterOption('Short (<100 mi)', textColor, context),
               _buildFilterOption('Medium (100-200 mi)', textColor, context),
               _buildFilterOption('Long (>200 mi)', textColor, context),
-              const SizedBox(height: 20),
+              SizedBox(height: tokens.spacingL),
             ],
           ),
         );
@@ -326,7 +326,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
         Navigator.pop(context);
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12),
+        padding: EdgeInsets.symmetric(vertical: context.tokens.spacingM),
         child: Row(
           children: [
             Icon(
@@ -335,7 +335,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   ? Theme.of(context).colorScheme.primary
                   : Theme.of(context).colorScheme.onSurfaceVariant,
             ),
-            const SizedBox(width: 12),
+            SizedBox(width: context.tokens.spacingM),
             Text(
               filter,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -352,7 +352,6 @@ class _RecordsListPageState extends State<RecordsListPage> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = tokens.textPrimary;
     final secondaryTextColor = tokens.textSecondary;
     final cardColor = tokens.surfaceContainer;
@@ -522,7 +521,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                   ),
                 ),
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: 8)),
+            SliverToBoxAdapter(child: SizedBox(height: tokens.spacingS)),
           ];
         },
         body: Container(
@@ -532,7 +531,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
             displacement: 60,
             strokeWidth: 3.0,
             color: Theme.of(context).colorScheme.primary,
-            backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
             child: _isLoading
                 ? const Center(
                     child: CircularProgressIndicator(strokeWidth: 3.0),
@@ -576,10 +575,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     ],
                   )
                 : ListView.separated(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.tokens.spacingM,
+                    ),
                     itemCount: _filteredRecords.length,
                     separatorBuilder: (context, index) =>
-                        const SizedBox(height: 12),
+                        SizedBox(height: context.tokens.spacingM),
                     itemBuilder: (context, index) {
                       final record = _filteredRecords[index];
                       return Dismissible(

@@ -110,17 +110,19 @@ class _NotificationsPageState extends State<NotificationsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final backgroundColor = Theme.of(context).scaffoldBackgroundColor;
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Theme.of(context).textTheme.bodyLarge?.color,
+            color: tokens.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
@@ -141,15 +143,15 @@ class _NotificationsPageState extends State<NotificationsPage> {
               children: [
                 Text(
                   'Notifications',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+                  style: textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 if (unread > 0)
                   Text(
                     '$unread unread',
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
+                    style: textTheme.labelSmall?.copyWith(
+                      color: colorScheme.primary,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -162,9 +164,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
             onPressed: _markAllAsRead,
             child: Text(
               'Mark all read',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+              style: textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.primary,
+                color: colorScheme.primary,
               ),
             ),
           ),
@@ -196,37 +198,37 @@ class _NotificationsPageState extends State<NotificationsPage> {
             children: [
               // Filter Chips
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                padding: EdgeInsets.symmetric(
+                  horizontal: tokens.spacingL,
+                  vertical: tokens.spacingM,
                 ),
                 child: SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: Row(
                     children: [
                       _buildFilterChip('All', notifications.length),
-                      const SizedBox(width: 8),
+                      SizedBox(width: tokens.spacingS),
                       _buildFilterChip(
                         'Reminders',
                         notifications
                             .where((n) => n.type == NotificationType.reminder)
                             .length,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: tokens.spacingS),
                       _buildFilterChip(
                         'Company',
                         notifications
                             .where((n) => n.type == NotificationType.company)
                             .length,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: tokens.spacingS),
                       _buildFilterChip(
                         'News',
                         notifications
                             .where((n) => n.type == NotificationType.news)
                             .length,
                       ),
-                      const SizedBox(width: 8),
+                      SizedBox(width: tokens.spacingS),
                       _buildFilterChip(
                         'Messages',
                         notifications
@@ -242,7 +244,9 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 child: _filteredNotifications.isEmpty
                     ? _buildEmptyState()
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: tokens.spacingL,
+                        ),
                         itemCount: _filteredNotifications.length,
                         itemBuilder: (context, index) {
                           final notification = _filteredNotifications[index];
@@ -251,14 +255,18 @@ class _NotificationsPageState extends State<NotificationsPage> {
                             direction: DismissDirection.endToStart,
                             background: Container(
                               alignment: Alignment.centerRight,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 24,
+                              padding: EdgeInsets.symmetric(
+                                horizontal: tokens.spacingXL,
                               ),
-                              color: context.tokens.error,
-                              child: const Icon(
+                              decoration: BoxDecoration(
+                                color: tokens.error,
+                                borderRadius: BorderRadius.circular(
+                                  tokens.shapeL,
+                                ),
+                              ),
+                              child: Icon(
                                 Icons.delete_outline_rounded,
-                                color: Colors
-                                    .white, // Assuming white text on error bg
+                                color: colorScheme.onError,
                                 size: 28,
                               ),
                             ),
@@ -280,7 +288,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                       onPressed: () =>
                                           Navigator.pop(context, true),
                                       style: TextButton.styleFrom(
-                                        foregroundColor: context.tokens.error,
+                                        foregroundColor: tokens.error,
                                       ),
                                       child: const Text('Delete'),
                                     ),
@@ -312,7 +320,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Widget _buildFilterChip(String label, int count) {
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
     final isSelected = _selectedFilter == label;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -320,16 +331,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
         });
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: tokens.spacingL,
+          vertical: tokens.spacingS,
+        ),
         decoration: BoxDecoration(
-          color: isSelected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(20),
+          color: isSelected ? colorScheme.primary : tokens.surfaceContainer,
+          borderRadius: BorderRadius.circular(tokens.shapeL),
           border: Border.all(
             color: isSelected
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.outlineVariant,
+                ? colorScheme.primary
+                : colorScheme.outlineVariant,
           ),
         ),
         child: Row(
@@ -339,20 +351,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
               label,
               style: Theme.of(context).textTheme.labelLarge?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: isSelected
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : Theme.of(context).colorScheme.onSurface,
+                color: isSelected ? colorScheme.onPrimary : tokens.textPrimary,
               ),
             ),
-            const SizedBox(width: 6),
+            SizedBox(width: tokens.spacingXS),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? Colors.white.withValues(alpha: 0.2)
-                    : Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.1),
+                    ? colorScheme.onPrimary.withValues(alpha: 0.2)
+                    : colorScheme.primary.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Text(
@@ -360,8 +368,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
                 style: Theme.of(context).textTheme.labelSmall?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: isSelected
-                      ? Theme.of(context).colorScheme.onPrimary
-                      : Theme.of(context).colorScheme.primary,
+                      ? colorScheme.onPrimary
+                      : colorScheme.primary,
                 ),
               ),
             ),
@@ -372,18 +380,20 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Widget _buildNotificationCard(NotificationItem notification) {
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return GestureDetector(
       onTap: () => _markAsRead(notification.id),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
+        margin: EdgeInsets.only(bottom: tokens.spacingM),
+        padding: EdgeInsets.all(tokens.spacingM),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(20), // Standard M3 20px
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-            width: 1,
-          ),
+          color: tokens.surfaceContainer,
+          borderRadius: BorderRadius.circular(
+            tokens.shapeL,
+          ), // Standard M3 20px
+          border: Border.all(color: colorScheme.outlineVariant, width: 1),
           // No shadow, flat M3 style or minimal elevation if needed
         ),
         child: Column(
@@ -392,12 +402,12 @@ class _NotificationsPageState extends State<NotificationsPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(10),
+                  padding: EdgeInsets.all(tokens.spacingS + 2),
                   decoration: BoxDecoration(
                     color: _getNotificationColor(
                       notification.type,
                     ).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(tokens.shapeM),
                   ),
                   child: Icon(
                     _getNotificationIcon(notification.type),
@@ -405,7 +415,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     size: 20,
                   ),
                 ),
-                const SizedBox(width: 12),
+                SizedBox(width: tokens.spacingM),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,6 +430,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
                                     fontWeight: notification.isRead
                                         ? FontWeight.bold
                                         : FontWeight.w900,
+                                    color: tokens.textPrimary,
                                   ),
                             ),
                           ),
@@ -428,40 +439,36 @@ class _NotificationsPageState extends State<NotificationsPage> {
                               width: 8,
                               height: 8,
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary,
+                                color: colorScheme.primary,
                                 shape: BoxShape.circle,
                               ),
                             ),
                         ],
                       ),
-                      const SizedBox(height: 6),
+                      SizedBox(height: tokens.spacingXS),
                       Text(
                         notification.message,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          color: tokens.textSecondary,
                         ),
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: tokens.spacingS),
                       Row(
                         children: [
                           Icon(
                             Icons.access_time,
                             size: 14,
-                            color: context.tokens.textTertiary,
+                            color: tokens.textTertiary,
                           ),
                           const SizedBox(width: 4),
                           Text(
                             _formatTimestamp(notification.timestamp),
                             style: Theme.of(context).textTheme.labelSmall
-                                ?.copyWith(
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurfaceVariant,
-                                ),
+                                ?.copyWith(color: tokens.textTertiary),
                           ),
-                          const SizedBox(width: 12),
+                          SizedBox(width: tokens.spacingM),
                           Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 8,
@@ -493,27 +500,37 @@ class _NotificationsPageState extends State<NotificationsPage> {
             ),
             if (notification.type == NotificationType.company &&
                 !notification.isRead) ...[
-              const SizedBox(height: 16),
+              SizedBox(height: tokens.spacingL),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton(
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: context.tokens.error,
-                        side: BorderSide(color: context.tokens.error),
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        foregroundColor: tokens.error,
+                        side: BorderSide(color: tokens.error),
+                        padding: EdgeInsets.symmetric(
+                          vertical: tokens.spacingM,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(tokens.shapeS),
+                        ),
                       ),
                       onPressed: () => _rejectInvite(notification.id),
                       child: const Text('Decline'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: tokens.spacingM),
                   Expanded(
                     child: FilledButton(
                       style: FilledButton.styleFrom(
-                        backgroundColor: context.tokens.success,
+                        backgroundColor: tokens.success,
                         foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        padding: EdgeInsets.symmetric(
+                          vertical: tokens.spacingM,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(tokens.shapeS),
+                        ),
                       ),
                       onPressed: () {
                         final adminId =
@@ -531,17 +548,17 @@ class _NotificationsPageState extends State<NotificationsPage> {
             // Show status badge for already-actioned company notifications
             if (notification.type == NotificationType.company &&
                 notification.isRead) ...[
-              const SizedBox(height: 12),
+              SizedBox(height: tokens.spacingM),
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 8,
                 ),
                 decoration: BoxDecoration(
-                  color: context.tokens.success.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(8),
+                  color: tokens.success.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(tokens.shapeS),
                   border: Border.all(
-                    color: context.tokens.success.withValues(alpha: 0.3),
+                    color: tokens.success.withValues(alpha: 0.3),
                   ),
                 ),
                 child: Row(
@@ -550,14 +567,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
                     Icon(
                       Icons.check_circle_outline,
                       size: 16,
-                      color: context.tokens.success,
+                      color: tokens.success,
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: tokens.spacingS),
                     Text(
                       'Response Submitted',
                       style: Theme.of(context).textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.bold,
-                        color: context.tokens.success,
+                        color: tokens.success,
                       ),
                     ),
                   ],
@@ -672,37 +689,39 @@ class _NotificationsPageState extends State<NotificationsPage> {
   }
 
   Widget _buildEmptyState() {
+    final tokens = context.tokens;
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: EdgeInsets.all(tokens.spacingXL),
             decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.1),
+              color: colorScheme.primary.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(
               Icons.notifications_off_rounded,
               size: 64,
-              color: Theme.of(context).colorScheme.primary,
+              color: colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: tokens.spacingXL),
           Text(
             'No notifications',
-            style: Theme.of(
-              context,
-            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: tokens.textPrimary,
+            ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: tokens.spacingS),
           Text(
             'You\'re all caught up!',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: tokens.textSecondary),
           ),
         ],
       ),

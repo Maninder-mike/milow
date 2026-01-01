@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
@@ -31,35 +31,37 @@ class _AboutPageState extends State<AboutPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtext = isDark ? const Color(0xFF94A3B8) : const Color(0xFF667085);
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
-        backgroundColor: backgroundColor,
+        backgroundColor: tokens.scaffoldAltBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: tokens.textPrimary,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'About',
-          style: GoogleFonts.outfit(
-            color: textColor,
+          style: textTheme.titleMedium?.copyWith(
+            color: tokens.textPrimary,
             fontWeight: FontWeight.w600,
-            fontSize: 18,
           ),
         ),
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        padding: EdgeInsets.symmetric(
+          horizontal: tokens.spacingL,
+          vertical: tokens.spacingXL + tokens.spacingM,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
@@ -68,13 +70,11 @@ class _AboutPageState extends State<AboutPage> {
               child: Container(
                 width: 120,
                 height: 120,
-                padding: const EdgeInsets.all(4),
+                padding: EdgeInsets.all(tokens.spacingXS),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
+                  color: tokens.surfaceContainer,
                   shape: BoxShape.circle,
-                  border: Border.all(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
+                  border: Border.all(color: colorScheme.outlineVariant),
                 ),
                 child: ClipOval(
                   child: Image.asset(
@@ -84,98 +84,85 @@ class _AboutPageState extends State<AboutPage> {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: tokens.spacingL),
 
             // App Name & Version
             Text(
               _appName,
-              style: GoogleFonts.outfit(
-                fontSize: 32,
+              style: textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.bold,
-                color: textColor,
+                color: tokens.textPrimary,
               ),
             ),
-            const SizedBox(height: 8),
+            SizedBox(height: tokens.spacingS),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              padding: EdgeInsets.symmetric(
+                horizontal: tokens.spacingM,
+                vertical: tokens.spacingS,
+              ),
               decoration: BoxDecoration(
-                color: primaryColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(
+                  tokens.shapeL + tokens.spacingXS,
+                ),
+                border: Border.all(
+                  color: colorScheme.primary.withValues(alpha: 0.2),
+                ),
               ),
               child: Text(
                 'Version $_version ($_buildNumber)',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  color: primaryColor,
+                style: textTheme.bodyMedium?.copyWith(
+                  color: colorScheme.primary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
             ),
-            const SizedBox(height: 40),
+            SizedBox(height: tokens.spacingXL + tokens.spacingM),
 
             // Description Card
             Container(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(tokens.spacingL),
               decoration: BoxDecoration(
-                color: Theme.of(context).cardColor,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+                color: tokens.surfaceContainer,
+                borderRadius: BorderRadius.circular(
+                  tokens.shapeL + tokens.spacingXS,
                 ),
+                border: Border.all(color: colorScheme.outlineVariant),
               ),
               child: Text(
                 'Milow is designed to help truck drivers manage their trips, track fuel expenses, and optimize their journey. With powerful tools and insights, we keep you moving forward.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
+                style: textTheme.bodyMedium?.copyWith(
                   height: 1.6,
-                  color: subtext,
+                  color: tokens.textSecondary,
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: tokens.spacingL),
 
             // Info Rows
-            _buildInfoRow(
-              context,
-              'Developer',
-              'Maninder Singh',
-              Icons.code,
-              primaryColor,
-              textColor,
-              subtext,
-            ),
-            const SizedBox(height: 12),
+            _buildInfoRow(context, 'Developer', 'Maninder Singh', Icons.code),
+            SizedBox(height: tokens.spacingM),
             _buildInfoRow(
               context,
               'Website',
               'www.maninder.co.in',
               Icons.language,
-              primaryColor,
-              textColor,
-              subtext,
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: tokens.spacingM),
             _buildInfoRow(
               context,
               'Contact',
               'info@maninder.co.in',
               Icons.mail_outline,
-              primaryColor,
-              textColor,
-              subtext,
             ),
 
-            const SizedBox(height: 60),
+            SizedBox(height: tokens.spacingXL * 2 + tokens.spacingM),
 
             Text(
               '© ${DateTime.now().year} Maninder Corp. All rights reserved.',
               textAlign: TextAlign.center,
-              style: GoogleFonts.outfit(
-                fontSize: 12,
-                color: isDark ? Colors.white24 : Colors.black26,
-              ),
+              style: textTheme.labelSmall?.copyWith(color: tokens.textTertiary),
             ),
           ],
         ),
@@ -188,43 +175,42 @@ class _AboutPageState extends State<AboutPage> {
     String label,
     String value,
     IconData icon,
-    Color primaryColor,
-    Color textColor,
-    Color subtextColor,
   ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all(tokens.spacingM),
       decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
+        border: Border.all(color: colorScheme.outlineVariant),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(8),
+            padding: EdgeInsets.all(tokens.spacingS),
             decoration: BoxDecoration(
-              color: primaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+              color: colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(tokens.shapeS + 2),
             ),
-            child: Icon(icon, color: primaryColor, size: 20),
+            child: Icon(icon, color: colorScheme.primary, size: 20),
           ),
-          const SizedBox(width: 16),
+          SizedBox(width: tokens.spacingM),
           Text(
             label,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
+            style: textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w500,
-              color: subtextColor,
+              color: tokens.textSecondary,
             ),
           ),
           const Spacer(),
           Text(
             value,
-            style: GoogleFonts.outfit(
-              fontSize: 14,
+            style: textTheme.bodyMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: textColor,
+              color: tokens.textPrimary,
             ),
           ),
         ],

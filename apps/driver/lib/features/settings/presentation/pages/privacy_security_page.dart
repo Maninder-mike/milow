@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:local_auth/local_auth.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/local_auth_service.dart';
@@ -69,6 +68,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
   }
 
   Future<void> _togglePin(bool value) async {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
     if (value) {
       // Navigate to PIN setup
       final pin = await Navigator.push<String>(
@@ -86,9 +88,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
             SnackBar(
               content: Text(
                 'PIN enabled successfully',
-                style: GoogleFonts.outfit(),
+                style: textTheme.bodyMedium,
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: tokens.success,
             ),
           );
         }
@@ -100,25 +102,27 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
         builder: (context) => AlertDialog(
           title: Text(
             'Disable PIN?',
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+            style: textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600),
           ),
           content: Text(
             'You will need to login with email and password next time.',
-            style: GoogleFonts.outfit(),
+            style: textTheme.bodyLarge,
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
               child: Text(
                 'Cancel',
-                style: GoogleFonts.outfit(color: const Color(0xFF667085)),
+                style: textTheme.labelLarge?.copyWith(
+                  color: tokens.textSecondary,
+                ),
               ),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 'Disable',
-                style: GoogleFonts.outfit(color: Colors.red),
+                style: textTheme.labelLarge?.copyWith(color: tokens.error),
               ),
             ),
           ],
@@ -133,7 +137,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('PIN disabled', style: GoogleFonts.outfit()),
+              content: Text('PIN disabled', style: textTheme.bodyMedium),
             ),
           );
         }
@@ -142,6 +146,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
   }
 
   Future<void> _changePin() async {
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     final pin = await Navigator.push<String>(
       context,
       MaterialPageRoute(
@@ -156,9 +163,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
           SnackBar(
             content: Text(
               'PIN changed successfully',
-              style: GoogleFonts.outfit(),
+              style: textTheme.bodyMedium,
             ),
-            backgroundColor: Colors.green,
+            backgroundColor: tokens.success,
           ),
         );
       }
@@ -166,14 +173,17 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
   }
 
   Future<void> _toggleBiometric(bool value) async {
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     if (!_biometricAvailable) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
             'Biometric authentication not available on this device',
-            style: GoogleFonts.outfit(),
+            style: textTheme.bodyMedium,
           ),
-          backgroundColor: Colors.red,
+          backgroundColor: tokens.error,
         ),
       );
       return;
@@ -192,9 +202,9 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
             SnackBar(
               content: Text(
                 '$_biometricType enabled successfully',
-                style: GoogleFonts.outfit(),
+                style: textTheme.bodyMedium,
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: tokens.success,
             ),
           );
         }
@@ -209,7 +219,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
           SnackBar(
             content: Text(
               '$_biometricType disabled',
-              style: GoogleFonts.outfit(),
+              style: textTheme.bodyMedium,
             ),
           ),
         );
@@ -220,60 +230,62 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final backgroundColor = tokens.scaffoldAltBackground;
-    final cardColor = tokens.surfaceContainer;
-    final textColor = tokens.textPrimary;
-    final secondaryTextColor = tokens.textSecondary;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: tokens.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Privacy & Security',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
+          style: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: tokens.textPrimary,
           ),
         ),
       ),
       body: SingleChildScrollView(
         child: Column(
           children: [
-            const SizedBox(height: 16),
+            SizedBox(height: tokens.spacingM),
             // Authentication Section
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: EdgeInsets.symmetric(
+                horizontal: tokens.spacingM,
+                vertical: tokens.spacingS,
+              ),
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
                   'AUTHENTICATION',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
+                  style: textTheme.labelSmall?.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: const Color(0xFF98A2B3),
+                    color: tokens.textTertiary,
                     letterSpacing: 0.5,
                   ),
                 ),
               ),
             ),
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
+              margin: EdgeInsets.symmetric(horizontal: tokens.spacingM),
               decoration: BoxDecoration(
-                color: cardColor,
-                borderRadius: BorderRadius.circular(16),
+                color: tokens.surfaceContainer,
+                borderRadius: BorderRadius.circular(tokens.shapeL),
               ),
               child: Column(
                 children: [
                   // PIN Code
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(tokens.spacingM),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -283,18 +295,16 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                             children: [
                               Text(
                                 'PIN Code',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 16,
+                                style: textTheme.bodyLarge?.copyWith(
                                   fontWeight: FontWeight.w500,
-                                  color: textColor,
+                                  color: tokens.textPrimary,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: tokens.spacingXS),
                               Text(
                                 'Use a 4-digit PIN to login',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: secondaryTextColor,
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: tokens.textSecondary,
                                 ),
                               ),
                             ],
@@ -303,9 +313,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                         Switch(
                           value: _pinEnabled,
                           onChanged: _togglePin,
-                          activeTrackColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
+                          activeTrackColor: colorScheme.primary,
                         ),
                       ],
                     ),
@@ -318,23 +326,20 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                         InkWell(
                           onTap: _changePin,
                           child: Padding(
-                            padding: const EdgeInsets.all(16.0),
+                            padding: EdgeInsets.all(tokens.spacingM),
                             child: Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
                                   'Change PIN',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 16,
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
+                                  style: textTheme.bodyLarge?.copyWith(
+                                    color: colorScheme.primary,
                                   ),
                                 ),
                                 Icon(
                                   Icons.arrow_forward_ios_rounded,
                                   size: 16,
-                                  color: Theme.of(context).colorScheme.primary,
+                                  color: colorScheme.primary,
                                 ),
                               ],
                             ),
@@ -345,7 +350,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                   Divider(height: 1, color: tokens.subtleBorderColor),
                   // Biometric Authentication
                   Padding(
-                    padding: const EdgeInsets.all(16.0),
+                    padding: EdgeInsets.all(tokens.spacingM),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -357,45 +362,44 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                                 children: [
                                   Text(
                                     _biometricType,
-                                    style: GoogleFonts.outfit(
-                                      fontSize: 16,
+                                    style: textTheme.bodyLarge?.copyWith(
                                       fontWeight: FontWeight.w500,
-                                      color: textColor,
+                                      color: tokens.textPrimary,
                                     ),
                                   ),
                                   if (!_biometricAvailable) ...[
-                                    const SizedBox(width: 8),
+                                    SizedBox(width: tokens.spacingS),
                                     Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 8,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: tokens.spacingS,
                                         vertical: 3,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: const Color(
-                                          0xFF98A2B3,
-                                        ).withValues(alpha: 0.1),
-                                        borderRadius: BorderRadius.circular(4),
+                                        color: tokens.textTertiary.withValues(
+                                          alpha: 0.1,
+                                        ),
+                                        borderRadius: BorderRadius.circular(
+                                          tokens.shapeXS,
+                                        ),
                                       ),
                                       child: Text(
                                         'Not Available',
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 11,
+                                        style: textTheme.labelSmall?.copyWith(
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF98A2B3),
+                                          color: tokens.textTertiary,
                                         ),
                                       ),
                                     ),
                                   ],
                                 ],
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: tokens.spacingXS),
                               Text(
                                 _biometricAvailable
                                     ? 'Use ${_biometricType.toLowerCase()} to login'
                                     : 'Not available on this device',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 14,
-                                  color: secondaryTextColor,
+                                style: textTheme.bodyMedium?.copyWith(
+                                  color: tokens.textSecondary,
                                 ),
                               ),
                             ],
@@ -406,9 +410,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                           onChanged: _biometricAvailable
                               ? _toggleBiometric
                               : null,
-                          activeThumbColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
+                          activeThumbColor: colorScheme.primary,
                         ),
                       ],
                     ),
@@ -416,20 +418,16 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: tokens.spacingL),
             // Info Card
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
-              padding: const EdgeInsets.all(16),
+              margin: EdgeInsets.symmetric(horizontal: tokens.spacingM),
+              padding: EdgeInsets.all(tokens.spacingM),
               decoration: BoxDecoration(
-                color: Theme.of(
-                  context,
-                ).colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(12),
+                color: colorScheme.primary.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(tokens.shapeM),
                 border: Border.all(
-                  color: Theme.of(
-                    context,
-                  ).colorScheme.primary.withValues(alpha: 0.2),
+                  color: colorScheme.primary.withValues(alpha: 0.2),
                 ),
               ),
               child: Row(
@@ -437,16 +435,15 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                 children: [
                   Icon(
                     Icons.info_outline_rounded,
-                    color: Theme.of(context).colorScheme.primary,
+                    color: colorScheme.primary,
                     size: 20,
                   ),
-                  const SizedBox(width: 12),
+                  SizedBox(width: tokens.spacingM),
                   Expanded(
                     child: Text(
                       'Enable PIN or biometric authentication to avoid repeated email logins. Your session will stay active and secure.',
-                      style: GoogleFonts.outfit(
-                        fontSize: 14,
-                        color: Theme.of(context).colorScheme.primary,
+                      style: textTheme.bodyMedium?.copyWith(
+                        color: colorScheme.primary,
                         height: 1.5,
                       ),
                     ),

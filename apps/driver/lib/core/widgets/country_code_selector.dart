@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/models/country_code.dart';
 
@@ -67,8 +67,7 @@ class _CountryCodeSelectorState extends State<CountryCodeSelector> {
               Flexible(
                 child: Text(
                   widget.selectedCountry.name,
-                  style: GoogleFonts.outfit(
-                    fontSize: 15,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: tokens.textPrimary,
                   ),
@@ -80,8 +79,7 @@ class _CountryCodeSelectorState extends State<CountryCodeSelector> {
               SizedBox(width: tokens.spacingXS + 2),
               Text(
                 widget.selectedCountry.dialCode,
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                   fontWeight: FontWeight.w500,
                   color: tokens.textPrimary,
                 ),
@@ -142,7 +140,9 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
       height: MediaQuery.of(context).size.height * 0.75,
       decoration: BoxDecoration(
         color: tokens.surfaceContainer,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(
+          top: Radius.circular(tokens.radiusL),
+        ),
       ),
       child: Column(
         children: [
@@ -172,8 +172,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
               children: [
                 Text(
                   'Select Country',
-                  style: GoogleFonts.outfit(
-                    fontSize: 20,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     fontWeight: FontWeight.w600,
                     color: tokens.textPrimary,
                   ),
@@ -193,16 +192,14 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
             child: TextField(
               controller: _searchController,
               onChanged: _filterCountries,
-              style: GoogleFonts.outfit(
-                fontSize: 15,
-                color: tokens.textPrimary,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(color: tokens.textPrimary),
               decoration: InputDecoration(
                 hintText: 'Search country or code',
-                hintStyle: GoogleFonts.outfit(
-                  fontSize: 15,
-                  color: tokens.textTertiary,
-                ),
+                hintStyle: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: tokens.textTertiary),
                 prefixIcon: Icon(
                   Icons.search_rounded,
                   color: tokens.textTertiary,
@@ -240,8 +237,7 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                 ? Center(
                     child: Text(
                       'No countries found',
-                      style: GoogleFonts.outfit(
-                        fontSize: 15,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: tokens.textTertiary,
                       ),
                     ),
@@ -288,33 +284,39 @@ class _CountryPickerSheetState extends State<_CountryPickerSheet> {
                                     children: [
                                       Text(
                                         country.name,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 15,
-                                          fontWeight: isSelected
-                                              ? FontWeight.w600
-                                              : FontWeight.w500,
-                                          color: tokens.textPrimary,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyLarge
+                                            ?.copyWith(
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w600
+                                                  : FontWeight.w500,
+                                              color: tokens.textPrimary,
+                                            ),
                                       ),
                                       Text(
                                         country.code,
-                                        style: GoogleFonts.outfit(
-                                          fontSize: 13,
-                                          color: tokens.textTertiary,
-                                        ),
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodyMedium
+                                            ?.copyWith(
+                                              color: tokens.textTertiary,
+                                            ),
                                       ),
                                     ],
                                   ),
                                 ),
                                 Text(
                                   country.dialCode,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    color: isSelected
-                                        ? Theme.of(context).colorScheme.primary
-                                        : tokens.textTertiary,
-                                  ),
+                                  style: Theme.of(context).textTheme.bodyLarge
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                        color: isSelected
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primary
+                                            : tokens.textTertiary,
+                                      ),
                                 ),
                                 if (isSelected) ...[
                                   SizedBox(width: tokens.spacingS),

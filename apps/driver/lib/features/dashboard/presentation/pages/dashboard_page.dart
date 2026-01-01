@@ -211,7 +211,7 @@ class _DashboardPageState extends State<DashboardPage>
             content: Row(
               children: [
                 Icon(_getIconForType(notification.type), color: Colors.white),
-                const SizedBox(width: 12),
+                SizedBox(width: context.tokens.spacingS),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -400,7 +400,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 8),
+                SizedBox(height: context.tokens.spacingS),
                 Text(
                   'Log fuel, mileage, and border crossings effortlessly.',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
@@ -408,7 +408,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 48),
+                SizedBox(height: context.tokens.spacingXL),
               ],
               if (_activeTrip != null)
                 GestureDetector(
@@ -443,9 +443,9 @@ class _DashboardPageState extends State<DashboardPage>
                   style: FilledButton.styleFrom(
                     backgroundColor: Colors.white,
                     foregroundColor: Colors.black,
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 32,
-                      vertical: 16,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.tokens.spacingXL,
+                      vertical: context.tokens.spacingM,
                     ),
                   ),
                   child: Text(
@@ -455,7 +455,7 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                   ),
                 ),
-              const SizedBox(height: 24),
+              SizedBox(height: context.tokens.spacingL),
             ],
           ),
         ),
@@ -471,7 +471,7 @@ class _DashboardPageState extends State<DashboardPage>
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: context.tokens.spacingM),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.symmetric(horizontal: margin),
@@ -484,21 +484,21 @@ class _DashboardPageState extends State<DashboardPage>
                   unawaited(_onRefresh());
                 }
               }),
-              const SizedBox(width: 16),
+              SizedBox(width: context.tokens.spacingM),
               _buildGetStartedCard(
                 context,
                 'Explore',
                 Icons.explore_outlined,
                 () => context.go('/explore'),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: context.tokens.spacingM),
               _buildGetStartedCard(
                 context,
                 'Inbox',
                 Icons.inbox_outlined,
                 () => context.go('/inbox'),
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: context.tokens.spacingM),
               _buildGetStartedCard(
                 context,
                 'Scan Documents',
@@ -514,7 +514,7 @@ class _DashboardPageState extends State<DashboardPage>
                   );
                 },
               ),
-              const SizedBox(width: 16),
+              SizedBox(width: context.tokens.spacingM),
               _buildGetStartedCard(
                 context,
                 'Settings',
@@ -544,14 +544,14 @@ class _DashboardPageState extends State<DashboardPage>
             color: Theme.of(context).colorScheme.surfaceContainerLow,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.tokens.shapeL),
               side: BorderSide(
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
             ),
             child: InkWell(
               onTap: onTap,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(context.tokens.shapeL),
               child: Center(
                 child: Icon(
                   icon,
@@ -562,7 +562,7 @@ class _DashboardPageState extends State<DashboardPage>
             ),
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: context.tokens.spacingS),
         SizedBox(
           width: 80,
           child: Text(
@@ -600,9 +600,9 @@ class _DashboardPageState extends State<DashboardPage>
             right: 8,
             top: 8,
             child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: const BoxDecoration(
-                color: Colors.red,
+              padding: EdgeInsets.all(context.tokens.spacingXS),
+              decoration: BoxDecoration(
+                color: context.tokens.error,
                 shape: BoxShape.circle,
               ),
               constraints: const BoxConstraints(minWidth: 8, minHeight: 8),
@@ -712,7 +712,7 @@ class _DashboardPageState extends State<DashboardPage>
                                         ],
                                       ),
                                     ),
-                                    const SizedBox(height: 16),
+                                    SizedBox(height: context.tokens.spacingM),
                                     if (_isLoadingBorders) ...[
                                       Padding(
                                         padding: EdgeInsets.symmetric(
@@ -728,7 +728,7 @@ class _DashboardPageState extends State<DashboardPage>
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 16),
+                                      SizedBox(height: context.tokens.spacingM),
                                     ] else if (_borderError != null &&
                                         _borderWaitTimes.isEmpty) ...[
                                       Padding(
@@ -736,7 +736,9 @@ class _DashboardPageState extends State<DashboardPage>
                                           horizontal: margin,
                                         ),
                                         child: Container(
-                                          padding: const EdgeInsets.all(16),
+                                          padding: EdgeInsets.all(
+                                            context.tokens.spacingM,
+                                          ),
                                           decoration: BoxDecoration(
                                             color: Theme.of(
                                               context,
@@ -761,7 +763,9 @@ class _DashboardPageState extends State<DashboardPage>
                                                     context,
                                                   ).colorScheme.errorContainer,
                                                   borderRadius:
-                                                      BorderRadius.circular(8),
+                                                      BorderRadius.circular(
+                                                        context.tokens.shapeS,
+                                                      ),
                                                 ),
                                                 child: Icon(
                                                   Icons.error_outline,
@@ -771,7 +775,9 @@ class _DashboardPageState extends State<DashboardPage>
                                                   size: 20,
                                                 ),
                                               ),
-                                              const SizedBox(width: 12),
+                                              SizedBox(
+                                                width: context.tokens.spacingS,
+                                              ),
                                               Expanded(
                                                 child: Column(
                                                   crossAxisAlignment:
@@ -787,7 +793,11 @@ class _DashboardPageState extends State<DashboardPage>
                                                                 FontWeight.bold,
                                                           ),
                                                     ),
-                                                    const SizedBox(height: 4),
+                                                    SizedBox(
+                                                      height: context
+                                                          .tokens
+                                                          .spacingXS,
+                                                    ),
                                                     Text(
                                                       _borderError!,
                                                       style: Theme.of(context)
@@ -825,7 +835,7 @@ class _DashboardPageState extends State<DashboardPage>
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(height: 16),
+                                      SizedBox(height: context.tokens.spacingM),
                                     ] else if (_borderWaitTimes.isNotEmpty) ...[
                                       Padding(
                                         padding: EdgeInsets.symmetric(
@@ -841,7 +851,7 @@ class _DashboardPageState extends State<DashboardPage>
                                               .toList(),
                                         ),
                                       ),
-                                      const SizedBox(height: 16),
+                                      SizedBox(height: context.tokens.spacingM),
                                     ],
                                   ],
                                 ],
@@ -866,7 +876,7 @@ class _DashboardPageState extends State<DashboardPage>
                                     ).colorScheme.onSurface,
                                   ),
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: context.tokens.spacingM),
                             _isLoadingEntries
                                 ? const ShimmerLoading(
                                     isLoading: true,
@@ -881,7 +891,9 @@ class _DashboardPageState extends State<DashboardPage>
                                   )
                                 : _recentEntries.isEmpty
                                 ? Padding(
-                                    padding: const EdgeInsets.all(32),
+                                    padding: EdgeInsets.all(
+                                      context.tokens.spacingXL,
+                                    ),
                                     child: Center(
                                       child: Column(
                                         children: [
@@ -892,7 +904,9 @@ class _DashboardPageState extends State<DashboardPage>
                                               context,
                                             ).colorScheme.outline,
                                           ),
-                                          const SizedBox(height: 12),
+                                          SizedBox(
+                                            height: context.tokens.spacingM,
+                                          ),
                                           Text(
                                             'No entries yet',
                                             style: Theme.of(context)
@@ -905,7 +919,9 @@ class _DashboardPageState extends State<DashboardPage>
                                                       .onSurfaceVariant,
                                                 ),
                                           ),
-                                          const SizedBox(height: 4),
+                                          SizedBox(
+                                            height: context.tokens.spacingXS,
+                                          ),
                                           Text(
                                             'Add your first trip or fuel entry',
                                             style: Theme.of(context)
@@ -929,7 +945,9 @@ class _DashboardPageState extends State<DashboardPage>
                                       context,
                                     ).colorScheme.surfaceContainerLow,
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(16),
+                                      borderRadius: BorderRadius.circular(
+                                        context.tokens.shapeL,
+                                      ),
                                       side: BorderSide(
                                         color: Theme.of(
                                           context,
@@ -1083,9 +1101,13 @@ class _DashboardPageState extends State<DashboardPage>
                                               ),
                                             );
                                           },
-                                          borderRadius: const BorderRadius.only(
-                                            bottomLeft: Radius.circular(16),
-                                            bottomRight: Radius.circular(16),
+                                          borderRadius: BorderRadius.only(
+                                            bottomLeft: Radius.circular(
+                                              context.tokens.shapeL,
+                                            ),
+                                            bottomRight: Radius.circular(
+                                              context.tokens.shapeL,
+                                            ),
                                           ),
                                           child: Container(
                                             width: double.infinity,
@@ -1113,10 +1135,10 @@ class _DashboardPageState extends State<DashboardPage>
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: context.tokens.spacingL),
 
                       const SectionHeader(title: 'Learning Pages'),
-                      const SizedBox(height: 12),
+                      SizedBox(height: context.tokens.spacingM),
                       Card(
                         margin: EdgeInsets.symmetric(horizontal: margin),
                         elevation: 0,
@@ -1124,15 +1146,19 @@ class _DashboardPageState extends State<DashboardPage>
                           context,
                         ).colorScheme.surfaceContainerLow,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(
+                            context.tokens.shapeL,
+                          ),
                           side: BorderSide(
                             color: Theme.of(context).colorScheme.outlineVariant,
                           ),
                         ),
                         child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            vertical: 24,
-                            horizontal: 16,
+                          padding: EdgeInsets.symmetric(
+                            vertical: context
+                                .tokens
+                                .spacingXL, // 24 -> XL? 24 is L or XL. XL is 32. L is 24?
+                            horizontal: context.tokens.spacingM,
                           ),
                           child: Column(
                             children: [
@@ -1141,13 +1167,13 @@ class _DashboardPageState extends State<DashboardPage>
                                 size: 32,
                                 color: Theme.of(context).colorScheme.secondary,
                               ),
-                              const SizedBox(height: 12),
+                              SizedBox(height: context.tokens.spacingM),
                               Text(
                                 'Learning Resources Coming Soon',
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(fontWeight: FontWeight.bold),
                               ),
-                              const SizedBox(height: 4),
+                              SizedBox(height: context.tokens.spacingXS),
                               Text(
                                 'We are working on great educational content for you.',
                                 style: Theme.of(context).textTheme.bodyMedium
@@ -1200,7 +1226,7 @@ class _DashboardPageState extends State<DashboardPage>
                       ),
                       const Spacer(),
                       const SyncStatusIndicator(),
-                      const SizedBox(width: 8),
+                      SizedBox(width: context.tokens.spacingS),
                       _buildNotificationBell(context),
                     ],
                   ),
@@ -1227,7 +1253,10 @@ class _DashboardPageState extends State<DashboardPage>
     final icon = isTrip ? Icons.local_shipping : Icons.local_gas_station;
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.tokens.spacingM,
+        vertical: context.tokens.spacingM,
+      ),
       child: Row(
         children: [
           Container(
@@ -1235,11 +1264,11 @@ class _DashboardPageState extends State<DashboardPage>
             height: 48,
             decoration: BoxDecoration(
               color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(context.tokens.shapeM),
             ),
             child: Icon(icon, color: iconColor, size: 24),
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.tokens.spacingS),
           Expanded(
             child: Column(
               children: [
@@ -1262,7 +1291,7 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.tokens.spacingXS),
                 // Bottom row: Description left, Date right
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1276,7 +1305,7 @@ class _DashboardPageState extends State<DashboardPage>
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.tokens.spacingS),
                     Text(
                       date,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -1442,7 +1471,7 @@ class _DashboardPageState extends State<DashboardPage>
       child: Row(
         children: [
           Icon(icon, color: tokens.textSecondary, size: 24),
-          const SizedBox(width: 12),
+          SizedBox(width: context.tokens.spacingS),
           Expanded(
             child: Text(
               label,
@@ -1589,7 +1618,7 @@ class _DashboardPageState extends State<DashboardPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(height: 8),
+            SizedBox(height: context.tokens.spacingS),
             Container(
               width: 32,
               height: 4,
@@ -1649,7 +1678,7 @@ class _DashboardPageState extends State<DashboardPage>
                 }
               },
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.tokens.spacingM),
           ],
         ),
       ),

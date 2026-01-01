@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class FeedbackPage extends StatefulWidget {
   const FeedbackPage({super.key});
@@ -61,29 +61,28 @@ Contact (optional): $contact
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtext = isDark ? const Color(0xFF94A3B8) : const Color(0xFF667085);
-    final primaryColor = Theme.of(context).colorScheme.primary;
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
-        backgroundColor: backgroundColor,
+        backgroundColor: tokens.scaffoldAltBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: textColor, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: tokens.textPrimary,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Send Feedback',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
+          style: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: tokens.textPrimary,
           ),
         ),
       ),
@@ -92,7 +91,7 @@ Contact (optional): $contact
           children: [
             Expanded(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.all(20),
+                padding: EdgeInsets.all(tokens.spacingL),
                 child: Form(
                   key: _formKey,
                   child: Column(
@@ -100,26 +99,27 @@ Contact (optional): $contact
                     children: [
                       Text(
                         'How can we help?',
-                        style: GoogleFonts.outfit(
-                          fontSize: 28,
+                        style: textTheme.headlineSmall?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: textColor,
+                          color: tokens.textPrimary,
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: tokens.spacingS),
                       Text(
                         'Your feedback helps us improve Milow for everyone.',
-                        style: GoogleFonts.outfit(fontSize: 15, color: subtext),
+                        style: textTheme.bodyMedium?.copyWith(
+                          color: tokens.textSecondary,
+                        ),
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: tokens.spacingXL),
                       Container(
-                        padding: const EdgeInsets.all(20),
+                        padding: EdgeInsets.all(tokens.spacingL),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).cardColor,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(
-                            color: Theme.of(context).colorScheme.outlineVariant,
+                          color: tokens.surfaceContainer,
+                          borderRadius: BorderRadius.circular(
+                            tokens.shapeL + tokens.spacingXS,
                           ),
+                          border: Border.all(color: colorScheme.outlineVariant),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -127,32 +127,35 @@ Contact (optional): $contact
                             Row(
                               children: [
                                 Container(
-                                  padding: const EdgeInsets.all(8),
+                                  padding: EdgeInsets.all(tokens.spacingS),
                                   decoration: BoxDecoration(
-                                    color: primaryColor.withValues(alpha: 0.1),
-                                    borderRadius: BorderRadius.circular(10),
+                                    color: colorScheme.primary.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(
+                                      tokens.shapeS + 2,
+                                    ),
                                   ),
                                   child: Icon(
                                     Icons.category_outlined,
                                     size: 20,
-                                    color: primaryColor,
+                                    color: colorScheme.primary,
                                   ),
                                 ),
-                                const SizedBox(width: 12),
+                                SizedBox(width: tokens.spacingM),
                                 Text(
                                   'Feedback Type',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 15,
+                                  style: textTheme.bodyLarge?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: textColor,
+                                    color: tokens.textPrimary,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 16),
+                            SizedBox(height: tokens.spacingM),
                             Wrap(
-                              spacing: 8,
-                              runSpacing: 8,
+                              spacing: tokens.spacingS,
+                              runSpacing: tokens.spacingS,
                               children: [
                                 for (final t in const [
                                   'Suggestion',
@@ -166,49 +169,44 @@ Contact (optional): $contact
                                     onSelected: (selected) {
                                       if (selected) setState(() => _type = t);
                                     },
-                                    selectedColor: primaryColor,
-                                    backgroundColor: isDark
-                                        ? const Color(0xFF1E1E1E)
-                                        : Colors.white,
-                                    labelStyle: GoogleFonts.outfit(
+                                    selectedColor: colorScheme.primary,
+                                    backgroundColor: tokens.inputBackground,
+                                    labelStyle: textTheme.labelLarge?.copyWith(
                                       fontWeight: FontWeight.w500,
                                       color: _type == t
-                                          ? Colors.white
-                                          : textColor,
-                                      fontSize: 14,
+                                          ? colorScheme.onPrimary
+                                          : tokens.textPrimary,
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(12),
+                                      borderRadius: BorderRadius.circular(
+                                        tokens.shapeM,
+                                      ),
                                       side: BorderSide(
                                         color: _type == t
                                             ? Colors.transparent
-                                            : Theme.of(
-                                                context,
-                                              ).colorScheme.outlineVariant,
+                                            : colorScheme.outlineVariant,
                                       ),
                                     ),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 4,
-                                      vertical: 4,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: tokens.spacingXS,
+                                      vertical: tokens.spacingXS,
                                     ),
                                     showCheckmark: false,
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: tokens.spacingL),
                             _buildLabel('Your Message'),
-                            const SizedBox(height: 8),
+                            SizedBox(height: tokens.spacingS),
                             TextFormField(
                               controller: _messageController,
                               maxLines: 6,
-                              style: GoogleFonts.outfit(
-                                color: textColor,
-                                fontSize: 15,
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: tokens.textPrimary,
                               ),
                               decoration: _inputDecoration(
                                 hint:
                                     'Tell us what\'s on your mind (min. 10 words)...',
-                                isDark: isDark,
                               ),
                               validator: (v) {
                                 if (v == null || v.trim().isEmpty) {
@@ -221,31 +219,28 @@ Contact (optional): $contact
                                 return null;
                               },
                             ),
-                            const SizedBox(height: 24),
+                            SizedBox(height: tokens.spacingL),
                             Row(
                               children: [
                                 _buildLabel('Contact Info'),
-                                const SizedBox(width: 8),
+                                SizedBox(width: tokens.spacingS),
                                 Text(
                                   '(Optional)',
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 13,
-                                    color: subtext,
+                                  style: textTheme.bodySmall?.copyWith(
+                                    color: tokens.textSecondary,
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: tokens.spacingS),
                             TextFormField(
                               controller: _contactController,
-                              style: GoogleFonts.outfit(
-                                color: textColor,
-                                fontSize: 15,
+                              style: textTheme.bodyMedium?.copyWith(
+                                color: tokens.textPrimary,
                               ),
                               keyboardType: TextInputType.emailAddress,
                               decoration: _inputDecoration(
                                 hint: 'Email or phone number',
-                                isDark: isDark,
                                 prefixIcon: Icons.contact_mail_outlined,
                               ),
                               validator: (v) {
@@ -265,14 +260,14 @@ Contact (optional): $contact
                           ],
                         ),
                       ),
-                      const SizedBox(height: 24),
+                      SizedBox(height: tokens.spacingL),
                       Container(
-                        padding: const EdgeInsets.all(16),
+                        padding: EdgeInsets.all(tokens.spacingM),
                         decoration: BoxDecoration(
-                          color: primaryColor.withValues(alpha: 0.05),
-                          borderRadius: BorderRadius.circular(16),
+                          color: colorScheme.primary.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(tokens.shapeM),
                           border: Border.all(
-                            color: primaryColor.withValues(alpha: 0.1),
+                            color: colorScheme.primary.withValues(alpha: 0.1),
                           ),
                         ),
                         child: Row(
@@ -280,15 +275,14 @@ Contact (optional): $contact
                             Icon(
                               Icons.info_outline,
                               size: 20,
-                              color: primaryColor,
+                              color: colorScheme.primary,
                             ),
-                            const SizedBox(width: 12),
+                            SizedBox(width: tokens.spacingM),
                             Expanded(
                               child: Text(
                                 'Opens your email app — no login required! You can attach photos or videos directly in the email.',
-                                style: GoogleFonts.outfit(
-                                  fontSize: 13,
-                                  color: textColor,
+                                style: textTheme.bodySmall?.copyWith(
+                                  color: tokens.textPrimary,
                                   height: 1.4,
                                 ),
                               ),
@@ -296,7 +290,7 @@ Contact (optional): $contact
                           ],
                         ),
                       ),
-                      const SizedBox(height: 32),
+                      SizedBox(height: tokens.spacingXL),
                     ],
                   ),
                 ),
@@ -305,25 +299,25 @@ Contact (optional): $contact
 
             // Fixed Bottom Button
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: EdgeInsets.all(tokens.spacingL),
               child: FilledButton(
                 onPressed: _submit,
                 style: FilledButton.styleFrom(
                   minimumSize: const Size(double.infinity, 56),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(tokens.shapeL),
                   ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     const Icon(Icons.send_rounded, size: 20),
-                    const SizedBox(width: 12),
+                    SizedBox(width: tokens.spacingM),
                     Text(
                       'Send Feedback',
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         fontWeight: FontWeight.w600,
+                        color: Theme.of(context).colorScheme.onPrimary,
                       ),
                     ),
                   ],
@@ -337,54 +331,54 @@ Contact (optional): $contact
   }
 
   Widget _buildLabel(String text) {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
     return Text(
       text,
-      style: GoogleFonts.outfit(
-        fontSize: 15,
+      style: textTheme.bodyLarge?.copyWith(
         fontWeight: FontWeight.w600,
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.white
-            : const Color(0xFF101828),
+        color: tokens.textPrimary,
       ),
     );
   }
 
   InputDecoration _inputDecoration({
     required String hint,
-    required bool isDark,
     IconData? prefixIcon,
   }) {
-    final primaryColor = Theme.of(context).colorScheme.primary;
-    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return InputDecoration(
       hintText: hint,
-      hintStyle: GoogleFonts.outfit(
-        color: const Color(0xFF98A2B3),
-        fontSize: 14,
-      ),
+      hintStyle: textTheme.bodyMedium?.copyWith(color: tokens.textTertiary),
       prefixIcon: prefixIcon != null
-          ? Icon(prefixIcon, color: primaryColor, size: 20)
+          ? Icon(prefixIcon, color: colorScheme.primary, size: 20)
           : null,
       filled: true,
-      fillColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      fillColor: tokens.inputBackground,
       border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: outlineVariant),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
       ),
       enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: outlineVariant),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
       ),
       focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryColor, width: 2),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: colorScheme.primary, width: 2),
       ),
       errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.red, width: 1),
+        borderRadius: BorderRadius.circular(tokens.shapeL),
+        borderSide: BorderSide(color: tokens.error, width: 1),
       ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      contentPadding: EdgeInsets.symmetric(
+        horizontal: tokens.spacingM,
+        vertical: tokens.spacingM,
+      ),
     );
   }
 }

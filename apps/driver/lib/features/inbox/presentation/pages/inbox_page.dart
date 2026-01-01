@@ -6,6 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:milow/core/constants/design_tokens.dart';
+
 class InboxPage extends StatefulWidget {
   const InboxPage({super.key});
 
@@ -82,7 +84,7 @@ class _InboxPageState extends State<InboxPage> {
                     const SizedBox(width: 8),
                     Text(
                       'Delete Chat',
-                      style: TextStyle(
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.error,
                         fontWeight: FontWeight.w500,
                       ),
@@ -117,7 +119,7 @@ class _InboxPageState extends State<InboxPage> {
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 'Delete',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                   fontWeight: FontWeight.w600,
                 ),
@@ -149,7 +151,7 @@ class _InboxPageState extends State<InboxPage> {
               onPressed: () => Navigator.pop(context, true),
               child: Text(
                 'Delete',
-                style: TextStyle(
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
                   color: Theme.of(context).colorScheme.error,
                   fontWeight: FontWeight.w600,
                 ),
@@ -192,11 +194,11 @@ class _InboxPageState extends State<InboxPage> {
         _messagesFuture = _fetchMessages();
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Message deleted'),
-          backgroundColor: Colors.green,
+        SnackBar(
+          content: const Text('Message deleted'),
+          backgroundColor: context.tokens.success,
           behavior: SnackBarBehavior.floating,
-          duration: Duration(seconds: 1),
+          duration: const Duration(seconds: 1),
         ),
       );
     }
@@ -255,9 +257,9 @@ class _InboxPageState extends State<InboxPage> {
         }); // Refresh UI
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Chat deleted successfully'),
-            backgroundColor: Colors.green,
+          SnackBar(
+            content: const Text('Chat deleted successfully'),
+            backgroundColor: context.tokens.success,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -268,7 +270,7 @@ class _InboxPageState extends State<InboxPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to delete chat: $e'),
-            backgroundColor: Colors.red,
+            backgroundColor: context.tokens.error,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -341,7 +343,10 @@ class _InboxPageState extends State<InboxPage> {
               await _messagesFuture;
             },
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+              padding: EdgeInsets.symmetric(
+                horizontal: context.tokens.spacingM,
+                vertical: context.tokens.spacingL,
+              ),
               physics: const AlwaysScrollableScrollPhysics(),
               children: [
                 _buildPlaceholderCard(
@@ -361,10 +366,11 @@ class _InboxPageState extends State<InboxPage> {
             await _messagesFuture;
           },
           child: ListView.separated(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.tokens.spacingM),
             physics: const AlwaysScrollableScrollPhysics(),
             itemCount: messages.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            separatorBuilder: (context, index) =>
+                SizedBox(height: context.tokens.spacingM),
             itemBuilder: (context, index) {
               final item = messages[index];
               final content = item['content'] ?? '';
@@ -406,10 +412,14 @@ class _InboxPageState extends State<InboxPage> {
                               context,
                             ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.only(
-                        topLeft: const Radius.circular(20),
-                        topRight: const Radius.circular(20),
-                        bottomLeft: Radius.circular(isMe ? 20 : 4),
-                        bottomRight: Radius.circular(isMe ? 4 : 20),
+                        topLeft: Radius.circular(context.tokens.shapeL),
+                        topRight: Radius.circular(context.tokens.shapeL),
+                        bottomLeft: Radius.circular(
+                          isMe ? context.tokens.shapeL : context.tokens.shapeXS,
+                        ),
+                        bottomRight: Radius.circular(
+                          isMe ? context.tokens.shapeXS : context.tokens.shapeL,
+                        ),
                       ),
                       border: Border.all(
                         color: isMe
@@ -518,18 +528,16 @@ class _InboxPageState extends State<InboxPage> {
   }
 
   Widget _buildPlaceholderCard(String message, IconData icon) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final secondaryTextColor = isDark
-        ? const Color(0xFF9CA3AF)
-        : const Color(0xFF667085);
+    final tokens = context.tokens;
+    final textColor = tokens.textPrimary;
+    final secondaryTextColor = tokens.textSecondary;
 
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            padding: const EdgeInsets.all(32),
+            padding: EdgeInsets.all(tokens.spacingXL),
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -543,7 +551,7 @@ class _InboxPageState extends State<InboxPage> {
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: tokens.spacingL),
           Text(
             'No content yet',
             style: Theme.of(context).textTheme.titleLarge?.copyWith(
@@ -551,7 +559,7 @@ class _InboxPageState extends State<InboxPage> {
               color: textColor,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: tokens.spacingS),
           Text(
             message,
             style: Theme.of(

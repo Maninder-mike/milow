@@ -356,7 +356,7 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
                 ),
                 decoration: BoxDecoration(
                   color: delayColor,
-                  borderRadius: BorderRadius.circular(6),
+                  borderRadius: BorderRadius.circular(tokens.shapeS),
                 ),
                 child: Text(
                   delay,
@@ -417,7 +417,7 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
           size: 16,
           color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
-        const SizedBox(width: 6),
+        SizedBox(width: context.tokens.spacingS),
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [

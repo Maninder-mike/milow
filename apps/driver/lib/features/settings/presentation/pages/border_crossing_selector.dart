@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class BorderCrossingSelector extends StatefulWidget {
   const BorderCrossingSelector({super.key});
@@ -84,38 +84,38 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? const Color(0xFF0F172A) : const Color(0xFFF8FAFC);
-    final cardColor = isDark ? const Color(0xFF1E293B) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
-    final subtextColor = isDark
-        ? const Color(0xFF94A3B8)
-        : const Color(0xFF667085);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
-        backgroundColor: bgColor,
+        backgroundColor: tokens.scaffoldAltBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: tokens.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Border Crossings',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
+          style: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: tokens.textPrimary,
           ),
         ),
         actions: [
           Center(
             child: Padding(
-              padding: const EdgeInsets.only(right: 16),
+              padding: EdgeInsets.only(right: tokens.spacingM),
               child: Text(
                 '${_savedCrossings.length}/5 selected',
-                style: GoogleFonts.outfit(fontSize: 14, color: subtextColor),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: tokens.textSecondary,
+                ),
               ),
             ),
           ),
@@ -124,36 +124,38 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
       body: _loading
           ? Center(
               child: CircularProgressIndicator(
-                color: Theme.of(context).colorScheme.primary,
+                color: colorScheme.primary,
                 strokeWidth: 3.0,
+                strokeCap: StrokeCap.round,
               ),
             )
           : Column(
               children: [
                 // Search bar
                 Padding(
-                  padding: const EdgeInsets.all(16),
+                  padding: EdgeInsets.all(tokens.spacingM),
                   child: TextField(
                     onChanged: (value) => setState(() => _searchQuery = value),
-                    style: GoogleFonts.outfit(fontSize: 15, color: textColor),
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: tokens.textPrimary,
+                    ),
                     decoration: InputDecoration(
                       hintText: 'Search border crossings...',
-                      hintStyle: GoogleFonts.outfit(
-                        fontSize: 15,
-                        color: subtextColor,
+                      hintStyle: textTheme.bodyMedium?.copyWith(
+                        color: tokens.textSecondary,
                       ),
                       prefixIcon: Icon(
                         Icons.search_rounded,
-                        color: subtextColor,
+                        color: tokens.textSecondary,
                       ),
                       filled: true,
-                      fillColor: cardColor,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 14,
+                      fillColor: tokens.surfaceContainer,
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: tokens.spacingM,
+                        vertical: tokens.spacingM - 2,
                       ),
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(tokens.shapeM),
                         borderSide: BorderSide.none,
                       ),
                     ),
@@ -161,67 +163,65 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                 ),
                 // Filter chips
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
                   child: Row(
                     children: [
-                      _buildFilterChip('All', isDark),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Canadian', isDark),
-                      const SizedBox(width: 8),
-                      _buildFilterChip('Mexican', isDark),
+                      _buildFilterChip('All'),
+                      SizedBox(width: tokens.spacingS),
+                      _buildFilterChip('Canadian'),
+                      SizedBox(width: tokens.spacingS),
+                      _buildFilterChip('Mexican'),
                     ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: tokens.spacingM),
                 // Saved crossings section
                 if (_savedCrossings.isNotEmpty) ...[
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
                     child: Row(
                       children: [
                         Icon(
                           Icons.bookmark_rounded,
                           size: 18,
-                          color: Theme.of(context).colorScheme.primary,
+                          color: colorScheme.primary,
                         ),
-                        const SizedBox(width: 8),
+                        SizedBox(width: tokens.spacingS),
                         Text(
                           'Selected Crossings',
-                          style: GoogleFonts.outfit(
-                            fontSize: 14,
+                          style: textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: textColor,
+                            color: tokens.textPrimary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  SizedBox(height: tokens.spacingS),
                   SizedBox(
                     height: 40,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
-                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: tokens.spacingM,
+                      ),
                       itemCount: _savedCrossings.length,
                       itemBuilder: (context, index) {
                         final saved = _savedCrossings[index];
                         return Container(
-                          margin: const EdgeInsets.only(right: 8),
+                          margin: EdgeInsets.only(right: tokens.spacingS),
                           child: Chip(
                             label: Text(
                               saved.portName,
-                              style: GoogleFonts.outfit(
-                                fontSize: 13,
-                                color: Colors.white,
+                              style: textTheme.labelMedium?.copyWith(
+                                color: colorScheme.onPrimary,
                               ),
                             ),
-                            backgroundColor: Theme.of(
-                              context,
-                            ).colorScheme.primary,
-                            deleteIcon: const Icon(
+                            backgroundColor: colorScheme.primary,
+                            deleteIcon: Icon(
                               Icons.close_rounded,
                               size: 16,
-                              color: Colors.white,
+                              color: colorScheme.onPrimary,
                             ),
                             onDeleted: () async {
                               await BorderWaitTimeService.removeBorderCrossing(
@@ -236,7 +236,7 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                       },
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  SizedBox(height: tokens.spacingM),
                 ],
                 // Available ports list
                 Expanded(
@@ -244,51 +244,53 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                       ? Center(
                           child: Text(
                             'No border crossings found',
-                            style: GoogleFonts.outfit(color: subtextColor),
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: tokens.textSecondary,
+                            ),
                           ),
                         )
                       : ListView.builder(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: tokens.spacingM,
+                          ),
                           itemCount: _filteredPorts.length,
                           itemBuilder: (context, index) {
                             final port = _filteredPorts[index];
                             final isSaved = _isSaved(port);
 
                             return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
+                              margin: EdgeInsets.only(bottom: tokens.spacingS),
                               decoration: BoxDecoration(
-                                color: cardColor,
-                                borderRadius: BorderRadius.circular(12),
+                                color: tokens.surfaceContainer,
+                                borderRadius: BorderRadius.circular(
+                                  tokens.shapeM,
+                                ),
                                 border: isSaved
                                     ? Border.all(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
+                                        color: colorScheme.primary,
                                         width: 2,
                                       )
                                     : null,
                               ),
                               child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 8,
+                                contentPadding: EdgeInsets.symmetric(
+                                  horizontal: tokens.spacingM,
+                                  vertical: tokens.spacingS,
                                 ),
                                 leading: Container(
                                   width: 40,
                                   height: 40,
                                   decoration: BoxDecoration(
                                     color: port.borderType == 'Canadian'
-                                        ? const Color(
-                                            0xFFDC2626,
-                                          ).withValues(alpha: 0.1)
+                                        ? tokens.error.withValues(alpha: 0.1)
                                         : port.borderType == 'Mexican'
-                                        ? const Color(
-                                            0xFF16A34A,
-                                          ).withValues(alpha: 0.1)
-                                        : const Color(
-                                            0xFF94A3B8,
-                                          ).withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(10),
+                                        ? tokens.success.withValues(alpha: 0.1)
+                                        : tokens.textSecondary.withValues(
+                                            alpha: 0.2,
+                                          ),
+                                    borderRadius: BorderRadius.circular(
+                                      tokens.shapeS + 2,
+                                    ),
                                   ),
                                   child: Center(
                                     child: Text(
@@ -303,10 +305,9 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                 ),
                                 title: Text(
                                   port.portName,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 15,
+                                  style: textTheme.bodyLarge?.copyWith(
                                     fontWeight: FontWeight.w600,
-                                    color: textColor,
+                                    color: tokens.textPrimary,
                                   ),
                                 ),
                                 subtitle: Column(
@@ -314,18 +315,14 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                   children: [
                                     Text(
                                       port.crossingName,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 13,
-                                        color: subtextColor,
+                                      style: textTheme.bodySmall?.copyWith(
+                                        color: tokens.textSecondary,
                                       ),
                                     ),
                                     Text(
                                       port.location,
-                                      style: GoogleFonts.outfit(
-                                        fontSize: 12,
-                                        color: subtextColor.withValues(
-                                          alpha: 0.7,
-                                        ),
+                                      style: textTheme.labelSmall?.copyWith(
+                                        color: tokens.textTertiary,
                                       ),
                                     ),
                                   ],
@@ -336,8 +333,8 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                                         ? Icons.bookmark_rounded
                                         : Icons.bookmark_border_rounded,
                                     color: isSaved
-                                        ? Theme.of(context).colorScheme.primary
-                                        : subtextColor,
+                                        ? colorScheme.primary
+                                        : tokens.textSecondary,
                                   ),
                                   onPressed: () => _toggleSaved(port),
                                 ),
@@ -352,27 +349,30 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
     );
   }
 
-  Widget _buildFilterChip(String label, bool isDark) {
+  Widget _buildFilterChip(String label) {
     final isSelected = _filterBorder == label;
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final tokens = context.tokens;
+
     return FilterChip(
       label: Text(
         label,
-        style: GoogleFonts.outfit(
-          fontSize: 13,
+        style: textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.w500,
-          color: isSelected
-              ? Colors.white
-              : (isDark ? Colors.white70 : const Color(0xFF667085)),
+          color: isSelected ? colorScheme.onPrimary : tokens.textSecondary,
         ),
       ),
       selected: isSelected,
       onSelected: (selected) {
         setState(() => _filterBorder = label);
       },
-      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-      selectedColor: Theme.of(context).colorScheme.primary,
-      checkmarkColor: Colors.white,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      backgroundColor: tokens.surfaceContainer,
+      selectedColor: colorScheme.primary,
+      checkmarkColor: colorScheme.onPrimary,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
+      ),
     );
   }
 }

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:milow/l10n/app_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/services/theme_service.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:provider/provider.dart';
 
 class AppearancePage extends StatelessWidget {
@@ -11,6 +11,9 @@ class AppearancePage extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeService = Provider.of<ThemeService>(context);
     final currentThemeMode = themeService.themeMode;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -20,16 +23,15 @@ class AppearancePage extends StatelessWidget {
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
-            color: Theme.of(context).textTheme.bodyLarge?.color,
+            color: tokens.textPrimary,
           ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           AppLocalizations.of(context)?.appearance ?? 'Appearance',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
+          style: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: Theme.of(context).textTheme.bodyLarge?.color,
+            color: tokens.textPrimary,
           ),
         ),
       ),
@@ -37,26 +39,23 @@ class AppearancePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(height: 16),
+            SizedBox(height: tokens.spacingM),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
+              padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
               child: Text(
                 'Theme',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
+                style: textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w500,
-                  color: Theme.of(
-                    context,
-                  ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                  color: tokens.textSecondary,
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: tokens.spacingM),
             Container(
-              margin: const EdgeInsets.symmetric(horizontal: 16),
+              margin: EdgeInsets.symmetric(horizontal: tokens.spacingM),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(16),
+                color: colorScheme.surface,
+                borderRadius: BorderRadius.circular(tokens.shapeL),
               ),
               child: Column(
                 children: [
@@ -104,11 +103,14 @@ class AppearancePage extends StatelessWidget {
     ThemeService themeService,
   ) {
     final isSelected = currentMode == mode;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
 
     return InkWell(
       onTap: () => themeService.setThemeMode(mode),
       child: Padding(
-        padding: const EdgeInsets.all(16.0),
+        padding: EdgeInsets.all(tokens.spacingM),
         child: Row(
           children: [
             Expanded(
@@ -117,20 +119,16 @@ class AppearancePage extends StatelessWidget {
                 children: [
                   Text(
                     title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 16,
+                    style: textTheme.bodyLarge?.copyWith(
                       fontWeight: FontWeight.w500,
-                      color: Theme.of(context).textTheme.bodyLarge?.color,
+                      color: tokens.textPrimary,
                     ),
                   ),
-                  const SizedBox(height: 4),
+                  SizedBox(height: tokens.spacingXS),
                   Text(
                     subtitle,
-                    style: GoogleFonts.outfit(
-                      fontSize: 14,
-                      color: Theme.of(
-                        context,
-                      ).textTheme.bodyMedium?.color?.withValues(alpha: 0.6),
+                    style: textTheme.bodyMedium?.copyWith(
+                      color: tokens.textSecondary,
                     ),
                   ),
                 ],
@@ -139,7 +137,7 @@ class AppearancePage extends StatelessWidget {
             if (isSelected)
               Icon(
                 Icons.check_circle_rounded,
-                color: Theme.of(context).colorScheme.primary,
+                color: colorScheme.primary,
                 size: 24,
               ),
           ],
@@ -149,12 +147,13 @@ class AppearancePage extends StatelessWidget {
   }
 
   Widget _buildDivider(BuildContext context) {
+    final tokens = context.tokens;
     return Divider(
       height: 1,
       thickness: 1,
       color: Theme.of(context).dividerColor.withValues(alpha: 0.1),
-      indent: 16,
-      endIndent: 16,
+      indent: tokens.spacingM,
+      endIndent: tokens.spacingM,
     );
   }
 }

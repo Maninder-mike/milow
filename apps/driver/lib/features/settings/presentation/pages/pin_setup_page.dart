@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class PinSetupPage extends StatefulWidget {
   final bool isChanging;
@@ -74,27 +74,27 @@ class _PinSetupPageState extends State<PinSetupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF121212)
-        : const Color(0xFFF9FAFB);
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: tokens.scaffoldAltBackground,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textColor),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: tokens.textPrimary,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           widget.isChanging ? 'Change PIN' : 'Set Up PIN',
-          style: GoogleFonts.outfit(
-            fontSize: 18,
+          style: textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: textColor,
+            color: tokens.textPrimary,
           ),
         ),
       ),
@@ -105,21 +105,17 @@ class _PinSetupPageState extends State<PinSetupPage> {
           // Title
           Text(
             _isConfirming ? 'Confirm your PIN' : 'Create a PIN',
-            style: GoogleFonts.outfit(
-              fontSize: 24,
+            style: textTheme.headlineSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: textColor,
+              color: tokens.textPrimary,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: tokens.spacingM),
           Text(
             _isConfirming ? 'Enter the same PIN again' : 'Enter a 4-digit PIN',
-            style: GoogleFonts.outfit(
-              fontSize: 16,
-              color: const Color(0xFF667085),
-            ),
+            style: textTheme.bodyMedium?.copyWith(color: tokens.textSecondary),
           ),
-          const SizedBox(height: 48),
+          SizedBox(height: tokens.spacingXL),
           // PIN dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -127,47 +123,51 @@ class _PinSetupPageState extends State<PinSetupPage> {
               final currentPin = _isConfirming ? _confirmPin : _pin;
               final isFilled = index < currentPin.length;
               return Container(
-                margin: const EdgeInsets.symmetric(horizontal: 12),
+                margin: EdgeInsets.symmetric(horizontal: tokens.spacingS + 4),
                 width: 16,
                 height: 16,
                 decoration: BoxDecoration(
-                  color: isFilled
-                      ? Theme.of(context).colorScheme.primary
-                      : Colors.transparent,
+                  color: isFilled ? colorScheme.primary : Colors.transparent,
                   shape: BoxShape.circle,
                   border: Border.all(
                     color: _errorMessage != null
-                        ? Colors.red
-                        : Theme.of(context).colorScheme.primary,
+                        ? tokens.error
+                        : colorScheme.primary,
                     width: 2,
                   ),
                 ),
               );
             }),
           ),
-          const SizedBox(height: 24),
+          SizedBox(height: tokens.spacingL),
           // Error message
           if (_errorMessage != null)
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 32),
+              padding: EdgeInsets.symmetric(horizontal: tokens.spacingXL),
               child: Text(
                 _errorMessage!,
-                style: GoogleFonts.outfit(fontSize: 14, color: Colors.red),
+                style: textTheme.bodyMedium?.copyWith(
+                  color: tokens.error,
+                  fontSize: 14,
+                ),
                 textAlign: TextAlign.center,
               ),
             ),
           const Spacer(),
           // Number pad
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+            padding: EdgeInsets.symmetric(
+              horizontal: tokens.spacingL,
+              vertical: tokens.spacingXL,
+            ),
             child: Column(
               children: [
                 _buildNumberRow(['1', '2', '3']),
-                const SizedBox(height: 16),
+                SizedBox(height: tokens.spacingM),
                 _buildNumberRow(['4', '5', '6']),
-                const SizedBox(height: 16),
+                SizedBox(height: tokens.spacingM),
                 _buildNumberRow(['7', '8', '9']),
-                const SizedBox(height: 16),
+                SizedBox(height: tokens.spacingM),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
@@ -192,9 +192,8 @@ class _PinSetupPageState extends State<PinSetupPage> {
   }
 
   Widget _buildNumberButton(String number) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final buttonColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
 
     return InkWell(
       onTap: () => _onNumberPressed(number),
@@ -203,7 +202,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
         width: 72,
         height: 72,
         decoration: BoxDecoration(
-          color: buttonColor,
+          color: tokens.surfaceContainer,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -216,10 +215,9 @@ class _PinSetupPageState extends State<PinSetupPage> {
         child: Center(
           child: Text(
             number,
-            style: GoogleFonts.outfit(
-              fontSize: 28,
+            style: textTheme.headlineMedium?.copyWith(
               fontWeight: FontWeight.w600,
-              color: textColor,
+              color: tokens.textPrimary,
             ),
           ),
         ),
@@ -228,9 +226,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
   }
 
   Widget _buildBackspaceButton() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final buttonColor = isDark ? const Color(0xFF2A2A2A) : Colors.white;
-    final iconColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
 
     return InkWell(
       onTap: _onBackspacePressed,
@@ -239,7 +235,7 @@ class _PinSetupPageState extends State<PinSetupPage> {
         width: 72,
         height: 72,
         decoration: BoxDecoration(
-          color: buttonColor,
+          color: tokens.surfaceContainer,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -250,7 +246,11 @@ class _PinSetupPageState extends State<PinSetupPage> {
           ],
         ),
         child: Center(
-          child: Icon(Icons.backspace_rounded, color: iconColor, size: 28),
+          child: Icon(
+            Icons.backspace_rounded,
+            color: tokens.textPrimary,
+            size: 28,
+          ),
         ),
       ),
     );

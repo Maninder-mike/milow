@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:milow/core/constants/design_tokens.dart';
 
 class DashboardCard extends StatelessWidget {
@@ -47,8 +47,7 @@ class DashboardCard extends StatelessWidget {
             SizedBox(height: tokens.spacingM - 2),
             Text(
               value,
-              style: GoogleFonts.outfit(
-                fontSize: 24,
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                 fontWeight: FontWeight.w800,
                 color: tokens.textPrimary,
                 letterSpacing: -0.5,
@@ -57,8 +56,7 @@ class DashboardCard extends StatelessWidget {
             SizedBox(height: tokens.spacingXS),
             Text(
               title,
-              style: GoogleFonts.outfit(
-                fontSize: 11,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
                 color: tokens.textSecondary,
                 fontWeight: FontWeight.w500,
               ),
@@ -94,8 +92,7 @@ class DashboardCard extends StatelessWidget {
                     SizedBox(width: tokens.spacingXS - 1),
                     Text(
                       trend!,
-                      style: GoogleFonts.outfit(
-                        fontSize: 12,
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         color: trend!.startsWith('+')
                             ? tokens.success
                             : tokens.error,

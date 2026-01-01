@@ -53,7 +53,7 @@ class _TabsShellState extends State<TabsShell> {
       // On dashboard - show exit confirmation
       final shouldExit = await _showExitConfirmation();
       if (shouldExit == true) {
-        SystemNavigator.pop();
+        await SystemNavigator.pop();
       }
     }
   }

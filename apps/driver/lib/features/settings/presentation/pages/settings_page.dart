@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
-import 'package:google_fonts/google_fonts.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/auth_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
@@ -92,8 +92,9 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget build(BuildContext context) {
     final userName = _fullName ?? AuthService.getCurrentUserName() ?? 'User';
     final userEmail = _email ?? AuthService.getCurrentUserEmail() ?? '';
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final textColor = isDark ? Colors.white : const Color(0xFF101828);
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+    final textColor = tokens.textPrimary;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -103,9 +104,9 @@ class _SettingsPageState extends State<SettingsPage> {
           physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
-              const SizedBox(height: 16),
+              SizedBox(height: tokens.spacingM),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                padding: EdgeInsets.symmetric(horizontal: tokens.spacingS),
                 child: Row(
                   children: [
                     IconButton(
@@ -118,8 +119,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ),
                     Text(
                       'Settings',
-                      style: GoogleFonts.outfit(
-                        fontSize: 28,
+                      style: textTheme.headlineSmall?.copyWith(
                         fontWeight: FontWeight.w700,
                         color: textColor,
                       ),
@@ -127,20 +127,22 @@ class _SettingsPageState extends State<SettingsPage> {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
-              _buildProfileHeader(context, userName, userEmail, isDark),
-              const SizedBox(height: 28),
+              SizedBox(height: tokens.spacingM),
+              _buildProfileHeader(context, userName, userEmail),
+              SizedBox(height: tokens.spacingXL),
               _buildAccountSection(context, textColor),
-              const SizedBox(height: 24),
+              SizedBox(height: tokens.spacingL),
               _buildPreferencesSection(context, textColor),
-              const SizedBox(height: 24),
+              SizedBox(height: tokens.spacingL),
               _buildDataSection(context, textColor),
-              const SizedBox(height: 24),
+              SizedBox(height: tokens.spacingL),
               _buildSupportSection(context, textColor),
-              const SizedBox(height: 24),
+              SizedBox(height: tokens.spacingL),
               _buildSignOutSection(context, textColor),
               // Dynamic bottom padding for system navigation bar
-              SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
+              SizedBox(
+                height: MediaQuery.of(context).padding.bottom + tokens.spacingL,
+              ),
             ],
           ),
         ),
@@ -152,19 +154,18 @@ class _SettingsPageState extends State<SettingsPage> {
     BuildContext context,
     String userName,
     String userEmail,
-    bool isDark,
   ) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.tokens.spacingM),
       child: Card(
         elevation: 0,
         color: Theme.of(context).colorScheme.surfaceContainerHighest,
         margin: EdgeInsets.zero,
         child: InkWell(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(context.tokens.shapeM),
           onTap: () => context.push('/edit-profile'),
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(context.tokens.spacingM),
             child: Row(
               children: [
                 CircleAvatar(
@@ -184,7 +185,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         )
                       : null,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: context.tokens.spacingM),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -197,7 +198,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 4),
+                      SizedBox(height: context.tokens.spacingXS),
                       Text(
                         userEmail,
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -206,7 +207,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 8),
+                      SizedBox(height: context.tokens.spacingS),
                       Row(
                         children: [
                           _buildStatBadge(
@@ -214,7 +215,7 @@ class _SettingsPageState extends State<SettingsPage> {
                             _tripCount.toString(),
                             AppLocalizations.of(context)!.trips,
                           ),
-                          const SizedBox(width: 8),
+                          SizedBox(width: context.tokens.spacingS),
                           _buildStatBadge(
                             context,
                             _totalMiles >= 1000
@@ -232,7 +233,9 @@ class _SettingsPageState extends State<SettingsPage> {
                               color: Theme.of(
                                 context,
                               ).colorScheme.tertiaryContainer,
-                              borderRadius: BorderRadius.circular(8),
+                              borderRadius: BorderRadius.circular(
+                                context.tokens.shapeS,
+                              ),
                             ),
                             child: Text(
                               'PRO',
@@ -250,7 +253,7 @@ class _SettingsPageState extends State<SettingsPage> {
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
+                SizedBox(width: context.tokens.spacingS),
                 Icon(
                   Icons.arrow_forward_ios_rounded,
                   size: 16,
@@ -269,7 +272,7 @@ class _SettingsPageState extends State<SettingsPage> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainer,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(context.tokens.shapeS),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -297,9 +300,9 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       children: [
         _buildSectionLabel('Account', textColor),
-        const SizedBox(height: 12),
+        SizedBox(height: context.tokens.spacingM),
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
+          padding: EdgeInsets.symmetric(horizontal: context.tokens.spacingM),
           child: _buildSolidCard(
             child: Column(
               children: [
@@ -318,7 +321,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   title:
                       AppLocalizations.of(context)?.notifications ??
                       'Notifications',
-                  iconColor: const Color(0xFFFF6B6B),
+                  iconColor: context.tokens.error,
                   onTap: () => context.push('/notifications'),
                   textColor: textColor,
                 ),
@@ -328,7 +331,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   title:
                       AppLocalizations.of(context)?.privacySecurity ??
                       'Privacy & Security',
-                  iconColor: const Color(0xFF4ECDC4),
+                  iconColor: context.tokens.success,
                   onTap: () => context.push('/privacy-security'),
                   textColor: textColor,
                 ),
@@ -344,7 +347,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       children: [
         _buildSectionLabel('Preferences', textColor),
-        const SizedBox(height: 12),
+        SizedBox(height: context.tokens.spacingM),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildSolidCard(
@@ -354,7 +357,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.palette_outlined,
                   title:
                       AppLocalizations.of(context)?.appearance ?? 'Appearance',
-                  iconColor: const Color(0xFFFF8C42),
+                  iconColor: context.tokens.warning,
                   onTap: () => context.push('/appearance'),
                   textColor: textColor,
                 ),
@@ -362,7 +365,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _buildMenuItem(
                   icon: Icons.language_outlined,
                   title: AppLocalizations.of(context)?.language ?? 'Language',
-                  iconColor: const Color(0xFF45B7D1),
+                  iconColor: context.tokens.info,
                   onTap: () => context.push('/language'),
                   textColor: textColor,
                 ),
@@ -380,7 +383,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       children: [
         _buildSectionLabel('Data', textColor),
-        const SizedBox(height: 12),
+        SizedBox(height: context.tokens.spacingM),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildSolidCard(
@@ -391,7 +394,7 @@ class _SettingsPageState extends State<SettingsPage> {
                   title:
                       AppLocalizations.of(context)?.borderWaitTimes ??
                       'Border Wait Times',
-                  iconColor: const Color(0xFFFECA57),
+                  iconColor: context.tokens.warning,
                   onTap: () async {
                     await Navigator.push(
                       context,
@@ -414,7 +417,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return Column(
       children: [
         _buildSectionLabel(AppLocalizations.of(context)!.support, textColor),
-        const SizedBox(height: 12),
+        SizedBox(height: context.tokens.spacingM),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: _buildSolidCard(
@@ -445,7 +448,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 _buildMenuItem(
                   icon: Icons.info_outline,
                   title: 'About Milow',
-                  iconColor: const Color(0xFFFF7675),
+                  iconColor: context.tokens.error,
                   onTap: () => Navigator.push(
                     context,
                     MaterialPageRoute(builder: (_) => const AboutPage()),
@@ -462,12 +465,12 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildSignOutSection(BuildContext context, Color textColor) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: EdgeInsets.symmetric(horizontal: context.tokens.spacingM),
       child: _buildSolidCard(
         child: _buildMenuItem(
           icon: Icons.logout_rounded,
           title: AppLocalizations.of(context)?.signOut ?? 'Sign Out',
-          iconColor: const Color(0xFFFF6B6B),
+          iconColor: context.tokens.error,
           isDestructive: true,
           onTap: () async {
             AuthWrapper.resetAuthenticationState();
@@ -484,14 +487,14 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildSectionLabel(String label, Color textColor) {
+    final textTheme = Theme.of(context).textTheme;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: EdgeInsets.symmetric(horizontal: context.tokens.spacingXL),
       child: Align(
         alignment: Alignment.centerLeft,
         child: Text(
           label.toUpperCase(),
-          style: GoogleFonts.outfit(
-            fontSize: 12,
+          style: textTheme.labelSmall?.copyWith(
             fontWeight: FontWeight.w600,
             color: textColor.withValues(alpha: 0.5),
             letterSpacing: 1.2,
@@ -506,7 +509,7 @@ class _SettingsPageState extends State<SettingsPage> {
       elevation: 0,
       color: Theme.of(context).cardColor,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.tokens.shapeL),
         side: BorderSide(
           color: Theme.of(context).colorScheme.outlineVariant,
           width: 1,
@@ -533,25 +536,27 @@ class _SettingsPageState extends State<SettingsPage> {
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(context.tokens.shapeL),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          padding: EdgeInsets.symmetric(
+            horizontal: context.tokens.spacingM,
+            vertical: 14,
+          ),
           child: Row(
             children: [
               Container(
-                padding: const EdgeInsets.all(10),
+                padding: EdgeInsets.all(context.tokens.spacingS + 2),
                 decoration: BoxDecoration(
                   color: iconColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(context.tokens.shapeM),
                 ),
                 child: Icon(icon, size: 22, color: iconColor),
               ),
-              const SizedBox(width: 14),
+              SizedBox(width: context.tokens.spacingM),
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.outfit(
-                    fontSize: 16,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                     fontWeight: FontWeight.w500,
                     color: finalTextColor,
                   ),
@@ -573,8 +578,8 @@ class _SettingsPageState extends State<SettingsPage> {
   Widget _buildDivider() {
     return Divider(
       height: 1,
-      indent: 16,
-      endIndent: 16,
+      indent: context.tokens.spacingM,
+      endIndent: context.tokens.spacingM,
       color: Theme.of(
         context,
       ).colorScheme.outlineVariant.withValues(alpha: 0.5),
@@ -583,7 +588,10 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _buildUnitSystemItem(Color textColor) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: EdgeInsets.symmetric(
+        horizontal: context.tokens.spacingM,
+        vertical: context.tokens.spacingM - 4,
+      ),
       child: Row(
         children: [
           Container(
@@ -592,7 +600,7 @@ class _SettingsPageState extends State<SettingsPage> {
               color: Theme.of(
                 context,
               ).colorScheme.primaryContainer.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(context.tokens.shapeM),
             ),
             child: Icon(
               Icons.straighten_outlined,
@@ -600,24 +608,23 @@ class _SettingsPageState extends State<SettingsPage> {
               color: Theme.of(context).colorScheme.primary,
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: context.tokens.spacingM),
           Expanded(
             child: Text(
               AppLocalizations.of(context)?.unitSystem ?? 'Unit System',
-              style: GoogleFonts.outfit(
-                fontSize: 16,
+              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 fontWeight: FontWeight.w500,
                 color: textColor,
               ),
             ),
           ),
           Container(
-            padding: const EdgeInsets.all(4),
+            padding: EdgeInsets.all(context.tokens.spacingXS),
             decoration: BoxDecoration(
               color: Theme.of(
                 context,
               ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: BorderRadius.circular(context.tokens.shapeM),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -655,17 +662,19 @@ class _SettingsPageState extends State<SettingsPage> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.tokens.spacingM,
+          vertical: context.tokens.spacingS,
+        ),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(8),
+          borderRadius: BorderRadius.circular(context.tokens.shapeS),
         ),
         child: Text(
           label,
-          style: GoogleFonts.outfit(
-            fontSize: 13,
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
             fontWeight: FontWeight.w600,
             color: isSelected
                 ? Theme.of(context).colorScheme.onPrimary
