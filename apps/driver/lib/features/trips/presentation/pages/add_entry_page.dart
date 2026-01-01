@@ -355,10 +355,20 @@ class _AddEntryPageState extends State<AddEntryPage>
     if (mounted) {
       setState(() {
         if (!_isEditMode) {
-          // New Entry: Use global preferences
-          _distanceUnit = prefDistanceUnit;
-          _fuelUnit = prefFuelUnit;
+          // New Entry: Sync units based on currency (not global preferences)
+          // USD → Imperial (gal, mi), CAD → Metric (L, km)
           _currency = prefCurrency;
+          if (prefCurrency == 'USD') {
+            _fuelUnit = 'gal';
+            _distanceUnit = 'mi';
+          } else if (prefCurrency == 'CAD') {
+            _fuelUnit = 'L';
+            _distanceUnit = 'km';
+          } else {
+            // Fallback to preferences for other currencies
+            _distanceUnit = prefDistanceUnit;
+            _fuelUnit = prefFuelUnit;
+          }
         } else {
           // Edit Mode: Convert units if they differ from preference
           // Preserve currency for historical accuracy
