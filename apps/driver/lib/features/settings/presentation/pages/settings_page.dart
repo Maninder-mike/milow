@@ -139,7 +139,8 @@ class _SettingsPageState extends State<SettingsPage> {
               _buildSupportSection(context, textColor),
               const SizedBox(height: 24),
               _buildSignOutSection(context, textColor),
-              const SizedBox(height: 120),
+              // Dynamic bottom padding for system navigation bar
+              SizedBox(height: MediaQuery.of(context).padding.bottom + 24),
             ],
           ),
         ),

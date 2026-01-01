@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:go_router/go_router.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:animations/animations.dart';
 import 'package:milow/features/explore/presentation/pages/explore_page.dart';
@@ -41,6 +43,51 @@ class _TabsShellState extends State<TabsShell> {
     }
   }
 
+  /// Handle back navigation: go to dashboard from other tabs, confirm exit on dashboard
+  Future<void> _handleBackNavigation() async {
+    // Use widget.initialIndex to check current tab based on route
+    if (widget.initialIndex != 0) {
+      // Not on dashboard - navigate to dashboard using go_router
+      context.go('/dashboard');
+    } else {
+      // On dashboard - show exit confirmation
+      final shouldExit = await _showExitConfirmation();
+      if (shouldExit == true) {
+        SystemNavigator.pop();
+      }
+    }
+  }
+
+  Future<bool?> _showExitConfirmation() {
+    final tokens = Theme.of(context).extension<DesignTokens>()!;
+
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.shapeXL),
+        ),
+        title: const Text('Exit App?'),
+        content: const Text('Are you sure you want to exit Milow?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(
+              'Cancel',
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Exit'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -48,27 +95,35 @@ class _TabsShellState extends State<TabsShell> {
         ? context.tokens.scaffoldAltBackground
         : context.tokens.scaffoldAltBackground;
 
-    return Scaffold(
-      backgroundColor: background,
-      body: PageTransitionSwitcher(
-        transitionBuilder:
-            (
-              Widget child,
-              Animation<double> primaryAnimation,
-              Animation<double> secondaryAnimation,
-            ) {
-              return FadeThroughTransition(
-                animation: primaryAnimation,
-                secondaryAnimation: secondaryAnimation,
-                child: child,
-              );
-            },
-        child: [
-          const DashboardPage(),
-          const ExplorePage(),
-          const InboxPage(),
-          const SettingsPage(),
-        ][_index],
+    return PopScope(
+      // Don't allow default pop - we handle it ourselves
+      canPop: false,
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) return;
+        _handleBackNavigation();
+      },
+      child: Scaffold(
+        backgroundColor: background,
+        body: PageTransitionSwitcher(
+          transitionBuilder:
+              (
+                Widget child,
+                Animation<double> primaryAnimation,
+                Animation<double> secondaryAnimation,
+              ) {
+                return FadeThroughTransition(
+                  animation: primaryAnimation,
+                  secondaryAnimation: secondaryAnimation,
+                  child: child,
+                );
+              },
+          child: [
+            const DashboardPage(),
+            const ExplorePage(),
+            const InboxPage(),
+            const SettingsPage(),
+          ][_index],
+        ),
       ),
     );
   }

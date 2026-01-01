@@ -1162,8 +1162,10 @@ class _DashboardPageState extends State<DashboardPage>
                           ),
                         ),
                       ),
-                      // Extra padding for floating bottom nav bar
-                      const SizedBox(height: 120),
+                      // Dynamic bottom padding for system navigation bar
+                      SizedBox(
+                        height: MediaQuery.of(context).padding.bottom + 24,
+                      ),
                     ],
                   ),
                 ),
