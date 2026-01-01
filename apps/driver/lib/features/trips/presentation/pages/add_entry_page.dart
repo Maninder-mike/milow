@@ -141,10 +141,13 @@ class _AddEntryPageState extends State<AddEntryPage>
     _defQuantityController.addListener(_onFuelFieldChanged); // [NEW]
     _defPriceController.addListener(_onFuelFieldChanged); // [NEW]
 
-    // Initialize with one pickup and one delivery location
-    _addPickupLocation();
-    _addDeliveryLocation();
-    _addTrailer();
+    // Initialize with one pickup, one delivery, and one trailer (without setState)
+    _pickupControllers.add(TextEditingController());
+    _pickupFocusNodes.add(FocusNode());
+    _deliveryControllers.add(TextEditingController());
+    _deliveryFocusNodes.add(FocusNode());
+    _trailerControllers.add(TextEditingController());
+    _trailerFocusNodes.add(FocusNode());
 
     // Handle edit mode for Trip
     if (widget.editingTrip != null) {
@@ -918,18 +921,6 @@ class _AddEntryPageState extends State<AddEntryPage>
               const SnackBar(content: Text('Select "Date & Time" field below')),
             );
             // Optionally scroll to date field
-          },
-        ),
-      );
-      actions.add(
-        _buildActionChip(
-          label: 'Add documents BOL',
-          icon: Icons.upload_file_rounded,
-          color: Theme.of(context).colorScheme.secondary,
-          onTap: () {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Document upload coming soon')),
-            );
           },
         ),
       );

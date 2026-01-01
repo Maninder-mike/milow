@@ -130,13 +130,12 @@ jobs:
           cd apps/driver
           flutter build apk --release
 
-      # Run tests (optional, can be disabled)
-      - name: Run tests
-        continue-on-error: true
+      # Run tests - GATES RELEASE (no continue-on-error)
+      - name: Run Critical Tests
         run: |
-          echo "🧪 Running tests..."
+          echo "🧪 Running critical tests..."
           cd apps/driver
-          flutter test || echo "::warning::Tests failed but continuing build"
+          flutter test --reporter=github
 
       # Analyze code
       - name: Analyze code
@@ -163,6 +162,99 @@ jobs:
           flutter build apk --release --build-number=${{ github.run_number }} --verbose
           flutter build appbundle --release --build-number=${{ github.run_number }} --verbose
           echo "✅ Build complete!"
+
+      # Verify APK Signature
+      - name: Verify APK Signature
+        run: |
+          echo "🔐 Verifying APK signature..."
+          APK_PATH="apps/driver/build/app/outputs/flutter-apk/app-release.apk"
+          
+          # Find apksigner in Android SDK
+          APKSIGNER=$(find $ANDROID_HOME -name "apksigner" -type f | head -1)
+          
+          if [ -z "$APKSIGNER" ]; then
+            echo "::warning::apksigner not found, skipping signature verification"
+            exit 0
+          fi
+          
+          # Verify signature
+          $APKSIGNER verify --verbose --print-certs "$APK_PATH"
+          
+          if [ $? -eq 0 ]; then
+            echo "✅ APK signature verified successfully"
+          else
+            echo "❌ APK signature verification failed"
+            exit 1
+          fi
+
+      # Bundle Size Monitoring
+      - name: Bundle Size Check
+        id: size_check
+        run: |
+          echo "📊 Checking bundle size..."
+          
+          APK_PATH="apps/driver/build/app/outputs/flutter-apk/app-release.apk"
+          AAB_PATH="apps/driver/build/app/outputs/bundle/release/app-release.aab"
+          
+          APK_SIZE=$(stat -c%s "$APK_PATH" 2>/dev/null || stat -f%z "$APK_PATH")
+          AAB_SIZE=$(stat -c%s "$AAB_PATH" 2>/dev/null || stat -f%z "$AAB_PATH")
+          
+          APK_SIZE_MB=$(echo "scale=2; $APK_SIZE / 1048576" | bc)
+          AAB_SIZE_MB=$(echo "scale=2; $AAB_SIZE / 1048576" | bc)
+          
+          echo "apk_size_mb=$APK_SIZE_MB" >> $GITHUB_OUTPUT
+          echo "aab_size_mb=$AAB_SIZE_MB" >> $GITHUB_OUTPUT
+          echo "apk_size_bytes=$APK_SIZE" >> $GITHUB_OUTPUT
+          
+          # Threshold: 100MB for APK (104857600 bytes)
+          MAX_APK_SIZE=104857600
+          
+          if [ "$APK_SIZE" -gt "$MAX_APK_SIZE" ]; then
+            echo "::error::APK size (${APK_SIZE_MB}MB) exceeds 100MB limit!"
+            exit 1
+          fi
+          
+          echo "✅ APK: ${APK_SIZE_MB}MB | AAB: ${AAB_SIZE_MB}MB"
+          echo "## 📊 Bundle Size" >> $GITHUB_STEP_SUMMARY
+          echo "| Artifact | Size |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| APK | ${APK_SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
+          echo "| AAB | ${AAB_SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
+
+      # Generate Version-Specific Changelog
+      - name: Generate Version-Specific Changelog
+        run: |
+          echo "📝 Generating version-specific changelog..."
+          VERSION_CODE=${{ github.run_number }}
+          CHANGELOG_DIR="apps/driver/fastlane/metadata/android/en-US/changelogs"
+          CHANGELOG_FILE="$CHANGELOG_DIR/${VERSION_CODE}.txt"
+          
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          # Generate commit list
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"• %s" -10)
+          else
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"• %s" --no-merges | head -15)
+          fi
+          
+          # Create user-friendly changelog
+          cat > "$CHANGELOG_FILE" << EOF
+          What's New in v${{ steps.version.outputs.version_number }}
+
+          $COMMITS
+
+          Thank you for using Milow!
+          EOF
+          
+          # Truncate to 500 chars (Play Store limit)
+          head -c 500 "$CHANGELOG_FILE" > "${CHANGELOG_FILE}.tmp"
+          mv "${CHANGELOG_FILE}.tmp" "$CHANGELOG_FILE"
+          
+          echo "✅ Created changelog: $CHANGELOG_FILE"
+          cat "$CHANGELOG_FILE"
+
 
       # Upload to Play Store
       - name: Upload to Play Store (Alpha/Closed Testing)

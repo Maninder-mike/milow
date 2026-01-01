@@ -91,7 +91,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(tokens.radiusXL),
                     child: Image.asset(
-                      'assets/images/milow_icon.png',
+                      'assets/images/milow_icon_beta.png',
                       width: 120,
                       height: 120,
                       fit: BoxFit.contain,

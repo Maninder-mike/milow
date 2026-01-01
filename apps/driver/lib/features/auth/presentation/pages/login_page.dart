@@ -482,7 +482,7 @@ class _LoginPageState extends State<LoginPage>
       child: ClipRRect(
         borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
         child: Image.asset(
-          'assets/images/milow_icon.png',
+          'assets/images/milow_icon_beta.png',
           width: 100,
           height: 100,
           fit: BoxFit.contain,

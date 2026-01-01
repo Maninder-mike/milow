@@ -387,7 +387,7 @@ class _DashboardPageState extends State<DashboardPage>
       children: [
         // Hero Content
         Padding(
-          padding: EdgeInsets.fromLTRB(margin, 120, margin, 24),
+          padding: EdgeInsets.fromLTRB(margin, 4, margin, 4),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
@@ -652,14 +652,48 @@ class _DashboardPageState extends State<DashboardPage>
                         ),
                         child: Column(
                           children: [
+                            // Header Icons Row (scrolls with content)
+                            SafeArea(
+                              bottom: false,
+                              child: Padding(
+                                padding: EdgeInsets.only(
+                                  left: margin,
+                                  right: margin,
+                                  bottom: 8,
+                                ),
+                                child: Row(
+                                  children: [
+                                    IconButton(
+                                      onPressed: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (context) =>
+                                                const GlobalSearchPage(),
+                                          ),
+                                        );
+                                      },
+                                      icon: const Icon(Icons.search),
+                                      style: IconButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                      ),
+                                    ),
+                                    const Spacer(),
+                                    const SyncStatusIndicator(),
+                                    SizedBox(width: context.tokens.spacingS),
+                                    _buildNotificationBell(context),
+                                  ],
+                                ),
+                              ),
+                            ),
                             _buildHeroContent(context, margin),
 
                             // Border Wait Times Section
                             Container(
                               width: double.infinity,
                               padding: const EdgeInsets.only(
-                                top: 24,
-                                bottom: 24,
+                                top: 12,
+                                bottom: 12,
                               ),
                               child: Column(
                                 children: [
@@ -1197,42 +1231,7 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
             ),
-            // Header Icons Overlay (Positioned on top of ScrollView)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              child: SafeArea(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: margin,
-                    vertical: 16, // Increased top padding
-                  ),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const GlobalSearchPage(),
-                            ),
-                          );
-                        },
-                        icon: const Icon(Icons.search),
-                        style: IconButton.styleFrom(
-                          foregroundColor: Colors.white,
-                        ),
-                      ),
-                      const Spacer(),
-                      const SyncStatusIndicator(),
-                      SizedBox(width: context.tokens.spacingS),
-                      _buildNotificationBell(context),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            // Header icons now scroll with content (see gradient Column above)
           ],
         ),
       ),
