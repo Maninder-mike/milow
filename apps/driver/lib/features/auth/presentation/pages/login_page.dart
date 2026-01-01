@@ -115,7 +115,7 @@ class _LoginPageState extends State<LoginPage>
       unawaited(logger.logAuth('google_sign_in_started'));
 
       const webClientId =
-          '800960714534-bqjn3ba41jgnn3vr0t20org6h5d1titq.apps.googleusercontent.com';
+          '799615226888-jrbav7ltvmiims5vj0mg153qcvg247l3.apps.googleusercontent.com';
 
       unawaited(logger.debug('GoogleSignIn', 'Initializing with client ID'));
       await GoogleSignIn.instance.initialize(serverClientId: webClientId);
