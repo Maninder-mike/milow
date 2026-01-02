@@ -360,7 +360,7 @@ testWidgets('TripCard displays trip number', (tester) async {
 ### CI/CD Pipeline
 
 ```yaml
-# .github/workflows/build_and_release.yml
+# .github/workflows/android_play_store.yml
 on:
   push:
     branches: [release]

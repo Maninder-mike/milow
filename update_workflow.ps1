@@ -1,4 +1,4 @@
-$path = ".github\workflows\build_and_release.yml"
+$path = ".github\workflows\android_play_store.yml"
 $content = Get-Content $path -Raw
 $find = "      # Run tests (optional, can be disabled)"
 $replace = @"

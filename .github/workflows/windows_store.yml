@@ -1,0 +1,64 @@
+name: Build and Release Windows App to Store
+
+on:
+  push:
+    branches: [ beta ]
+    paths:
+      - "apps/terminal/pubspec.yaml"
+      - "apps/terminal/lib/**"
+      - "apps/terminal/windows/**"
+  workflow_dispatch:
+
+jobs:
+  build-windows:
+    name: Build & Publish Windows App
+    runs-on: windows-latest
+    
+    defaults:
+      run:
+        working-directory: apps/terminal
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: "3.24.3" # Pinned to recent stable version, adjust as needed or use 'stable'
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows Release
+        run: flutter build windows --release
+
+      - name: Create MSIX
+        run: dart run msix:create
+        env:
+          # If you set store: true in pubspec, it handles most things. 
+          # For CI, sometimes having a certificate is good practice if not relying on Store's self-signing for test
+          # but for Store submission, the store signs it.
+          # The msix package will generate a self-signed one if not provided.
+          temp: true
+
+      # This step requires the secrets to be configured in GitHub
+      - name: Publish to Microsoft Store
+        # We use a conditional check to avoid failure if secrets aren't set yet
+        if: ${{ secrets.WINDOWS_STORE_CLIENT_ID != '' }}
+        env:
+          # Map secrets to env vars used by the msix package or a custom script
+          WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
+          WINDOWS_STORE_CLIENT_SECRET: ${{ secrets.WINDOWS_STORE_CLIENT_SECRET }}
+          WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
+        run: |
+           dart run msix:publish
+           
+      - name: Upload MSIX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: milow-terminal-msix
+          path: apps/terminal/build/windows/runner/Release/*.msix
+          if-no-files-found: warn
