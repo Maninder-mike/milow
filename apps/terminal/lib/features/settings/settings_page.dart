@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,6 +21,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   double _syncFrequency = 50.0;
   String _selectedLanguage = 'English';
   String _selectedMapProvider = 'Default Map';
+  String _appVersion = '';
 
   final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
   final List<String> _mapProviders = [
@@ -27,6 +29,21 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     'Google Maps',
     'OpenStreetMap',
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadVersion();
+  }
+
+  Future<void> _loadVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _appVersion = 'v${info.version} (build ${info.buildNumber})';
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -196,6 +213,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
           ],
         ),
+        const SizedBox(height: 16),
+        Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Version ${_appVersion.isEmpty ? 'Loading...' : _appVersion}',
+            style: GoogleFonts.outfit(
+              color: FluentTheme.of(context).resources.textFillColorSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ),
         const SizedBox(height: 48),
       ],
     );
@@ -204,7 +232,11 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget _buildSectionHeader(String title) {
     return Text(
       title,
-      style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      style: GoogleFonts.outfit(
+        fontSize: 20,
+        fontWeight: FontWeight.w600,
+        color: FluentTheme.of(context).resources.textFillColorPrimary,
+      ),
     );
   }
 
@@ -226,7 +258,13 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: const TextStyle(fontSize: 14)),
+        Text(
+          label,
+          style: GoogleFonts.outfit(
+            fontSize: 14,
+            color: FluentTheme.of(context).resources.textFillColorPrimary,
+          ),
+        ),
         control,
       ],
     );

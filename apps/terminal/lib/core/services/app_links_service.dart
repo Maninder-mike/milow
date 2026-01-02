@@ -22,7 +22,7 @@ class AppLinksService {
     } catch (e) {
       // Ignore error
       if (kDebugMode) {
-        print('Error handling initial link: $e');
+        debugPrint('Error handling initial link: $e');
       }
     }
 
@@ -34,7 +34,7 @@ class AppLinksService {
 
   void _handleDeepLink(Uri uri) {
     if (kDebugMode) {
-      print('Received deep link: $uri');
+      debugPrint('Received deep link: $uri');
     }
 
     // Supabase handles auth callback links automatically if configured correctly,

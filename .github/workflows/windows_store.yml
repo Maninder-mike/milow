@@ -9,6 +9,9 @@ on:
       - "apps/terminal/windows/**"
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build-windows:
     name: Build & Publish Windows App
@@ -21,44 +24,160 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Extract version from apps/terminal/pubspec.yaml (using bash on Windows)
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Building version: v$VERSION"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: "3.24.3" # Pinned to recent stable version, adjust as needed or use 'stable'
+          flutter-version: "3.24.3"
           channel: 'stable'
           cache: true
 
       - name: Install dependencies
         run: flutter pub get
 
+      # 🛡️ Quality Gates
+      - name: Analyze code
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Run Tests
+        run: flutter test
+
+      # 🏗️ Build
       - name: Build Windows Release
         run: flutter build windows --release
 
       - name: Create MSIX
         run: dart run msix:create
         env:
-          # If you set store: true in pubspec, it handles most things. 
-          # For CI, sometimes having a certificate is good practice if not relying on Store's self-signing for test
-          # but for Store submission, the store signs it.
-          # The msix package will generate a self-signed one if not provided.
           temp: true
 
-      # This step requires the secrets to be configured in GitHub
+      # 📝 Changelog
+      - name: Generate Changelog
+        id: changelog
+        shell: bash
+        run: |
+          echo "📝 Generating changelog..."
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"%s|%h")
+          else
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s|%h" --no-merges)
+          fi
+
+          # Simple changelog generation
+          echo "# What's New" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          while IFS='|' read -r MSG HASH; do
+             if [ -n "$MSG" ]; then
+               echo "- $MSG" >> RELEASE_NOTES.md
+             fi
+          done <<< "$COMMITS"
+          
+          cat RELEASE_NOTES.md
+
+      # 📦 Publish to Store
       - name: Publish to Microsoft Store
-        # We use a conditional check to avoid failure if secrets aren't set yet
         if: ${{ secrets.WINDOWS_STORE_CLIENT_ID != '' }}
         env:
-          # Map secrets to env vars used by the msix package or a custom script
           WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
           WINDOWS_STORE_CLIENT_SECRET: ${{ secrets.WINDOWS_STORE_CLIENT_SECRET }}
           WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
-        run: |
-           dart run msix:publish
-           
-      - name: Upload MSIX Artifact
+        run: dart run msix:publish
+
+      # 🚀 GitHub Release
+      - name: Create GitHub Release
+        if: ${{ secrets.WINDOWS_STORE_CLIENT_ID != '' }} # Only release if we could publish (implies secrets are present)
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body_path: apps/terminal/RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          files: apps/terminal/build/windows/runner/Release/*.msix
+
+      - name: Upload MSIX Artifact (Backup)
         uses: actions/upload-artifact@v4
         with:
           name: milow-terminal-msix
           path: apps/terminal/build/windows/runner/Release/*.msix
           if-no-files-found: warn
+
+      # Update Supabase with retry logic (Ported from Android Workflow)
+      - name: Update Supabase Version
+        continue-on-error: true
+        shell: bash
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          # Secrets for Supabase
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          echo "🔄 Updating Supabase app version for Windows..."
+
+          # Validate secrets
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "::warning::Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secrets. Skipping Supabase update."
+            exit 0
+          fi
+
+          # Wait for GitHub to process the release (Optional, but good for logging)
+          echo "⏳ Waiting 5s..."
+          sleep 5
+          
+          # Use the official Microsoft Store URL
+          echo "🔗 Setting download URL to Microsoft Store..."
+          DOWNLOAD_URL="https://apps.microsoft.com/detail/9p641q1x1bmg?ocid=webpdpshare"
+          
+          # Construct JSON payload using pure strings
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # Create a temp json file
+          jq -n \
+            --arg version "$VERSION" \
+            --arg url "$DOWNLOAD_URL" \
+            --arg changelog "Release $VERSION" \
+            --arg time "$TIMESTAMP" \
+            '{latest_version: $version, download_url: $url, changelog: $changelog, updated_at: $time}' > payload.json
+          
+          # Update Supabase (platform=windows)
+          echo "📤 Sending update to Supabase..."
+          RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
+            "$SUPABASE_URL/rest/v1/app_version?platform=eq.windows" \
+            -H "apikey: $SUPABASE_KEY" \
+            -H "Authorization: Bearer $SUPABASE_KEY" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d @payload.json)
+          
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          
+          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
+            echo "✅ Supabase updated successfully (HTTP $HTTP_CODE)"
+          else
+            echo "::error::Supabase update failed with HTTP $HTTP_CODE"
+            echo "Response: $RESPONSE"
+            exit 1
+          fi
+
+
