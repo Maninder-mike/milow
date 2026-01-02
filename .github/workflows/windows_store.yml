@@ -45,6 +45,13 @@ jobs:
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-v2'
 
+      # Create .env file from secrets
+      - name: Create .env file
+        shell: bash
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+
       - name: Install dependencies
         run: flutter pub get
 
