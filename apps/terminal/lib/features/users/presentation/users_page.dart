@@ -3,10 +3,12 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/user_repository_provider.dart';
 import '../../inbox/data/message_repository.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class UsersPage extends ConsumerStatefulWidget {
   const UsersPage({super.key});
@@ -223,7 +225,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   flex: 3,
                   child: Text(
                     'Name',
-                    style: TextStyle(
+                    style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       color: theme.resources.textFillColorSecondary,
                     ),
@@ -233,24 +235,24 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   flex: 4,
                   child: Text(
                     'Email',
-                    style: TextStyle(
+                    style: GoogleFonts.outfit(
                       fontWeight: FontWeight.bold,
                       color: theme.resources.textFillColorSecondary,
                     ),
                   ),
                 ),
-                const Expanded(
+                Expanded(
                   flex: 2,
                   child: Text(
                     'Role',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
                   ),
                 ),
-                const Expanded(
+                Expanded(
                   flex: 2,
                   child: Text(
                     'Status',
-                    style: TextStyle(fontWeight: FontWeight.bold),
+                    style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
                   ),
                 ),
                 const SizedBox(width: 100), // Actions space
@@ -305,8 +307,9 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                 flex: 3,
                                 child: Text(
                                   user.fullName ?? 'Unknown',
-                                  style: const TextStyle(
+                                  style: GoogleFonts.outfit(
                                     fontWeight: FontWeight.w500,
+                                    color: theme.resources.textFillColorPrimary,
                                   ),
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -315,7 +318,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                 flex: 4,
                                 child: Text(
                                   user.email ?? '-',
-                                  style: TextStyle(
+                                  style: GoogleFonts.outfit(
                                     color:
                                         theme.resources.textFillColorSecondary,
                                   ),
@@ -358,12 +361,11 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                                             ? Icon(
                                                 FluentIcons
                                                     .checkmark_24_regular,
-                                                color: Colors.green,
+                                                color: AppColors.success,
                                               )
                                             : Icon(
                                                 FluentIcons.warning_24_regular,
-                                                color:
-                                                    Colors.warningPrimaryColor,
+                                                color: AppColors.warning,
                                               ))
                                       : ToggleSwitch(
                                           checked: user.isVerified,
@@ -522,7 +524,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
       alignment: Alignment.center,
       child: Text(
         initials,
-        style: const TextStyle(
+        style: GoogleFonts.outfit(
           color: Colors.white,
           fontWeight: FontWeight.bold,
           fontSize: 12,
@@ -535,25 +537,25 @@ class _UsersPageState extends ConsumerState<UsersPage> {
     Color color;
     switch (role) {
       case UserRole.admin:
-        color = Colors.red;
+        color = AppColors.roleAdmin;
         break;
       case UserRole.dispatcher:
-        color = Colors.orange;
+        color = AppColors.roleDispatcher;
         break;
       case UserRole.safetyOfficer:
-        color = Colors.purple;
+        color = AppColors.roleSafetyOfficer;
         break;
       case UserRole.driver:
-        color = Colors.green;
+        color = AppColors.roleDriver;
         break;
       case UserRole.assistant:
-        color = Colors.blue;
+        color = AppColors.roleAssistant;
         break;
       case UserRole.pending:
-        color = Colors.grey;
+        color = AppColors.rolePending;
         break;
       case UserRole.accountant:
-        color = Colors.teal;
+        color = AppColors.roleAccountant;
         break;
     }
 
@@ -566,7 +568,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
       ),
       child: Text(
         role.label,
-        style: TextStyle(
+        style: GoogleFonts.outfit(
           color: color,
           fontSize: 11,
           fontWeight: FontWeight.w600,

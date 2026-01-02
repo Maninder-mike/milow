@@ -340,7 +340,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         Icon(
           FluentIcons.checkmark_circle_48_regular,
           size: 80,
-          color: const Color(0xFF10B981),
+          color: _theme.successColor,
         ),
         const SizedBox(height: 24),
         Text(
@@ -373,16 +373,16 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     String strengthText;
 
     if (_passwordStrength < 0.3) {
-      strengthColor = Colors.red;
+      strengthColor = _theme.errorColor;
       strengthText = 'Weak';
     } else if (_passwordStrength < 0.6) {
-      strengthColor = Colors.orange;
+      strengthColor = _theme.warningColor;
       strengthText = 'Fair';
     } else if (_passwordStrength < 0.8) {
-      strengthColor = const Color(0xFF10B981);
+      strengthColor = _theme.successColor;
       strengthText = 'Good';
     } else {
-      strengthColor = const Color(0xFF059669);
+      strengthColor = _theme.successColor;
       strengthText = 'Strong';
     }
 
@@ -426,15 +426,15 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.red.withValues(alpha: 0.1),
+        color: _theme.errorColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+        border: Border.all(color: _theme.errorColor.withValues(alpha: 0.3)),
       ),
       child: Row(
         children: [
           Icon(
             FluentIcons.error_circle_24_regular,
-            color: Colors.red,
+            color: _theme.errorColor,
             size: 16,
           ),
           const SizedBox(width: 8),
@@ -442,7 +442,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             child: Text(
               _errorMessage!,
               style: GoogleFonts.inter(
-                color: Colors.red,
+                color: _theme.errorColor,
                 fontSize: 13,
                 decoration: TextDecoration.none,
               ),

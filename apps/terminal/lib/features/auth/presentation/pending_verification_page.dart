@@ -18,9 +18,7 @@ class _PendingVerificationPageState extends State<PendingVerificationPage> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      color: fluentTheme.brightness == Brightness.light
-          ? Colors.white
-          : Colors.black,
+      color: fluentTheme.scaffoldBackgroundColor,
       child: Center(
         child: Container(
           constraints: const BoxConstraints(maxWidth: 400),

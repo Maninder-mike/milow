@@ -117,9 +117,13 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
             constraints: const BoxConstraints(maxWidth: 600),
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              color: const Color(0xFF252526), // VS Code sidebar like background
+              color: FluentTheme.of(context).cardColor,
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: const Color(0xFF333333)),
+              border: Border.all(
+                color: FluentTheme.of(
+                  context,
+                ).resources.dividerStrokeColorDefault,
+              ),
             ),
             child: Form(
               key: _formKey,
@@ -134,7 +138,9 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
                           height: 100,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: const Color(0xFF3C3C3C),
+                            color: FluentTheme.of(
+                              context,
+                            ).resources.controlSolidFillColorDefault,
                             image: _profileImage != null
                                 ? DecorationImage(
                                     image: FileImage(File(_profileImage!.path)),
@@ -143,10 +149,12 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
                                 : null,
                           ),
                           child: _profileImage == null
-                              ? const Icon(
+                              ? Icon(
                                   FluentIcons.person_48_regular,
                                   size: 48,
-                                  color: Color(0xFFCCCCCC),
+                                  color: FluentTheme.of(
+                                    context,
+                                  ).resources.textFillColorSecondary,
                                 )
                               : null,
                         ),
@@ -156,8 +164,8 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
                           child: IconButton(
                             icon: Container(
                               padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF007ACC),
+                              decoration: BoxDecoration(
+                                color: FluentTheme.of(context).accentColor,
                                 shape: BoxShape.circle,
                               ),
                               child: const Icon(
@@ -260,10 +268,10 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         text,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.outfit(
           fontSize: 14,
           fontWeight: FontWeight.w500,
-          color: const Color(0xFFCCCCCC),
+          color: FluentTheme.of(context).resources.textFillColorPrimary,
         ),
       ),
     );

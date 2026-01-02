@@ -8,6 +8,9 @@ class AuthTheme {
   final Color glassColor;
   final Color glassBorderColor;
   final Color inputFillColor;
+  final Color successColor;
+  final Color errorColor;
+  final Color warningColor;
 
   const AuthTheme({
     required this.gradient,
@@ -16,6 +19,9 @@ class AuthTheme {
     required this.glassColor,
     required this.glassBorderColor,
     required this.inputFillColor,
+    this.successColor = const Color(0xFF10B981), // Emerald 500
+    this.errorColor = const Color(0xFFEF4444), // Red 500
+    this.warningColor = const Color(0xFFF59E0B), // Amber 500
   });
 
   static final List<AuthTheme> themes = [

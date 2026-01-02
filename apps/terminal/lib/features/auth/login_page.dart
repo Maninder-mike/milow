@@ -397,8 +397,8 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                                 ),
                               ),
                               child: _isLoading
-                                  ? const ProgressRing(
-                                      activeColor: Color(0xFF6C5CE7),
+                                  ? ProgressRing(
+                                      activeColor: _theme.primaryContentColor,
                                     )
                                   : Text(
                                       'Send Reset Link',

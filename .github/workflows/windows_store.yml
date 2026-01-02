@@ -93,7 +93,6 @@ jobs:
 
       # 📦 Publish to Store
       - name: Publish to Microsoft Store
-        if: ${{ secrets.WINDOWS_STORE_CLIENT_ID != '' }}
         env:
           WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
           WINDOWS_STORE_CLIENT_SECRET: ${{ secrets.WINDOWS_STORE_CLIENT_SECRET }}
@@ -102,7 +101,6 @@ jobs:
 
       # 🚀 GitHub Release
       - name: Create GitHub Release
-        if: ${{ secrets.WINDOWS_STORE_CLIENT_ID != '' }} # Only release if we could publish (implies secrets are present)
         uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
