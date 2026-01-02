@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import '../../../settings/widgets/custom_about_dialog.dart';
 import '../../../settings/utils/update_checker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/theme_provider.dart';
 
 class CustomTitleBar extends StatefulWidget {
@@ -98,7 +99,9 @@ class _WindowControlButtonsState extends State<_WindowControlButtons> {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = widget.isLight ? const Color(0xFF333333) : Colors.white;
+    final iconColor = widget.isLight
+        ? AppColors.textPrimaryLight
+        : Colors.white;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -108,8 +111,8 @@ class _WindowControlButtonsState extends State<_WindowControlButtons> {
           icon: FluentIcons.subtract_24_regular,
           iconColor: iconColor,
           hoverColor: widget.isLight
-              ? const Color(0xFFE5E5E5)
-              : const Color(0xFF404040),
+              ? AppColors.sidebarSecondaryBackgroundLight
+              : AppColors.sidebarBackgroundDark.withValues(alpha: 0.8),
           onPressed: () async {
             await windowManager.minimize();
           },
@@ -121,8 +124,8 @@ class _WindowControlButtonsState extends State<_WindowControlButtons> {
               : FluentIcons.maximize_24_regular,
           iconColor: iconColor,
           hoverColor: widget.isLight
-              ? const Color(0xFFE5E5E5)
-              : const Color(0xFF404040),
+              ? AppColors.sidebarSecondaryBackgroundLight
+              : AppColors.sidebarBackgroundDark.withValues(alpha: 0.8),
           onPressed: () async {
             if (_isMaximized) {
               await windowManager.restore();
@@ -226,14 +229,16 @@ class _WindowsSearchBarState extends State<_WindowsSearchBar> {
     final theme = FluentTheme.of(context);
 
     // Windows 11 style colors
-    final bgColor = widget.isLight ? Colors.white : const Color(0xFF2D2D2D);
+    final bgColor = widget.isLight
+        ? Colors.white
+        : AppColors.sidebarBackgroundDark;
     final borderColor = widget.isLight
-        ? const Color(0xFFE5E5E5)
-        : const Color(0xFF404040);
+        ? AppColors.borderLight
+        : AppColors.borderDark;
     final focusBorderColor = theme.accentColor;
     final placeholderColor = widget.isLight
-        ? const Color(0xFF6E6E6E)
-        : const Color(0xFF9E9E9E);
+        ? AppColors.textSecondaryLight
+        : AppColors.textSecondaryDark;
 
     return SizedBox(
       width: 468,
@@ -679,7 +684,7 @@ class _UserHeader extends StatelessWidget {
                   height: 24,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: Colors.grey,
+                    color: AppColors.neutral,
                     image: effectiveUrl != null
                         ? DecorationImage(
                             image: NetworkImage(effectiveUrl),

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import '../../services/vehicle_service.dart';
+import '../../../../core/constants/app_colors.dart';
 import '../../screens/vehicles/add_vehicle_dialog.dart';
 
 class FleetSidebar extends ConsumerStatefulWidget {
@@ -54,15 +55,16 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
   Color _getStatusColor(String? status) {
     switch (status?.toLowerCase()) {
       case 'active':
-        return Colors.green;
+        return AppColors.success;
       case 'maintenance':
-        return Colors.orange;
+        return AppColors.warning;
       case 'idle':
-        return Colors.blue;
+        return AppColors.info; // Blue
       case 'breakdown':
-        return Colors.red;
+        return AppColors.error;
+      case 'unknown':
       default:
-        return Colors.grey;
+        return AppColors.neutral;
     }
   }
 
@@ -84,12 +86,13 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
     final isLight = theme.brightness == Brightness.light;
 
     // Sidebar colors - matching the lighter terminal theme
+    // Sidebar colors - matching the lighter terminal theme
     final backgroundColor = isLight
-        ? const Color(0xFFF3F3F3)
-        : const Color(0xFF202020);
+        ? AppColors.sidebarBackgroundLight
+        : AppColors.sidebarBackgroundDark;
     final titleColor = isLight
-        ? const Color(0xFF616161)
-        : const Color(0xFFCCCCCC);
+        ? AppColors.textSecondaryLight
+        : AppColors.textSecondaryDark;
 
     final vehiclesAsync = ref.watch(vehiclesListProvider);
 
@@ -146,29 +149,35 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
             child: TextBox(
               placeholder: 'Search Fleet...',
               placeholderStyle: GoogleFonts.inter(
-                color: isLight ? Colors.grey[100] : const Color(0xFF858585),
+                color: isLight
+                    ? Colors.grey[100]
+                    : const Color(
+                        0xFF858585,
+                      ), // Keep generic grey for placeholder
                 fontSize: 13,
               ),
               style: GoogleFonts.inter(
-                color: isLight ? Colors.black : Colors.white,
+                color: isLight
+                    ? AppColors.textPrimaryLight
+                    : AppColors.textPrimaryDark,
                 fontSize: 13,
               ),
               decoration: WidgetStateProperty.all(
                 BoxDecoration(
-                  color: isLight
-                      ? const Color(0xFFFFFFFF)
-                      : const Color(0xFF3C3C3C),
+                  color: isLight ? Colors.white : AppColors.inputBackgroundDark,
                   border: Border.all(
                     color: isLight
-                        ? const Color(0xFFE0E0E0)
-                        : const Color(0xFF3C3C3C),
+                        ? AppColors.borderLight
+                        : AppColors.borderDark,
                     width: 1,
                   ),
                   borderRadius: BorderRadius.zero,
                 ),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              cursorColor: isLight ? Colors.black : Colors.white,
+              cursorColor: isLight
+                  ? AppColors.textPrimaryLight
+                  : AppColors.textPrimaryDark,
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -230,11 +239,11 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
     List<Widget> children,
   ) {
     final textColor = isLight
-        ? const Color(0xFF333333)
-        : const Color(0xFFCCCCCC);
+        ? AppColors.textPrimaryLight
+        : AppColors.textSecondaryDark;
     final hoverColor = isLight
-        ? const Color(0xFFE8E8E8)
-        : const Color(0xFF2A2D2E);
+        ? AppColors.hoverBackgroundLight
+        : AppColors.hoverBackgroundDark;
 
     final isExpanded = _expandedSections[title] ?? false;
 
@@ -249,8 +258,8 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                 border: Border(
                   top: BorderSide(
                     color: isLight
-                        ? const Color(0xFFE5E5E5)
-                        : const Color(0xFF3E3E42),
+                        ? AppColors.dividerLight
+                        : AppColors.dividerDark,
                     width: 1.0,
                   ),
                 ),
@@ -289,8 +298,8 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                     ),
                     decoration: BoxDecoration(
                       color: isLight
-                          ? const Color(0xFFE0E0E0)
-                          : const Color(0xFF4D4D4D),
+                          ? AppColors.borderLight
+                          : AppColors.badgeBackgroundDark,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
@@ -314,14 +323,14 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
 
   Widget _buildVehicleItem(Map<String, dynamic> vehicle, bool isLight) {
     final textColor = isLight
-        ? const Color(0xFF333333)
-        : const Color(0xFFCCCCCC);
+        ? AppColors.textPrimaryLight
+        : AppColors.textSecondaryDark;
     final subTextColor = isLight
-        ? const Color(0xFF666666)
-        : const Color(0xFF999999);
+        ? AppColors.textSecondaryLight
+        : const Color(0xFF999999); // Slightly darker than secondary
     final hoverColor = isLight
-        ? const Color(0xFFE8E8E8)
-        : const Color(0xFF2A2D2E);
+        ? AppColors.hoverBackgroundLight
+        : AppColors.hoverBackgroundDark;
 
     final status = vehicle['status'] as String? ?? 'Unknown';
     final statusColor = _getStatusColor(status);
@@ -355,12 +364,14 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                     width: 28,
                     height: 28,
                     decoration: BoxDecoration(
-                      color: isLight ? Colors.white : const Color(0xFF2D2D2D),
+                      color: isLight
+                          ? Colors.white
+                          : AppColors.primarySidebarDark,
                       borderRadius: BorderRadius.circular(6),
                       border: Border.all(
                         color: isLight
-                            ? const Color(0xFFE0E0E0)
-                            : const Color(0xFF3C3C3C),
+                            ? AppColors.borderLight
+                            : AppColors.borderDark,
                       ),
                     ),
                     alignment: Alignment.center,
@@ -384,7 +395,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                         border: Border.all(
                           color: isLight
                               ? Colors.white
-                              : const Color(0xFF252526),
+                              : AppColors.vsCodeSidebar,
                           width: 2,
                         ),
                       ),
@@ -429,7 +440,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                               vertical: 1,
                             ),
                             decoration: BoxDecoration(
-                              color: Colors.red.withValues(alpha: 0.1),
+                              color: AppColors.error.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(3),
                             ),
                             child: Text(
@@ -437,7 +448,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                               style: GoogleFonts.inter(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
-                                color: Colors.red,
+                                color: AppColors.error,
                               ),
                             ),
                           ),

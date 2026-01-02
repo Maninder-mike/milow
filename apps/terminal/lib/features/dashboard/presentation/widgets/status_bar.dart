@@ -8,6 +8,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../notifications/data/notification_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
 import '../providers/database_health_provider.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class StatusBar extends ConsumerStatefulWidget {
   const StatusBar({super.key});
@@ -66,12 +67,21 @@ class _StatusBarState extends ConsumerState<StatusBar>
     final connectivityAsync = ref.watch(connectivityProvider);
     final dbHealth = ref.watch(databaseHealthProvider);
 
+    final theme = FluentTheme.of(context);
+    final isLight = theme.brightness == Brightness.light;
+
     return Container(
       height: 28,
       padding: const EdgeInsets.symmetric(horizontal: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFFF3F3F3),
-        border: Border(top: BorderSide(color: Color(0xFFE5E5E5))),
+      decoration: BoxDecoration(
+        color: isLight
+            ? AppColors.sidebarBackgroundLight
+            : AppColors.sidebarBackgroundDark,
+        border: Border(
+          top: BorderSide(
+            color: isLight ? AppColors.borderLight : AppColors.borderDark,
+          ),
+        ),
       ),
       child: Row(
         children: [
@@ -84,18 +94,18 @@ class _StatusBarState extends ConsumerState<StatusBar>
                     ? FluentIcons.wifi_off_24_regular
                     : FluentIcons.wifi_1_24_regular,
                 label: isOffline ? 'Offline' : 'Online: Stable (5G)',
-                color: isOffline ? Colors.red : Colors.green,
+                color: isOffline ? AppColors.error : AppColors.success,
               );
             },
             loading: () => _buildStatusItem(
               icon: FluentIcons.wifi_warning_24_regular,
               label: 'Checking...',
-              color: Colors.grey,
+              color: AppColors.neutral,
             ),
             error: (error, stack) => _buildStatusItem(
               icon: FluentIcons.wifi_off_24_regular,
               label: 'Error',
-              color: Colors.red,
+              color: AppColors.error,
             ),
           ),
 
@@ -117,9 +127,14 @@ class _StatusBarState extends ConsumerState<StatusBar>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Loads:',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF666666)),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isLight
+                        ? AppColors.textSecondaryLight
+                        : AppColors.textSecondaryDark,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 SizedBox(
@@ -134,9 +149,11 @@ class _StatusBarState extends ConsumerState<StatusBar>
                 const SizedBox(width: 8),
                 RichText(
                   text: TextSpan(
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF333333),
+                      color: isLight
+                          ? AppColors.textPrimaryLight
+                          : AppColors.textPrimaryDark,
                     ),
                     children: [
                       const TextSpan(
@@ -146,7 +163,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                       TextSpan(
                         text: '• 2 Delayed',
                         style: TextStyle(
-                          color: Colors.orange.darker,
+                          color: AppColors.warning,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -180,9 +197,11 @@ class _StatusBarState extends ConsumerState<StatusBar>
                   const SizedBox(width: 6),
                   Text(
                     _formatLastSyncTime(dbHealth.lastSyncTime),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: Color(0xFF666666),
+                      color: isLight
+                          ? AppColors.textSecondaryLight
+                          : AppColors.textSecondaryDark,
                     ),
                   ),
                 ],
@@ -232,7 +251,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                             color: Colors.red,
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: const Color(0xFFF3F3F3),
+                              color: isLight
+                                  ? AppColors.sidebarBackgroundLight
+                                  : AppColors.sidebarBackgroundDark,
                               width: 1.5,
                             ),
                           ),
@@ -321,18 +342,29 @@ class _StatusBarState extends ConsumerState<StatusBar>
     required String label,
     Color? color,
   }) {
+    final theme = FluentTheme.of(context);
+    final isLight = theme.brightness == Brightness.light;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         Icon(
           icon,
           size: 14,
-          color: color ?? Colors.black.withValues(alpha: 0.7),
+          color:
+              color ??
+              (isLight
+                  ? AppColors.textPrimaryLight.withValues(alpha: 0.7)
+                  : AppColors.textPrimaryDark.withValues(alpha: 0.7)),
         ),
         const SizedBox(width: 6),
         Text(
           label,
-          style: const TextStyle(fontSize: 11, color: Color(0xFF333333)),
+          style: TextStyle(
+            fontSize: 11,
+            color: isLight
+                ? AppColors.textPrimaryLight
+                : AppColors.textPrimaryDark,
+          ),
         ),
       ],
     );
@@ -367,7 +399,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
       margin: const EdgeInsets.symmetric(horizontal: 12),
       width: 1,
       height: 14,
-      color: const Color(0xFFCCCCCC),
+      color: FluentTheme.of(context).brightness == Brightness.light
+          ? AppColors.dividerLight
+          : AppColors.dividerDark,
     );
   }
 
@@ -387,12 +421,12 @@ class _StatusBarState extends ConsumerState<StatusBar>
   Color _getDbStatusColor(DatabaseStatus status) {
     switch (status) {
       case DatabaseStatus.connected:
-        return Colors.green;
+        return AppColors.success;
       case DatabaseStatus.disconnected:
       case DatabaseStatus.error:
-        return Colors.red;
+        return AppColors.error;
       case DatabaseStatus.checking:
-        return Colors.grey;
+        return AppColors.neutral;
     }
   }
 

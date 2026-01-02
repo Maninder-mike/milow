@@ -8,7 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/user_repository_provider.dart';
 import '../../inbox/data/message_repository.dart';
-import '../../../../core/constants/app_colors.dart';
+import '../../../core/constants/app_colors.dart';
 
 class UsersPage extends ConsumerStatefulWidget {
   const UsersPage({super.key});

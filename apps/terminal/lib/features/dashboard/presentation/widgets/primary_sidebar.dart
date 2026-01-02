@@ -3,6 +3,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/constants/app_colors.dart';
+
 class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onAddRecordTap;
   final VoidCallback onDriversTap;
@@ -32,7 +34,8 @@ class PrimarySidebar extends ConsumerWidget {
 
     // Light gray/whiteish background for sidebar based on image
     final backgroundColor = isLight
-        ? const Color(0xFFF3F3F3) // Light gray to match TopBar
+        ? AppColors
+              .sidebarBackgroundLight // Light gray to match TopBar
         : theme.resources.solidBackgroundFillColorBase;
 
     return Acrylic(

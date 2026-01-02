@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/constants/app_colors.dart';
 
 class SecondarySidebar extends StatefulWidget {
   final Function(String) onItemTap;
@@ -20,7 +21,8 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
     final isLight = theme.brightness == Brightness.light;
 
     final backgroundColor = isLight
-        ? const Color(0xFFF9F9F9) // Slightly off-white for secondary sidebar
+        ? AppColors
+              .sidebarSecondaryBackgroundLight // Slightly off-white for secondary sidebar
         : theme.resources.solidBackgroundFillColorTertiary;
     final titleColor = theme.resources.textFillColorSecondary;
 
@@ -69,7 +71,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                   icon: FluentIcons.person_24_regular,
                   title: 'Customer',
                   description: 'Add new customer',
-                  color: const Color(0xFF0078D4),
+                  color: AppColors.info,
                 ),
                 const SizedBox(height: 8),
                 _buildActionCard(
@@ -78,7 +80,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                   icon: FluentIcons.arrow_upload_24_regular,
                   title: 'Pick Up',
                   description: 'Schedule pickup',
-                  color: const Color(0xFF107C10),
+                  color: AppColors.success,
                 ),
                 const SizedBox(height: 8),
                 _buildActionCard(
@@ -87,7 +89,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                   icon: FluentIcons.arrow_download_24_regular,
                   title: 'Delivery',
                   description: 'Schedule delivery',
-                  color: const Color(0xFF5C2D91),
+                  color: AppColors.actionPurple,
                 ),
               ],
             ),
@@ -126,9 +128,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
             border: Border.all(
               color: isHovered
                   ? color.withValues(alpha: 0.5)
-                  : (isLight
-                        ? const Color(0xFFE5E5E5)
-                        : const Color(0xFF3E3E42)),
+                  : (isLight ? AppColors.dividerLight : AppColors.dividerDark),
               width: isHovered ? 1.5 : 1,
             ),
             boxShadow: isHovered
