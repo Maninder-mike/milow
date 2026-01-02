@@ -230,101 +230,194 @@ class _OverviewTab extends StatelessWidget {
             ),
 
           // Top Row: Photo + Contact Info + License | Recent Activity | Safety Score
-          IntrinsicHeight(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Left: Photo + Contact + License stacked
-                SizedBox(
-                  width: 400,
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Photo with assign button below
-                      Column(
-                        children: [
-                          _buildPhotoCard(context, isLight),
-                          const SizedBox(height: 12),
-                          // Assign button
-                          SizedBox(
-                            width: 160,
-                            child: FilledButton(
-                              onPressed: () => _showAssignDialog(context),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  const Icon(FluentIcons.add, size: 14),
-                                  const SizedBox(width: 6),
-                                  Text(
-                                    'Assign',
-                                    style: GoogleFonts.inter(
-                                      fontWeight: FontWeight.w600,
+          LayoutBuilder(
+            builder: (context, constraints) {
+              // Responsive: stack vertically on narrow screens
+              final isNarrow = constraints.maxWidth < 900;
+
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Photo + Info cards row
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildPhotoCard(context, isLight),
+                            const SizedBox(height: 12),
+                            SizedBox(
+                              width: 160,
+                              child: FilledButton(
+                                onPressed: () => _showAssignDialog(context),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(FluentIcons.add, size: 14),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Assign',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                ],
+                                  ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            _buildContactCard(context, isLight),
-                            const SizedBox(height: 16),
-                            _buildLicenseCard(context, isLight),
-                            const SizedBox(height: 16),
-                            _buildStatusCard(context, isLight),
                           ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 16),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildContactCard(context, isLight),
+                              const SizedBox(height: 12),
+                              _buildLicenseCard(context, isLight),
+                              const SizedBox(height: 12),
+                              _buildStatusCard(context, isLight),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    // Recent Activity
+                    _buildRecentActivityCard(context, isLight),
+                    const SizedBox(height: 24),
+                    // Safety Score
+                    _buildSafetyScoreCard(context, isLight),
+                  ],
+                );
+              }
+
+              // Wide layout: horizontal row
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left: Photo + Contact + License stacked
+                  SizedBox(
+                    width: 400,
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Photo with assign button below
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            _buildPhotoCard(context, isLight),
+                            const SizedBox(height: 12),
+                            // Assign button
+                            SizedBox(
+                              width: 160,
+                              child: FilledButton(
+                                onPressed: () => _showAssignDialog(context),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    const Icon(FluentIcons.add, size: 14),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Assign',
+                                      style: GoogleFonts.inter(
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(width: 16),
+                        Flexible(
+                          fit: FlexFit.loose,
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              _buildContactCard(context, isLight),
+                              const SizedBox(height: 12),
+                              _buildLicenseCard(context, isLight),
+                              const SizedBox(height: 12),
+                              _buildStatusCard(context, isLight),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-                const SizedBox(width: 24),
+                  const SizedBox(width: 24),
 
-                // Center: Recent Activity
-                Expanded(
-                  flex: 2,
-                  child: _buildRecentActivityCard(context, isLight),
-                ),
-                const SizedBox(width: 24),
+                  // Center: Recent Activity
+                  Expanded(
+                    flex: 2,
+                    child: _buildRecentActivityCard(context, isLight),
+                  ),
+                  const SizedBox(width: 24),
 
-                // Right: Safety Score
-                SizedBox(
-                  width: 220,
-                  child: _buildSafetyScoreCard(context, isLight),
-                ),
-              ],
-            ),
+                  // Right: Safety Score
+                  SizedBox(
+                    width: 220,
+                    child: _buildSafetyScoreCard(context, isLight),
+                  ),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 24),
 
           // Bottom Row: Nationality & Visa + Performance Stats + Earnings
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Left: Quick Actions
-              SizedBox(
-                width: 400,
-                child: Column(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 900;
+
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _buildNationalityVisaCard(context, isLight),
                     const SizedBox(height: 16),
                     _buildQuickActionsRow(context, isLight),
+                    const SizedBox(height: 24),
+                    _buildPerformanceStatsCard(context, isLight),
+                    const SizedBox(height: 24),
+                    _buildEarningsCard(context, isLight),
                   ],
-                ),
-              ),
-              const SizedBox(width: 24),
+                );
+              }
 
-              // Center: Performance Stats
-              Expanded(child: _buildPerformanceStatsCard(context, isLight)),
-              const SizedBox(width: 24),
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Left: Quick Actions
+                  SizedBox(
+                    width: 400,
+                    child: Column(
+                      children: [
+                        _buildNationalityVisaCard(context, isLight),
+                        const SizedBox(height: 16),
+                        _buildQuickActionsRow(context, isLight),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 24),
 
-              // Right: Earnings
-              SizedBox(width: 220, child: _buildEarningsCard(context, isLight)),
-            ],
+                  // Center: Performance Stats
+                  Expanded(child: _buildPerformanceStatsCard(context, isLight)),
+                  const SizedBox(width: 24),
+
+                  // Right: Earnings
+                  SizedBox(
+                    width: 220,
+                    child: _buildEarningsCard(context, isLight),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),

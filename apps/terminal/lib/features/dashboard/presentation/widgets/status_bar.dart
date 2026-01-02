@@ -122,56 +122,69 @@ class _StatusBarState extends ConsumerState<StatusBar>
           _buildDivider(),
 
           // 3. Daily Load Completion
-          Tooltip(
-            message: '35 Completed\n8 Active\n2 Delayed', // TODO: Dynamic data
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Loads:',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: isLight
-                        ? AppColors.textSecondaryLight
-                        : AppColors.textSecondaryDark,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SizedBox(
-                  width: 100,
-                  height: 12,
-                  child: ProgressBar(
-                    value: 78,
-                    backgroundColor: Colors.grey.withValues(alpha: 0.3),
-                    activeColor: Colors.green, // TODO: Orange if delayed > 0
-                  ),
-                ),
-                const SizedBox(width: 8),
-                RichText(
-                  text: TextSpan(
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: isLight
-                          ? AppColors.textPrimaryLight
-                          : AppColors.textPrimaryDark,
+          Builder(
+            builder: (context) {
+              // TODO: Replace with dynamic data from provider
+              const completedLoads = 35;
+              const totalLoads = 45;
+              const delayedCount = 2;
+
+              return Tooltip(
+                message:
+                    '$completedLoads Completed\n${totalLoads - completedLoads - delayedCount} Active\n$delayedCount Delayed',
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Loads:',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isLight
+                            ? AppColors.textSecondaryLight
+                            : AppColors.textSecondaryDark,
+                      ),
                     ),
-                    children: [
-                      const TextSpan(
-                        text: '35/45 ',
-                        style: TextStyle(fontWeight: FontWeight.bold),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 100,
+                      height: 12,
+                      child: ProgressBar(
+                        value: (completedLoads / totalLoads) * 100,
+                        backgroundColor: Colors.grey.withValues(alpha: 0.3),
+                        activeColor: delayedCount > 0
+                            ? AppColors.warning
+                            : AppColors.success,
                       ),
-                      TextSpan(
-                        text: '• 2 Delayed',
+                    ),
+                    const SizedBox(width: 8),
+                    RichText(
+                      text: TextSpan(
                         style: TextStyle(
-                          color: AppColors.warning,
-                          fontWeight: FontWeight.bold,
+                          fontSize: 11,
+                          color: isLight
+                              ? AppColors.textPrimaryLight
+                              : AppColors.textPrimaryDark,
                         ),
+                        children: [
+                          TextSpan(
+                            text: '$completedLoads/$totalLoads ',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          if (delayedCount > 0)
+                            TextSpan(
+                              text: '• $delayedCount Delayed',
+                              style: TextStyle(
+                                color: AppColors.warning,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              );
+            },
           ),
 
           const Spacer(),

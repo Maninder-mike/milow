@@ -435,7 +435,6 @@ class _SettingsPageState extends State<SettingsPage> {
                   icon: Icons.help_outline,
                   title: 'Help Center',
                   iconColor: Theme.of(context).colorScheme.primary,
-                  // TODO: Implement Help Center navigation
                   onTap: () {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(content: Text('Help Center coming soon')),

@@ -112,15 +112,9 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
           Expanded(
             child: usersAsync.when(
               data: (users) {
-                // Filter drivers
-                final allDrivers = users
-                    .where((u) => u.role == UserRole.driver)
-                    .toList();
-                final activeDrivers = allDrivers
-                    .where((u) => u.isVerified)
-                    .toList();
-                final inactiveDrivers = allDrivers
-                    .where((u) => !u.isVerified)
+                // Filter drivers - only show verified/approved drivers
+                final activeDrivers = users
+                    .where((u) => u.role == UserRole.driver && u.isVerified)
                     .toList();
 
                 return ListView(
@@ -138,16 +132,6 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                     ),
                     _buildCollapsibleSection('ON RESET', isLight, []),
                     _buildCollapsibleSection('OFF DUTY', isLight, []),
-                    _buildCollapsibleSection(
-                      'INACTIVE',
-                      isLight,
-                      inactiveDrivers
-                          .map(
-                            (driver) =>
-                                _buildUserItem(driver, isLight, selectedDriver),
-                          )
-                          .toList(),
-                    ),
                   ],
                 );
               },
