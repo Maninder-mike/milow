@@ -1552,15 +1552,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                   }
                                 },
                                 style: FilledButton.styleFrom(
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                  foregroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(20),
-                                  ),
+                                  // Style handled by theme
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 24,
                                     vertical: 8,
@@ -1569,12 +1561,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                 child: Text(
                                   'Save',
                                   style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onPrimary,
-                                      ),
+                                      ?.copyWith(fontWeight: FontWeight.bold),
                                 ),
                               ),
                             ],
@@ -2537,7 +2524,6 @@ class _AddEntryPageState extends State<AddEntryPage>
     VoidCallback? onSuffixTap,
   }) {
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final outlineVariant = Theme.of(context).colorScheme.outlineVariant;
 
     return InputDecoration(
       labelText: label,
@@ -2558,22 +2544,8 @@ class _AddEntryPageState extends State<AddEntryPage>
               onPressed: onSuffixTap,
             )
           : null,
-      filled: true,
-      fillColor: context.tokens.inputBackground,
       isDense: true,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: outlineVariant),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: outlineVariant),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: primaryColor, width: 2),
-      ),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      // Rest handled by inputDecorationTheme in AppTheme
     );
   }
 

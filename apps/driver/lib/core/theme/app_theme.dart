@@ -54,18 +54,73 @@ class AppTheme {
       textTheme: _buildTextTheme(Brightness.light),
       // M3 Expressive: Page transitions with emphasis motion
       pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        },
+        builders: {TargetPlatform.iOS: CupertinoPageTransitionsBuilder()},
+      ),
+      // M3 Expressive: Global Input Decoration
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: DesignTokens.light.inputBackground,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.light.shapeL),
+          borderSide: BorderSide(color: DesignTokens.light.inputBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.light.shapeL),
+          borderSide: BorderSide(color: DesignTokens.light.inputBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.light.shapeL),
+          borderSide: BorderSide(
+            color: DesignTokens.light.inputFocusedBorder,
+            width: 2,
+          ),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: DesignTokens.light.spacingM,
+          vertical: DesignTokens.light.spacingM,
+        ),
       ),
       // M3 Expressive: Elevated buttons with rounded corners
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(DesignTokens.light.shapeButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+      // M3 Expressive: Outlined buttons
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.light.shapeButton),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          side: BorderSide(color: DesignTokens.light.subtleBorderColor),
+          textStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+      // M3 Expressive: Text buttons
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.light.shapeButton),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: 0.1,
+          ),
         ),
       ),
       // M3 Expressive: Cards with subtle elevation
@@ -119,18 +174,73 @@ class AppTheme {
       textTheme: _buildTextTheme(Brightness.dark),
       // M3 Expressive: Page transitions with emphasis motion
       pageTransitionsTheme: const PageTransitionsTheme(
-        builders: {
-          TargetPlatform.android: PredictiveBackPageTransitionsBuilder(),
-          TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-        },
+        builders: {TargetPlatform.iOS: CupertinoPageTransitionsBuilder()},
+      ),
+      // M3 Expressive: Global Input Decoration
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: DesignTokens.dark.inputBackground,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.dark.shapeL),
+          borderSide: BorderSide(color: DesignTokens.dark.inputBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.dark.shapeL),
+          borderSide: BorderSide(color: DesignTokens.dark.inputBorder),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(DesignTokens.dark.shapeL),
+          borderSide: BorderSide(
+            color: DesignTokens.dark.inputFocusedBorder,
+            width: 2,
+          ),
+        ),
+        contentPadding: EdgeInsets.symmetric(
+          horizontal: DesignTokens.dark.spacingM,
+          vertical: DesignTokens.dark.spacingM,
+        ),
       ),
       // M3 Expressive: Elevated buttons with rounded corners
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(20),
+            borderRadius: BorderRadius.circular(DesignTokens.dark.shapeButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          textStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+      // M3 Expressive: Outlined buttons
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.dark.shapeButton),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          side: BorderSide(color: DesignTokens.dark.subtleBorderColor),
+          textStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: 0.1,
+          ),
+        ),
+      ),
+      // M3 Expressive: Text buttons
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(DesignTokens.dark.shapeButton),
+          ),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          textStyle: GoogleFonts.outfit(
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+            letterSpacing: 0.1,
+          ),
         ),
       ),
       // M3 Expressive: Cards with subtle elevation

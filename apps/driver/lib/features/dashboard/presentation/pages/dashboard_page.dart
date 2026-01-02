@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -143,10 +142,8 @@ class _DashboardPageState extends State<DashboardPage>
       ),
     );
 
-    // Pick a random gradient
-    final random = Random();
-    _currentGradientColors =
-        _gradientPalettes[random.nextInt(_gradientPalettes.length)];
+    // Lock to Royal Purple (Index 3) for design consistency
+    _currentGradientColors = _gradientPalettes[3];
 
     _loadBorderWaitTimes(
       forceRefresh: false,
@@ -394,21 +391,46 @@ class _DashboardPageState extends State<DashboardPage>
               if (_activeTrip == null) ...[
                 Text(
                   'Track Your Journey',
-                  style: Theme.of(context).textTheme.displaySmall?.copyWith(
+                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),
                   textAlign: TextAlign.center,
                 ),
-                SizedBox(height: context.tokens.spacingS),
-                Text(
-                  'Log fuel, mileage, and border crossings effortlessly.',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: Colors.white.withValues(alpha: 0.9),
+                SizedBox(height: context.tokens.spacingM),
+                // Hero Search Pill
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.tokens.spacingM,
+                    vertical:
+                        context.tokens.spacingS + 2, // Slight extra padding
                   ),
-                  textAlign: TextAlign.center,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(
+                      context.tokens.shapeFull,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.search,
+                        color: Theme.of(context).colorScheme.primary,
+                        size: 24,
+                      ),
+                      SizedBox(width: context.tokens.spacingS),
+                      Text(
+                        'Where to?',
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-                SizedBox(height: context.tokens.spacingXL),
+                SizedBox(height: context.tokens.spacingL),
               ],
               if (_activeTrip != null)
                 GestureDetector(
@@ -433,28 +455,11 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 )
               else
-                FilledButton(
-                  onPressed: () async {
-                    final result = await context.push('/add-entry');
-                    if (result == true) {
-                      unawaited(_onRefresh());
-                    }
-                  },
-                  style: FilledButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: Colors.black,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.tokens.spacingXL,
-                      vertical: context.tokens.spacingM,
-                    ),
-                  ),
-                  child: Text(
-                    'Start New Entry',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
+                // Start New Entry Button removed in favor of Search Pill flow,
+                // or we keep it below. Design shows Pill.
+                // We'll keep the logic clean: if no trip, show "Track Your Journey" + Pill.
+                // The "Start New Entry" button is likely redundant with "Add Data" below.
+                const SizedBox.shrink(),
               SizedBox(height: context.tokens.spacingL),
             ],
           ),
@@ -537,17 +542,15 @@ class _DashboardPageState extends State<DashboardPage>
     return Column(
       children: [
         SizedBox(
-          width: 80,
-          height: 80,
+          width: 72, // Slightly smaller to look refined
+          height: 72,
           child: Card(
             elevation: 0,
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            color: Colors.black.withValues(alpha: 0.2), // Semi-transparent dark
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(context.tokens.shapeL),
-              side: BorderSide(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
+              // No border for cleaner look on gradient
             ),
             child: InkWell(
               onTap: onTap,
@@ -555,8 +558,8 @@ class _DashboardPageState extends State<DashboardPage>
               child: Center(
                 child: Icon(
                   icon,
-                  size: 32,
-                  color: Theme.of(context).colorScheme.primary,
+                  size: 28,
+                  color: Colors.white, // White icon
                 ),
               ),
             ),
@@ -564,11 +567,12 @@ class _DashboardPageState extends State<DashboardPage>
         ),
         SizedBox(height: context.tokens.spacingS),
         SizedBox(
-          width: 80,
+          width: 72,
           child: Text(
             label,
-            style: Theme.of(context).textTheme.labelMedium?.copyWith(
-              color: Theme.of(context).colorScheme.onSurface,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Colors.white.withValues(alpha: 0.9), // White text
+              fontWeight: FontWeight.w500,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -576,6 +580,68 @@ class _DashboardPageState extends State<DashboardPage>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildLearningCard(
+    BuildContext context,
+    String title,
+    String subtitle,
+    Color color,
+    IconData icon,
+  ) {
+    return Container(
+      width: 200,
+      margin: EdgeInsets.only(right: context.tokens.spacingM),
+      child: Card(
+        elevation: 0,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(context.tokens.shapeL),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: InkWell(
+          onTap: () {
+            // TODO: Navigate to learning content
+          },
+          borderRadius: BorderRadius.circular(context.tokens.shapeL),
+          child: Padding(
+            padding: EdgeInsets.all(context.tokens.spacingM),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: EdgeInsets.all(context.tokens.spacingS),
+                  decoration: BoxDecoration(
+                    color: color.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(context.tokens.shapeM),
+                  ),
+                  child: Icon(icon, color: color, size: 24),
+                ),
+                SizedBox(height: context.tokens.spacingM),
+                Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                SizedBox(height: context.tokens.spacingXS),
+                Text(
+                  subtitle,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1173,53 +1239,40 @@ class _DashboardPageState extends State<DashboardPage>
 
                       const SectionHeader(title: 'Learning Pages'),
                       SizedBox(height: context.tokens.spacingM),
-                      Card(
-                        margin: EdgeInsets.symmetric(horizontal: margin),
-                        elevation: 0,
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.surfaceContainerLow,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(
-                            context.tokens.shapeL,
-                          ),
-                          side: BorderSide(
-                            color: Theme.of(context).colorScheme.outlineVariant,
-                          ),
-                        ),
-                        child: Padding(
-                          padding: EdgeInsets.symmetric(
-                            vertical: context
-                                .tokens
-                                .spacingXL, // 24 -> XL? 24 is L or XL. XL is 32. L is 24?
-                            horizontal: context.tokens.spacingM,
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.school_outlined,
-                                size: 32,
-                                color: Theme.of(context).colorScheme.secondary,
-                              ),
-                              SizedBox(height: context.tokens.spacingM),
-                              Text(
-                                'Learning Resources Coming Soon',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              SizedBox(height: context.tokens.spacingXS),
-                              Text(
-                                'We are working on great educational content for you.',
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                                    ),
-                                textAlign: TextAlign.center,
-                              ),
-                            ],
-                          ),
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        padding: EdgeInsets.symmetric(horizontal: margin),
+                        child: Row(
+                          children: [
+                            _buildLearningCard(
+                              context,
+                              'Using the ELD',
+                              'Master the electronic logging device features.',
+                              Theme.of(context).colorScheme.primary,
+                              Icons.devices_other,
+                            ),
+                            _buildLearningCard(
+                              context,
+                              'Safety First',
+                              'Essential safety protocols for long hauls.',
+                              Theme.of(context).colorScheme.error,
+                              Icons.health_and_safety,
+                            ),
+                            _buildLearningCard(
+                              context,
+                              'Fuel Optimization',
+                              'Tips to save fuel and reduce costs.',
+                              Theme.of(context).colorScheme.tertiary,
+                              Icons.local_gas_station,
+                            ),
+                            _buildLearningCard(
+                              context,
+                              'Border Crossing',
+                              'Guide to smooth border transitions.',
+                              Theme.of(context).colorScheme.secondary,
+                              Icons.flag_circle,
+                            ),
+                          ],
                         ),
                       ),
                       // Dynamic bottom padding for system navigation bar

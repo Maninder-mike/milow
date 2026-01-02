@@ -339,12 +339,7 @@ class _LoginPageState extends State<LoginPage>
                     height: 56,
                     child: FilledButton(
                       onPressed: _isLoading ? null : _signIn,
-                      style: FilledButton.styleFrom(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(tokens.shapeL),
-                        ),
-                        backgroundColor: colorScheme.primary,
-                      ),
+                      // Style handled by AppTheme
                       child: _isLoading
                           ? SizedBox(
                               width: 24,
@@ -502,12 +497,10 @@ class _LoginPageState extends State<LoginPage>
       height: 56,
       child: OutlinedButton(
         onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+
         style: OutlinedButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(tokens.shapeL),
-          ),
-          side: BorderSide(color: colorScheme.outlineVariant),
           backgroundColor: tokens.surfaceContainer,
+          side: BorderSide(color: colorScheme.outlineVariant),
         ),
         child: _isGoogleLoading
             ? Center(
@@ -595,24 +588,7 @@ class _LoginPageState extends State<LoginPage>
               onPressed: onSuffixTap,
             )
           : null,
-      filled: true,
-      fillColor: tokens.inputBackground,
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(tokens.shapeL),
-        borderSide: BorderSide(color: tokens.inputBorder),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(tokens.shapeL),
-        borderSide: BorderSide(color: tokens.inputBorder),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(tokens.shapeL),
-        borderSide: BorderSide(color: colorScheme.primary, width: 2),
-      ),
-      contentPadding: EdgeInsets.symmetric(
-        horizontal: tokens.spacingM,
-        vertical: tokens.spacingM,
-      ),
+      // Rest handled by inputDecorationTheme in AppTheme
     );
   }
 }

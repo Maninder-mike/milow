@@ -32,6 +32,9 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
   /// Extra large corners (e.g., hero cards)
   final double shapeXL;
 
+  /// Button corner radius (20px)
+  final double shapeButton;
+
   /// Full/circular corners
   final double shapeFull;
 
@@ -138,6 +141,7 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     required this.shapeM,
     required this.shapeL,
     required this.shapeXL,
+    required this.shapeButton,
     required this.shapeFull,
     // M3 Elevation Levels
     required this.elevationLevel0,
@@ -181,6 +185,7 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     shapeM: 12, // Medium (cards, dialogs)
     shapeL: 16, // Large (FAB, nav drawer)
     shapeXL: 28, // Extra large (dialogs, hero cards)
+    shapeButton: 20, // Standard button radius
     shapeFull: 999, // Circular/pill
     // M3 Elevation Levels
     elevationLevel0: 0, // Surface
@@ -228,6 +233,7 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     shapeM: 12, // Medium (cards, dialogs)
     shapeL: 16, // Large (FAB, nav drawer)
     shapeXL: 28, // Extra large (dialogs, hero cards)
+    shapeButton: 20, // Standard button radius
     shapeFull: 999, // Circular/pill
     // M3 Elevation Levels
     elevationLevel0: 0, // Surface
@@ -242,9 +248,9 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     textTertiary: Color(0xFF9CA3AF),
     // Surfaces
     surfaceContainer: Color(0xFF1E1E1E),
-    surfaceContainerHigh: Color(0xFF2A2A2A),
+    surfaceContainerHigh: Color(0xFF2C2C2C), // Slightly lighter for contrast
     scaffoldAltBackground: Color(0xFF121212),
-    subtleBorderColor: Color(0xFF3A3A3A),
+    subtleBorderColor: Color(0xFF49454F), // Increased visibility
     sectionLabelColor: Color(0xFF9CA3AF),
     // Semantic
     success: Color(0xFF10B981),
@@ -256,8 +262,8 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     info: Color(0xFF3B82F6),
     infoContainer: Color(0xFF1E3A5F),
     // Inputs
-    inputBackground: Color(0xFF2A2A2A),
-    inputBorder: Color(0xFF3A3A3A),
+    inputBackground: Color(0xFF2C2C2C), // Matches surfaceContainerHigh
+    inputBorder: Color(0xFF49454F), // Visible border
     inputFocusedBorder: Color(0xFF64B5F6),
     disabled: Color(0xFF3A3A3A),
   );
@@ -274,6 +280,7 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     double? shapeM,
     double? shapeL,
     double? shapeXL,
+    double? shapeButton,
     double? shapeFull,
     double? elevationLevel0,
     double? elevationLevel1,
@@ -313,6 +320,7 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
       shapeM: shapeM ?? this.shapeM,
       shapeL: shapeL ?? this.shapeL,
       shapeXL: shapeXL ?? this.shapeXL,
+      shapeButton: shapeButton ?? this.shapeButton,
       shapeFull: shapeFull ?? this.shapeFull,
       elevationLevel0: elevationLevel0 ?? this.elevationLevel0,
       elevationLevel1: elevationLevel1 ?? this.elevationLevel1,
@@ -361,6 +369,7 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
       shapeM: shapeM,
       shapeL: shapeL,
       shapeXL: shapeXL,
+      shapeButton: shapeButton,
       shapeFull: shapeFull,
       elevationLevel0: elevationLevel0,
       elevationLevel1: elevationLevel1,
