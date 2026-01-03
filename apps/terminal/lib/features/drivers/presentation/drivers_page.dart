@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import 'package:url_launcher/url_launcher.dart';
+
 import 'providers/driver_selection_provider.dart';
 
 class DriversPage extends ConsumerStatefulWidget {
@@ -289,8 +291,8 @@ class _OverviewTab extends StatelessWidget {
                     // Recent Activity
                     _buildRecentActivityCard(context, isLight),
                     const SizedBox(height: 24),
+
                     // Safety Score
-                    _buildSafetyScoreCard(context, isLight),
                   ],
                 );
               }
@@ -354,15 +356,8 @@ class _OverviewTab extends StatelessWidget {
 
                   // Center: Recent Activity
                   Expanded(
-                    flex: 2,
+                    flex: 3,
                     child: _buildRecentActivityCard(context, isLight),
-                  ),
-                  const SizedBox(width: 24),
-
-                  // Right: Safety Score
-                  SizedBox(
-                    width: 220,
-                    child: _buildSafetyScoreCard(context, isLight),
                   ),
                 ],
               );
@@ -370,7 +365,7 @@ class _OverviewTab extends StatelessWidget {
           ),
           const SizedBox(height: 24),
 
-          // Bottom Row: Nationality & Visa + Performance Stats + Earnings
+          // Bottom Row: Nationality & Visa + Quick Actions + Driver Stats
           LayoutBuilder(
             builder: (context, constraints) {
               final isNarrow = constraints.maxWidth < 900;
@@ -383,9 +378,7 @@ class _OverviewTab extends StatelessWidget {
                     const SizedBox(height: 16),
                     _buildQuickActionsRow(context, isLight),
                     const SizedBox(height: 24),
-                    _buildPerformanceStatsCard(context, isLight),
-                    const SizedBox(height: 24),
-                    _buildEarningsCard(context, isLight),
+                    _buildDriverStats(context, isLight),
                   ],
                 );
               }
@@ -393,7 +386,7 @@ class _OverviewTab extends StatelessWidget {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left: Quick Actions
+                  // Left: Quick Actions & Nationality
                   SizedBox(
                     width: 400,
                     child: Column(
@@ -406,15 +399,8 @@ class _OverviewTab extends StatelessWidget {
                   ),
                   const SizedBox(width: 24),
 
-                  // Center: Performance Stats
-                  Expanded(child: _buildPerformanceStatsCard(context, isLight)),
-                  const SizedBox(width: 24),
-
-                  // Right: Earnings
-                  SizedBox(
-                    width: 220,
-                    child: _buildEarningsCard(context, isLight),
-                  ),
+                  // Center/Right: Driver Stats
+                  Expanded(child: _buildDriverStats(context, isLight)),
                 ],
               );
             },
@@ -534,15 +520,11 @@ class _OverviewTab extends StatelessWidget {
   }
 
   Widget _buildLicenseCard(BuildContext context, bool isLight) {
-    // TODO: Implement license fields in Supabase profiles table:
-    // - cdl_class (text)
-    // - license_number (text)
-    // - license_expiry (date)
-    // Then fetch from driver profile and display real data
-    final licenseExpiry = DateTime.now().add(
-      const Duration(days: 365),
-    ); // Placeholder - replace with driver.licenseExpiry
-    final isExpiringSoon = licenseExpiry.difference(DateTime.now()).inDays < 30;
+    // Implement license fields in Supabase profiles table
+    final licenseExpiry = driver.licenseExpiryDate;
+    final isExpiringSoon =
+        licenseExpiry != null &&
+        licenseExpiry.difference(DateTime.now()).inDays < 30;
 
     return _buildInfoCard(
       context: context,
@@ -562,18 +544,26 @@ class _OverviewTab extends StatelessWidget {
             )
           : null,
       children: [
-        _buildInfoRow('CDL Class', 'Class A'), // TODO: Real data
+        _buildInfoRow('CDL Class', driver.licenseType ?? 'Not set'),
         const SizedBox(height: 8),
-        _buildInfoRow('Exp', DateFormat('MM/yyyy').format(licenseExpiry)),
+        _buildInfoRow(
+          'License #',
+          driver.licenseNumber ?? 'Not set',
+        ), // Added License Number
+        const SizedBox(height: 8),
+        _buildInfoRow(
+          'Exp',
+          licenseExpiry != null
+              ? DateFormat('MM/yyyy').format(licenseExpiry)
+              : 'Not set',
+        ),
       ],
     );
   }
 
   Widget _buildNationalityVisaCard(BuildContext context, bool isLight) {
-    // TODO: Add nationality and visa data from driver profile when available
-    final visaExpiry = DateTime.now().add(
-      const Duration(days: 45),
-    ); // Placeholder
+    // Note: Visa expiry not yet in profile, placeholder kept for layout or needs new column
+    final visaExpiry = DateTime.now().add(const Duration(days: 45));
     final isExpiringSoon = visaExpiry.difference(DateTime.now()).inDays < 30;
 
     return _buildInfoCard(
@@ -594,7 +584,7 @@ class _OverviewTab extends StatelessWidget {
             )
           : null,
       children: [
-        _buildInfoRow('Nationality', 'Canadian'), // TODO: Real data
+        _buildInfoRow('Nationality', driver.citizenship ?? 'Not set'),
         const SizedBox(height: 8),
         _buildInfoRow('Visa Exp', DateFormat('MM/dd/yyyy').format(visaExpiry)),
       ],
@@ -648,7 +638,7 @@ class _OverviewTab extends StatelessWidget {
               subtitle: const Text('Select an available trip'),
               onPressed: () {
                 Navigator.pop(context);
-                // TODO: Show trip selection dialog
+                _showTripSelectionDialog(context);
               },
             ),
             ListTile(
@@ -657,7 +647,7 @@ class _OverviewTab extends StatelessWidget {
               subtitle: const Text('Select an available truck'),
               onPressed: () {
                 Navigator.pop(context);
-                // TODO: Show truck selection dialog
+                _showTruckSelectionDialog(context);
               },
             ),
           ],
@@ -672,13 +662,192 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
+  void _showTripSelectionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Select Trip'),
+        content: SizedBox(
+          height: 300,
+          width: 400,
+          child: FutureBuilder(
+            future: Supabase.instance.client
+                .from('trips')
+                .select()
+                .filter('user_id', 'is', null)
+                .order('created_at', ascending: false)
+                .limit(20),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: ProgressRing());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              final trips = snapshot.data as List<dynamic>? ?? [];
+              if (trips.isEmpty) {
+                return const Center(child: Text('No unassigned trips found.'));
+              }
+              return ListView.builder(
+                itemCount: trips.length,
+                itemBuilder: (context, index) {
+                  final trip = trips[index];
+                  return ListTile(
+                    title: Text('Trip #${trip['trip_number'] ?? 'N/A'}'),
+                    subtitle: Text(
+                      '${trip['trip_date'] != null ? DateFormat('MM/dd/yyyy').format(DateTime.parse(trip['trip_date'])) : ''} • ${trip['truck_number'] ?? 'No Truck'}',
+                    ),
+                    trailing: Button(
+                      child: const Text('Assign'),
+                      onPressed: () async {
+                        try {
+                          await Supabase.instance.client
+                              .from('trips')
+                              .update({'user_id': driver.id})
+                              .eq('id', trip['id']);
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            displayInfoBar(
+                              context,
+                              builder: (context, close) => InfoBar(
+                                title: const Text('Success'),
+                                content: const Text('Trip assigned to driver'),
+                                severity: InfoBarSeverity.success,
+                                onClose: close,
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            displayInfoBar(
+                              context,
+                              builder: (context, close) => InfoBar(
+                                title: const Text('Error'),
+                                content: Text(e.toString()),
+                                severity: InfoBarSeverity.error,
+                                onClose: close,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          Button(
+            child: const Text('Close'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showTruckSelectionDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Select Truck'),
+        content: SizedBox(
+          height: 300,
+          width: 400,
+          child: FutureBuilder(
+            future: Supabase.instance.client
+                .from('vehicles')
+                .select()
+                .eq('vehicle_type', 'Truck')
+                .limit(20),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: ProgressRing());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              final vehicles = snapshot.data as List<dynamic>? ?? [];
+              if (vehicles.isEmpty) {
+                return const Center(child: Text('No trucks found.'));
+              }
+              return ListView.builder(
+                itemCount: vehicles.length,
+                itemBuilder: (context, index) {
+                  final truck = vehicles[index];
+                  return ListTile(
+                    title: Text(
+                      '${truck['make'] ?? ''} ${truck['model'] ?? ''}',
+                    ),
+                    subtitle: Text(
+                      'Unit: ${truck['vehicle_number']} • ${truck['status'] ?? 'Unknown'}',
+                    ),
+                    trailing: Button(
+                      child: const Text('Assign'),
+                      onPressed: () {
+                        Navigator.pop(context);
+                        // Mock assignment
+                        displayInfoBar(
+                          context,
+                          builder: (context, close) => InfoBar(
+                            title: const Text('Assigned'),
+                            content: Text(
+                              'Truck ${truck['vehicle_number']} assigned (Simulated)',
+                            ),
+                            severity: InfoBarSeverity.info,
+                            onClose: close,
+                          ),
+                        );
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          Button(
+            child: const Text('Close'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickActionsRow(BuildContext context, bool isLight) {
     return Row(
       children: [
         Expanded(
           child: FilledButton(
-            onPressed: () {
-              // TODO: Implement call functionality
+            onPressed: () async {
+              final cleanPhone = driver.phone?.replaceAll(
+                RegExp(r'[^\d+]'),
+                '',
+              );
+              if (cleanPhone != null && cleanPhone.isNotEmpty) {
+                final uri = Uri.parse('tel:$cleanPhone');
+                if (await canLaunchUrl(uri)) {
+                  await launchUrl(uri);
+                } else {
+                  if (context.mounted) {
+                    displayInfoBar(
+                      context,
+                      builder: (context, close) {
+                        return InfoBar(
+                          title: const Text('Could not launch dialer'),
+                          content: Text('Phone: ${driver.phone}'),
+                          severity: InfoBarSeverity.warning,
+                          onClose: close,
+                        );
+                      },
+                    );
+                  }
+                }
+              }
             },
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -710,48 +879,105 @@ class _OverviewTab extends StatelessWidget {
 
   void _showSendMessageDialog(BuildContext context) {
     final messageController = TextEditingController();
+    bool isSending = false;
 
     showDialog(
       context: context,
-      builder: (context) => ContentDialog(
-        title: Text('Send Message to ${driver.fullName ?? 'Driver'}'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextBox(
-              controller: messageController,
-              placeholder: 'Type your message...',
-              maxLines: 5,
-              minLines: 3,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          return ContentDialog(
+            title: Text('Send Message to ${driver.fullName ?? 'Driver'}'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextBox(
+                  controller: messageController,
+                  placeholder: 'Type your message...',
+                  maxLines: 5,
+                  minLines: 3,
+                ),
+              ],
             ),
-          ],
-        ),
-        actions: [
-          Button(
-            child: const Text('Cancel'),
-            onPressed: () => Navigator.pop(context),
-          ),
-          FilledButton(
-            child: const Text('Send'),
-            onPressed: () async {
-              if (messageController.text.trim().isNotEmpty) {
-                // Send message via Supabase
-                await Supabase.instance.client.from('messages').insert({
-                  'receiver_id': driver.id,
-                  'content': messageController.text.trim(),
-                });
-                if (context.mounted) {
-                  Navigator.pop(context);
-                }
-              }
-            },
-          ),
-        ],
+            actions: [
+              Button(
+                onPressed: isSending ? null : () => Navigator.pop(context),
+                child: const Text('Cancel'),
+              ),
+              FilledButton(
+                onPressed: isSending
+                    ? null
+                    : () async {
+                        final content = messageController.text.trim();
+                        if (content.isEmpty) return;
+
+                        setState(() => isSending = true);
+
+                        try {
+                          final currentUser =
+                              Supabase.instance.client.auth.currentUser;
+                          if (currentUser == null) {
+                            throw Exception(
+                              'You must be logged in to send messages.',
+                            );
+                          }
+
+                          await Supabase.instance.client
+                              .from('messages')
+                              .insert({
+                                'receiver_id': driver.id,
+                                'sender_id': currentUser.id,
+                                'content': content,
+                              });
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+                            displayInfoBar(
+                              context,
+                              builder: (context, close) {
+                                return InfoBar(
+                                  title: const Text('Message Sent'),
+                                  content: const Text(
+                                    'The driver will receive your message shortly.',
+                                  ),
+                                  severity: InfoBarSeverity.success,
+                                  onClose: close,
+                                );
+                              },
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            displayInfoBar(
+                              context,
+                              builder: (context, close) {
+                                return InfoBar(
+                                  title: const Text('Error Sending Message'),
+                                  content: Text(e.toString()),
+                                  severity: InfoBarSeverity.error,
+                                  onClose: close,
+                                );
+                              },
+                            );
+                          }
+                        } finally {
+                          if (context.mounted) {
+                            setState(() => isSending = false);
+                          }
+                        }
+                      },
+                child: isSending
+                    ? const ProgressRing(strokeWidth: 2.5)
+                    : const Text('Send'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }
 
   Widget _buildRecentActivityCard(BuildContext context, bool isLight) {
+    final theme = FluentTheme.of(context);
     return Container(
       height: 400,
       padding: const EdgeInsets.all(16),
@@ -798,19 +1024,101 @@ class _OverviewTab extends StatelessWidget {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: ProgressRing());
                 }
-                final data = snapshot.data as List<dynamic>? ?? [];
-                if (data.isEmpty) {
-                  return const Center(child: Text('No recent activity'));
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text(
+                      'Error loading activity',
+                      style: TextStyle(color: Colors.red),
+                    ),
+                  );
                 }
-                return ListView.separated(
-                  itemCount: data.length,
-                  separatorBuilder: (context, index) => const Divider(),
+
+                final trips = snapshot.data as List<dynamic>? ?? [];
+                if (trips.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          FluentIcons.timeline,
+                          size: 32,
+                          color: Colors.grey.withValues(alpha: 0.5),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'No recent activity',
+                          style: TextStyle(
+                            color: Colors.grey.withValues(alpha: 0.8),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  itemCount: trips.length,
                   itemBuilder: (context, index) {
-                    final trip = data[index];
-                    return _buildActivityItem(
-                      'Trip #${trip['trip_number'] ?? index + 1}',
-                      'Completed',
-                      _timeAgo(DateTime.tryParse(trip['trip_date'] ?? '')),
+                    final trip = trips[index];
+                    final date = DateTime.parse(trip['trip_date']);
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 12),
+                      child: Row(
+                        children: [
+                          Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: theme.accentColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              FluentIcons.delivery_truck,
+                              size: 16,
+                              color: theme.accentColor,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'Trip #${trip['trip_number']}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  DateFormat('MMM d, h:mm a').format(date),
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.green.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Completed',
+                              style: TextStyle(
+                                fontSize: 10,
+                                color: Colors.green,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     );
                   },
                 );
@@ -822,244 +1130,123 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildActivityItem(String title, String status, String timeAgo) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '$title: $status',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                Text(
-                  timeAgo,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[100]),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            icon: const Icon(FluentIcons.more, size: 14),
-            onPressed: () {},
-          ),
-        ],
-      ),
-    );
-  }
+  Widget _buildDriverStats(BuildContext context, bool isLight) {
+    final theme = FluentTheme.of(context);
+    final cardColor = isLight ? Colors.white : const Color(0xFF2D2D2D);
+    final borderColor = isLight ? const Color(0xFFE0E0E0) : Colors.transparent;
+    final textColor = isLight ? Colors.black : Colors.white;
 
-  String _timeAgo(DateTime? date) {
-    if (date == null) return '-';
-    final diff = DateTime.now().difference(date);
-    if (diff.inDays > 0) return '${diff.inDays}d ago';
-    if (diff.inHours > 0) return '${diff.inHours}h ago';
-    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
-    return 'just now';
-  }
+    return FutureBuilder(
+      future: Supabase.instance.client
+          .from('trips')
+          .select('total_distance')
+          .eq('user_id', driver.id),
+      builder: (context, snapshot) {
+        int tripsCompleted = 0;
+        double totalMiles = 0;
 
-  Widget _buildSafetyScoreCard(BuildContext context, bool isLight) {
-    // TODO: Implement real safety score data later
-    const score = 92;
-    final scoreColor = score >= 80
-        ? Colors.green
-        : (score >= 60 ? Colors.orange : Colors.red);
+        if (snapshot.hasData) {
+          final data = snapshot.data as List<dynamic>;
+          tripsCompleted = data.length;
+          for (var trip in data) {
+            totalMiles += (trip['total_distance'] as num?)?.toDouble() ?? 0;
+          }
+        }
 
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Safety Score',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              IconButton(
-                icon: const Icon(FluentIcons.more, size: 16),
-                onPressed: () {},
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: borderColor),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          // Circular Gauge (Simple representation)
-          SizedBox(
-            width: 120,
-            height: 120,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 100,
-                  height: 100,
-                  child: ProgressRing(
-                    value: score.toDouble(),
-                    strokeWidth: 10,
-                    backgroundColor: scoreColor.withValues(alpha: 0.2),
-                    activeColor: scoreColor,
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$score',
-                      style: GoogleFonts.outfit(
-                        fontSize: 28,
-                        fontWeight: FontWeight.bold,
-                        color: scoreColor,
-                      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(FluentIcons.chart, color: theme.accentColor, size: 20),
+                  const SizedBox(width: 8),
+                  Text(
+                    'Performance & Earnings',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: textColor,
                     ),
-                    Text(
-                      '/100',
-                      style: TextStyle(fontSize: 12, color: Colors.grey[100]),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Green',
-            style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: scoreColor,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPerformanceStatsCard(BuildContext context, bool isLight) {
-    // TODO: Implement real performance data later
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Performance Stats',
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildStatRow('Miles Driven This Month', '8,450'),
-          const Divider(),
-          _buildStatRow('On-Time Delivery', '98%'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(fontSize: 11, color: Colors.grey[100]),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: GoogleFonts.outfit(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
                   ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              Row(
+                children: [
+                  _buildStatItem(
+                    'Trips Completed',
+                    tripsCompleted.toString(),
+                    FluentIcons.delivery_truck,
+                    textColor,
+                    Colors.blue,
+                  ),
+                  const SizedBox(width: 24),
+                  _buildStatItem(
+                    'Total Miles',
+                    '${totalMiles.toStringAsFixed(0)} mi',
+                    FluentIcons.map_layers,
+                    textColor,
+                    Colors.orange,
+                  ),
+                ],
+              ),
+            ],
           ),
-          IconButton(
-            icon: const Icon(FluentIcons.more, size: 14),
-            onPressed: () {},
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 
-  Widget _buildEarningsCard(BuildContext context, bool isLight) {
-    // TODO: Implement real earnings data later
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
+  Widget _buildStatItem(
+    String label,
+    String value,
+    IconData icon,
+    Color textColor,
+    Color iconColor,
+  ) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: iconColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(8),
           ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Earnings Summary',
-            style: GoogleFonts.outfit(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+          child: Icon(icon, size: 16, color: iconColor),
+        ),
+        const SizedBox(width: 12),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, color: Colors.grey),
             ),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            '\$12,450',
-            style: GoogleFonts.outfit(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: textColor,
+              ),
             ),
-          ),
-          Text(
-            'This Month',
-            style: TextStyle(fontSize: 11, color: Colors.grey[100]),
-          ),
-        ],
-      ),
+          ],
+        ),
+      ],
     );
   }
 

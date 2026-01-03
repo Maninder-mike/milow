@@ -1,11 +1,17 @@
+import 'dart:convert';
+
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/material.dart' show MaterialApp, Material;
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:terminal/features/dashboard/presentation/widgets/fleet_sidebar.dart';
 import 'package:terminal/features/dashboard/services/vehicle_service.dart';
 
 void main() {
+  final binding = TestWidgetsFlutterBinding.ensureInitialized();
+
   group('FleetSidebar Widget Test', () {
     final testVehicles = [
       {
@@ -26,17 +32,67 @@ void main() {
       },
     ];
 
-    testWidgets('renders sidebar with header and vehicle list', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            vehiclesListProvider.overrideWith(
-              (ref) => Future.value(testVehicles),
+    setUp(() {
+      imageCache.clear();
+      imageCache.clearLiveImages();
+
+      binding.defaultBinaryMessenger.setMockMessageHandler('flutter/assets', (
+        ByteData? message,
+      ) async {
+        if (message == null) return null;
+        final String key = utf8.decode(message.buffer.asUint8List());
+
+        if (key == 'AssetManifest.bin') {
+          final Map<String, List<Object>> manifest = {
+            'packages/fluent_ui/assets/AcrylicNoise.png': [
+              {'asset': 'packages/fluent_ui/assets/AcrylicNoise.png'},
+            ],
+          };
+          return const StandardMessageCodec().encodeMessage(manifest);
+        }
+
+        if (key == 'FontManifest.json') {
+          return ByteData.view(utf8.encode('[]').buffer);
+        }
+
+        if (key.contains('AcrylicNoise.png')) {
+          // Return a valid 1x1 transparent PNG
+          const base64Png =
+              'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+          return ByteData.view(base64Decode(base64Png).buffer);
+        }
+        return null;
+      });
+    });
+
+    tearDown(() {
+      binding.defaultBinaryMessenger.setMockMessageHandler(
+        'flutter/assets',
+        null,
+      );
+    });
+
+    Widget buildTestWidget(Widget child) {
+      return ProviderScope(
+        overrides: [
+          vehiclesListProvider.overrideWith(
+            (ref) => Future.value(testVehicles),
+          ),
+        ],
+        child: MaterialApp(
+          home: Directionality(
+            textDirection: TextDirection.ltr,
+            child: FluentTheme(
+              data: FluentThemeData(),
+              child: Material(child: child),
             ),
-          ],
-          child: const FluentApp(home: ScaffoldPage(content: FleetSidebar())),
+          ),
         ),
       );
+    }
+
+    testWidgets('renders sidebar with header and vehicle list', (tester) async {
+      await tester.pumpWidget(buildTestWidget(const FleetSidebar()));
 
       // Wait for Future to complete
       await tester.pumpAndSettle();
@@ -45,72 +101,48 @@ void main() {
       expect(find.text('FLEET'), findsOneWidget);
       expect(find.byIcon(FluentIcons.add_24_regular), findsOneWidget);
 
-      // Verify Filter Chips
-      expect(find.text('All'), findsOneWidget);
-      // 'Active' is in the chip list AND in the vehicle list item status badge
-      expect(find.text('Active'), findsAtLeastNWidgets(1));
+      // Verify Collapsible Section Headers (All sections are rendered)
+      expect(find.text('ACTIVE'), findsOneWidget);
+      expect(find.text('MAINTENANCE'), findsOneWidget);
+      expect(find.text('IDLE'), findsOneWidget);
+      expect(find.text('BREAKDOWN'), findsOneWidget);
 
-      // Verify Vehicle List Items
+      // Verify Vehicle List Items (ACTIVE and MAINTENANCE are expanded by default)
       expect(find.text('101'), findsOneWidget);
       expect(find.text('102'), findsOneWidget);
       expect(find.text('TX-123'), findsOneWidget);
 
-      // Verify Status Badges
-      expect(
-        find.text('Active'),
-        findsAtLeastNWidgets(1),
-      ); // One in filter, one in badge
-      expect(find.text('Maintenance'), findsAtLeastNWidgets(1));
-
-      // Verify Alert Icon for vehicle with issue
-      expect(find.text('Alert'), findsOneWidget);
+      // Verify ALERT badge (Uppercase)
+      expect(find.text('ALERT'), findsOneWidget);
     });
 
-    testWidgets('filters vehicles when chip is clicked', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            vehiclesListProvider.overrideWith(
-              (ref) => Future.value(testVehicles),
-            ),
-          ],
-          child: const FluentApp(home: ScaffoldPage(content: FleetSidebar())),
-        ),
-      );
+    testWidgets('toggles section visibility', (tester) async {
+      await tester.pumpWidget(buildTestWidget(const FleetSidebar()));
 
       await tester.pumpAndSettle();
 
-      // Initially shows both
+      // Initially shows both (Default expanded: ACTIVE, MAINTENANCE)
       expect(find.text('101'), findsOneWidget);
       expect(find.text('102'), findsOneWidget);
 
-      // Tap 'Active' filter
-      // Use .first because 'Active' matches both the chip and the badge in the list
-      await tester.tap(find.text('Active').first);
+      // Tap 'MAINTENANCE' header to collapse it
+      await tester.tap(find.text('MAINTENANCE'));
       await tester.pumpAndSettle();
 
       // Should show 101 (Active) but not 102 (Maintenance)
-      expect(
-        find.descendant(of: find.byType(ListView), matching: find.text('101')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: find.byType(ListView), matching: find.text('102')),
-        findsNothing,
-      );
+      expect(find.text('101'), findsOneWidget);
+      expect(find.text('102'), findsNothing);
+
+      // Tap 'MAINTENANCE' header to expand it again
+      await tester.tap(find.text('MAINTENANCE'));
+      await tester.pumpAndSettle();
+
+      // Should show 102 again
+      expect(find.text('102'), findsOneWidget);
     });
 
     testWidgets('searches vehicles by number', (tester) async {
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            vehiclesListProvider.overrideWith(
-              (ref) => Future.value(testVehicles),
-            ),
-          ],
-          child: const FluentApp(home: ScaffoldPage(content: FleetSidebar())),
-        ),
-      );
+      await tester.pumpWidget(buildTestWidget(const FleetSidebar()));
 
       await tester.pumpAndSettle();
 
@@ -121,11 +153,6 @@ void main() {
       // Should show 102 (in list)
       // We expect 2 matches: one in search bar input, one in list item
       expect(find.text('102'), findsNWidgets(2));
-      // Verifying specifically in the list
-      expect(
-        find.descendant(of: find.byType(ListView), matching: find.text('102')),
-        findsOneWidget,
-      );
 
       // Should not show 101
       expect(find.text('101'), findsNothing);

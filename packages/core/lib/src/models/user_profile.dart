@@ -39,6 +39,11 @@ class UserProfile {
   final bool isVerified;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? licenseNumber;
+  final DateTime? licenseExpiryDate;
+  final String? licenseType;
+  final String? citizenship;
+  final String? fastId;
 
   const UserProfile({
     required this.id,
@@ -50,6 +55,11 @@ class UserProfile {
     this.isVerified = false,
     this.createdAt,
     this.updatedAt,
+    this.licenseNumber,
+    this.licenseExpiryDate,
+    this.licenseType,
+    this.citizenship,
+    this.fastId,
   });
 
   /// Create UserProfile from JSON (Supabase response)
@@ -68,6 +78,13 @@ class UserProfile {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
+      licenseNumber: json['license_number'] as String?,
+      licenseExpiryDate: json['license_expiry_date'] != null
+          ? DateTime.tryParse(json['license_expiry_date'] as String)
+          : null,
+      licenseType: json['license_type'] as String?,
+      citizenship: json['citizenship'] as String?,
+      fastId: json['fast_id'] as String?,
     );
   }
 
@@ -81,6 +98,11 @@ class UserProfile {
       'avatar_url': avatarUrl,
       'role': role.name, // Store as string in DB
       'is_verified': isVerified,
+      'license_number': licenseNumber,
+      'license_expiry_date': licenseExpiryDate?.toIso8601String(),
+      'license_type': licenseType,
+      'citizenship': citizenship,
+      'fast_id': fastId,
     };
   }
 
@@ -102,6 +124,11 @@ class UserProfile {
     bool? isVerified,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? licenseNumber,
+    DateTime? licenseExpiryDate,
+    String? licenseType,
+    String? citizenship,
+    String? fastId,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -113,6 +140,11 @@ class UserProfile {
       isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      licenseNumber: licenseNumber ?? this.licenseNumber,
+      licenseExpiryDate: licenseExpiryDate ?? this.licenseExpiryDate,
+      licenseType: licenseType ?? this.licenseType,
+      citizenship: citizenship ?? this.citizenship,
+      fastId: fastId ?? this.fastId,
     );
   }
 }

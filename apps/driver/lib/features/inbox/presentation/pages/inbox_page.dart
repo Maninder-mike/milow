@@ -393,8 +393,8 @@ class _InboxPageState extends State<InboxPage> {
 
               // Fallback if data missing or standard names
               if (!isMe) {
-                senderName ??= 'Unknown';
-                senderRole ??= 'Dispatcher'; // Default fallback
+                senderName ??= 'Admin';
+                senderRole ??= 'Admin'; // Default fallback
               }
 
               return GestureDetector(
@@ -446,7 +446,7 @@ class _InboxPageState extends State<InboxPage> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Text(
-                                    senderRole?.toUpperCase() ?? 'DISPATCH',
+                                    senderRole?.toUpperCase() ?? 'ADMIN',
                                     style: Theme.of(context)
                                         .textTheme
                                         .labelSmall
