@@ -44,8 +44,8 @@ jobs:
           echo "version_number=$VERSION" >> $GITHUB_OUTPUT
           
           # Auto-incrementing version code with offset to prevent collision
-          # Offset 20 ensures we're above current manual versions (pubspec has 7, play store has 4)
-          VERSION_CODE=$(( $GITHUB_RUN_NUMBER + 20 ))
+          # Offset 50 ensures we're safely above previous versions
+          VERSION_CODE=$(( $GITHUB_RUN_NUMBER + 50 ))
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           
           echo "📦 Building version: v$VERSION+$VERSION_CODE"

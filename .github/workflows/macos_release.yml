@@ -1,0 +1,49 @@
+name: Build and Release macOS App
+
+on:
+  push:
+    branches:
+      - beta
+
+jobs:
+  build_macos:
+    name: Build macOS App
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./apps/terminal
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Create .env
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" >> .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Build macOS App
+        run: flutter build macos --release
+
+      - name: Compress App Bundle
+        run: |
+          cd build/macos/Build/Products/Release
+          zip -r "MilowTerminal-macos-beta.zip" "Milow Terminal.app"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          name: Milow Terminal Beta
+          tag_name: beta
+          files: apps/terminal/build/macos/Build/Products/Release/MilowTerminal-macos-beta.zip
+          generate_release_notes: true
+          draft: false
+          prerelease: true
