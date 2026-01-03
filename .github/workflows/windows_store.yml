@@ -100,12 +100,29 @@ jobs:
           cat RELEASE_NOTES.md
 
       # 📦 Publish to Store
+      - name: Install Microsoft Store CLI
+        run: |
+          dotnet tool install -g MSStore.CLI
+
       - name: Publish to Microsoft Store
+        shell: pwsh
+        run: |
+          msstore reconfigure `
+            --tenantId $env:WINDOWS_STORE_TENANT_ID `
+            --clientId $env:WINDOWS_STORE_CLIENT_ID `
+            --clientSecret $env:WINDOWS_STORE_CLIENT_SECRET `
+            --sellerId $env:WINDOWS_STORE_SELLER_ID
+          
+          msstore publish `
+            --inputDirectory build/windows/runner/Release `
+            --appId $env:WINDOWS_STORE_APP_ID `
+            --skipPolling
         env:
+          WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
           WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
           WINDOWS_STORE_CLIENT_SECRET: ${{ secrets.WINDOWS_STORE_CLIENT_SECRET }}
-          WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
-        run: dart run msix:publish
+          WINDOWS_STORE_SELLER_ID: ${{ secrets.WINDOWS_STORE_SELLER_ID }}
+          WINDOWS_STORE_APP_ID: ${{ secrets.WINDOWS_STORE_APP_ID }}
 
       # 🚀 GitHub Release
       - name: Create GitHub Release
