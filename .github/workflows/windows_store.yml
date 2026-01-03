@@ -55,6 +55,9 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Generate code
+        run: dart run build_runner build --delete-conflicting-outputs
+
       # 🛡️ Quality Gates
       - name: Analyze code
         continue-on-error: true
@@ -62,6 +65,7 @@ jobs:
 
       - name: Run Tests
         run: flutter test
+
 
       # 🏗️ Build
       - name: Build Windows Release
