@@ -100,11 +100,14 @@ class _DriverDetailPanelState extends State<_DriverDetailPanel> {
   Widget _buildBody() {
     switch (_currentIndex) {
       case 0:
-        return _OverviewTab(driver: widget.driver);
+        return _OverviewTab(
+          key: const ValueKey('overview'),
+          driver: widget.driver,
+        );
       case 1:
-        return _TripsTab(driver: widget.driver);
+        return _TripsTab(key: const ValueKey('trips'), driver: widget.driver);
       case 2:
-        return _FuelTab(driver: widget.driver);
+        return _FuelTab(key: const ValueKey('fuel'), driver: widget.driver);
       default:
         return const SizedBox.shrink();
     }
@@ -165,13 +168,11 @@ class _DriverDetailPanelState extends State<_DriverDetailPanel> {
 
 class _OverviewTab extends StatelessWidget {
   final UserProfile driver;
-  const _OverviewTab({required this.driver});
+  const _OverviewTab({super.key, required this.driver});
 
   @override
+  @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    final isLight = theme.brightness == Brightness.light;
-
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
@@ -248,7 +249,7 @@ class _OverviewTab extends StatelessWidget {
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildPhotoCard(context, isLight),
+                            _buildPhotoCard(context),
                             const SizedBox(height: 12),
                             SizedBox(
                               width: 160,
@@ -277,11 +278,11 @@ class _OverviewTab extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              _buildContactCard(context, isLight),
+                              _buildContactCard(context),
                               const SizedBox(height: 12),
-                              _buildLicenseCard(context, isLight),
+                              _buildLicenseCard(context),
                               const SizedBox(height: 12),
-                              _buildStatusCard(context, isLight),
+                              _buildStatusCard(context),
                             ],
                           ),
                         ),
@@ -289,7 +290,7 @@ class _OverviewTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
                     // Recent Activity
-                    _buildRecentActivityCard(context, isLight),
+                    _buildRecentActivityCard(context),
                     const SizedBox(height: 24),
 
                     // Safety Score
@@ -311,7 +312,7 @@ class _OverviewTab extends StatelessWidget {
                         Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            _buildPhotoCard(context, isLight),
+                            _buildPhotoCard(context),
                             const SizedBox(height: 12),
                             // Assign button
                             SizedBox(
@@ -341,11 +342,11 @@ class _OverviewTab extends StatelessWidget {
                           child: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              _buildContactCard(context, isLight),
+                              _buildContactCard(context),
                               const SizedBox(height: 12),
-                              _buildLicenseCard(context, isLight),
+                              _buildLicenseCard(context),
                               const SizedBox(height: 12),
-                              _buildStatusCard(context, isLight),
+                              _buildStatusCard(context),
                             ],
                           ),
                         ),
@@ -355,10 +356,7 @@ class _OverviewTab extends StatelessWidget {
                   const SizedBox(width: 24),
 
                   // Center: Recent Activity
-                  Expanded(
-                    flex: 3,
-                    child: _buildRecentActivityCard(context, isLight),
-                  ),
+                  Expanded(flex: 3, child: _buildRecentActivityCard(context)),
                 ],
               );
             },
@@ -374,11 +372,11 @@ class _OverviewTab extends StatelessWidget {
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildNationalityVisaCard(context, isLight),
+                    _buildNationalityVisaCard(context),
                     const SizedBox(height: 16),
-                    _buildQuickActionsRow(context, isLight),
+                    _buildQuickActionsRow(context),
                     const SizedBox(height: 24),
-                    _buildDriverStats(context, isLight),
+                    _buildDriverStats(context),
                   ],
                 );
               }
@@ -391,16 +389,16 @@ class _OverviewTab extends StatelessWidget {
                     width: 400,
                     child: Column(
                       children: [
-                        _buildNationalityVisaCard(context, isLight),
+                        _buildNationalityVisaCard(context),
                         const SizedBox(height: 16),
-                        _buildQuickActionsRow(context, isLight),
+                        _buildQuickActionsRow(context),
                       ],
                     ),
                   ),
                   const SizedBox(width: 24),
 
                   // Center/Right: Driver Stats
-                  Expanded(child: _buildDriverStats(context, isLight)),
+                  Expanded(child: _buildDriverStats(context)),
                 ],
               );
             },
@@ -410,30 +408,25 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildPhotoCard(BuildContext context, bool isLight) {
-    return Container(
-      width: 160,
-      height: 200,
-      decoration: BoxDecoration(
-        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
+  Widget _buildPhotoCard(BuildContext context) {
+    return Card(
+      padding: EdgeInsets.zero,
+      borderRadius: BorderRadius.circular(12),
+      child: SizedBox(
+        width: 160,
+        height: 200,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty
+              ? Image.network(
+                  driver.avatarUrl!,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) =>
+                      _buildAvatarPlaceholder(context),
+                )
+              : _buildAvatarPlaceholder(context),
+        ),
       ),
-      clipBehavior: Clip.antiAlias,
-      child: driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty
-          ? Image.network(
-              driver.avatarUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) =>
-                  _buildAvatarPlaceholder(context),
-            )
-          : _buildAvatarPlaceholder(context),
     );
   }
 
@@ -464,24 +457,14 @@ class _OverviewTab extends StatelessWidget {
 
   Widget _buildInfoCard({
     required BuildContext context,
-    required bool isLight,
     required String title,
     required List<Widget> children,
     Widget? trailing,
   }) {
-    return Container(
+    // using Card ensures proper theme background (mica/layer)
+    return Card(
+      borderRadius: BorderRadius.circular(12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -506,10 +489,9 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildContactCard(BuildContext context, bool isLight) {
+  Widget _buildContactCard(BuildContext context) {
     return _buildInfoCard(
       context: context,
-      isLight: isLight,
       title: 'Contact Info',
       children: [
         _buildInfoRow('Phone', driver.phone ?? 'Not set'),
@@ -519,7 +501,7 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildLicenseCard(BuildContext context, bool isLight) {
+  Widget _buildLicenseCard(BuildContext context) {
     // Implement license fields in Supabase profiles table
     final licenseExpiry = driver.licenseExpiryDate;
     final isExpiringSoon =
@@ -528,7 +510,6 @@ class _OverviewTab extends StatelessWidget {
 
     return _buildInfoCard(
       context: context,
-      isLight: isLight,
       title: 'License Details',
       trailing: isExpiringSoon
           ? Container(
@@ -561,14 +542,13 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildNationalityVisaCard(BuildContext context, bool isLight) {
+  Widget _buildNationalityVisaCard(BuildContext context) {
     // Note: Visa expiry not yet in profile, placeholder kept for layout or needs new column
     final visaExpiry = DateTime.now().add(const Duration(days: 45));
     final isExpiringSoon = visaExpiry.difference(DateTime.now()).inDays < 30;
 
     return _buildInfoCard(
       context: context,
-      isLight: isLight,
       title: 'Nationality & Visa',
       trailing: isExpiringSoon
           ? Container(
@@ -591,10 +571,9 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildStatusCard(BuildContext context, bool isLight) {
+  Widget _buildStatusCard(BuildContext context) {
     return _buildInfoCard(
       context: context,
-      isLight: isLight,
       title: 'Current Status',
       children: [
         _buildInfoRow('Status', 'On Duty - Driving'), // TODO: Real data
@@ -818,7 +797,7 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildQuickActionsRow(BuildContext context, bool isLight) {
+  Widget _buildQuickActionsRow(BuildContext context) {
     return Row(
       children: [
         Expanded(
@@ -976,22 +955,11 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentActivityCard(BuildContext context, bool isLight) {
+  Widget _buildRecentActivityCard(BuildContext context) {
     final theme = FluentTheme.of(context);
-    return Container(
-      height: 400,
+    return Card(
+      borderRadius: BorderRadius.circular(12),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isLight ? Colors.white : const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1042,13 +1010,13 @@ class _OverviewTab extends StatelessWidget {
                         Icon(
                           FluentIcons.timeline,
                           size: 32,
-                          color: Colors.grey.withValues(alpha: 0.5),
+                          color: theme.resources.textFillColorSecondary,
                         ),
                         const SizedBox(height: 8),
                         Text(
                           'No recent activity',
                           style: TextStyle(
-                            color: Colors.grey.withValues(alpha: 0.8),
+                            color: theme.resources.textFillColorSecondary,
                           ),
                         ),
                       ],
@@ -1093,7 +1061,8 @@ class _OverviewTab extends StatelessWidget {
                                   DateFormat('MMM d, h:mm a').format(date),
                                   style: TextStyle(
                                     fontSize: 12,
-                                    color: Colors.grey,
+                                    color:
+                                        theme.resources.textFillColorSecondary,
                                   ),
                                 ),
                               ],
@@ -1130,11 +1099,9 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildDriverStats(BuildContext context, bool isLight) {
+  Widget _buildDriverStats(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final cardColor = isLight ? Colors.white : const Color(0xFF2D2D2D);
-    final borderColor = isLight ? const Color(0xFFE0E0E0) : Colors.transparent;
-    final textColor = isLight ? Colors.black : Colors.white;
+    final textColor = theme.typography.body?.color;
 
     return FutureBuilder(
       future: Supabase.instance.client
@@ -1153,20 +1120,9 @@ class _OverviewTab extends StatelessWidget {
           }
         }
 
-        return Container(
+        return Card(
           padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: cardColor,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: borderColor),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+          borderRadius: BorderRadius.circular(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1191,7 +1147,7 @@ class _OverviewTab extends StatelessWidget {
                     'Trips Completed',
                     tripsCompleted.toString(),
                     FluentIcons.delivery_truck,
-                    textColor,
+                    textColor ?? Colors.white,
                     Colors.blue,
                   ),
                   const SizedBox(width: 24),
@@ -1199,7 +1155,7 @@ class _OverviewTab extends StatelessWidget {
                     'Total Miles',
                     '${totalMiles.toStringAsFixed(0)} mi',
                     FluentIcons.map_layers,
-                    textColor,
+                    textColor ?? Colors.white,
                     Colors.orange,
                   ),
                 ],
@@ -1271,7 +1227,7 @@ class _OverviewTab extends StatelessWidget {
 
 class _TripsTab extends StatelessWidget {
   final UserProfile driver;
-  const _TripsTab({required this.driver});
+  const _TripsTab({super.key, required this.driver});
 
   @override
   Widget build(BuildContext context) {
@@ -1314,7 +1270,7 @@ class _TripsTab extends StatelessWidget {
 
 class _FuelTab extends StatelessWidget {
   final UserProfile driver;
-  const _FuelTab({required this.driver});
+  const _FuelTab({super.key, required this.driver});
 
   @override
   Widget build(BuildContext context) {
