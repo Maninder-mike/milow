@@ -17,6 +17,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+          echo "📦 Building version: v$VERSION"
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -41,20 +51,41 @@ jobs:
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
-
-
-
       - name: Compress App Bundle
         run: |
           cd build/macos/Build/Products/Release
-          zip -r "MilowTerminal-macos-beta.zip" "Milow Terminal.app"
+          zip -r "MilowTerminal-${{ steps.version.outputs.version }}-macos.zip" "Milow Terminal.app"
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Milow Terminal Beta
-          tag_name: beta
-          files: apps/terminal/build/macos/Build/Products/Release/MilowTerminal-macos-beta.zip
+          name: Milow Terminal ${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.version }}
+          files: apps/terminal/build/macos/Build/Products/Release/MilowTerminal-${{ steps.version.outputs.version }}-macos.zip
           generate_release_notes: true
           draft: false
           prerelease: true
+
+      - name: Update Homebrew Tap
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          VERSION: ${{ steps.version.outputs.version_number }}
+        run: |
+          # Calculate SHA256 of the zip
+          SHA256=$(shasum -a 256 "build/macos/Build/Products/Release/MilowTerminal-${{ steps.version.outputs.version }}-macos.zip" | cut -d ' ' -f 1)
+          echo "New SHA256: $SHA256"
+          
+          # Clone the tap repo
+          git clone https://x-access-token:${GH_TOKEN}@github.com/Maninder-mike/homebrew-milow-terminal.git /tmp/tap
+          cd /tmp/tap
+          
+          # Update the version and SHA256 in the cask file
+          sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" Casks/milow-terminal.rb
+          sed -i '' "s/sha256 \"[a-f0-9]*\"/sha256 \"$SHA256\"/" Casks/milow-terminal.rb
+          
+          # Commit and push
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add Casks/milow-terminal.rb
+          git commit -m "chore: Update to v$VERSION" || echo "No changes to commit"
+          git push
