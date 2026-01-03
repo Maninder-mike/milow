@@ -113,7 +113,10 @@ class _SignUpPageState extends State<SignUpPage>
         email: _emailController.text.trim(),
         password: _passwordController.text,
         emailRedirectTo: 'milow://login',
-        data: {'full_name': _nameController.text.trim()},
+        data: {
+          'full_name': _nameController.text.trim(),
+          'role': 'driver', // Mobile app users are drivers by default
+        },
       );
       if (mounted) {
         AppDialogs.showSuccess(

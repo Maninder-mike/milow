@@ -39,7 +39,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
 
       final matchesSearch =
           _searchQuery.isEmpty ||
-          (v['vehicle_number'] as String?)?.toLowerCase().contains(
+          (v['truck_number'] as String?)?.toLowerCase().contains(
                 _searchQuery.toLowerCase(),
               ) ==
               true ||
@@ -410,7 +410,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                   children: [
                     // Vehicle Number
                     Text(
-                      vehicle['vehicle_number'] ?? 'Unknown',
+                      vehicle['truck_number'] ?? 'Unknown',
                       style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,

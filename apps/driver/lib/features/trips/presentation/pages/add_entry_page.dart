@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/utils/error_handler.dart';
+import 'package:milow_core/milow_core.dart'; // VehicleRepository, Trip, FuelEntry
 
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
@@ -15,7 +16,7 @@ import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
-import 'package:milow_core/milow_core.dart';
+// import 'package:milow_core/milow_core.dart'; // Already imported above
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/prediction_service.dart';
 
@@ -109,9 +110,17 @@ class _AddEntryPageState extends State<AddEntryPage>
   final _truckFocusNode = FocusNode(); // For Fuel
   final _locationFocusNode = FocusNode(); // For Fuel
 
+  // Vehicles
+  List<Map<String, dynamic>> _vehicles = [];
+  String? _selectedTripVehicleId;
+  String? _selectedFuelVehicleId;
+  bool _isLoadingVehicles = false;
+
   @override
   void initState() {
     super.initState();
+    _loadVehicles();
+
     _tabController = TabController(
       length: 2,
       vsync: this,
@@ -236,9 +245,33 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
+  Future<void> _loadVehicles() async {
+    setState(() => _isLoadingVehicles = true);
+    try {
+      final vehicles = await VehicleRepository.getVehicles();
+      if (mounted) {
+        setState(() {
+          _vehicles = vehicles;
+          _isLoadingVehicles = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load vehicles: $e');
+      if (mounted) setState(() => _isLoadingVehicles = false);
+    }
+  }
+
   void _prefillTripData(Trip trip) {
     _tripNumberController.text = trip.tripNumber;
     _tripTruckNumberController.text = trip.truckNumber;
+    _selectedTripVehicleId = trip.vehicleId;
+    if (_selectedTripVehicleId == null && _vehicles.isNotEmpty) {
+      final v = _vehicles.firstWhere(
+        (v) => v['truck_number'] == trip.truckNumber,
+        orElse: () => {},
+      );
+      if (v.isNotEmpty) _selectedTripVehicleId = v['id'];
+    }
     _borderCrossingController.text = trip.borderCrossing ?? '';
     _selectedBorderCrossing = trip.borderCrossing;
     _tripDateController.text = _formatDateTime(trip.tripDate);
@@ -310,6 +343,17 @@ class _AddEntryPageState extends State<AddEntryPage>
       _truckNumberController.text = fuel.truckNumber!;
     } else if (fuel.isReeferFuel && fuel.reeferNumber != null) {
       _truckNumberController.text = fuel.reeferNumber!;
+    }
+    _selectedFuelVehicleId = fuel.vehicleId;
+    // Fallback: match by number
+    if (_selectedFuelVehicleId == null &&
+        _vehicles.isNotEmpty &&
+        _truckNumberController.text.isNotEmpty) {
+      final v = _vehicles.firstWhere(
+        (v) => v['truck_number'] == _truckNumberController.text,
+        orElse: () => {},
+      );
+      if (v.isNotEmpty) _selectedFuelVehicleId = v['id'];
     }
 
     // Fill location
@@ -1658,15 +1702,64 @@ class _AddEntryPageState extends State<AddEntryPage>
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: _buildAutocompleteField(
-                      controller: _tripTruckNumberController,
-                      focusNode: _tripTruckFocusNode,
-                      textCapitalization: TextCapitalization.characters,
-                      hint: 'e.g., T-101',
-                      prefixIcon: Icons.local_shipping,
-                      label: 'Truck Number',
-                      optionsBuilder:
-                          PredictionService.instance.getTruckSuggestions,
+                    child: InputDecorator(
+                      decoration: _inputDecoration(
+                        label: 'Truck Number',
+                        hint: _isLoadingVehicles
+                            ? 'Loading...'
+                            : 'Select Truck',
+                        prefixIcon: Icons.local_shipping,
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: _selectedTripVehicleId,
+                          isExpanded: true,
+                          isDense: true,
+                          hint: Text(
+                            _isLoadingVehicles ? 'Loading...' : 'Select Truck',
+                            style: Theme.of(context).textTheme.bodyLarge
+                                ?.copyWith(color: context.tokens.textTertiary),
+                          ),
+                          items: _vehicles
+                              .where((v) {
+                                final type = v['vehicle_type']
+                                    ?.toString()
+                                    .toLowerCase();
+                                // Only show trucks (or if type is missing/null, show it to be safe)
+                                return type == null || type == 'truck';
+                              })
+                              .map((v) {
+                                return DropdownMenuItem<String>(
+                                  value: v['id'] as String,
+                                  child: Text(
+                                    v['truck_number'] ?? 'Unknown',
+                                    style: Theme.of(context).textTheme.bodyLarge
+                                        ?.copyWith(
+                                          color: context.tokens.textPrimary,
+                                        ),
+                                  ),
+                                );
+                              })
+                              .toList(),
+                          onChanged: _isLoadingVehicles
+                              ? null
+                              : (value) {
+                                  if (value != null) {
+                                    setState(() {
+                                      _selectedTripVehicleId = value;
+                                      final v = _vehicles.firstWhere(
+                                        (e) => e['id'] == value,
+                                        orElse: () => {},
+                                      );
+                                      if (v.isNotEmpty) {
+                                        _tripTruckNumberController.text =
+                                            v['truck_number'];
+                                      }
+                                    });
+                                  }
+                                },
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -1876,6 +1969,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
       final trip = Trip(
         id: widget.editingTrip?.id,
+        vehicleId: _selectedTripVehicleId,
         tripNumber: _tripNumberController.text.trim().toUpperCase(),
         truckNumber: _tripTruckNumberController.text.trim().toUpperCase(),
         borderCrossing: _borderCrossingController.text.trim().isNotEmpty
@@ -2019,7 +2113,11 @@ class _AddEntryPageState extends State<AddEntryPage>
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _isReeferFuel = false),
+                        onTap: () => setState(() {
+                          _isReeferFuel = false;
+                          _selectedFuelVehicleId = null;
+                          _truckNumberController.clear();
+                        }),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
@@ -2060,7 +2158,11 @@ class _AddEntryPageState extends State<AddEntryPage>
                     ),
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => setState(() => _isReeferFuel = true),
+                        onTap: () => setState(() {
+                          _isReeferFuel = true;
+                          _selectedFuelVehicleId = null;
+                          _truckNumberController.clear();
+                        }),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
@@ -2104,16 +2206,70 @@ class _AddEntryPageState extends State<AddEntryPage>
                 ),
               ),
               const SizedBox(height: 12),
-              _buildAutocompleteField(
-                controller: _truckNumberController,
-                focusNode: _truckFocusNode,
-                textCapitalization: TextCapitalization.characters,
-                label: _isReeferFuel ? 'Reefer Number' : 'Truck Number',
-                hint: _isReeferFuel ? 'e.g., R-101' : 'e.g., T-101',
-                prefixIcon: _isReeferFuel
-                    ? Icons.ac_unit
-                    : Icons.local_shipping,
-                optionsBuilder: PredictionService.instance.getTruckSuggestions,
+              const SizedBox(height: 12),
+              InputDecorator(
+                decoration: _inputDecoration(
+                  label: _isReeferFuel ? 'Reefer Unit' : 'Truck Number',
+                  prefixIcon: _isReeferFuel
+                      ? Icons.ac_unit
+                      : Icons.local_shipping,
+                  hint: _isLoadingVehicles ? 'Loading...' : 'Select Vehicle',
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedFuelVehicleId,
+                    isExpanded: true,
+                    isDense: true,
+                    hint: Text(
+                      _isLoadingVehicles ? 'Loading...' : 'Select Vehicle',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: context.tokens.textTertiary,
+                      ),
+                    ),
+                    items: _vehicles
+                        .where((v) {
+                          // Filter based on reefer mode if reliable, else show all
+                          // Assuming 'type' field exists. If not, show all.
+                          final type = v['vehicle_type']
+                              ?.toString()
+                              .toLowerCase();
+                          if (type == null) return true;
+                          if (_isReeferFuel) {
+                            return type == 'reefer' || type == 'trailer';
+                          }
+                          return type == 'truck';
+                        })
+                        .map((v) {
+                          return DropdownMenuItem<String>(
+                            value: v['id'] as String,
+                            child: Text(
+                              v['truck_number'] ?? 'Unknown',
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(color: context.tokens.textPrimary),
+                            ),
+                          );
+                        })
+                        .toList(),
+                    onChanged: _isLoadingVehicles
+                        ? null
+                        : (value) {
+                            if (value != null) {
+                              setState(() {
+                                _selectedFuelVehicleId = value;
+                                // Update controller for legacy
+                                final v = _vehicles.firstWhere(
+                                  (e) => e['id'] == value,
+                                  orElse: () => {},
+                                );
+                                if (v.isNotEmpty) {
+                                  _truckNumberController.text =
+                                      v['truck_number'];
+                                }
+                              });
+                            }
+                          },
+                  ),
+                ),
               ),
               const SizedBox(height: 12),
               _buildAutocompleteField(
@@ -2395,6 +2551,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
       final fuelEntry = FuelEntry(
         id: widget.editingFuel?.id,
+        vehicleId: _selectedFuelVehicleId,
         fuelDate: fuelDate,
         fuelType: _isReeferFuel ? 'reefer' : 'truck',
         truckNumber: !_isReeferFuel

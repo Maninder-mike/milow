@@ -6,9 +6,8 @@ class UserRepository {
 
   UserRepository(this._supabase);
 
-  /// Fetch all user profiles using the rpc or direct table access if configured
-  /// Note: standard Supabase auth.users isn't directly queryable by default.
-  /// We assume a 'profiles' table exists that mirrors auth users + roles.
+  /// Fetch all user profiles for the current user's company.
+  /// Filters by company_id to ensure multi-tenant isolation.
   Future<List<UserProfile>> fetchUsers({
     int page = 0,
     int pageSize = 20,
@@ -17,7 +16,29 @@ class UserRepository {
     final start = page * pageSize;
     final end = start + pageSize - 1;
 
-    var query = _supabase.from('profiles').select();
+    // Get current user's company_id to filter by company
+    final currentUserId = _supabase.auth.currentUser?.id;
+    String? companyId;
+
+    if (currentUserId != null) {
+      final currentProfile = await _supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('id', currentUserId)
+          .maybeSingle();
+      companyId = currentProfile?['company_id'] as String?;
+    }
+
+    // Select base profile + joined details from both tables
+    var query = _supabase
+        .from('profiles')
+        .select('*, driver_profiles(*), company_staff_profiles(*)');
+
+    // Filter by company_id if available
+    // Include users with matching company OR users without company_id (legacy/pending)
+    if (companyId != null) {
+      query = query.or('company_id.eq.$companyId,company_id.is.null');
+    }
 
     if (searchQuery != null && searchQuery.isNotEmpty) {
       query = query.ilike('full_name', '%$searchQuery%');
@@ -27,10 +48,21 @@ class UserRepository {
         .order('full_name', ascending: true)
         .range(start, end);
 
-    // ignore: unnecessary_lambdas
-    return (response as List<dynamic>)
-        .map((e) => UserProfile.fromJson(e as Map<String, dynamic>))
-        .toList();
+    // Flatten the response before parsing
+    return (response as List<dynamic>).map((e) {
+      final map = e as Map<String, dynamic>;
+      // If it has driver details, merge them
+      if (map['driver_profiles'] != null) {
+        map.addAll(map['driver_profiles'] as Map<String, dynamic>);
+        map.remove('driver_profiles');
+      }
+      // If it has staff details, merge them (priority to driver if somehow both exist, or vice versa, doesn't matter much as IDs are unique per role usually)
+      if (map['company_staff_profiles'] != null) {
+        map.addAll(map['company_staff_profiles'] as Map<String, dynamic>);
+        map.remove('company_staff_profiles');
+      }
+      return UserProfile.fromJson(map);
+    }).toList();
   }
 
   /// Update a user's role and verification status

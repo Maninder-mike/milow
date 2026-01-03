@@ -594,10 +594,25 @@ class _NotificationsPageState extends State<NotificationsPage> {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) return;
 
-      // Set driver as verified (adds to Active Users list)
+      // Fetch admin's company_id to associate driver with the company
+      final adminProfile = await Supabase.instance.client
+          .from('profiles')
+          .select('company_id, company_name')
+          .eq('id', adminId)
+          .maybeSingle();
+
+      final companyId = adminProfile?['company_id'] as String?;
+      final companyName = adminProfile?['company_name'] as String?;
+
+      // Set driver as verified, associate with company, and ensure role is 'driver'
       await Supabase.instance.client
           .from('profiles')
-          .update({'is_verified': true})
+          .update({
+            'is_verified': true,
+            'role': 'driver', // Ensure role is driver when accepting
+            if (companyId != null) 'company_id': companyId,
+            if (companyName != null) 'company_name': companyName,
+          })
           .eq('id', userId);
 
       // Notify the admin that driver accepted

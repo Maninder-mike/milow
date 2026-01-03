@@ -153,11 +153,15 @@ class FuelRepository {
     await LocalFuelStore.delete(entryId);
     debugPrint('[FuelRepository] Deleted locally: $entryId');
 
-    // Queue sync operation
+    // Queue sync operation (Soft Delete)
     await syncQueueService.enqueue(
       tableName: 'fuel_entries',
-      operationType: 'delete',
-      payload: {'id': entryId, 'user_id': userId},
+      operationType: 'update',
+      payload: {
+        'id': entryId,
+        'user_id': userId,
+        'deleted_at': DateTime.now().toIso8601String(),
+      },
       localId: entryId,
     );
   }

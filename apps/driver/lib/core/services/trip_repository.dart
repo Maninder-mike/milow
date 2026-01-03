@@ -160,11 +160,15 @@ class TripRepository {
     await LocalTripStore.delete(tripId);
     debugPrint('[TripRepository] Deleted locally: $tripId');
 
-    // Queue sync operation
+    // Queue sync operation (Soft Delete)
     await syncQueueService.enqueue(
       tableName: 'trips',
-      operationType: 'delete',
-      payload: {'id': tripId, 'user_id': userId},
+      operationType: 'update',
+      payload: {
+        'id': tripId,
+        'user_id': userId,
+        'deleted_at': DateTime.now().toIso8601String(),
+      },
       localId: tripId,
     );
   }

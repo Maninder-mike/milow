@@ -104,41 +104,31 @@ class NotificationActions {
     final client = Supabase.instance.client;
     final adminId = client.auth.currentUser?.id;
 
+    String? companyId;
     String? companyName;
-    String? adminName;
     if (adminId != null) {
-      // Fetch admin's company name and full name
+      // Fetch admin's company_id and company_name to assign to the verified user
       final adminData = await client
           .from('profiles')
-          .select('company_name, full_name')
+          .select('company_id, company_name')
           .eq('id', adminId)
           .maybeSingle();
+      companyId = adminData?['company_id'] as String?;
       companyName = adminData?['company_name'] as String?;
-      adminName = adminData?['full_name'] as String? ?? 'Admin';
     }
 
     // Update user profile
+    // NOTE: The database trigger `notify_on_verification` automatically
+    // sends a notification to the driver when is_verified changes to true.
     await client
         .from('profiles')
         .update({
           'role': role.name,
           'is_verified': true,
+          if (companyId != null) 'company_id': companyId,
           if (companyName != null) 'company_name': companyName,
         })
         .eq('id', userId);
-
-    // Send notification to the driver
-    if (adminId != null) {
-      await client.from('notifications').insert({
-        'user_id': userId,
-        'type': 'company_invite',
-        'title': 'Verification Request',
-        'body':
-            'Admin $adminName has verified your ID. Please approve to share your data.',
-        'data': {'admin_id': adminId, 'admin_name': adminName},
-        'is_read': false,
-      });
-    }
   }
 
   Future<void> rejectUser(String userId) async {

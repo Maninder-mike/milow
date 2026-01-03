@@ -131,7 +131,7 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
     return ScaffoldPage.scrollable(
       header: PageHeader(
         title: Text(
-          'Vehicle Status: ${vehicle['vehicle_number']}',
+          'Vehicle Status: ${vehicle['truck_number']}',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
         commandBar: Row(

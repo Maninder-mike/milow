@@ -163,7 +163,9 @@ class _VehiclesPageState extends ConsumerState<VehiclesPage> {
                                   children: [
                                     Expanded(
                                       child: Text(
-                                        vehicle['vehicle_number'] ?? '-',
+                                        vehicle['truck_number'] ??
+                                            vehicle['vehicle_number'] ??
+                                            '-',
                                       ),
                                     ),
                                     Expanded(

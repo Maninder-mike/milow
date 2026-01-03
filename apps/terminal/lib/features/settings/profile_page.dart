@@ -106,43 +106,29 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         return;
       }
 
-      // Get user ID and admin info for notification
-      final userId = response['id'] as String;
+      // Get admin's company_id to assign to the driver
       final adminId = Supabase.instance.client.auth.currentUser?.id;
-
-      // Fetch admin name
-      String adminName = 'Admin';
+      String? companyId;
       if (adminId != null) {
-        final adminData = await Supabase.instance.client
+        final adminProfile = await Supabase.instance.client
             .from('profiles')
-            .select('full_name')
+            .select('company_id')
             .eq('id', adminId)
             .maybeSingle();
-        adminName = adminData?['full_name'] as String? ?? 'Admin';
+        companyId = adminProfile?['company_id'] as String?;
       }
 
-      // Update user
+      // Update user - the database trigger `notify_on_verification`
+      // automatically sends a notification to the driver when is_verified changes to true.
       await Supabase.instance.client
           .from('profiles')
           .update({
             'is_verified': true,
+            if (companyId != null) 'company_id': companyId,
             'company_name':
                 _companyNameController.text, // Sync admin's company name
           })
           .eq('email', email);
-
-      // Send notification to the driver
-      if (adminId != null) {
-        await Supabase.instance.client.from('notifications').insert({
-          'user_id': userId,
-          'type': 'company_invite',
-          'title': 'Verification Request',
-          'body':
-              'Admin $adminName has verified your ID. Please approve to share your data.',
-          'data': {'admin_id': adminId, 'admin_name': adminName},
-          'is_read': false,
-        });
-      }
 
       if (mounted) {
         _manualApprovalEmailController.clear();
@@ -211,49 +197,62 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   Future<void> _loadUserProfile() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user != null) {
-      setState(() {
-        _email = user.email ?? '';
-        _isLoading = true;
-      });
+      if (mounted) {
+        setState(() {
+          _email = user.email ?? '';
+          _isLoading = true;
+        });
+      }
 
       try {
+        // Fetch from profiles (Base) AND company_staff_profiles (Detail)
         final data = await Supabase.instance.client
             .from('profiles')
-            .select()
+            .select('*, company_staff_profiles(*)')
             .eq('id', user.id)
             .maybeSingle();
 
-        if (data != null) {
+        if (data != null && mounted) {
+          final details =
+              data['company_staff_profiles'] as Map<String, dynamic>?;
+
           setState(() {
             _nameController.text = data['full_name'] as String? ?? '';
-            _phoneController.text = data['phone'] as String? ?? '';
-
-            // Address Fields
-            _streetController.text =
-                data['street'] as String? ?? data['address'] as String? ?? '';
-            _cityController.text = data['city'] as String? ?? '';
-            _stateController.text = data['state_province'] as String? ?? '';
-            _zipController.text = data['postal_code'] as String? ?? '';
-
-            _countryController.text = data['country'] as String? ?? '';
             _companyNameController.text = data['company_name'] as String? ?? '';
             _avatarUrl = data['avatar_url'] as String?;
 
-            // Prefer DB role, fallback to metadata, fallback to Driver
+            // Load details from sub-table if available, else fallback (migration safety)
+            _phoneController.text =
+                (details?['work_phone'] ?? data['phone']) as String? ?? '';
+            _streetController.text =
+                (details?['street'] ?? data['street']) as String? ?? '';
+            _cityController.text =
+                (details?['city'] ?? data['city']) as String? ?? '';
+            _stateController.text =
+                (details?['state_province'] ?? data['state_province'])
+                    as String? ??
+                '';
+            _zipController.text =
+                (details?['postal_code'] ?? data['postal_code']) as String? ??
+                '';
+            _countryController.text =
+                (details?['country'] ?? data['country']) as String? ?? '';
+
+            // Role logic
             final dbRole = data['role'] as String?;
             final metaRole = user.appMetadata['role'] as String?;
             _role = dbRole ?? metaRole ?? 'Driver';
-
-            // Normalize case for dropdown
             _selectedRole = _roles.firstWhere(
               (r) => r.toLowerCase() == _role.toLowerCase(),
               orElse: () => 'Driver',
             );
           });
 
-          // Load Company Details from profile data
+          // Load Company Details (existing logic is fine if stored in profiles/companies)
           setState(() {
             _compNameController.text = data['company_name'] as String? ?? '';
+            // Assuming company details are still in profiles or companies table for now
+            // as per original code structure.
             _compAddressController.text =
                 data['company_address'] as String? ?? '';
             _compCityController.text = data['company_city'] as String? ?? '';
@@ -285,9 +284,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       acceptedTypeGroups: <XTypeGroup>[typeGroup],
     );
     if (file != null) {
-      setState(() {
-        _profileImage = file;
-      });
+      if (mounted) {
+        setState(() {
+          _profileImage = file;
+        });
+      }
     }
   }
 
@@ -302,7 +303,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
 
     try {
       String? avatarUrl;
-      // ... (existing avatar upload logic)
       if (_profileImage != null) {
         debugPrint('Uploading avatar...');
         final bytes = await _profileImage!.readAsBytes();
@@ -321,44 +321,49 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         avatarUrl = Supabase.instance.client.storage
             .from('avatars')
             .getPublicUrl(fileName);
-        debugPrint('Avatar uploaded: $avatarUrl');
       }
 
-      final updates = {
-        'id': user.id,
+      // 1. Update Base Profile (Identity & Search Index)
+      final baseUpdates = {
         'full_name': _nameController.text,
-        'phone': _phoneController.text,
+        'updated_at': DateTime.now().toIso8601String(),
+        'company_name': _companyNameController
+            .text, // Kept in base for display/denormalization
+        if (avatarUrl != null) 'avatar_url': avatarUrl,
+        if (_isAdmin) 'role': _selectedRole.toLowerCase(),
+      };
+      await Supabase.instance.client
+          .from('profiles')
+          .update(baseUpdates)
+          .eq('id', user.id);
+
+      // 2. Upsert Staff Details
+      final staffUpdates = {
+        'id': user.id, // PK is FK to profiles.id
+        'work_phone': _phoneController.text,
         'street': _streetController.text,
         'city': _cityController.text,
         'state_province': _stateController.text,
         'postal_code': _zipController.text,
         'country': _countryController.text,
-        'company_name': _companyNameController.text,
-        'role': _isAdmin
-            ? _selectedRole.toLowerCase()
-            : _role.toLowerCase(), // Ensure lowercase for DB constraint
         'updated_at': DateTime.now().toIso8601String(),
-        if (avatarUrl != null) 'avatar_url': avatarUrl,
       };
-
-      debugPrint('Upserting profile data: $updates');
-      await Supabase.instance.client.from('profiles').upsert(updates);
-      debugPrint('Profile upsert successful');
+      await Supabase.instance.client
+          .from('company_staff_profiles')
+          .upsert(staffUpdates);
 
       // Update auth metadata
       await Supabase.instance.client.auth.updateUser(
         UserAttributes(
           data: {
             'full_name': _nameController.text,
-            'phone': _phoneController.text,
-            // Also sync role to metadata if changed
             if (_isAdmin) 'role': _selectedRole.toLowerCase(),
           },
         ),
       );
-      debugPrint('Auth metadata updated');
 
       // Save company details to profile if admin has edited them
+      // (Assuming these stay on profiles for now as per schema or dedicated companies table update)
       if (_isAdmin) {
         await Supabase.instance.client
             .from('profiles')
@@ -374,11 +379,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               'company_email': _compEmailController.text,
             })
             .eq('id', user.id);
-        debugPrint('Company details saved to profile');
       }
 
       if (mounted) {
-        // ... (success info bar)
         displayInfoBar(
           context,
           builder: (context, close) {
@@ -395,7 +398,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         );
       }
     } catch (e) {
-      // ... (error info bar)
       if (mounted) {
         displayInfoBar(
           context,
@@ -417,7 +419,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         setState(() {
           _isLoading = false;
           _isEditing = false;
-          // Update local role display
           if (_isAdmin) _role = _selectedRole;
         });
       }

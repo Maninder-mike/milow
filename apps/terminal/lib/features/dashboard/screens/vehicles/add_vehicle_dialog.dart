@@ -44,7 +44,10 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
     super.initState();
     if (widget.vehicle != null) {
       _vehicleId = widget.vehicle!['id'];
-      _vehicleNumberController.text = widget.vehicle!['vehicle_number'] ?? '';
+      _vehicleNumberController.text =
+          widget.vehicle!['truck_number'] ??
+          widget.vehicle!['vehicle_number'] ??
+          '';
       _plateController.text = widget.vehicle!['license_plate'] ?? '';
       String prov = widget.vehicle!['license_province'] ?? 'Ontario';
       // Attempt to map code to full name if it matches a key
@@ -105,7 +108,7 @@ class _AddVehicleDialogState extends ConsumerState<AddVehicleDialog> {
       if (user == null) throw Exception('Not logged in');
 
       final data = {
-        'vehicle_number': _vehicleNumberController.text,
+        'truck_number': _vehicleNumberController.text,
         'vehicle_type': _vehicleType == 'Other'
             ? _customTypeController.text
             : _vehicleType,

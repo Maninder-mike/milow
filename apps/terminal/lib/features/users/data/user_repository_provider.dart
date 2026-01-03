@@ -7,6 +7,20 @@ final userRepositoryProvider = Provider<UserRepository>((ref) {
   return UserRepository(Supabase.instance.client);
 });
 
+/// Provider that listens to real-time changes on the profiles table.
+/// When a profile is updated (e.g., driver accepts verification), it
+/// automatically refreshes the usersProvider so the drivers list updates instantly.
+final profilesRealtimeProvider = StreamProvider<void>((ref) {
+  final supabase = Supabase.instance.client;
+
+  // Stream changes from profiles table
+  return supabase.from('profiles').stream(primaryKey: ['id']).map((data) {
+    // When any profile changes, refresh the users list
+    ref.invalidate(usersProvider);
+    return;
+  });
+});
+
 final usersProvider = AsyncNotifierProvider<UsersController, List<UserProfile>>(
   UsersController.new,
 );
@@ -18,6 +32,8 @@ class UsersController extends AsyncNotifier<List<UserProfile>> {
 
   @override
   Future<List<UserProfile>> build() async {
+    // Watch the realtime provider to keep it active
+    ref.watch(profilesRealtimeProvider);
     return _fetch();
   }
 

@@ -2,6 +2,7 @@
 class FuelEntry {
   final String? id;
   final String? userId;
+  final String? vehicleId;
   final DateTime fuelDate;
   final String fuelType; // 'truck' or 'reefer'
   final String? truckNumber;
@@ -27,6 +28,7 @@ class FuelEntry {
     required this.pricePerUnit,
     this.id,
     this.userId,
+    this.vehicleId,
     this.truckNumber,
     this.reeferNumber,
     this.location,
@@ -84,6 +86,7 @@ class FuelEntry {
     return FuelEntry(
       id: json['id'] as String?,
       userId: json['user_id'] as String?,
+      vehicleId: json['vehicle_id'] as String?,
       fuelDate:
           DateTime.tryParse(json['fuel_date']?.toString() ?? '') ??
           DateTime.now(),
@@ -119,6 +122,7 @@ class FuelEntry {
     return {
       if (id != null) 'id': id,
       if (userId != null) 'user_id': userId,
+      if (vehicleId != null) 'vehicle_id': vehicleId,
       'fuel_date': fuelDate.toIso8601String(),
       'fuel_type': fuelType,
       'truck_number': truckNumber,
@@ -141,6 +145,7 @@ class FuelEntry {
   FuelEntry copyWith({
     String? id,
     String? userId,
+    String? vehicleId,
     DateTime? fuelDate,
     String? fuelType,
     String? truckNumber,
@@ -162,6 +167,7 @@ class FuelEntry {
     return FuelEntry(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      vehicleId: vehicleId ?? this.vehicleId,
       fuelDate: fuelDate ?? this.fuelDate,
       fuelType: fuelType ?? this.fuelType,
       truckNumber: truckNumber ?? this.truckNumber,

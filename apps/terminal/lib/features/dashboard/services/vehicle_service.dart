@@ -35,7 +35,7 @@ class VehicleService {
     return [
       {
         'id': '1',
-        'vehicle_number': '101',
+        'truck_number': '101',
         'vehicle_type': 'Truck',
         'license_plate': 'TX-1234',
         'vin_number': '1M8...567',
@@ -51,7 +51,7 @@ class VehicleService {
       },
       {
         'id': '2',
-        'vehicle_number': '102',
+        'truck_number': '102',
         'vehicle_type': 'Truck',
         'license_plate': 'CA-5678',
         'vin_number': '1M8...890',
@@ -67,7 +67,7 @@ class VehicleService {
       },
       {
         'id': '3',
-        'vehicle_number': '103',
+        'truck_number': '103',
         'vehicle_type': 'Trailer',
         'license_plate': 'NY-9012',
         'vin_number': '5T...345',
@@ -78,7 +78,7 @@ class VehicleService {
       },
       {
         'id': '4',
-        'vehicle_number': '104',
+        'truck_number': '104',
         'vehicle_type': 'Truck',
         'license_plate': 'FL-3456',
         'vin_number': '1M8...123',
@@ -89,7 +89,7 @@ class VehicleService {
       },
       {
         'id': '5',
-        'vehicle_number': '105',
+        'truck_number': '105',
         'vehicle_type': 'Truck',
         'license_plate': 'WA-7890',
         'vin_number': '1M8...456',

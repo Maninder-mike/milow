@@ -2,6 +2,7 @@
 class Trip {
   final String? id;
   final String? userId;
+  final String? vehicleId;
   final String tripNumber;
   final String truckNumber;
   final List<String> trailers;
@@ -29,6 +30,7 @@ class Trip {
     required this.deliveryLocations,
     this.id,
     this.userId,
+    this.vehicleId,
     this.trailers = const [],
     this.pickupTimes = const [],
     this.deliveryTimes = const [],
@@ -77,6 +79,7 @@ class Trip {
     return Trip(
       id: json['id'] as String?,
       userId: json['user_id'] as String?,
+      vehicleId: json['vehicle_id'] as String?,
       tripNumber: json['trip_number'] as String,
       truckNumber: json['truck_number'] as String,
       trailers:
@@ -135,6 +138,7 @@ class Trip {
     return {
       if (id != null) 'id': id,
       if (userId != null) 'user_id': userId,
+      if (vehicleId != null) 'vehicle_id': vehicleId,
       'trip_number': tripNumber,
       'truck_number': truckNumber,
       'trailers': trailers,
@@ -158,6 +162,7 @@ class Trip {
   Trip copyWith({
     String? id,
     String? userId,
+    String? vehicleId,
     String? tripNumber,
     String? truckNumber,
     List<String>? trailers,
@@ -180,6 +185,7 @@ class Trip {
     return Trip(
       id: id ?? this.id,
       userId: userId ?? this.userId,
+      vehicleId: vehicleId ?? this.vehicleId,
       tripNumber: tripNumber ?? this.tripNumber,
       truckNumber: truckNumber ?? this.truckNumber,
       trailers: trailers ?? this.trailers,

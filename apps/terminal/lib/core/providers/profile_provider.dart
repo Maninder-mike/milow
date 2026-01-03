@@ -23,9 +23,22 @@ class ProfileNotifier extends AsyncNotifier<ProfileData?> {
     try {
       final data = await _client
           .from('profiles')
-          .select()
+          .select('*, company_staff_profiles(*), driver_profiles(*)')
           .eq('id', userId)
           .maybeSingle(); // Use maybeSingle to avoid 406/JSON error if not found
+
+      if (data == null) return null;
+
+      // Flatten details
+      if (data['company_staff_profiles'] != null) {
+        data.addAll(data['company_staff_profiles'] as Map<String, dynamic>);
+        data.remove('company_staff_profiles');
+      }
+      if (data['driver_profiles'] != null) {
+        data.addAll(data['driver_profiles'] as Map<String, dynamic>);
+        data.remove('driver_profiles');
+      }
+
       return data;
     } catch (e) {
       // Return null on error so we can retry or handle gracefully

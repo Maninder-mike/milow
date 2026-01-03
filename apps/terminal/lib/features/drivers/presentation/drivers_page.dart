@@ -590,7 +590,7 @@ class _OverviewTab extends StatelessWidget {
         if (snapshot.hasData && snapshot.data != null) {
           final vehicle = snapshot.data!;
           truckDisplay =
-              '${vehicle['vehicle_number']} (${vehicle['vehicle_type']})';
+              '${vehicle['truck_number']} (${vehicle['vehicle_type']})';
         }
 
         return _buildInfoCard(
@@ -626,7 +626,7 @@ class _OverviewTab extends StatelessWidget {
 
       final vehicle = await Supabase.instance.client
           .from('vehicles')
-          .select('vehicle_number, vehicle_type')
+          .select('truck_number, vehicle_type')
           .eq('id', vehicleId)
           .maybeSingle();
 
@@ -803,8 +803,8 @@ class _OverviewTab extends StatelessWidget {
           child: FutureBuilder(
             future: Supabase.instance.client
                 .from('vehicles')
-                .select('id, vehicle_number, vehicle_type, license_plate')
-                .order('vehicle_number'),
+                .select('id, truck_number, vehicle_type, license_plate')
+                .order('truck_number'),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: ProgressRing());
@@ -826,7 +826,7 @@ class _OverviewTab extends StatelessWidget {
                       color: FluentTheme.of(context).accentColor,
                     ),
                     title: Text(
-                      '${vehicle['vehicle_number']} - ${vehicle['vehicle_type']}',
+                      '${vehicle['truck_number']} - ${vehicle['vehicle_type']}',
                     ),
                     subtitle: Text(
                       'Plate: ${vehicle['license_plate'] ?? 'N/A'}',
@@ -838,7 +838,7 @@ class _OverviewTab extends StatelessWidget {
                         await _assignVehicleToDriver(
                           context,
                           vehicle['id'] as String,
-                          vehicle['vehicle_number'] as String,
+                          vehicle['truck_number'] as String,
                         );
                       },
                     ),
