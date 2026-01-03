@@ -1,4 +1,4 @@
-name: Build, Sign, Release, Update Supabase
+name: Play Store Build, Sign, Release, Update Supabase
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: Build and Release macOS App
+name: macOS Build and Release
 
 on:
   push:
@@ -12,6 +12,8 @@ jobs:
     defaults:
       run:
         working-directory: ./apps/terminal
+    permissions:
+      contents: write
 
     steps:
       - uses: actions/checkout@v4
