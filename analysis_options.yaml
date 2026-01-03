@@ -1,5 +1,20 @@
-include: package:flutter_lints/flutter.yaml
+include: package:very_good_analysis/analysis_options.yaml
+
+analyzer:
+  exclude:
+    - "**/*.g.dart"
+    - "**/*.freezed.dart"
+    - "**/*.mocks.dart"
+  errors:
+    # Treat info-level findings as warnings to avoid blocking CI
+    # but still surface them during development.
+    missing_return: error
+    invalid_annotation_target: ignore
 
 linter:
   rules:
+    # Override some rules that are too strict for this project's needs
+    public_member_api_docs: false
+    lines_longer_than_80_chars: false
+    # Keep these from the old config
     prefer_const_constructors: true

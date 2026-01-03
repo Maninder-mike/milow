@@ -3,12 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/core/providers/profile_provider.dart';
-import 'package:terminal/features/auth/login_page.dart';
-import 'package:terminal/features/auth/sign_up_page.dart';
-import 'package:terminal/features/auth/terms_page.dart';
-import 'package:terminal/features/auth/privacy_policy_page.dart';
-import 'package:terminal/features/auth/reset_password_page.dart';
+import 'package:terminal/features/auth/presentation/pages/login_page.dart';
+import 'package:terminal/features/auth/presentation/pages/sign_up_page.dart';
+import 'package:terminal/features/auth/presentation/pages/terms_page.dart';
+import 'package:terminal/features/auth/presentation/pages/privacy_policy_page.dart';
+import 'package:terminal/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:terminal/features/auth/presentation/pending_verification_page.dart';
+
 import 'package:terminal/features/dashboard/dashboard_shell.dart';
 import 'package:terminal/features/inbox/inbox_view.dart';
 import 'package:terminal/features/users/presentation/users_page.dart';

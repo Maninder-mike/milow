@@ -111,7 +111,8 @@ class _AddEntryPageState extends State<AddEntryPage>
   final _locationFocusNode = FocusNode(); // For Fuel
 
   // Vehicles
-  List<Map<String, dynamic>> _vehicles = [];
+  List<Vehicle> _vehicles = [];
+
   String? _selectedTripVehicleId;
   String? _selectedFuelVehicleId;
   bool _isLoadingVehicles = false;
@@ -266,12 +267,13 @@ class _AddEntryPageState extends State<AddEntryPage>
     _tripTruckNumberController.text = trip.truckNumber;
     _selectedTripVehicleId = trip.vehicleId;
     if (_selectedTripVehicleId == null && _vehicles.isNotEmpty) {
-      final v = _vehicles.firstWhere(
-        (v) => v['truck_number'] == trip.truckNumber,
-        orElse: () => {},
+      final v = _vehicles.cast<Vehicle?>().firstWhere(
+        (v) => v?.truckNumber == trip.truckNumber,
+        orElse: () => null,
       );
-      if (v.isNotEmpty) _selectedTripVehicleId = v['id'];
+      if (v != null) _selectedTripVehicleId = v.id;
     }
+
     _borderCrossingController.text = trip.borderCrossing ?? '';
     _selectedBorderCrossing = trip.borderCrossing;
     _tripDateController.text = _formatDateTime(trip.tripDate);
@@ -349,11 +351,11 @@ class _AddEntryPageState extends State<AddEntryPage>
     if (_selectedFuelVehicleId == null &&
         _vehicles.isNotEmpty &&
         _truckNumberController.text.isNotEmpty) {
-      final v = _vehicles.firstWhere(
-        (v) => v['truck_number'] == _truckNumberController.text,
-        orElse: () => {},
+      final v = _vehicles.cast<Vehicle?>().firstWhere(
+        (v) => v?.truckNumber == _truckNumberController.text,
+        orElse: () => null,
       );
-      if (v.isNotEmpty) _selectedFuelVehicleId = v['id'];
+      if (v != null) _selectedFuelVehicleId = v.id;
     }
 
     // Fill location
@@ -1722,17 +1724,15 @@ class _AddEntryPageState extends State<AddEntryPage>
                           ),
                           items: _vehicles
                               .where((v) {
-                                final type = v['vehicle_type']
-                                    ?.toString()
-                                    .toLowerCase();
+                                final type = v.vehicleType?.toLowerCase();
                                 // Only show trucks (or if type is missing/null, show it to be safe)
                                 return type == null || type == 'truck';
                               })
                               .map((v) {
                                 return DropdownMenuItem<String>(
-                                  value: v['id'] as String,
+                                  value: v.id,
                                   child: Text(
-                                    v['truck_number'] ?? 'Unknown',
+                                    v.truckNumber,
                                     style: Theme.of(context).textTheme.bodyLarge
                                         ?.copyWith(
                                           color: context.tokens.textPrimary,
@@ -1747,13 +1747,15 @@ class _AddEntryPageState extends State<AddEntryPage>
                                   if (value != null) {
                                     setState(() {
                                       _selectedTripVehicleId = value;
-                                      final v = _vehicles.firstWhere(
-                                        (e) => e['id'] == value,
-                                        orElse: () => {},
-                                      );
-                                      if (v.isNotEmpty) {
+                                      final v = _vehicles
+                                          .cast<Vehicle?>()
+                                          .firstWhere(
+                                            (e) => e?.id == value,
+                                            orElse: () => null,
+                                          );
+                                      if (v != null) {
                                         _tripTruckNumberController.text =
-                                            v['truck_number'];
+                                            v.truckNumber;
                                       }
                                     });
                                   }
@@ -2229,10 +2231,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     items: _vehicles
                         .where((v) {
                           // Filter based on reefer mode if reliable, else show all
-                          // Assuming 'type' field exists. If not, show all.
-                          final type = v['vehicle_type']
-                              ?.toString()
-                              .toLowerCase();
+                          final type = v.vehicleType?.toLowerCase();
                           if (type == null) return true;
                           if (_isReeferFuel) {
                             return type == 'reefer' || type == 'trailer';
@@ -2241,9 +2240,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                         })
                         .map((v) {
                           return DropdownMenuItem<String>(
-                            value: v['id'] as String,
+                            value: v.id,
                             child: Text(
-                              v['truck_number'] ?? 'Unknown',
+                              v.truckNumber,
                               style: Theme.of(context).textTheme.bodyLarge
                                   ?.copyWith(color: context.tokens.textPrimary),
                             ),
@@ -2257,13 +2256,12 @@ class _AddEntryPageState extends State<AddEntryPage>
                               setState(() {
                                 _selectedFuelVehicleId = value;
                                 // Update controller for legacy
-                                final v = _vehicles.firstWhere(
-                                  (e) => e['id'] == value,
-                                  orElse: () => {},
+                                final v = _vehicles.cast<Vehicle?>().firstWhere(
+                                  (e) => e?.id == value,
+                                  orElse: () => null,
                                 );
-                                if (v.isNotEmpty) {
-                                  _truckNumberController.text =
-                                      v['truck_number'];
+                                if (v != null) {
+                                  _truckNumberController.text = v.truckNumber;
                                 }
                               });
                             }

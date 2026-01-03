@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:go_router/go_router.dart';
 import 'package:mockito/mockito.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/core/providers/supabase_provider.dart';
-import 'package:terminal/features/auth/login_page.dart';
+import 'package:terminal/features/auth/presentation/pages/login_page.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:terminal/core/providers/biometric_provider.dart';
 
@@ -40,6 +41,22 @@ void main() {
     ).thenAnswer((_) async {});
   });
 
+  /// Creates a router with LoginPage as the initial route and a dashboard stub.
+  GoRouter _createTestRouter() {
+    return GoRouter(
+      initialLocation: '/login',
+      routes: [
+        GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+        GoRoute(
+          path: '/dashboard',
+          builder: (context, state) => const fluent.ScaffoldPage(
+            content: fluent.Center(child: fluent.Text('Dashboard')),
+          ),
+        ),
+      ],
+    );
+  }
+
   testWidgets('LoginPage shows email and password fields and login button', (
     tester,
   ) async {
@@ -49,7 +66,7 @@ void main() {
           supabaseClientProvider.overrideWithValue(mockSupabaseClient),
           biometricServiceProvider.overrideWithValue(mockBiometricService),
         ],
-        child: const fluent.FluentApp(home: LoginPage()),
+        child: fluent.FluentApp.router(routerConfig: _createTestRouter()),
       ),
     );
 
@@ -83,7 +100,7 @@ void main() {
           supabaseClientProvider.overrideWithValue(mockSupabaseClient),
           biometricServiceProvider.overrideWithValue(mockBiometricService),
         ],
-        child: const fluent.FluentApp(home: LoginPage()),
+        child: fluent.FluentApp.router(routerConfig: _createTestRouter()),
       ),
     );
 

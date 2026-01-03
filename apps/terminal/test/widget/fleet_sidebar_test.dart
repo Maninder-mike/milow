@@ -16,7 +16,7 @@ void main() {
     final testVehicles = [
       {
         'id': '1',
-        'vehicle_number': '101',
+        'truck_number': '101',
         'vehicle_type': 'Truck',
         'license_plate': 'TX-123',
         'status': 'Active',
@@ -24,7 +24,7 @@ void main() {
       },
       {
         'id': '2',
-        'vehicle_number': '102',
+        'truck_number': '102',
         'vehicle_type': 'Trailer',
         'license_plate': 'CA-456',
         'status': 'Maintenance',
