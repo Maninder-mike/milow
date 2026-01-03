@@ -41,7 +41,7 @@ class _DriversPageState extends ConsumerState<DriversPage> {
                       fontSize: 18,
                       color: FluentTheme.of(
                         context,
-                      ).typography.body?.color?.withValues(alpha: 0.6),
+                      ).resources.textFillColorSecondary,
                     ),
                   ),
                 ],
@@ -142,7 +142,7 @@ class _DriverDetailPanelState extends State<_DriverDetailPanel> {
                         ? FontWeight.w600
                         : FontWeight.normal,
                     color: isSelected
-                        ? theme.typography.body?.color
+                        ? theme.resources.textFillColorPrimary
                         : inactiveColor,
                   ),
                 ),
@@ -184,6 +184,7 @@ class _OverviewTab extends StatelessWidget {
             style: GoogleFonts.outfit(
               fontSize: 24,
               fontWeight: FontWeight.bold,
+              color: FluentTheme.of(context).resources.textFillColorPrimary,
             ),
           ),
           const SizedBox(height: 24),
@@ -494,9 +495,9 @@ class _OverviewTab extends StatelessWidget {
       context: context,
       title: 'Contact Info',
       children: [
-        _buildInfoRow('Phone', driver.phone ?? 'Not set'),
+        _buildInfoRow(context, 'Phone', driver.phone ?? 'Not set'),
         const SizedBox(height: 8),
-        _buildInfoRow('Email', driver.email ?? '-'),
+        _buildInfoRow(context, 'Email', driver.email ?? '-'),
       ],
     );
   }
@@ -525,14 +526,16 @@ class _OverviewTab extends StatelessWidget {
             )
           : null,
       children: [
-        _buildInfoRow('CDL Class', driver.licenseType ?? 'Not set'),
+        _buildInfoRow(context, 'CDL Class', driver.licenseType ?? 'Not set'),
         const SizedBox(height: 8),
         _buildInfoRow(
+          context,
           'License #',
           driver.licenseNumber ?? 'Not set',
         ), // Added License Number
         const SizedBox(height: 8),
         _buildInfoRow(
+          context,
           'Exp',
           licenseExpiry != null
               ? DateFormat('MM/yyyy').format(licenseExpiry)
@@ -564,34 +567,96 @@ class _OverviewTab extends StatelessWidget {
             )
           : null,
       children: [
-        _buildInfoRow('Nationality', driver.citizenship ?? 'Not set'),
+        _buildInfoRow(context, 'Nationality', driver.citizenship ?? 'Not set'),
         const SizedBox(height: 8),
-        _buildInfoRow('Visa Exp', DateFormat('MM/dd/yyyy').format(visaExpiry)),
+        _buildInfoRow(
+          context,
+          'Visa Exp',
+          DateFormat('MM/dd/yyyy').format(visaExpiry),
+        ),
       ],
     );
   }
 
   Widget _buildStatusCard(BuildContext context) {
-    return _buildInfoCard(
-      context: context,
-      title: 'Current Status',
-      children: [
-        _buildInfoRow('Status', 'On Duty - Driving'), // TODO: Real data
-        const SizedBox(height: 8),
-        _buildInfoRow('Truck', '#4092'), // TODO: Real data
-      ],
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _fetchAssignedVehicle(),
+      builder: (context, snapshot) {
+        String truckDisplay = 'Not Assigned';
+        String statusDisplay = driver.isVerified
+            ? 'Active'
+            : 'Pending Verification';
+
+        if (snapshot.hasData && snapshot.data != null) {
+          final vehicle = snapshot.data!;
+          truckDisplay =
+              '${vehicle['vehicle_number']} (${vehicle['vehicle_type']})';
+        }
+
+        return _buildInfoCard(
+          context: context,
+          title: 'Current Status',
+          trailing: IconButton(
+            icon: const Icon(FluentIcons.edit, size: 14),
+            onPressed: () => _showTruckSelectionDialog(context),
+          ),
+          children: [
+            _buildInfoRow(context, 'Status', statusDisplay),
+            const SizedBox(height: 8),
+            _buildInfoRow(context, 'Assigned Vehicle', truckDisplay),
+          ],
+        );
+      },
     );
   }
 
-  Widget _buildInfoRow(String label, String value) {
+  Future<Map<String, dynamic>?> _fetchAssignedVehicle() async {
+    try {
+      final assignment = await Supabase.instance.client
+          .from('driver_vehicle_assignments')
+          .select('vehicle_id')
+          .eq('driver_id', driver.id)
+          .isFilter('unassigned_at', null)
+          .maybeSingle();
+
+      if (assignment == null) return null;
+
+      final vehicleId = assignment['vehicle_id'] as String?;
+      if (vehicleId == null) return null;
+
+      final vehicle = await Supabase.instance.client
+          .from('vehicles')
+          .select('vehicle_number, vehicle_type')
+          .eq('id', vehicleId)
+          .maybeSingle();
+
+      return vehicle;
+    } catch (e) {
+      debugPrint('Error fetching assigned vehicle: $e');
+      return null;
+    }
+  }
+
+  Widget _buildInfoRow(BuildContext context, String label, String value) {
+    final theme = FluentTheme.of(context);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[100])),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            color: theme.resources.textFillColorSecondary,
+          ),
+        ),
         const SizedBox(height: 2),
         Text(
           value,
-          style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+            color: theme.resources.textFillColorPrimary,
+          ),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -731,16 +796,15 @@ class _OverviewTab extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => ContentDialog(
-        title: const Text('Select Truck'),
+        title: const Text('Assign Vehicle'),
         content: SizedBox(
-          height: 300,
-          width: 400,
+          height: 400,
+          width: 500,
           child: FutureBuilder(
             future: Supabase.instance.client
                 .from('vehicles')
-                .select()
-                .eq('vehicle_type', 'Truck')
-                .limit(20),
+                .select('id, vehicle_number, vehicle_type, license_plate')
+                .order('vehicle_number'),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: ProgressRing());
@@ -750,34 +814,31 @@ class _OverviewTab extends StatelessWidget {
               }
               final vehicles = snapshot.data as List<dynamic>? ?? [];
               if (vehicles.isEmpty) {
-                return const Center(child: Text('No trucks found.'));
+                return const Center(child: Text('No vehicles found.'));
               }
               return ListView.builder(
                 itemCount: vehicles.length,
                 itemBuilder: (context, index) {
-                  final truck = vehicles[index];
+                  final vehicle = vehicles[index];
                   return ListTile(
+                    leading: Icon(
+                      FluentIcons.car,
+                      color: FluentTheme.of(context).accentColor,
+                    ),
                     title: Text(
-                      '${truck['make'] ?? ''} ${truck['model'] ?? ''}',
+                      '${vehicle['vehicle_number']} - ${vehicle['vehicle_type']}',
                     ),
                     subtitle: Text(
-                      'Unit: ${truck['vehicle_number']} • ${truck['status'] ?? 'Unknown'}',
+                      'Plate: ${vehicle['license_plate'] ?? 'N/A'}',
                     ),
-                    trailing: Button(
+                    trailing: FilledButton(
                       child: const Text('Assign'),
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(context);
-                        // Mock assignment
-                        displayInfoBar(
+                        await _assignVehicleToDriver(
                           context,
-                          builder: (context, close) => InfoBar(
-                            title: const Text('Assigned'),
-                            content: Text(
-                              'Truck ${truck['vehicle_number']} assigned (Simulated)',
-                            ),
-                            severity: InfoBarSeverity.info,
-                            onClose: close,
-                          ),
+                          vehicle['id'] as String,
+                          vehicle['vehicle_number'] as String,
                         );
                       },
                     ),
@@ -789,12 +850,61 @@ class _OverviewTab extends StatelessWidget {
         ),
         actions: [
           Button(
-            child: const Text('Close'),
+            child: const Text('Cancel'),
             onPressed: () => Navigator.pop(context),
           ),
         ],
       ),
     );
+  }
+
+  Future<void> _assignVehicleToDriver(
+    BuildContext context,
+    String vehicleId,
+    String vehicleNumber,
+  ) async {
+    try {
+      // 1. Unassign any current vehicle for this driver
+      await Supabase.instance.client
+          .from('driver_vehicle_assignments')
+          .update({'unassigned_at': DateTime.now().toIso8601String()})
+          .eq('driver_id', driver.id)
+          .isFilter('unassigned_at', null);
+
+      // 2. Create new assignment
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      await Supabase.instance.client.from('driver_vehicle_assignments').insert({
+        'driver_id': driver.id,
+        'vehicle_id': vehicleId,
+        'assigned_by': currentUser?.id,
+      });
+
+      if (context.mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Vehicle Assigned'),
+            content: Text(
+              'Truck $vehicleNumber has been assigned to ${driver.fullName ?? 'driver'}.',
+            ),
+            severity: InfoBarSeverity.success,
+            onClose: close,
+          ),
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Assignment Failed'),
+            content: Text(e.toString()),
+            severity: InfoBarSeverity.error,
+            onClose: close,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildQuickActionsRow(BuildContext context) {
@@ -957,151 +1067,156 @@ class _OverviewTab extends StatelessWidget {
 
   Widget _buildRecentActivityCard(BuildContext context) {
     final theme = FluentTheme.of(context);
-    return Card(
-      borderRadius: BorderRadius.circular(12),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Recent Activity',
-                style: GoogleFonts.outfit(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
+    return SizedBox(
+      height: 400,
+      child: Card(
+        borderRadius: BorderRadius.circular(12),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Recent Activity',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: theme.resources.textFillColorPrimary,
+                  ),
                 ),
-              ),
-              IconButton(
-                icon: const Icon(FluentIcons.more, size: 16),
-                onPressed: () {},
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: FutureBuilder(
-              future: Supabase.instance.client
-                  .from('trips')
-                  .select()
-                  .eq('user_id', driver.id)
-                  .order('trip_date', ascending: false)
-                  .limit(5),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: ProgressRing());
-                }
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text(
-                      'Error loading activity',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                  );
-                }
+                IconButton(
+                  icon: const Icon(FluentIcons.more, size: 16),
+                  onPressed: () {},
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: FutureBuilder(
+                future: Supabase.instance.client
+                    .from('trips')
+                    .select()
+                    .eq('user_id', driver.id)
+                    .order('trip_date', ascending: false)
+                    .limit(5),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: ProgressRing());
+                  }
+                  if (snapshot.hasError) {
+                    return Center(
+                      child: Text(
+                        'Error loading activity',
+                        style: TextStyle(color: Colors.red),
+                      ),
+                    );
+                  }
 
-                final trips = snapshot.data as List<dynamic>? ?? [];
-                if (trips.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          FluentIcons.timeline,
-                          size: 32,
-                          color: theme.resources.textFillColorSecondary,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'No recent activity',
-                          style: TextStyle(
+                  final trips = snapshot.data as List<dynamic>? ?? [];
+                  if (trips.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            FluentIcons.timeline,
+                            size: 32,
                             color: theme.resources.textFillColorSecondary,
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: trips.length,
-                  itemBuilder: (context, index) {
-                    final trip = trips[index];
-                    final date = DateTime.parse(trip['trip_date']);
-                    return Padding(
-                      padding: const EdgeInsets.only(bottom: 12),
-                      child: Row(
-                        children: [
-                          Container(
-                            width: 32,
-                            height: 32,
-                            decoration: BoxDecoration(
-                              color: theme.accentColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Icon(
-                              FluentIcons.delivery_truck,
-                              size: 16,
-                              color: theme.accentColor,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Trip #${trip['trip_number']}',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                Text(
-                                  DateFormat('MMM d, h:mm a').format(date),
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    color:
-                                        theme.resources.textFillColorSecondary,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.green.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4),
-                            ),
-                            child: Text(
-                              'Completed',
-                              style: TextStyle(
-                                fontSize: 10,
-                                color: Colors.green,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'No recent activity',
+                            style: TextStyle(
+                              color: theme.resources.textFillColorSecondary,
                             ),
                           ),
                         ],
                       ),
                     );
-                  },
-                );
-              },
+                  }
+
+                  return ListView.builder(
+                    itemCount: trips.length,
+                    itemBuilder: (context, index) {
+                      final trip = trips[index];
+                      final date = DateTime.parse(trip['trip_date']);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 32,
+                              height: 32,
+                              decoration: BoxDecoration(
+                                color: theme.accentColor.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                FluentIcons.delivery_truck,
+                                size: 16,
+                                color: theme.accentColor,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'Trip #${trip['trip_number']}',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                  Text(
+                                    DateFormat('MMM d, h:mm a').format(date),
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: theme
+                                          .resources
+                                          .textFillColorSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.green.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                'Completed',
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildDriverStats(BuildContext context) {
     final theme = FluentTheme.of(context);
-    final textColor = theme.typography.body?.color;
+    final textColor = theme.resources.textFillColorPrimary;
 
     return FutureBuilder(
       future: Supabase.instance.client
@@ -1147,7 +1262,7 @@ class _OverviewTab extends StatelessWidget {
                     'Trips Completed',
                     tripsCompleted.toString(),
                     FluentIcons.delivery_truck,
-                    textColor ?? Colors.white,
+                    textColor,
                     Colors.blue,
                   ),
                   const SizedBox(width: 24),
@@ -1155,7 +1270,7 @@ class _OverviewTab extends StatelessWidget {
                     'Total Miles',
                     '${totalMiles.toStringAsFixed(0)} mi',
                     FluentIcons.map_layers,
-                    textColor ?? Colors.white,
+                    textColor,
                     Colors.orange,
                   ),
                 ],

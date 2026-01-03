@@ -241,6 +241,8 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
                 ),
               ),
             ),
+            const SizedBox(width: 16),
+            Expanded(child: _buildAssignedDriverCard()),
           ],
         ),
 
@@ -394,6 +396,303 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
         ],
       ),
     );
+  }
+
+  Future<Map<String, dynamic>?> _fetchAssignedDriver() async {
+    try {
+      // First get the assignment
+      final assignment = await Supabase.instance.client
+          .from('driver_vehicle_assignments')
+          .select('driver_id')
+          .eq('vehicle_id', _vehicle['id'])
+          .isFilter('unassigned_at', null)
+          .maybeSingle();
+
+      if (assignment == null) return null;
+
+      final driverId = assignment['driver_id'] as String?;
+      if (driverId == null) return null;
+
+      // Then fetch the driver profile
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('full_name, phone, avatar_url')
+          .eq('id', driverId)
+          .maybeSingle();
+
+      return profile;
+    } catch (e) {
+      debugPrint('Error fetching assigned driver: $e');
+      return null;
+    }
+  }
+
+  Widget _buildAssignedDriverCard() {
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: _fetchAssignedDriver(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Card(
+            padding: const EdgeInsets.all(16),
+            child: const Center(child: ProgressRing()),
+          );
+        }
+
+        String driverName = 'Not Assigned';
+        String driverPhone = '-';
+        String? avatarUrl;
+        bool hasDriver = false;
+
+        if (snapshot.hasData && snapshot.data != null) {
+          final data = snapshot.data!;
+          hasDriver = true;
+          driverName = data['full_name'] ?? 'Unknown';
+          driverPhone = data['phone'] ?? '-';
+          avatarUrl = data['avatar_url'] as String?;
+        }
+
+        return Card(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(FluentIcons.person_24_regular, size: 20),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Assigned Driver',
+                        style: TextStyle(fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                  if (hasDriver)
+                    IconButton(
+                      icon: const Icon(
+                        FluentIcons.dismiss_24_regular,
+                        size: 16,
+                      ),
+                      onPressed: () => _unassignDriver(),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              if (hasDriver)
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundImage: avatarUrl != null
+                          ? NetworkImage(avatarUrl)
+                          : null,
+                      child: avatarUrl == null
+                          ? Text(driverName[0].toUpperCase())
+                          : null,
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            driverName,
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          Text(
+                            driverPhone,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: FluentTheme.of(
+                                context,
+                              ).resources.textFillColorSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                )
+              else
+                Center(
+                  child: Column(
+                    children: [
+                      Icon(
+                        FluentIcons.person_add_24_regular,
+                        size: 32,
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.textFillColorSecondary,
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'No driver assigned',
+                        style: TextStyle(
+                          color: FluentTheme.of(
+                            context,
+                          ).resources.textFillColorSecondary,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      FilledButton(
+                        child: const Text('Assign Driver'),
+                        onPressed: () => _showAssignDriverDialog(),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _unassignDriver() async {
+    try {
+      await Supabase.instance.client
+          .from('driver_vehicle_assignments')
+          .update({'unassigned_at': DateTime.now().toIso8601String()})
+          .eq('vehicle_id', _vehicle['id'])
+          .isFilter('unassigned_at', null);
+
+      setState(() {}); // Refresh
+
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Driver Unassigned'),
+            severity: InfoBarSeverity.success,
+            onClose: close,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Error'),
+            content: Text(e.toString()),
+            severity: InfoBarSeverity.error,
+            onClose: close,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAssignDriverDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Assign Driver'),
+        content: SizedBox(
+          height: 400,
+          width: 400,
+          child: FutureBuilder(
+            future: Supabase.instance.client
+                .from('profiles')
+                .select('id, full_name, phone, avatar_url')
+                .eq('role', 'driver')
+                .order('full_name'),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: ProgressRing());
+              }
+              if (snapshot.hasError) {
+                return Center(child: Text('Error: ${snapshot.error}'));
+              }
+              final drivers = snapshot.data as List<dynamic>? ?? [];
+              if (drivers.isEmpty) {
+                return const Center(child: Text('No drivers found.'));
+              }
+              return ListView.builder(
+                itemCount: drivers.length,
+                itemBuilder: (context, index) {
+                  final driver = drivers[index];
+                  return ListTile(
+                    leading: CircleAvatar(
+                      backgroundImage: driver['avatar_url'] != null
+                          ? NetworkImage(driver['avatar_url'])
+                          : null,
+                      child: driver['avatar_url'] == null
+                          ? Text(
+                              (driver['full_name'] as String? ?? '?')[0]
+                                  .toUpperCase(),
+                            )
+                          : null,
+                    ),
+                    title: Text(driver['full_name'] ?? 'Unknown'),
+                    subtitle: Text(driver['phone'] ?? '-'),
+                    trailing: FilledButton(
+                      child: const Text('Assign'),
+                      onPressed: () async {
+                        Navigator.pop(context);
+                        await _assignDriver(driver['id'] as String);
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _assignDriver(String driverId) async {
+    try {
+      // Unassign current driver if any
+      await Supabase.instance.client
+          .from('driver_vehicle_assignments')
+          .update({'unassigned_at': DateTime.now().toIso8601String()})
+          .eq('vehicle_id', _vehicle['id'])
+          .isFilter('unassigned_at', null);
+
+      // Create new assignment
+      final currentUser = Supabase.instance.client.auth.currentUser;
+      await Supabase.instance.client.from('driver_vehicle_assignments').insert({
+        'driver_id': driverId,
+        'vehicle_id': _vehicle['id'],
+        'assigned_by': currentUser?.id,
+      });
+
+      setState(() {}); // Refresh
+
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Driver Assigned'),
+            severity: InfoBarSeverity.success,
+            onClose: close,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Error'),
+            content: Text(e.toString()),
+            severity: InfoBarSeverity.error,
+            onClose: close,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildRow(String label, String? value) {
