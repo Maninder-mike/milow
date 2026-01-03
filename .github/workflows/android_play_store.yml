@@ -42,7 +42,13 @@ jobs:
           VERSION=$(grep '^version:' apps/driver/pubspec.yaml | sed 's/version: //;s/\+.*//')
           echo "version=v$VERSION" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Building version: v$VERSION"
+          
+          # Auto-incrementing version code with offset to prevent collision
+          # Offset 20 ensures we're above current manual versions (pubspec has 7, play store has 4)
+          VERSION_CODE=$(( $GITHUB_RUN_NUMBER + 20 ))
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          
+          echo "📦 Building version: v$VERSION+$VERSION_CODE"
 
       # Check if this tag already exists
       - name: Check if release exists
@@ -159,8 +165,8 @@ jobs:
           echo "🏗️ Building release APK & App Bundle..."
           echo "🔢 Build Number: ${{ github.run_number }}"
           cd apps/driver
-          flutter build apk --release --build-number=${{ github.run_number }} --verbose
-          flutter build appbundle --release --build-number=${{ github.run_number }} --verbose
+          flutter build apk --release --build-number=${{ steps.version.outputs.version_code }} --verbose
+          flutter build appbundle --release --build-number=${{ steps.version.outputs.version_code }} --verbose
           echo "✅ Build complete!"
 
       # Verify APK Signature
