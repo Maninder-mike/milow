@@ -40,6 +40,12 @@ jobs:
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
 
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
       - name: Create .env file
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
@@ -55,6 +61,12 @@ jobs:
         run: |
           cd build/macos/Build/Products/Release
           zip -r "MilowTerminal-${{ steps.version.outputs.version }}-macos.zip" "Milow Terminal.app"
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-build
+          path: apps/terminal/build/macos/Build/Products/Release/MilowTerminal-${{ steps.version.outputs.version }}-macos.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v1
