@@ -4,6 +4,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import 'package:supabase_flutter/supabase_flutter.dart'; // [NEW]
 import 'package:terminal/core/providers/biometric_provider.dart';
 import '../../services/biometric_service.dart';
 import '../theme/auth_theme.dart';
@@ -145,6 +146,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     );
   }
 
+  String _getUserFriendlyErrorMessage(Object error) {
+    if (error is AuthException) {
+      if (error.message.contains('Invalid login credentials')) {
+        return 'Incorrect email or password.';
+      }
+      return error.message;
+    }
+    final message = error.toString();
+    if (message.contains('SocketException') ||
+        message.contains('Network is unreachable') ||
+        message.contains('connection failed')) {
+      return 'No internet connection. Please check your network.';
+    }
+    if (message.contains('A required entitlement isn\'t present')) {
+      return 'Secure storage issue. "Remember Me" features may be unavailable.';
+    }
+    return 'An unexpected error occurred. Please try again.';
+  }
+
   @override
   Widget build(BuildContext context) {
     final loginState = ref.watch(loginControllerProvider);
@@ -152,7 +172,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
 
     ref.listen(loginControllerProvider, (previous, next) {
       if (next is AsyncError) {
-        _showError(next.error.toString());
+        debugPrint('LOGIN ERROR: ${next.error}');
+        debugPrint('LOGIN STACK: ${next.stackTrace}');
+        _showError(_getUserFriendlyErrorMessage(next.error));
       } else if (next is AsyncData && !next.isLoading) {
         if (_isResettingPassword) {
           displayInfoBar(

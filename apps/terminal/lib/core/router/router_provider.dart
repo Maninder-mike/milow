@@ -9,6 +9,7 @@ import 'package:terminal/features/auth/presentation/pages/terms_page.dart';
 import 'package:terminal/features/auth/presentation/pages/privacy_policy_page.dart';
 import 'package:terminal/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:terminal/features/auth/presentation/pending_verification_page.dart';
+import 'package:terminal/features/auth/presentation/pages/access_denied_page.dart'; // [NEW]
 
 import 'package:terminal/features/dashboard/dashboard_shell.dart';
 import 'package:terminal/features/inbox/inbox_view.dart';
@@ -39,6 +40,10 @@ final routerProvider = Provider<GoRouter>((ref) {
     refreshListenable: notifier,
     redirect: notifier.redirect,
     routes: [
+      GoRoute(
+        path: '/access-denied',
+        builder: (context, state) => const AccessDeniedPage(),
+      ),
       GoRoute(
         path: '/pending-verification',
         builder: (context, state) => const PendingVerificationPage(),
@@ -154,6 +159,9 @@ class RouterNotifier extends ChangeNotifier {
         _isPasswordRecovery = true;
       } else if (event == AuthChangeEvent.signedOut) {
         _isPasswordRecovery = false;
+        _ref.invalidate(profileProvider);
+      } else if (event == AuthChangeEvent.signedIn) {
+        _ref.invalidate(profileProvider);
       }
       notifyListeners();
     });
@@ -171,23 +179,27 @@ class RouterNotifier extends ChangeNotifier {
         location == '/signup' ||
         location == '/reset-password' ||
         location == '/terms' ||
-        location == '/privacy';
+        location == '/privacy' ||
+        location == '/access-denied';
 
     if (!isLoggedIn && !isPublicPage) return '/login';
 
     if (isLoggedIn) {
-      if (location == '/login') return '/dashboard';
-
       final profileState = _ref.read(profileProvider);
 
-      // If profile is loading, simply return null and wait for the listener to trigger again
-      // when loading completes.
       if (profileState.isLoading) return null;
 
       final profile = profileState.value;
       if (profile != null) {
-        final isVerified = profile['is_verified'] as bool? ?? false;
         final role = profile['role'] as String? ?? 'pending';
+        final isVerified = profile['is_verified'] as bool? ?? false;
+
+        if (role == 'driver') {
+          if (location != '/access-denied') {
+            return '/access-denied';
+          }
+          return null;
+        }
 
         if ((!isVerified || role == 'pending') &&
             location != '/pending-verification') {
@@ -199,6 +211,10 @@ class RouterNotifier extends ChangeNotifier {
             location == '/pending-verification') {
           return '/dashboard';
         }
+      }
+
+      if (location == '/login') {
+        return '/dashboard';
       }
     }
     return null;

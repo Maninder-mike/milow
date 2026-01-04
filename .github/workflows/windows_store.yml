@@ -119,9 +119,9 @@ jobs:
             --sellerId $env:WINDOWS_STORE_SELLER_ID
           
           msstore publish `
-            --inputDirectory build/windows/runner/Release `
+            --inputDirectory build/windows/x64/runner/Release `
             --appId $env:WINDOWS_STORE_APP_ID `
-            --skipPolling
+            --verbose
         env:
           WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
           WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}

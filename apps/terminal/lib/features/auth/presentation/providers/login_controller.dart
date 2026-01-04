@@ -21,7 +21,13 @@ class LoginController extends _$LoginController {
       await supabase.auth.signInWithPassword(email: email, password: password);
 
       // Save credentials on successful login
-      await biometricService.saveCredentials(email, password);
+      try {
+        await biometricService.saveCredentials(email, password);
+      } catch (e) {
+        // Log the error but don't fail the login
+        // This is expected on macOS debug builds without proper entitlements
+        print('Warning: Failed to save credentials to secure storage: $e');
+      }
     });
   }
 
