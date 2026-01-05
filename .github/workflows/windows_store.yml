@@ -116,8 +116,12 @@ jobs:
             --tenantId $env:WINDOWS_STORE_TENANT_ID `
             --clientId $env:WINDOWS_STORE_CLIENT_ID `
             --clientSecret $env:WINDOWS_STORE_CLIENT_SECRET `
-            --sellerId $env:WINDOWS_STORE_SELLER_ID
-          
+            --sellerId $env:WINDOWS_STORE_SELLER_ID `
+            --verbose
+
+          Write-Host "Listing available apps..."
+          msstore apps list
+
           msstore publish `
             --inputDirectory build/windows/x64/runner/Release `
             --appId $env:WINDOWS_STORE_APP_ID `
