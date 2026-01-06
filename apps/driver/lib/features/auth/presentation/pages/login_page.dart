@@ -10,6 +10,7 @@ import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/logging_service.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -35,11 +36,11 @@ class _LoginPageState extends State<LoginPage>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: M3ExpressiveMotion.durationEmphasis,
     );
     _fadeAnim = CurvedAnimation(
       parent: _animController,
-      curve: Curves.easeOutCubic,
+      curve: M3ExpressiveMotion.decelerated,
     );
     _animController.forward();
   }

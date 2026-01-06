@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import '../../../../core/constants/app_elevation.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class SecondarySidebar extends StatefulWidget {
@@ -21,8 +22,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
     final isLight = theme.brightness == Brightness.light;
 
     final backgroundColor = isLight
-        ? AppColors
-              .sidebarSecondaryBackgroundLight // Slightly off-white for secondary sidebar
+        ? theme.resources.solidBackgroundFillColorSecondary
         : theme.resources.solidBackgroundFillColorTertiary;
     final titleColor = theme.resources.textFillColorSecondary;
 
@@ -35,13 +35,13 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
         children: [
           // Header
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
                   'Quick Actions',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: titleColor,
@@ -63,7 +63,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
           // Quick action cards
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               children: [
                 _buildActionCard(
                   context,
@@ -71,7 +71,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                   icon: FluentIcons.person_24_regular,
                   title: 'Customer',
                   description: 'Add new customer',
-                  color: AppColors.info,
+                  color: theme.accentColor,
                 ),
                 const SizedBox(height: 8),
                 _buildActionCard(
@@ -89,7 +89,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                   icon: FluentIcons.arrow_download_24_regular,
                   title: 'Delivery',
                   description: 'Schedule delivery',
-                  color: AppColors.actionPurple,
+                  color: AppColors.purple,
                 ),
               ],
             ),
@@ -112,6 +112,9 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
     final cardColor = theme.resources.cardBackgroundFillColorDefault;
     final textColor = theme.resources.textFillColorPrimary;
     final subTextColor = theme.resources.textFillColorSecondary;
+    final borderColor = isHovered
+        ? color.withValues(alpha: 0.5)
+        : theme.resources.dividerStrokeColorDefault;
 
     return MouseRegion(
       onEnter: (_) => setState(() => _hoveredItem = title),
@@ -121,25 +124,14 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
         onTap: () => widget.onItemTap(title.toUpperCase()),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 150),
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isHovered
-                  ? color.withValues(alpha: 0.5)
-                  : (isLight ? AppColors.dividerLight : AppColors.dividerDark),
-              width: isHovered ? 1.5 : 1,
-            ),
+            border: Border.all(color: borderColor, width: isHovered ? 1.5 : 1),
             boxShadow: isHovered
-                ? [
-                    BoxShadow(
-                      color: color.withValues(alpha: 0.15),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2),
-                    ),
-                  ]
-                : null,
+                ? AppElevation.shadow8(context)
+                : AppElevation.shadow2(context),
           ),
           child: Row(
             children: [
@@ -153,7 +145,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                 ),
                 child: Icon(icon, size: 20, color: color),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 16),
               // Text content
               Expanded(
                 child: Column(
@@ -161,7 +153,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                   children: [
                     Text(
                       title,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: textColor,
@@ -170,7 +162,7 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                     const SizedBox(height: 2),
                     Text(
                       description,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 11,
                         color: subTextColor,
                       ),

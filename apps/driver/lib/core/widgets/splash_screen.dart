@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -34,14 +35,14 @@ class _SplashScreenState extends State<SplashScreen>
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _contentController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+        curve: const Interval(0.0, 0.5, curve: M3ExpressiveMotion.decelerated),
       ),
     );
 
     _scale = Tween<double>(begin: 0.9, end: 1.0).animate(
       CurvedAnimation(
         parent: _contentController,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOutCubic),
+        curve: const Interval(0.0, 0.5, curve: M3ExpressiveMotion.emphasized),
       ),
     );
   }

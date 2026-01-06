@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/core/services/auth_service.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
@@ -660,7 +661,7 @@ class _SettingsPageState extends State<SettingsPage> {
     return GestureDetector(
       onTap: onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: M3ExpressiveMotion.durationShort,
         padding: EdgeInsets.symmetric(
           horizontal: context.tokens.spacingM,
           vertical: context.tokens.spacingS,

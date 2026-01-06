@@ -7,7 +7,8 @@ import 'package:file_selector/file_selector.dart';
 import 'dart:io';
 
 import '../../core/widgets/toast_notification.dart';
-import '../users/data/user_repository_provider.dart'; // Import usersProvider
+import '../users/data/user_repository_provider.dart';
+import '../../core/widgets/choreographed_entrance.dart';
 
 class ProfilePage extends ConsumerStatefulWidget {
   const ProfilePage({super.key});
@@ -482,72 +483,78 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           final isWide = constraints.maxWidth > 900;
           final double contentWidth = isWide ? 1000 : 600;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Center(
-              child: SizedBox(
-                width: contentWidth,
-                child: Form(
-                  key: _formKey,
-                  child: isWide
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left Panel (Identity)
-                            SizedBox(
-                              width: 300,
-                              child: _buildIdentityCard(
-                                theme,
-                                cardColor,
-                                borderColor,
+          return ChoreographedEntrance(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Center(
+                child: SizedBox(
+                  width: contentWidth,
+                  child: Form(
+                    key: _formKey,
+                    child: isWide
+                        ? Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Left Panel (Identity)
+                              SizedBox(
+                                width: 300,
+                                child: _buildIdentityCard(
+                                  theme,
+                                  cardColor,
+                                  borderColor,
+                                ),
                               ),
-                            ),
-                            const SizedBox(width: 24),
-                            // Right Panel (Details)
-                            Expanded(
-                              child: Column(
-                                children: [
-                                  _buildDetailsCard(
-                                    theme,
-                                    cardColor,
-                                    borderColor,
-                                  ),
-                                  const SizedBox(height: 24),
-                                  _buildCompanyDetailsCard(
-                                    theme,
-                                    cardColor,
-                                    borderColor,
-                                  ),
-                                  if (_isAdmin) ...[
-                                    const SizedBox(height: 24),
-                                    _buildAdminSection(
+                              const SizedBox(width: 24),
+                              // Right Panel (Details)
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    _buildDetailsCard(
                                       theme,
                                       cardColor,
                                       borderColor,
                                     ),
+                                    const SizedBox(height: 24),
+                                    _buildCompanyDetailsCard(
+                                      theme,
+                                      cardColor,
+                                      borderColor,
+                                    ),
+                                    if (_isAdmin) ...[
+                                      const SizedBox(height: 24),
+                                      _buildAdminSection(
+                                        theme,
+                                        cardColor,
+                                        borderColor,
+                                      ),
+                                    ],
                                   ],
-                                ],
+                                ),
                               ),
-                            ),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            _buildIdentityCard(theme, cardColor, borderColor),
-                            const SizedBox(height: 24),
-                            _buildDetailsCard(theme, cardColor, borderColor),
-                            const SizedBox(height: 24),
-                            _buildCompanyDetailsCard(
-                              theme,
-                              cardColor,
-                              borderColor,
-                            ),
-                            if (_isAdmin) ...[
-                              const SizedBox(height: 24),
-                              _buildAdminSection(theme, cardColor, borderColor),
                             ],
-                          ],
-                        ),
+                          )
+                        : Column(
+                            children: [
+                              _buildIdentityCard(theme, cardColor, borderColor),
+                              const SizedBox(height: 24),
+                              _buildDetailsCard(theme, cardColor, borderColor),
+                              const SizedBox(height: 24),
+                              _buildCompanyDetailsCard(
+                                theme,
+                                cardColor,
+                                borderColor,
+                              ),
+                              if (_isAdmin) ...[
+                                const SizedBox(height: 24),
+                                _buildAdminSection(
+                                  theme,
+                                  cardColor,
+                                  borderColor,
+                                ),
+                              ],
+                            ],
+                          ),
+                  ),
                 ),
               ),
             ),
@@ -861,7 +868,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
             child: Text(
               _role.toUpperCase(),
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: theme.accentColor,
@@ -1112,7 +1119,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           const SizedBox(height: 8),
           Text(
             'Approving a user will verify them and auto-assign the Dispatcher role.',
-            style: GoogleFonts.inter(fontSize: 12, color: Colors.grey),
+            style: GoogleFonts.outfit(fontSize: 12, color: Colors.grey),
           ),
           const SizedBox(height: 24),
           const Divider(),
@@ -1317,7 +1324,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         text,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.outfit(
           fontSize: 14,
           fontWeight: FontWeight.w500,
           color: const Color(0xFFCCCCCC),

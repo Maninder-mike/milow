@@ -619,7 +619,7 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
     }
   }
 
-  Widget _buildDetailRow(String label, dynamic value) {
+  Widget _buildDetailRow(String label, dynamic value, DesignTokens tokens) {
     String displayValue = value?.toString() ?? '-';
     if (value is DateTime) {
       displayValue = DateFormat('MMM d, yyyy HH:mm').format(value);
@@ -633,9 +633,9 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
             width: 100,
             child: Text(
               '$label:',
-              style: const TextStyle(
+              style: TextStyle(
                 fontWeight: FontWeight.bold,
-                color: Colors.grey,
+                color: tokens.textSecondary,
               ),
             ),
           ),
@@ -653,6 +653,7 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
+        final tokens = Theme.of(context).extension<DesignTokens>()!;
         return Padding(
           padding: const EdgeInsets.all(20),
           child: Column(
@@ -673,14 +674,15 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
                 ],
               ),
               const Divider(),
-              _buildDetailRow('Type', doc.documentType.label),
-              _buildDetailRow('File Name', doc.fileName),
+              _buildDetailRow('Type', doc.documentType.label, tokens),
+              _buildDetailRow('File Name', doc.fileName, tokens),
               _buildDetailRow(
                 'Size',
                 '${((doc.fileSize ?? 0) / 1024).toStringAsFixed(1)} KB',
+                tokens,
               ),
-              _buildDetailRow('Created', doc.createdAt),
-              _buildDetailRow('Notes', doc.description ?? doc.notes),
+              _buildDetailRow('Created', doc.createdAt, tokens),
+              _buildDetailRow('Notes', doc.description ?? doc.notes, tokens),
               const SizedBox(height: 20),
               SizedBox(
                 width: double.infinity,
@@ -845,13 +847,13 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
+                  PopupMenuItem(
                     value: 'select',
                     child: Row(
                       children: [
-                        Icon(Icons.checklist, color: Colors.black87),
-                        SizedBox(width: 12),
-                        Text('Select Documents'),
+                        Icon(Icons.checklist, color: tokens.textPrimary),
+                        const SizedBox(width: 12),
+                        const Text('Select Documents'),
                       ],
                     ),
                   ),
@@ -1083,10 +1085,10 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
               padding: const EdgeInsets.all(24),
               child: Column(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.picture_as_pdf,
                     size: 48,
-                    color: Colors.blueGrey,
+                    color: tokens.textSecondary,
                   ),
                   const SizedBox(height: 16),
                   Text(
@@ -1134,26 +1136,35 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
           ),
           const SizedBox(height: 16),
 
-          DropdownButtonFormField<TripDocumentType>(
-            initialValue: _selectedDocumentType,
-            decoration: InputDecoration(
-              labelText: 'Document Type',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.shapeS),
-              ),
-              filled: true,
-              fillColor: tokens.inputBackground,
-            ),
-            items: _documentTypes.map((type) {
-              return DropdownMenuItem(
-                value: type,
-                child: Text(_formatDocType(type)),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              return DropdownMenu<TripDocumentType>(
+                width: constraints.maxWidth,
+                initialSelection: _selectedDocumentType,
+                label: const Text('Document Type'),
+                inputDecorationTheme: InputDecorationTheme(
+                  filled: true,
+                  fillColor: tokens.inputBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.shapeS),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+                dropdownMenuEntries: _documentTypes.map((type) {
+                  return DropdownMenuEntry<TripDocumentType>(
+                    value: type,
+                    label: _formatDocType(type),
+                  );
+                }).toList(),
+                onSelected: (value) {
+                  setState(() {
+                    _selectedDocumentType = value;
+                  });
+                },
               );
-            }).toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedDocumentType = value;
-              });
             },
           ),
           const SizedBox(height: 16),

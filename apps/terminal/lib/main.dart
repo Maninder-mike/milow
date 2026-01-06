@@ -6,7 +6,8 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
-import 'package:window_manager/window_manager.dart'; // Ensure window_manager is imported
+import 'package:window_manager/window_manager.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 
 import 'core/providers/theme_provider.dart';
@@ -330,13 +331,13 @@ class AdminApp extends ConsumerWidget {
           accentColor: SystemTheme.accentColor.accent.toAccentColor(),
           brightness: Brightness.light,
           visualDensity: VisualDensity.standard,
-          fontFamily: 'Segoe UI',
+          fontFamily: GoogleFonts.outfit().fontFamily,
         ),
         darkTheme: FluentThemeData(
           accentColor: SystemTheme.accentColor.accent.toAccentColor(),
           brightness: Brightness.dark,
           visualDensity: VisualDensity.standard,
-          fontFamily: 'Segoe UI',
+          fontFamily: GoogleFonts.outfit().fontFamily,
         ),
         themeMode: themeMode,
         routerConfig: router,

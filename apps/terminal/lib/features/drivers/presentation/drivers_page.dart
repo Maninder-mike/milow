@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'providers/driver_selection_provider.dart';
+import 'package:terminal/core/constants/app_elevation.dart';
+import '../../../core/widgets/choreographed_entrance.dart';
 
 class DriversPage extends ConsumerStatefulWidget {
   const DriversPage({super.key});
@@ -23,33 +25,38 @@ class _DriversPageState extends ConsumerState<DriversPage> {
 
     return ScaffoldPage(
       content: selectedDriver == null
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    FluentIcons.contact,
-                    size: 64,
-                    color: FluentTheme.of(
-                      context,
-                    ).resources.controlStrokeColorDefault,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Select a driver to view details',
-                    style: GoogleFonts.outfit(
-                      fontSize: 18,
+          ? ChoreographedEntrance(
+              child: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      FluentIcons.contact,
+                      size: 64,
                       color: FluentTheme.of(
                         context,
-                      ).resources.textFillColorSecondary,
+                      ).resources.controlStrokeColorDefault,
                     ),
-                  ),
-                ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'Select a driver to view details',
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.textFillColorSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             )
           : Padding(
               padding: const EdgeInsets.only(right: 24, bottom: 24),
-              child: _DriverDetailPanel(driver: selectedDriver),
+              child: _DriverDetailPanel(
+                key: ValueKey(selectedDriver.id),
+                driver: selectedDriver,
+              ),
             ),
     );
   }
@@ -58,7 +65,7 @@ class _DriversPageState extends ConsumerState<DriversPage> {
 class _DriverDetailPanel extends StatefulWidget {
   final UserProfile driver;
 
-  const _DriverDetailPanel({required this.driver});
+  const _DriverDetailPanel({super.key, required this.driver});
 
   @override
   State<_DriverDetailPanel> createState() => _DriverDetailPanelState();
@@ -69,31 +76,33 @@ class _DriverDetailPanelState extends State<_DriverDetailPanel> {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Custom Navigation Header
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
-          child: Row(
-            children: [
-              _buildNavButton(0, 'Overview', FluentIcons.contact),
-              const SizedBox(width: 24),
-              _buildNavButton(1, 'Trips', FluentIcons.delivery_truck),
-              const SizedBox(width: 24),
-              _buildNavButton(2, 'Fuel', FluentIcons.drop),
-            ],
+    return ChoreographedEntrance(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Custom Navigation Header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
+            child: Row(
+              children: [
+                _buildNavButton(0, 'Overview', FluentIcons.contact),
+                const SizedBox(width: 24),
+                _buildNavButton(1, 'Trips', FluentIcons.delivery_truck),
+                const SizedBox(width: 24),
+                _buildNavButton(2, 'Fuel', FluentIcons.drop),
+              ],
+            ),
           ),
-        ),
-        const SizedBox(height: 16),
-        // Content Body
-        Expanded(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _buildBody(),
+          const SizedBox(height: 16),
+          // Content Body
+          Expanded(
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              child: _buildBody(),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
@@ -263,7 +272,7 @@ class _OverviewTab extends StatelessWidget {
                                     const SizedBox(width: 6),
                                     Text(
                                       'Assign',
-                                      style: GoogleFonts.inter(
+                                      style: GoogleFonts.outfit(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -327,7 +336,7 @@ class _OverviewTab extends StatelessWidget {
                                     const SizedBox(width: 6),
                                     Text(
                                       'Assign',
-                                      style: GoogleFonts.inter(
+                                      style: GoogleFonts.outfit(
                                         fontWeight: FontWeight.w600,
                                       ),
                                     ),
@@ -410,9 +419,13 @@ class _OverviewTab extends StatelessWidget {
   }
 
   Widget _buildPhotoCard(BuildContext context) {
-    return Card(
-      padding: EdgeInsets.zero,
-      borderRadius: BorderRadius.circular(12),
+    final theme = FluentTheme.of(context);
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: AppElevation.shadow2(context),
+      ),
       child: SizedBox(
         width: 160,
         height: 200,
@@ -462,9 +475,13 @@ class _OverviewTab extends StatelessWidget {
     required List<Widget> children,
     Widget? trailing,
   }) {
-    // using Card ensures proper theme background (mica/layer)
-    return Card(
-      borderRadius: BorderRadius.circular(12),
+    // using Container ensures proper theme background (mica/layer) and elevation
+    return Container(
+      decoration: BoxDecoration(
+        color: FluentTheme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: AppElevation.shadow2(context),
+      ),
       padding: const EdgeInsets.all(16),
       child: Column(
         mainAxisSize: MainAxisSize.min,

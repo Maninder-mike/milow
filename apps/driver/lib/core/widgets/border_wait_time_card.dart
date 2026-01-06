@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 
 class BorderWaitTimeCard extends StatefulWidget {
@@ -132,7 +133,8 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
                   else
                     AnimatedRotation(
                       turns: _isExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 200),
+                      duration: M3ExpressiveMotion.durationMedium,
+                      curve: M3ExpressiveMotion.standard,
                       child: Icon(
                         Icons.keyboard_arrow_down,
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -148,7 +150,9 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
               crossFadeState: _isExpanded
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 200),
+              duration: M3ExpressiveMotion.durationMedium,
+              firstCurve: M3ExpressiveMotion.standard,
+              secondCurve: M3ExpressiveMotion.standard,
             ),
           ],
         ),

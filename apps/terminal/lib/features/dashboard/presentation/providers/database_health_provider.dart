@@ -14,16 +14,23 @@ enum DatabaseStatus {
 class DatabaseHealthState {
   final DatabaseStatus status;
   final DateTime? lastSyncTime;
+  final bool isSyncing;
 
-  const DatabaseHealthState({required this.status, this.lastSyncTime});
+  const DatabaseHealthState({
+    required this.status,
+    this.lastSyncTime,
+    this.isSyncing = false,
+  });
 
   DatabaseHealthState copyWith({
     DatabaseStatus? status,
     DateTime? lastSyncTime,
+    bool? isSyncing,
   }) {
     return DatabaseHealthState(
       status: status ?? this.status,
       lastSyncTime: lastSyncTime ?? this.lastSyncTime,
+      isSyncing: isSyncing ?? this.isSyncing,
     );
   }
 }
@@ -73,6 +80,7 @@ class DatabaseHealthNotifier extends Notifier<DatabaseHealthState> {
   }
 
   Future<void> checkConnection() async {
+    state = state.copyWith(isSyncing: true);
     try {
       await Supabase.instance.client
           .from('profiles')
@@ -83,9 +91,10 @@ class DatabaseHealthNotifier extends Notifier<DatabaseHealthState> {
       state = state.copyWith(
         status: DatabaseStatus.connected,
         lastSyncTime: DateTime.now(),
+        isSyncing: false,
       );
     } catch (e) {
-      state = state.copyWith(status: DatabaseStatus.error);
+      state = state.copyWith(status: DatabaseStatus.error, isSyncing: false);
     }
   }
 }

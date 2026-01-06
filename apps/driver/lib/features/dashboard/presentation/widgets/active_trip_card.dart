@@ -9,6 +9,7 @@ import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/location_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 /// Interactive swipeable card showing pickup and delivery destinations
 /// Displays destination info and dynamic distance using geolocator
@@ -324,12 +325,12 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                 onTap: () {
                   _pageController.animateToPage(
                     index,
-                    duration: const Duration(milliseconds: 300),
-                    curve: Curves.easeInOut,
+                    duration: M3ExpressiveMotion.durationMedium,
+                    curve: M3ExpressiveMotion.standard,
                   );
                 },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: M3ExpressiveMotion.durationShort,
                   margin: EdgeInsets.symmetric(horizontal: tokens.spacingXS),
                   width: isActive ? tokens.spacingL : tokens.spacingS,
                   height: tokens.spacingS,

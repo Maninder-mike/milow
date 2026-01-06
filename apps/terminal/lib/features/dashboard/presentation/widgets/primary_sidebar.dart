@@ -3,8 +3,6 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/constants/app_colors.dart';
-
 class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onAddRecordTap;
   final VoidCallback onDriversTap;
@@ -32,16 +30,15 @@ class PrimarySidebar extends ConsumerWidget {
     final theme = FluentTheme.of(context);
     final isLight = theme.brightness == Brightness.light;
 
-    // Light gray/whiteish background for sidebar based on image
+    // Use Fluent resources for sidebar background
     final backgroundColor = isLight
-        ? AppColors
-              .sidebarBackgroundLight // Light gray to match TopBar
+        ? theme.resources.solidBackgroundFillColorSecondary
         : theme.resources.solidBackgroundFillColorBase;
 
     return Acrylic(
       tint: backgroundColor,
-      tintAlpha: isLight ? 0.95 : 0.7,
-      luminosityAlpha: isLight ? 0.98 : 0.85,
+      tintAlpha: isLight ? 0.98 : 0.8,
+      luminosityAlpha: isLight ? 0.99 : 0.9,
       child: SizedBox(
         width: 72, // Wider to fit text
         child: Column(
@@ -162,7 +159,7 @@ class PrimarySidebar extends ConsumerWidget {
                     const SizedBox(height: 4),
                     Text(
                       label,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 10,
                         color: iconColor,
                         fontWeight: isActive

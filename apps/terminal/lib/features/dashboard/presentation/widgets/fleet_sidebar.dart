@@ -3,6 +3,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/choreographed_entrance.dart';
 import '../../services/vehicle_service.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../screens/vehicles/add_vehicle_dialog.dart';
@@ -87,12 +88,8 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
 
     // Sidebar colors - matching the lighter terminal theme
     // Sidebar colors - matching the lighter terminal theme
-    final backgroundColor = isLight
-        ? AppColors.sidebarBackgroundLight
-        : AppColors.sidebarBackgroundDark;
-    final titleColor = isLight
-        ? AppColors.textSecondaryLight
-        : AppColors.textSecondaryDark;
+    final backgroundColor = theme.resources.solidBackgroundFillColorTertiary;
+    final titleColor = theme.resources.textFillColorSecondary;
 
     final vehiclesAsync = ref.watch(vehiclesListProvider);
 
@@ -112,7 +109,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
               children: [
                 Text(
                   'FLEET',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: titleColor,
@@ -148,36 +145,29 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: TextBox(
               placeholder: 'Search Fleet...',
-              placeholderStyle: GoogleFonts.inter(
-                color: isLight
-                    ? Colors.grey[100]
-                    : const Color(
-                        0xFF858585,
-                      ), // Keep generic grey for placeholder
+              placeholderStyle: GoogleFonts.outfit(
+                color: theme.resources.textFillColorSecondary,
                 fontSize: 13,
               ),
-              style: GoogleFonts.inter(
-                color: isLight
-                    ? AppColors.textPrimaryLight
-                    : AppColors.textPrimaryDark,
+              style: GoogleFonts.outfit(
+                color: theme.resources.textFillColorPrimary,
                 fontSize: 13,
               ),
-              decoration: WidgetStateProperty.all(
-                BoxDecoration(
-                  color: isLight ? Colors.white : AppColors.inputBackgroundDark,
+              decoration: WidgetStateProperty.resolveWith((states) {
+                return BoxDecoration(
+                  color: states.isFocused
+                      ? theme.resources.controlFillColorDefault
+                      : theme.resources.controlFillColorSecondary,
                   border: Border.all(
-                    color: isLight
-                        ? AppColors.borderLight
-                        : AppColors.borderDark,
+                    color: states.isFocused
+                        ? theme.accentColor
+                        : theme.resources.controlStrokeColorDefault,
                     width: 1,
                   ),
-                  borderRadius: BorderRadius.zero,
-                ),
-              ),
+                  borderRadius: BorderRadius.circular(4),
+                );
+              }),
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              cursorColor: isLight
-                  ? AppColors.textPrimaryLight
-                  : AppColors.textPrimaryDark,
               onChanged: (value) => setState(() => _searchQuery = value),
             ),
           ),
@@ -192,10 +182,16 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                     _buildCollapsibleSection(
                       'ACTIVE',
                       isLight,
-                      _getVehiclesByStatus(
-                        vehicles,
-                        'ACTIVE',
-                      ).map((v) => _buildVehicleItem(v, isLight)).toList(),
+                      _getVehiclesByStatus(vehicles, 'ACTIVE')
+                          .asMap()
+                          .entries
+                          .map(
+                            (entry) => ChoreographedEntrance(
+                              delay: Duration(milliseconds: entry.key * 50),
+                              child: _buildVehicleItem(entry.value, isLight),
+                            ),
+                          )
+                          .toList(),
                     ),
                     _buildCollapsibleSection(
                       'MAINTENANCE',
@@ -238,12 +234,10 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
     bool isLight,
     List<Widget> children,
   ) {
-    final textColor = isLight
-        ? AppColors.textPrimaryLight
-        : AppColors.textSecondaryDark;
-    final hoverColor = isLight
-        ? AppColors.hoverBackgroundLight
-        : AppColors.hoverBackgroundDark;
+    final theme = FluentTheme.of(context);
+    final subTextColor = theme.resources.textFillColorSecondary;
+    final hoverColor = theme.resources.subtleFillColorSecondary;
+    final dividerColor = theme.resources.dividerStrokeColorDefault;
 
     final isExpanded = _expandedSections[title] ?? false;
 
@@ -256,12 +250,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
               decoration: BoxDecoration(
                 color: states.isHovered ? hoverColor : Colors.transparent,
                 border: Border(
-                  top: BorderSide(
-                    color: isLight
-                        ? AppColors.dividerLight
-                        : AppColors.dividerDark,
-                    width: 1.0,
-                  ),
+                  top: BorderSide(color: dividerColor, width: 1.0),
                 ),
               ),
               padding: const EdgeInsets.only(
@@ -278,15 +267,15 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                         ? FluentIcons.chevron_down_24_regular
                         : FluentIcons.chevron_right_24_regular,
                     size: 8,
-                    color: textColor,
+                    color: subTextColor,
                   ),
                   const SizedBox(width: 4),
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
-                      color: textColor,
+                      color: subTextColor,
                     ),
                   ),
                   const Spacer(),
@@ -297,16 +286,14 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                       vertical: 0,
                     ),
                     decoration: BoxDecoration(
-                      color: isLight
-                          ? AppColors.borderLight
-                          : AppColors.badgeBackgroundDark,
+                      color: theme.resources.controlAltFillColorTertiary,
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${children.length}',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 10,
-                        color: textColor,
+                        color: subTextColor,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -322,15 +309,10 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
   }
 
   Widget _buildVehicleItem(Map<String, dynamic> vehicle, bool isLight) {
-    final textColor = isLight
-        ? AppColors.textPrimaryLight
-        : AppColors.textSecondaryDark;
-    final subTextColor = isLight
-        ? AppColors.textSecondaryLight
-        : const Color(0xFF999999); // Slightly darker than secondary
-    final hoverColor = isLight
-        ? AppColors.hoverBackgroundLight
-        : AppColors.hoverBackgroundDark;
+    final theme = FluentTheme.of(context);
+    final textColor = theme.resources.textFillColorPrimary;
+    final subTextColor = theme.resources.textFillColorSecondary;
+    final hoverColor = theme.resources.subtleFillColorSecondary;
 
     final status = vehicle['status'] as String? ?? 'Unknown';
     final statusColor = _getStatusColor(status);
@@ -348,7 +330,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
             border: Border(
               left: BorderSide(
                 color: states.isHovered
-                    ? FluentTheme.of(context).accentColor
+                    ? theme.accentColor
                     : Colors.transparent,
                 width: 3,
               ),
@@ -366,12 +348,10 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                     decoration: BoxDecoration(
                       color: isLight
                           ? Colors.white
-                          : AppColors.primarySidebarDark,
-                      borderRadius: BorderRadius.circular(6),
+                          : theme.resources.controlAltFillColorTertiary,
+                      borderRadius: BorderRadius.circular(4),
                       border: Border.all(
-                        color: isLight
-                            ? AppColors.borderLight
-                            : AppColors.borderDark,
+                        color: theme.resources.controlStrokeColorDefault,
                       ),
                     ),
                     alignment: Alignment.center,
@@ -395,7 +375,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                         border: Border.all(
                           color: isLight
                               ? Colors.white
-                              : AppColors.vsCodeSidebar,
+                              : theme.resources.solidBackgroundFillColorBase,
                           width: 2,
                         ),
                       ),
@@ -411,7 +391,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                     // Vehicle Number
                     Text(
                       vehicle['truck_number'] ?? 'Unknown',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: textColor,
@@ -425,7 +405,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                         Expanded(
                           child: Text(
                             vehicle['license_plate'] ?? '-',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 11,
                               color: subTextColor,
                             ),
@@ -441,11 +421,11 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                             ),
                             decoration: BoxDecoration(
                               color: AppColors.error.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(3),
+                              borderRadius: BorderRadius.circular(4),
                             ),
                             child: Text(
                               'ALERT',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.outfit(
                                 fontSize: 9,
                                 fontWeight: FontWeight.bold,
                                 color: AppColors.error,

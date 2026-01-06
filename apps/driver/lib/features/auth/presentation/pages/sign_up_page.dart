@@ -6,6 +6,7 @@ import 'package:milow_core/milow_core.dart';
 import 'package:milow/features/auth/presentation/pages/terms_page.dart';
 import 'package:milow/features/auth/presentation/pages/privacy_policy_page.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -34,11 +35,11 @@ class _SignUpPageState extends State<SignUpPage>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: M3ExpressiveMotion.durationEmphasis,
     );
     _fadeAnim = CurvedAnimation(
       parent: _animController,
-      curve: Curves.easeOutCubic,
+      curve: M3ExpressiveMotion.decelerated,
     );
     _animController.forward();
   }
@@ -536,7 +537,7 @@ class _SignUpPageState extends State<SignUpPage>
                           child: Row(
                             children: [
                               AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
+                                duration: M3ExpressiveMotion.durationShort,
                                 width: 24,
                                 height: 24,
                                 decoration: BoxDecoration(

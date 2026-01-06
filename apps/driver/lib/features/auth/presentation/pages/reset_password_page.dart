@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 class ResetPasswordPage extends StatefulWidget {
   const ResetPasswordPage({super.key});
@@ -29,12 +30,12 @@ class _ResetPasswordPageState extends State<ResetPasswordPage>
     super.initState();
     _entranceController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: M3ExpressiveMotion.durationEmphasis,
     );
 
     _fadeAnim = CurvedAnimation(
       parent: _entranceController,
-      curve: Curves.easeOut,
+      curve: M3ExpressiveMotion.decelerated,
     );
 
     _entranceController.forward();

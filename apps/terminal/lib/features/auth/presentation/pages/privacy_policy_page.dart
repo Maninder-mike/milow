@@ -76,7 +76,7 @@ class PrivacyPolicyPage extends StatelessWidget {
                             children: [
                               Text(
                                 'Privacy Policy',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w700,
                                   color: textColor,
@@ -84,7 +84,7 @@ class PrivacyPolicyPage extends StatelessWidget {
                               ),
                               Text(
                                 'Admin Data Protection Protocol',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.outfit(
                                   fontSize: 13,
                                   color: const Color(0xFF667085),
                                 ),
@@ -147,7 +147,7 @@ class PrivacyPolicyPage extends StatelessWidget {
                           Center(
                             child: Text(
                               'Last updated: December 2025',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.outfit(
                                 fontSize: 12,
                                 color: const Color(0xFF667085),
                               ),
@@ -205,7 +205,7 @@ class PrivacyPolicyPage extends StatelessWidget {
               Expanded(
                 child: Text(
                   title,
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                     color: textColor,
@@ -217,7 +217,7 @@ class PrivacyPolicyPage extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             content,
-            style: GoogleFonts.inter(
+            style: GoogleFonts.outfit(
               fontSize: 14,
               height: 1.6,
               color: const Color(0xFF667085),

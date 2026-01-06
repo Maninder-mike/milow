@@ -1,7 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 
 class AppColors {
-  // Status Colors
   // Status Colors (Fluent Standard)
   static const Color success = Color(0xFF107C10);
   static const Color error = Color(0xFFE81123);
@@ -20,22 +19,13 @@ class AppColors {
   static const Color rolePending = neutral;
   static const Color roleAccountant = teal;
 
-  // VS Code Theme (UserForm)
-  static const Color vsCodeSidebar = Color(0xFF252526);
-  static const Color vsCodeBorder = Color(0xFF333333);
-  static const Color vsCodeWidgetBg = Color(0xFF3C3C3C);
-  static const Color vsCodeText = Color(0xFFCCCCCC);
-  static const Color vsCodeBlue = Color(0xFF007ACC);
-
-  // Semantic UI Colors
-  static const Color sidebarBackgroundLight = Color(0xFFF3F3F3); // Light gray
-  static const Color sidebarBackgroundDark = Color(0xFF202020); // Dark gray
-  static const Color primarySidebarDark = Color(
-    0xFF2D2D2D,
-  ); // Slightly lighter dark
+  // Semantic UI Colors (Legacy/Fallback - Prefer FluentTheme.of(context).resources)
+  static const Color sidebarBackgroundLight = Color(0xFFF3F3F3);
+  static const Color sidebarBackgroundDark = Color(0xFF202020);
+  static const Color sidebarSecondaryBackgroundLight = Color(0xFFF9F9F9);
 
   static const Color borderLight = Color(0xFFE0E0E0);
-  static const Color borderDark = Color(0xFF3C3C3C); // shared with widget bg
+  static const Color borderDark = Color(0xFF3C3C3C);
 
   static const Color textPrimaryLight = Color(0xFF333333);
   static const Color textPrimaryDark = Color(0xFFFFFFFF);
@@ -49,9 +39,11 @@ class AppColors {
   static const Color hoverBackgroundDark = Color(0xFF2A2D2E);
 
   static const Color inputBackgroundDark = Color(0xFF3C3C3C);
-
   static const Color badgeBackgroundDark = Color(0xFF4D4D4D);
-
-  static const Color sidebarSecondaryBackgroundLight = Color(0xFFF9F9F9);
+  static const Color primarySidebarDark = Color(0xFF2D2D2D);
   static const Color actionPurple = Color(0xFF5C2D91);
+
+  // VS Code Theme Legacy
+  static const Color vsCodeSidebar = Color(0xFF252526);
+  static const Color vsCodeBorder = Color(0xFF333333);
 }

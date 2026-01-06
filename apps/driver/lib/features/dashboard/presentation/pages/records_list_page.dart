@@ -18,6 +18,7 @@ import 'package:milow/core/services/profile_repository.dart';
 import 'package:intl/intl.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 class RecordsListPage extends StatefulWidget {
   const RecordsListPage({super.key});
@@ -875,7 +876,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 scaffoldMessenger.showSnackBar(
                                   SnackBar(
                                     content: Text('${record['id']} deleted'),
-                                    backgroundColor: const Color(0xFF10B981),
+                                    backgroundColor: tokens.success,
                                   ),
                                 );
                                 return false; // Don't auto-dismiss, we already removed it
@@ -883,7 +884,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 scaffoldMessenger.showSnackBar(
                                   SnackBar(
                                     content: Text('Failed to delete: $e'),
-                                    backgroundColor: const Color(0xFFEF4444),
+                                    backgroundColor: tokens.error,
                                   ),
                                 );
                                 return false;
@@ -942,7 +943,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
         });
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: M3ExpressiveMotion.durationMedium,
+        curve: M3ExpressiveMotion.standard,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
@@ -1025,7 +1027,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               const SizedBox(width: 4),
                               AnimatedRotation(
                                 turns: isExpanded ? 0.5 : 0,
-                                duration: const Duration(milliseconds: 200),
+                                duration: M3ExpressiveMotion.durationMedium,
+                                curve: M3ExpressiveMotion.standard,
                                 child: Icon(
                                   Icons.keyboard_arrow_down,
                                   size: 16,
@@ -1614,63 +1617,61 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: Theme.of(
+                      DropdownMenu<String>(
+                        width:
+                            double.infinity, // Expand to width of parent/column
+                        initialSelection: selectedExportFilter,
+                        inputDecorationTheme: InputDecorationTheme(
+                          filled: true,
+                          fillColor: Theme.of(
                             context,
                           ).colorScheme.surfaceContainerLow,
-                          border: Border.all(color: tokens.subtleBorderColor),
-                          borderRadius: BorderRadius.circular(tokens.shapeM),
-                        ),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<String>(
-                            value: selectedExportFilter,
-                            isExpanded: true,
-                            icon: Icon(
-                              Icons.keyboard_arrow_down,
-                              color: tokens.textSecondary,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(tokens.shapeM),
+                            borderSide: BorderSide(
+                              color: tokens.subtleBorderColor,
                             ),
-                            dropdownColor: tokens.surfaceContainer,
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.copyWith(color: textColor),
-                            items:
-                                [
-                                      'All',
-                                      'Trips Only',
-                                      'Fuel Only',
-                                      'Short (<100 mi)',
-                                      'Medium (100-200 mi)',
-                                      'Long (>200 mi)',
-                                    ]
-                                    .map(
-                                      (filter) => DropdownMenuItem(
-                                        value: filter,
-                                        child: Row(
-                                          children: [
-                                            Icon(
-                                              _getFilterIcon(filter),
-                                              size: 18,
-                                              color: secondaryTextColor,
-                                            ),
-                                            const SizedBox(width: 10),
-                                            Text(filter),
-                                          ],
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (value) {
-                              setModalState(() {
-                                selectedExportFilter = value!;
-                              });
-                            },
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(tokens.shapeM),
+                            borderSide: BorderSide(
+                              color: tokens.subtleBorderColor,
+                            ),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical:
+                                12, // slightly adjusted from 4 because this is input content padding
                           ),
                         ),
+                        dropdownMenuEntries:
+                            [
+                                  'All',
+                                  'Trips Only',
+                                  'Fuel Only',
+                                  'Short (<100 mi)',
+                                  'Medium (100-200 mi)',
+                                  'Long (>200 mi)',
+                                ]
+                                .map(
+                                  (filter) => DropdownMenuEntry<String>(
+                                    value: filter,
+                                    label: filter,
+                                    leadingIcon: Icon(
+                                      _getFilterIcon(filter),
+                                      size: 18,
+                                      color: secondaryTextColor,
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                        onSelected: (value) {
+                          if (value != null) {
+                            setModalState(() {
+                              selectedExportFilter = value;
+                            });
+                          }
+                        },
                       ),
                       const SizedBox(height: 24),
 
@@ -2073,23 +2074,24 @@ class _RecordsListPageState extends State<RecordsListPage> {
       firstDate: firstDate,
       lastDate: lastDate,
       builder: (context, child) {
+        final tokens = context.tokens;
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: isDark
                 ? ColorScheme.dark(
                     primary: Theme.of(context).colorScheme.primary,
                     onPrimary: Colors.white,
-                    surface: const Color(0xFF1E1E1E),
-                    onSurface: Colors.white,
+                    surface: tokens.surfaceContainer,
+                    onSurface: tokens.textPrimary,
                   )
                 : ColorScheme.light(
                     primary: Theme.of(context).colorScheme.primary,
                     onPrimary: Colors.white,
-                    surface: Colors.white,
-                    onSurface: const Color(0xFF101828),
+                    surface: tokens.surfaceContainer,
+                    onSurface: tokens.textPrimary,
                   ),
             dialogTheme: DialogThemeData(
-              backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+              backgroundColor: tokens.surfaceContainer,
             ),
             textButtonTheme: TextButtonThemeData(
               style: TextButton.styleFrom(

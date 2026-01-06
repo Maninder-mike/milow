@@ -25,7 +25,8 @@ import 'package:terminal/features/dashboard/screens/pickup/pickup_page.dart';
 import 'package:terminal/features/dashboard/screens/deliver/delivery_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicles_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicle_status_page.dart';
-import 'package:terminal/features/dispatch/presentation/pages/dispatch_page.dart'; // [NEW] import
+import 'package:terminal/features/dispatch/presentation/pages/dispatch_page.dart';
+import 'package:terminal/features/dispatch/presentation/pages/loads_page.dart'; // [NEW] import
 import 'package:flutter/material.dart'; // Added for ChangeNotifier
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -116,8 +117,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/highway-dispatch',
-            builder: (context, state) =>
-                const EntityPlaceholderPage(title: 'Highway Dispatch'),
+            builder: (context, state) => const LoadsPage(),
           ),
           GoRoute(
             path: '/driver-hos',

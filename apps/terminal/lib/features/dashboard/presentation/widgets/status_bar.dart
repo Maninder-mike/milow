@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,6 +9,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import '../../../notifications/data/notification_provider.dart';
 import '../../../../core/providers/connectivity_provider.dart';
 import '../providers/database_health_provider.dart';
+import 'package:terminal/core/constants/app_elevation.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class StatusBar extends ConsumerStatefulWidget {
@@ -70,18 +72,17 @@ class _StatusBarState extends ConsumerState<StatusBar>
     final theme = FluentTheme.of(context);
     final isLight = theme.brightness == Brightness.light;
 
+    final backgroundColor = isLight
+        ? theme.resources.solidBackgroundFillColorSecondary
+        : theme.resources.solidBackgroundFillColorBase;
+    final borderColor = theme.resources.dividerStrokeColorDefault;
+
     return Container(
       height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: isLight
-            ? AppColors.sidebarBackgroundLight
-            : AppColors.sidebarBackgroundDark,
-        border: Border(
-          top: BorderSide(
-            color: isLight ? AppColors.borderLight : AppColors.borderDark,
-          ),
-        ),
+        color: backgroundColor,
+        border: Border(top: BorderSide(color: borderColor)),
       ),
       child: Row(
         children: [
@@ -90,20 +91,22 @@ class _StatusBarState extends ConsumerState<StatusBar>
             data: (results) {
               final isOffline = results.contains(ConnectivityResult.none);
               return _buildStatusItem(
-                icon: isOffline
-                    ? FluentIcons.wifi_off_24_regular
-                    : FluentIcons.wifi_1_24_regular,
-                label: isOffline ? 'Offline' : 'Online: Stable (5G)',
+                icon: Icon(
+                  isOffline
+                      ? FluentIcons.wifi_off_24_regular
+                      : FluentIcons.wifi_1_24_regular,
+                ),
+                label: isOffline ? 'Offline' : 'Online',
                 color: isOffline ? AppColors.error : AppColors.success,
               );
             },
             loading: () => _buildStatusItem(
-              icon: FluentIcons.wifi_warning_24_regular,
+              icon: const Icon(FluentIcons.wifi_warning_24_regular),
               label: 'Checking...',
               color: AppColors.neutral,
             ),
             error: (error, stack) => _buildStatusItem(
-              icon: FluentIcons.wifi_off_24_regular,
+              icon: const Icon(FluentIcons.wifi_off_24_regular),
               label: 'Error',
               color: AppColors.error,
             ),
@@ -113,11 +116,22 @@ class _StatusBarState extends ConsumerState<StatusBar>
 
           // 2. Database Status
           _buildStatusItem(
-            icon: dbHealth.status == DatabaseStatus.connected
-                ? FluentIcons.database_24_regular
-                : FluentIcons.warning_24_regular,
-            label: _getDbStatusLabel(dbHealth.status),
-            color: _getDbStatusColor(dbHealth.status),
+            icon: dbHealth.isSyncing
+                ? RotationTransition(
+                    turns: _syncAnimationController,
+                    child: const Icon(FluentIcons.arrow_sync_24_regular),
+                  )
+                : Icon(
+                    dbHealth.status == DatabaseStatus.connected
+                        ? FluentIcons.database_24_regular
+                        : FluentIcons.warning_24_regular,
+                  ),
+            label: dbHealth.isSyncing
+                ? 'Syncing...'
+                : _getDbStatusLabel(dbHealth.status),
+            color: dbHealth.isSyncing
+                ? theme.accentColor
+                : _getDbStatusColor(dbHealth.status),
           ),
           _buildDivider(),
 
@@ -137,11 +151,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                   children: [
                     Text(
                       'Loads:',
-                      style: TextStyle(
+                      style: GoogleFonts.outfit(
                         fontSize: 11,
-                        color: isLight
-                            ? AppColors.textSecondaryLight
-                            : AppColors.textSecondaryDark,
+                        color: theme.resources.textFillColorSecondary,
                       ),
                     ),
                     const SizedBox(width: 8),
@@ -150,7 +162,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                       height: 12,
                       child: ProgressBar(
                         value: (completedLoads / totalLoads) * 100,
-                        backgroundColor: Colors.grey.withValues(alpha: 0.3),
+                        backgroundColor: isLight
+                            ? Colors.grey.withValues(alpha: 0.3)
+                            : Colors.white.withValues(alpha: 0.1),
                         activeColor: delayedCount > 0
                             ? AppColors.warning
                             : AppColors.success,
@@ -159,11 +173,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                     const SizedBox(width: 8),
                     RichText(
                       text: TextSpan(
-                        style: TextStyle(
+                        style: GoogleFonts.outfit(
                           fontSize: 11,
-                          color: isLight
-                              ? AppColors.textPrimaryLight
-                              : AppColors.textPrimaryDark,
+                          color: theme.resources.textFillColorPrimary,
                         ),
                         children: [
                           TextSpan(
@@ -203,18 +215,18 @@ class _StatusBarState extends ConsumerState<StatusBar>
                       FluentIcons.arrow_sync_24_regular,
                       size: 14,
                       color: _isSyncing
-                          ? Colors.blue
-                          : Colors.black.withValues(alpha: 0.6),
+                          ? theme.accentColor
+                          : theme.resources.textFillColorSecondary.withValues(
+                              alpha: 0.6,
+                            ),
                     ),
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _formatLastSyncTime(dbHealth.lastSyncTime),
-                    style: TextStyle(
+                    style: GoogleFonts.outfit(
                       fontSize: 11,
-                      color: isLight
-                          ? AppColors.textSecondaryLight
-                          : AppColors.textSecondaryDark,
+                      color: theme.resources.textFillColorSecondary,
                     ),
                   ),
                 ],
@@ -232,10 +244,16 @@ class _StatusBarState extends ConsumerState<StatusBar>
                   builder: (context) {
                     return FlyoutContent(
                       constraints: const BoxConstraints(maxWidth: 350),
-                      child: _buildCombinedNotificationList(
-                        pendingUsersAsync,
-                        driverLeftAsync,
-                        companyInviteAsync,
+                      padding: EdgeInsets.zero,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          boxShadow: AppElevation.shadow8(context),
+                        ),
+                        child: _buildCombinedNotificationList(
+                          pendingUsersAsync,
+                          driverLeftAsync,
+                          companyInviteAsync,
+                        ),
                       ),
                     );
                   },
@@ -251,7 +269,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                     Icon(
                       FluentIcons.alert_24_regular,
                       size: 18,
-                      color: Colors.black.withValues(alpha: 0.7),
+                      color: theme.resources.textFillColorPrimary.withValues(
+                        alpha: 0.7,
+                      ),
                     ),
                     if (totalNotificationCount > 0)
                       Positioned(
@@ -261,7 +281,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                           width: 8,
                           height: 8,
                           decoration: BoxDecoration(
-                            color: Colors.red,
+                            color: AppColors.error,
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: isLight
@@ -351,32 +371,29 @@ class _StatusBarState extends ConsumerState<StatusBar>
   // ---------------------------------------------------------------------------
 
   Widget _buildStatusItem({
-    required IconData icon,
+    required Widget icon,
     required String label,
     Color? color,
   }) {
     final theme = FluentTheme.of(context);
     final isLight = theme.brightness == Brightness.light;
+    final defaultColor = isLight
+        ? AppColors.textPrimaryLight.withValues(alpha: 0.7)
+        : AppColors.textPrimaryDark.withValues(alpha: 0.7);
+
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          icon,
-          size: 14,
-          color:
-              color ??
-              (isLight
-                  ? AppColors.textPrimaryLight.withValues(alpha: 0.7)
-                  : AppColors.textPrimaryDark.withValues(alpha: 0.7)),
+        IconTheme(
+          data: IconThemeData(size: 14, color: color ?? defaultColor),
+          child: icon,
         ),
         const SizedBox(width: 6),
         Text(
           label,
-          style: TextStyle(
+          style: GoogleFonts.outfit(
             fontSize: 11,
-            color: isLight
-                ? AppColors.textPrimaryLight
-                : AppColors.textPrimaryDark,
+            color: color ?? theme.resources.textFillColorPrimary,
           ),
         ),
       ],
@@ -409,12 +426,10 @@ class _StatusBarState extends ConsumerState<StatusBar>
 
   Widget _buildDivider() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12),
+      margin: const EdgeInsets.symmetric(horizontal: 16),
       width: 1,
-      height: 14,
-      color: FluentTheme.of(context).brightness == Brightness.light
-          ? AppColors.dividerLight
-          : AppColors.dividerDark,
+      height: 12,
+      color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
     );
   }
 
@@ -579,15 +594,25 @@ class _StatusBarState extends ConsumerState<StatusBar>
       orElse: () => <Map<String, dynamic>>[],
     );
 
+    final theme = FluentTheme.of(context);
+    final isLight = theme.brightness == Brightness.light;
+
     final isEmpty =
         pendingUsers.isEmpty &&
         driverLeftNotifs.isEmpty &&
         companyInviteNotifs.isEmpty;
 
     if (isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.all(16.0),
-        child: Text('No notifications'),
+      return Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Text(
+          'No notifications',
+          style: TextStyle(
+            color: isLight
+                ? AppColors.textSecondaryLight
+                : AppColors.textSecondaryDark,
+          ),
+        ),
       );
     }
 
@@ -627,7 +652,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.orange.withValues(alpha: 0.1),
+                        color: AppColors.warning.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: const Text(
@@ -640,7 +665,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                 trailing: IconButton(
                   icon: Icon(
                     FluentIcons.dismiss_24_regular,
-                    color: Colors.grey,
+                    color: isLight
+                        ? AppColors.textSecondaryLight
+                        : AppColors.textSecondaryDark,
                   ),
                   onPressed: () {
                     ref
@@ -681,7 +708,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.blue.withValues(alpha: 0.1),
+                        color: AppColors.info.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
@@ -697,7 +724,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                     IconButton(
                       icon: Icon(
                         FluentIcons.checkmark_24_regular,
-                        color: Colors.green,
+                        color: AppColors.success,
                       ),
                       onPressed: () {
                         ref
@@ -710,7 +737,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                     IconButton(
                       icon: Icon(
                         FluentIcons.dismiss_24_regular,
-                        color: Colors.red,
+                        color: AppColors.error,
                       ),
                       onPressed: () {
                         ref
@@ -761,15 +788,17 @@ class _StatusBarState extends ConsumerState<StatusBar>
                       ),
                       decoration: BoxDecoration(
                         color: isDeclined
-                            ? Colors.red.withValues(alpha: 0.1)
-                            : Colors.green.withValues(alpha: 0.1),
+                            ? AppColors.error.withValues(alpha: 0.1)
+                            : AppColors.success.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(4),
                       ),
                       child: Text(
                         isDeclined ? 'Declined' : 'Accepted',
                         style: TextStyle(
                           fontSize: 10,
-                          color: isDeclined ? Colors.red : Colors.green,
+                          color: isDeclined
+                              ? AppColors.error
+                              : AppColors.success,
                         ),
                       ),
                     ),
@@ -778,7 +807,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                 trailing: IconButton(
                   icon: Icon(
                     FluentIcons.dismiss_24_regular,
-                    color: Colors.grey,
+                    color: isLight
+                        ? AppColors.textSecondaryLight
+                        : AppColors.textSecondaryDark,
                   ),
                   onPressed: () {
                     ref

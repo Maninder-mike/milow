@@ -181,19 +181,26 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                       ),
 
                       // Resizable Sidebar Area
-                      if (_activeSidebarPane != null)
-                        SizedBox(
-                          width: _sidebarWidth,
-                          child: _buildSecondarySidebar(_activeSidebarPane!),
+                      AnimatedContainer(
+                        duration: const Duration(milliseconds: 250),
+                        curve: Curves.easeInOutCubic,
+                        width: _activeSidebarPane != null ? _sidebarWidth : 0,
+                        child: ClipRect(
+                          child: _activeSidebarPane != null
+                              ? _buildSecondarySidebar(_activeSidebarPane!)
+                              : const SizedBox.shrink(),
                         ),
+                      ),
 
                       Expanded(
-                        child:
-                            _isFullPage(
-                              GoRouterState.of(context).matchedLocation,
-                            )
-                            ? widget.child
-                            : const MainContentArea(),
+                        child: Mica(
+                          child:
+                              _isFullPage(
+                                GoRouterState.of(context).matchedLocation,
+                              )
+                              ? widget.child
+                              : const MainContentArea(),
+                        ),
                       ),
                     ],
                   ),

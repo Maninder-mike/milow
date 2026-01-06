@@ -21,14 +21,12 @@ class MainContentArea extends ConsumerWidget {
     final isDark = theme.brightness == Brightness.dark;
 
     final backgroundColor = isDark
-        ? const Color(0xFF1E1E1E)
-        : const Color(0xFFFFFFFF);
-    final activeTextColor = isDark
-        ? const Color(0xFFFFFFFF)
-        : const Color(0xFF333333);
-    final inactiveTextColor = isDark
-        ? const Color(0xFF969696)
-        : const Color(0xFF616161);
+        ? theme.resources.solidBackgroundFillColorBase
+        : theme
+              .resources
+              .solidBackgroundFillColorBase; // Or use scaffoldPageColor
+    final activeTextColor = theme.resources.textFillColorPrimary;
+    final inactiveTextColor = theme.resources.textFillColorSecondary;
 
     if (tabs.isEmpty) {
       return const OverviewPage();
@@ -61,7 +59,7 @@ class MainContentArea extends ConsumerWidget {
           return Tab(
             text: Text(
               tabText,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 13,
                 fontWeight: FontWeight.normal,
                 color: isSelected ? activeTextColor : inactiveTextColor,
@@ -71,9 +69,7 @@ class MainContentArea extends ConsumerWidget {
                 ? Icon(
                     tab.icon!,
                     size: 14,
-                    color: isSelected
-                        ? const Color(0xFF61DAFB)
-                        : inactiveTextColor,
+                    color: isSelected ? theme.accentColor : inactiveTextColor,
                   )
                 : null,
             body: Container(

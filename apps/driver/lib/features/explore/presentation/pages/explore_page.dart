@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
 // Tab shell provides nav; this page returns content only
@@ -1147,7 +1148,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
                   // Expand icon
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
+                    duration: M3ExpressiveMotion.durationShort,
                     child: Icon(
                       Icons.keyboard_arrow_down,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1163,7 +1164,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
               crossFadeState: _isExpanded
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 200),
+              duration: M3ExpressiveMotion.durationShort,
             ),
           ],
         ),
@@ -1613,7 +1614,7 @@ class _ExpandableDestinationCardState
                   // Expand icon
                   AnimatedRotation(
                     turns: _isExpanded ? 0.5 : 0,
-                    duration: const Duration(milliseconds: 200),
+                    duration: M3ExpressiveMotion.durationShort,
                     child: Icon(
                       Icons.keyboard_arrow_down,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1633,7 +1634,7 @@ class _ExpandableDestinationCardState
               crossFadeState: _isExpanded
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 200),
+              duration: M3ExpressiveMotion.durationShort,
             ),
           ],
         ),
@@ -1937,7 +1938,7 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
                       const SizedBox(height: 8),
                       AnimatedRotation(
                         turns: _isExpanded ? 0.5 : 0,
-                        duration: const Duration(milliseconds: 200),
+                        duration: M3ExpressiveMotion.durationShort,
                         child: Icon(
                           Icons.keyboard_arrow_down,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
@@ -1958,7 +1959,7 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
               crossFadeState: _isExpanded
                   ? CrossFadeState.showSecond
                   : CrossFadeState.showFirst,
-              duration: const Duration(milliseconds: 200),
+              duration: M3ExpressiveMotion.durationShort,
             ),
           ],
         ),

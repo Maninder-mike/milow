@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
@@ -25,11 +26,11 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
     super.initState();
     _animController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 800),
+      duration: M3ExpressiveMotion.durationEmphasis,
     );
     _fadeAnim = CurvedAnimation(
       parent: _animController,
-      curve: Curves.easeOutCubic,
+      curve: M3ExpressiveMotion.decelerated,
     );
     _animController.forward();
   }

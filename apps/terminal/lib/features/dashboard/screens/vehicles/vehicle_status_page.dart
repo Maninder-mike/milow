@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'add_vehicle_dialog.dart';
+import 'package:terminal/core/constants/app_elevation.dart';
 import '../../services/vehicle_service.dart';
 
 class VehicleStatusPage extends ConsumerStatefulWidget {
@@ -336,8 +337,13 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
       itemBuilder: (context, index) {
         final doc = documents[index];
         final isExpired = doc['status'] == 'Expired';
-        return Card(
+        return Container(
           margin: const EdgeInsets.only(bottom: 8),
+          decoration: BoxDecoration(
+            color: FluentTheme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: AppElevation.shadow2(context),
+          ),
           child: ListTile(
             leading: Icon(
               isExpired
@@ -379,8 +385,13 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
     required String title,
     required Widget content,
   }) {
-    return Card(
+    return Container(
       padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FluentTheme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: AppElevation.shadow2(context),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -432,8 +443,13 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
       future: _fetchAssignedDriver(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return Card(
+          return Container(
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: FluentTheme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(8),
+              boxShadow: AppElevation.shadow2(context),
+            ),
             child: const Center(child: ProgressRing()),
           );
         }
@@ -451,8 +467,13 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
           avatarUrl = data['avatar_url'] as String?;
         }
 
-        return Card(
+        return Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: FluentTheme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: AppElevation.shadow2(context),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [

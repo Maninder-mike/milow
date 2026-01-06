@@ -76,24 +76,25 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
 
   @override
   Widget build(BuildContext context) {
-    final draft = ref.watch(loadDraftProvider);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 800;
+        final draft = ref.watch(loadDraftProvider);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Broker Details',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const Divider(),
-          const SizedBox(height: 8),
-          Row(
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: InfoLabel(
+              const Text(
+                'Broker Details',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const Divider(),
+              const SizedBox(height: 8),
+              if (isNarrow) ...[
+                InfoLabel(
                   label: 'Broker Name',
                   child: AutoSuggestBox<Broker>(
                     controller: _brokerController,
@@ -125,10 +126,8 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                     },
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InfoLabel(
+                const SizedBox(height: 12),
+                InfoLabel(
                   label: 'Load Ref #',
                   child: TextBox(
                     controller: _refController,
@@ -137,14 +136,61 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                         _updateDraft((l) => l.copyWith(loadReference: value)),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: InfoLabel(
+              ] else
+                Row(
+                  children: [
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Broker Name',
+                        child: AutoSuggestBox<Broker>(
+                          controller: _brokerController,
+                          placeholder: 'Search or Add Broker',
+                          items: _getBrokerSuggestions(),
+                          onSelected: (item) {
+                            if (item.value == null) {
+                              _onBrokerChanged(null);
+                            } else {
+                              setState(() {
+                                _selectedBroker = item.value;
+                              });
+                              _updateDraft(
+                                (l) => l.copyWith(brokerName: item.value!.name),
+                              );
+                            }
+                          },
+                          onChanged: (text, reason) {
+                            if (reason == TextChangedReason.userInput) {
+                              if (_selectedBroker != null &&
+                                  text != _selectedBroker!.name) {
+                                setState(() {
+                                  _selectedBroker = null;
+                                });
+                              }
+                              _updateDraft((l) => l.copyWith(brokerName: text));
+                              setState(() {});
+                            }
+                          },
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Load Ref #',
+                        child: TextBox(
+                          controller: _refController,
+                          placeholder: 'Reference Number',
+                          onChanged: (value) => _updateDraft(
+                            (l) => l.copyWith(loadReference: value),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              if (isNarrow) ...[
+                InfoLabel(
                   label: 'Rate',
                   child: Row(
                     children: [
@@ -178,10 +224,8 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                     ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InfoLabel(
+                const SizedBox(height: 12),
+                InfoLabel(
                   label: 'Goods / Commodity',
                   child: TextBox(
                     controller: _goodsController,
@@ -190,43 +234,113 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                         _updateDraft((l) => l.copyWith(goods: value)),
                   ),
                 ),
+              ] else
+                Row(
+                  children: [
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Rate',
+                        child: Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: NumberBox<double>(
+                                value: draft.rate,
+                                onChanged: (value) => _updateDraft(
+                                  (l) => l.copyWith(rate: value ?? 0.0),
+                                ),
+                                mode: SpinButtonPlacementMode.none,
+                                placeholder: 'Amount',
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 1,
+                              child: ComboBox<String>(
+                                value: draft.currency,
+                                items: const [
+                                  ComboBoxItem(
+                                    value: 'CAD',
+                                    child: Text('CAD'),
+                                  ),
+                                  ComboBoxItem(
+                                    value: 'USD',
+                                    child: Text('USD'),
+                                  ),
+                                ],
+                                onChanged: (value) {
+                                  if (value != null) {
+                                    _updateDraft(
+                                      (l) => l.copyWith(currency: value),
+                                    );
+                                  }
+                                },
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Goods / Commodity',
+                        child: TextBox(
+                          controller: _goodsController,
+                          placeholder: 'e.g. General Freight, Produce',
+                          onChanged: (value) =>
+                              _updateDraft((l) => l.copyWith(goods: value)),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 20),
+              const Text(
+                'Trip Details',
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-            ],
-          ),
-          const SizedBox(height: 20),
-          const Text(
-            'Trip Details',
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const Divider(),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: AddressInputForm(
+              const Divider(),
+              const SizedBox(height: 12),
+              if (isNarrow) ...[
+                AddressInputForm(
                   title: 'Pick up',
                   location: draft.pickup,
                   onChanged: (v) => _updateDraft((l) => l.copyWith(pickup: v)),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: AddressInputForm(
+                const SizedBox(height: 16),
+                AddressInputForm(
                   title: 'Delivery',
                   location: draft.delivery,
                   onChanged: (v) =>
                       _updateDraft((l) => l.copyWith(delivery: v)),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: InfoLabel(
+              ] else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: AddressInputForm(
+                        title: 'Pick up',
+                        location: draft.pickup,
+                        onChanged: (v) =>
+                            _updateDraft((l) => l.copyWith(pickup: v)),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: AddressInputForm(
+                        title: 'Delivery',
+                        location: draft.delivery,
+                        onChanged: (v) =>
+                            _updateDraft((l) => l.copyWith(delivery: v)),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 12),
+              if (isNarrow) ...[
+                InfoLabel(
                   label: 'Load Notes',
                   child: TextBox(
                     controller: _loadNotesController,
@@ -236,10 +350,8 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                         _updateDraft((l) => l.copyWith(loadNotes: value)),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: InfoLabel(
+                const SizedBox(height: 12),
+                InfoLabel(
                   label: 'Company Notes',
                   child: TextBox(
                     controller: _companyNotesController,
@@ -249,29 +361,63 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                         _updateDraft((l) => l.copyWith(companyNotes: value)),
                   ),
                 ),
+              ] else
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Load Notes',
+                        child: TextBox(
+                          controller: _loadNotesController,
+                          placeholder: 'Notes specific to this load',
+                          maxLines: 3,
+                          onChanged: (value) =>
+                              _updateDraft((l) => l.copyWith(loadNotes: value)),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Company Notes',
+                        child: TextBox(
+                          controller: _companyNotesController,
+                          placeholder: 'Notes about the company/broker',
+                          maxLines: 3,
+                          onChanged: (value) => _updateDraft(
+                            (l) => l.copyWith(companyNotes: value),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Button(
+                    onPressed: widget.onCancel,
+                    child: const Text('Cancel'),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _isSaving ? null : _submit,
+                    child: _isSaving
+                        ? const SizedBox(
+                            height: 16,
+                            width: 16,
+                            child: ProgressRing(),
+                          )
+                        : const Text('Save Load'),
+                  ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              Button(onPressed: widget.onCancel, child: const Text('Cancel')),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _isSaving ? null : _submit,
-                child: _isSaving
-                    ? const SizedBox(
-                        height: 16,
-                        width: 16,
-                        child: ProgressRing(),
-                      )
-                    : const Text('Save Load'),
-              ),
-            ],
-          ),
-        ],
-      ),
+        );
+      },
     );
   }
 

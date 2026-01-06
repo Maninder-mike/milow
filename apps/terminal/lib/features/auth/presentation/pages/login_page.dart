@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart'; // [NEW]
 import 'package:terminal/core/providers/biometric_provider.dart';
 import '../../services/biometric_service.dart';
 import '../theme/auth_theme.dart';
+import '../../../../core/widgets/choreographed_entrance.dart';
 import '../providers/login_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {
@@ -205,23 +206,25 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     return Container(
       decoration: BoxDecoration(gradient: _theme.gradient),
       child: Center(
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              width: 400,
-              padding: const EdgeInsets.all(40),
-              decoration: BoxDecoration(
-                color: _theme.glassColor,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: _theme.glassBorderColor),
-              ),
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 300),
-                child: _isResettingPassword
-                    ? _buildResetPasswordView(isLoading, buttonTextCol)
-                    : _buildLoginView(isLoading, buttonTextCol),
+        child: ChoreographedEntrance(
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(24),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+              child: Container(
+                width: 400,
+                padding: const EdgeInsets.all(40),
+                decoration: BoxDecoration(
+                  color: _theme.glassColor,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: _theme.glassBorderColor),
+                ),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 300),
+                  child: _isResettingPassword
+                      ? _buildResetPasswordView(isLoading, buttonTextCol)
+                      : _buildLoginView(isLoading, buttonTextCol),
+                ),
               ),
             ),
           ),
@@ -256,7 +259,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         const SizedBox(height: 8),
         Text(
           'Enter your email to receive a reset link',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 16,
             color: _theme.secondaryContentColor,
             decoration: TextDecoration.none,
@@ -305,7 +308,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                   )
                 : Text(
                     'Send Reset Link',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -322,7 +325,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
           ),
           child: Text(
             'Back to Login',
-            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -348,7 +354,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         const SizedBox(height: 8),
         Text(
           'Secure Access Portal',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 16,
             color: _theme.secondaryContentColor,
             decoration: TextDecoration.none,
@@ -377,7 +383,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(width: 8),
                     Text(
                       'Login with Biometrics',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -409,7 +415,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(width: 8),
                     Text(
                       'Login with PIN',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
@@ -437,7 +443,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Text(
                   'OR',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     color: _theme.secondaryContentColor.withValues(alpha: 0.7),
                     fontSize: 12,
                   ),
@@ -524,7 +530,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             ),
             child: Text(
               'Forgot password?',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 12,
                 fontWeight: FontWeight.w500,
               ),
@@ -557,7 +563,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 ? ProgressRing(activeColor: _theme.primaryContentColor)
                 : Text(
                     'Login with Password',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -570,7 +576,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
             onPressed: () => context.go('/signup'),
             child: Text(
               'Create Account',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontWeight: FontWeight.bold,
                 color: _theme.primaryContentColor,
                 fontSize: 14,

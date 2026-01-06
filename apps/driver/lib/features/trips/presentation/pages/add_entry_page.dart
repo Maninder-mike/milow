@@ -19,6 +19,7 @@ import 'package:milow/core/services/notification_service.dart';
 // import 'package:milow_core/milow_core.dart'; // Already imported above
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/prediction_service.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 class AddEntryPage extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -56,6 +57,10 @@ class _AddEntryPageState extends State<AddEntryPage>
   bool _defFromYard = false; // [NEW] DEF from Yard toggle
   bool _isEmptyLeg = false; // [NEW] Empty Leg toggle
   bool _isSaving = false;
+
+  // Duplicate trip number validation
+  bool _tripNumberExists = false;
+  List<String> _existingTripNumbers = [];
 
   // Trip fields
   final _tripNumberController = TextEditingController();
@@ -131,12 +136,12 @@ class _AddEntryPageState extends State<AddEntryPage>
     // Initialize header animation
     _headerAnimationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 250),
+      duration: M3ExpressiveMotion.durationMedium,
     );
     _headerAnimation = CurvedAnimation(
       parent: _headerAnimationController,
-      curve: Curves.easeOutCubic,
-      reverseCurve: Curves.easeInCubic,
+      curve: M3ExpressiveMotion.decelerated,
+      reverseCurve: M3ExpressiveMotion.accelerated,
     );
     _headerAnimationController.value = 1.0; // Start visible
 
@@ -150,6 +155,10 @@ class _AddEntryPageState extends State<AddEntryPage>
     _fuelPriceController.addListener(_onFuelFieldChanged);
     _defQuantityController.addListener(_onFuelFieldChanged); // [NEW]
     _defPriceController.addListener(_onFuelFieldChanged); // [NEW]
+
+    // Add listener for real-time trip number duplicate validation
+    _tripNumberController.addListener(_checkTripNumberExists);
+    _loadExistingTripNumbers();
 
     // Initialize with one pickup, one delivery, and one trailer (without setState)
     _pickupControllers.add(TextEditingController());
@@ -613,6 +622,35 @@ class _AddEntryPageState extends State<AddEntryPage>
     setState(() {});
   }
 
+  /// Load all existing trip numbers for duplicate detection
+  Future<void> _loadExistingTripNumbers() async {
+    try {
+      final trips = await TripRepository.getTrips(refresh: false);
+      if (mounted) {
+        setState(() {
+          _existingTripNumbers = trips
+              .where(
+                (t) => t.id != widget.editingTrip?.id,
+              ) // Exclude current trip in edit mode
+              .map((t) => t.tripNumber.toUpperCase())
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load existing trip numbers: $e');
+    }
+  }
+
+  /// Check if the entered trip number already exists (real-time validation)
+  void _checkTripNumberExists() {
+    final tripNumber = _tripNumberController.text.trim().toUpperCase();
+    final exists =
+        tripNumber.isNotEmpty && _existingTripNumbers.contains(tripNumber);
+    if (exists != _tripNumberExists) {
+      setState(() => _tripNumberExists = exists);
+    }
+  }
+
   @override
   void dispose() {
     _headerAnimationController.dispose();
@@ -622,6 +660,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     _fuelPriceController.removeListener(_onFuelFieldChanged);
     _defQuantityController.removeListener(_onFuelFieldChanged); // [NEW]
     _defPriceController.removeListener(_onFuelFieldChanged); // [NEW]
+    _tripNumberController.removeListener(_checkTripNumberExists);
     _tripScrollController.dispose();
     _fuelScrollController.dispose();
     _tabController.dispose();
@@ -718,217 +757,74 @@ class _AddEntryPageState extends State<AddEntryPage>
   // Build border crossing dropdown with add/edit capability
   Widget _buildBorderCrossingDropdown() {
     final tokens = context.tokens;
-    final bgColor = tokens.surfaceContainer;
-    final borderColor = tokens.inputBorder;
-    final textColor = tokens.textPrimary;
-    final hintColor = tokens.textTertiary;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-      ),
-      child: Row(
-        children: [
-          // Dropdown button
-          Expanded(
-            child: DropdownButtonHideUnderline(
-              child: ButtonTheme(
-                alignedDropdown: true,
-                child: DropdownButton<String>(
-                  value: _selectedBorderCrossing,
-                  isExpanded: true,
-                  icon: Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: hintColor,
-                  ),
-                  hint: Row(
-                    children: [
-                      Icon(Icons.flag_rounded, color: hintColor, size: 20),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Select or add border',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodyMedium?.copyWith(color: hintColor),
-                      ),
-                    ],
-                  ),
-                  dropdownColor: bgColor,
-                  borderRadius: BorderRadius.circular(12),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  items: [
-                    // Existing border crossings
-                    ..._borderCrossings.map(
-                      (border) => DropdownMenuItem<String>(
-                        value: border,
-                        child: Row(
-                          children: [
-                            Icon(
-                              Icons.flag_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Text(
-                                border,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(color: textColor),
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedBorderCrossing = value;
-                      _borderCrossingController.text = value ?? '';
-                    });
-                  },
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              return DropdownMenu<String>(
+                width: constraints.maxWidth,
+                initialSelection: _selectedBorderCrossing,
+                label: const Text('Border Crossing'),
+                leadingIcon: Icon(
+                  Icons.flag_rounded,
+                  color: tokens.textTertiary,
                 ),
-              ),
-            ),
-          ),
-          // Add button
-          Container(
-            decoration: BoxDecoration(
-              border: Border(left: BorderSide(color: borderColor)),
-            ),
-            child: IconButton(
-              onPressed: _showAddBorderCrossingDialog,
-              icon: Icon(
-                Icons.add_rounded,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              tooltip: 'Add new border crossing',
-            ),
-          ),
-          // Clear button (only show if a value is selected)
-          if (_selectedBorderCrossing != null) ...[
-            Container(
-              decoration: BoxDecoration(
-                border: Border(left: BorderSide(color: borderColor)),
-              ),
-              child: IconButton(
-                onPressed: () {
+                inputDecorationTheme: InputDecorationTheme(
+                  filled: true,
+                  fillColor: tokens.inputBackground,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.shapeM),
+                    borderSide: BorderSide(color: tokens.inputBorder),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.shapeM),
+                    borderSide: BorderSide(color: tokens.inputBorder),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(tokens.shapeM),
+                    borderSide: BorderSide(
+                      color: Theme.of(context).colorScheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                ),
+                dropdownMenuEntries: _borderCrossings.map((border) {
+                  return DropdownMenuEntry<String>(
+                    value: border,
+                    label: border,
+                    leadingIcon: Icon(
+                      Icons.flag_rounded,
+                      color: Theme.of(context).colorScheme.primary,
+                      size: 20,
+                    ),
+                  );
+                }).toList(),
+                onSelected: (value) {
                   setState(() {
-                    _selectedBorderCrossing = null;
-                    _borderCrossingController.text = '';
+                    _selectedBorderCrossing = value;
+                    _borderCrossingController.text = value ?? '';
                   });
                 },
-                icon: Icon(
-                  Icons.clear_rounded,
-                  color: Theme.of(context).colorScheme.error,
-                  size: 20,
-                ),
-                tooltip: 'Clear selection',
-              ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(width: 8),
+        IconButton.filledTonal(
+          onPressed: _showAddBorderCrossingDialog,
+          icon: const Icon(Icons.add),
+          style: IconButton.styleFrom(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(tokens.shapeM),
             ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAutocompleteField({
-    required TextEditingController controller,
-    required FocusNode focusNode,
-    required String hint,
-    required IconData prefixIcon,
-    required Future<Iterable<String>> Function(String) optionsBuilder,
-    String? label,
-    IconData? suffixIcon,
-    VoidCallback? onSuffixTap,
-    TextCapitalization textCapitalization = TextCapitalization.sentences,
-  }) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        return RawAutocomplete<String>(
-          textEditingController: controller,
-          focusNode: focusNode,
-          optionsBuilder: (TextEditingValue textEditingValue) {
-            if (textEditingValue.text.isEmpty) {
-              return const Iterable<String>.empty();
-            }
-            return optionsBuilder(textEditingValue.text);
-          },
-          fieldViewBuilder:
-              (
-                BuildContext context,
-                TextEditingController fieldTextEditingController,
-                FocusNode fieldFocusNode,
-                VoidCallback onFieldSubmitted,
-              ) {
-                return TextField(
-                  controller: fieldTextEditingController,
-                  focusNode: fieldFocusNode,
-                  textCapitalization: textCapitalization,
-                  decoration: _inputDecoration(
-                    label: label,
-                    hint: hint,
-                    prefixIcon: prefixIcon,
-                    suffixIcon: suffixIcon,
-                    onSuffixTap: onSuffixTap,
-                  ),
-                  onSubmitted: (String value) {
-                    onFieldSubmitted();
-                  },
-                );
-              },
-          optionsViewBuilder:
-              (
-                BuildContext context,
-                AutocompleteOnSelected<String> onSelected,
-                Iterable<String> options,
-              ) {
-                return Align(
-                  alignment: Alignment.topLeft,
-                  child: Material(
-                    elevation: 8.0,
-                    color: context.tokens.surfaceContainer,
-                    borderRadius: const BorderRadius.vertical(
-                      bottom: Radius.circular(12),
-                    ),
-                    child: Container(
-                      width: constraints.maxWidth,
-                      constraints: const BoxConstraints(maxHeight: 200),
-                      child: ListView.builder(
-                        padding: EdgeInsets.zero,
-                        shrinkWrap: true,
-                        itemCount: options.length,
-                        itemBuilder: (BuildContext context, int index) {
-                          final String option = options.elementAt(index);
-                          return InkWell(
-                            onTap: () {
-                              onSelected(option);
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16.0,
-                                vertical: 12.0,
-                              ),
-                              child: Text(
-                                option,
-                                style: Theme.of(context).textTheme.bodyMedium
-                                    ?.copyWith(
-                                      color: context.tokens.textPrimary,
-                                    ),
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ),
-                  ),
-                );
-              },
-        );
-      },
+            fixedSize: const Size(56, 56),
+          ),
+          tooltip: 'Add Border Crossing',
+        ),
+      ],
     );
   }
 
@@ -1159,7 +1055,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _buildAutocompleteField(
+                child: CustomAutocompleteField(
                   controller: _pickupControllers[i],
                   focusNode: _pickupFocusNodes[i],
                   label: i == 0 ? 'Pickup Location' : 'Pickup ${i + 1}',
@@ -1181,6 +1077,15 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        size: 20,
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
@@ -1235,7 +1140,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: _buildAutocompleteField(
+                child: CustomAutocompleteField(
                   controller: _deliveryControllers[i],
                   focusNode: _deliveryFocusNodes[i],
                   textCapitalization: TextCapitalization.words,
@@ -1258,6 +1163,15 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        size: 20,
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
@@ -1503,6 +1417,30 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
+  Future<Iterable<String>> _getVehicleSuggestions(
+    String query, {
+    String? filter,
+  }) async {
+    if (query.isEmpty) return const Iterable<String>.empty();
+    final lowercaseQuery = query.toLowerCase();
+
+    return _vehicles
+        .where((v) {
+          if (filter != null) {
+            final type = v.vehicleType?.toLowerCase();
+            // If filter is provided, key off match.
+            // Special handling for 'reefer' which includes trailers
+            if (filter == 'reefer') {
+              if (type != 'reefer' && type != 'trailer') return false;
+            } else if (type != null && type != filter) {
+              return false;
+            }
+          }
+          return v.truckNumber.toLowerCase().contains(lowercaseQuery);
+        })
+        .map((v) => v.truckNumber);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -1590,13 +1528,15 @@ class _AddEntryPageState extends State<AddEntryPage>
                               ),
                               const SizedBox(width: 4),
                               FilledButton(
-                                onPressed: () {
-                                  if (_tabController.index == 0) {
-                                    _validateAndSaveTrip();
-                                  } else {
-                                    _validateAndSaveFuel();
-                                  }
-                                },
+                                onPressed: _isSaving
+                                    ? null
+                                    : () {
+                                        if (_tabController.index == 0) {
+                                          _validateAndSaveTrip();
+                                        } else {
+                                          _validateAndSaveFuel();
+                                        }
+                                      },
                                 style: FilledButton.styleFrom(
                                   // Style handled by theme
                                   padding: const EdgeInsets.symmetric(
@@ -1604,11 +1544,24 @@ class _AddEntryPageState extends State<AddEntryPage>
                                     vertical: 8,
                                   ),
                                 ),
-                                child: Text(
-                                  'Save',
-                                  style: Theme.of(context).textTheme.labelLarge
-                                      ?.copyWith(fontWeight: FontWeight.bold),
-                                ),
+                                child: _isSaving
+                                    ? const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                          strokeCap: StrokeCap.round,
+                                        ),
+                                      )
+                                    : Text(
+                                        'Save',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .labelLarge
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                      ),
                               ),
                             ],
                           ),
@@ -1695,73 +1648,44 @@ class _AddEntryPageState extends State<AddEntryPage>
                       controller: _tripNumberController,
                       textCapitalization: TextCapitalization.characters,
                       keyboardType: TextInputType.text,
-                      decoration: _inputDecoration(
-                        label: 'Trip Number',
-                        hint: 'e.g., TR-12345',
-                        prefixIcon: Icons.tag,
-                      ),
+                      decoration:
+                          _inputDecoration(
+                            label: 'Trip Number',
+                            hint: 'e.g., TR-12345',
+                            prefixIcon: Icons.tag,
+                          ).copyWith(
+                            errorText: _tripNumberExists
+                                ? 'Trip number already exists'
+                                : null,
+                            suffixIcon: _tripNumberExists
+                                ? Icon(
+                                    Icons.error_outline,
+                                    color: Theme.of(context).colorScheme.error,
+                                  )
+                                : null,
+                          ),
                     ),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
-                    child: InputDecorator(
-                      decoration: _inputDecoration(
-                        label: 'Truck Number',
-                        hint: _isLoadingVehicles
-                            ? 'Loading...'
-                            : 'Select Truck',
-                        prefixIcon: Icons.local_shipping,
-                      ),
-                      child: DropdownButtonHideUnderline(
-                        child: DropdownButton<String>(
-                          value: _selectedTripVehicleId,
-                          isExpanded: true,
-                          isDense: true,
-                          hint: Text(
-                            _isLoadingVehicles ? 'Loading...' : 'Select Truck',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(color: context.tokens.textTertiary),
-                          ),
-                          items: _vehicles
-                              .where((v) {
-                                final type = v.vehicleType?.toLowerCase();
-                                // Only show trucks (or if type is missing/null, show it to be safe)
-                                return type == null || type == 'truck';
-                              })
-                              .map((v) {
-                                return DropdownMenuItem<String>(
-                                  value: v.id,
-                                  child: Text(
-                                    v.truckNumber,
-                                    style: Theme.of(context).textTheme.bodyLarge
-                                        ?.copyWith(
-                                          color: context.tokens.textPrimary,
-                                        ),
-                                  ),
-                                );
-                              })
-                              .toList(),
-                          onChanged: _isLoadingVehicles
-                              ? null
-                              : (value) {
-                                  if (value != null) {
-                                    setState(() {
-                                      _selectedTripVehicleId = value;
-                                      final v = _vehicles
-                                          .cast<Vehicle?>()
-                                          .firstWhere(
-                                            (e) => e?.id == value,
-                                            orElse: () => null,
-                                          );
-                                      if (v != null) {
-                                        _tripTruckNumberController.text =
-                                            v.truckNumber;
-                                      }
-                                    });
-                                  }
-                                },
-                        ),
-                      ),
+                    child: CustomAutocompleteField(
+                      controller: _tripTruckNumberController,
+                      focusNode: _tripTruckFocusNode,
+                      label: 'Truck Number',
+                      hint: 'e.g., 101',
+                      prefixIcon: Icons.local_shipping,
+                      textCapitalization: TextCapitalization.characters,
+                      optionsBuilder: (query) =>
+                          _getVehicleSuggestions(query, filter: 'truck'),
+                      onSelected: (value) {
+                        setState(() {
+                          final v = _vehicles.cast<Vehicle?>().firstWhere(
+                            (v) => v?.truckNumber == value,
+                            orElse: () => null,
+                          );
+                          _selectedTripVehicleId = v?.id;
+                        });
+                      },
                     ),
                   ),
                 ],
@@ -1893,6 +1817,15 @@ class _AddEntryPageState extends State<AddEntryPage>
       return;
     }
 
+    // Check for duplicate trip number (only for new trips)
+    if (!_isEditMode && _tripNumberExists) {
+      AppDialogs.showWarning(
+        context,
+        'Trip number already exists. Please use a different number.',
+      );
+      return;
+    }
+
     // Check truck number
     if (_tripTruckNumberController.text.trim().isEmpty) {
       AppDialogs.showWarning(context, 'Please enter truck number');
@@ -1968,6 +1901,18 @@ class _AddEntryPageState extends State<AddEntryPage>
       final endOdometer = _tripEndOdometerController.text.trim().isNotEmpty
           ? double.tryParse(_tripEndOdometerController.text.trim())
           : null;
+
+      // [NEW] Resolve Vehicle ID from text input (to handle manual typing or correction)
+      final truckText = _tripTruckNumberController.text.trim();
+      if (truckText.isNotEmpty && _vehicles.isNotEmpty) {
+        final v = _vehicles.cast<Vehicle?>().firstWhere(
+          (v) => v?.truckNumber.toLowerCase() == truckText.toLowerCase(),
+          orElse: () => null,
+        );
+        _selectedTripVehicleId = v?.id;
+      } else {
+        _selectedTripVehicleId = null;
+      }
 
       final trip = Trip(
         id: widget.editingTrip?.id,
@@ -2209,68 +2154,31 @@ class _AddEntryPageState extends State<AddEntryPage>
               ),
               const SizedBox(height: 12),
               const SizedBox(height: 12),
-              InputDecorator(
-                decoration: _inputDecoration(
-                  label: _isReeferFuel ? 'Reefer Unit' : 'Truck Number',
-                  prefixIcon: _isReeferFuel
-                      ? Icons.ac_unit
-                      : Icons.local_shipping,
-                  hint: _isLoadingVehicles ? 'Loading...' : 'Select Vehicle',
+              CustomAutocompleteField(
+                controller: _truckNumberController,
+                focusNode: _truckFocusNode,
+                label: _isReeferFuel ? 'Reefer Unit' : 'Truck Number',
+                hint: _isLoadingVehicles ? 'Loading...' : 'e.g., 101',
+                prefixIcon: _isReeferFuel
+                    ? Icons.ac_unit
+                    : Icons.local_shipping,
+                textCapitalization: TextCapitalization.characters,
+                optionsBuilder: (query) => _getVehicleSuggestions(
+                  query,
+                  filter: _isReeferFuel ? 'reefer' : 'truck',
                 ),
-                child: DropdownButtonHideUnderline(
-                  child: DropdownButton<String>(
-                    value: _selectedFuelVehicleId,
-                    isExpanded: true,
-                    isDense: true,
-                    hint: Text(
-                      _isLoadingVehicles ? 'Loading...' : 'Select Vehicle',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: context.tokens.textTertiary,
-                      ),
-                    ),
-                    items: _vehicles
-                        .where((v) {
-                          // Filter based on reefer mode if reliable, else show all
-                          final type = v.vehicleType?.toLowerCase();
-                          if (type == null) return true;
-                          if (_isReeferFuel) {
-                            return type == 'reefer' || type == 'trailer';
-                          }
-                          return type == 'truck';
-                        })
-                        .map((v) {
-                          return DropdownMenuItem<String>(
-                            value: v.id,
-                            child: Text(
-                              v.truckNumber,
-                              style: Theme.of(context).textTheme.bodyLarge
-                                  ?.copyWith(color: context.tokens.textPrimary),
-                            ),
-                          );
-                        })
-                        .toList(),
-                    onChanged: _isLoadingVehicles
-                        ? null
-                        : (value) {
-                            if (value != null) {
-                              setState(() {
-                                _selectedFuelVehicleId = value;
-                                // Update controller for legacy
-                                final v = _vehicles.cast<Vehicle?>().firstWhere(
-                                  (e) => e?.id == value,
-                                  orElse: () => null,
-                                );
-                                if (v != null) {
-                                  _truckNumberController.text = v.truckNumber;
-                                }
-                              });
-                            }
-                          },
-                  ),
-                ),
+                onSelected: (value) {
+                  setState(() {
+                    final v = _vehicles.cast<Vehicle?>().firstWhere(
+                      (v) => v?.truckNumber == value,
+                      orElse: () => null,
+                    );
+                    _selectedFuelVehicleId = v?.id;
+                  });
+                },
               ),
               const SizedBox(height: 12),
-              _buildAutocompleteField(
+              CustomAutocompleteField(
                 controller: _locationController,
                 focusNode: _locationFocusNode,
                 textCapitalization: TextCapitalization.words,
@@ -2545,6 +2453,18 @@ class _AddEntryPageState extends State<AddEntryPage>
         defPrice = _defFromYard
             ? 0
             : (double.tryParse(_defPriceController.text.trim()) ?? 0);
+      }
+
+      // [NEW] Resolve Vehicle ID from text input
+      final truckText = _truckNumberController.text.trim();
+      if (truckText.isNotEmpty && _vehicles.isNotEmpty) {
+        final v = _vehicles.cast<Vehicle?>().firstWhere(
+          (v) => v?.truckNumber.toLowerCase() == truckText.toLowerCase(),
+          orElse: () => null,
+        );
+        _selectedFuelVehicleId = v?.id;
+      } else {
+        _selectedFuelVehicleId = null;
       }
 
       final fuelEntry = FuelEntry(
@@ -2899,5 +2819,158 @@ class _AddEntryPageState extends State<AddEntryPage>
       );
     }
     return fields;
+  }
+}
+
+class CustomAutocompleteField extends StatefulWidget {
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hint;
+  final IconData prefixIcon;
+  final Future<Iterable<String>> Function(String) optionsBuilder;
+  final String? label;
+  final IconData? suffixIcon;
+  final VoidCallback? onSuffixTap;
+  final TextCapitalization textCapitalization;
+  final void Function(String)? onSelected;
+  final InputDecoration? decoration;
+
+  const CustomAutocompleteField({
+    required this.controller,
+    required this.focusNode,
+    required this.hint,
+    required this.prefixIcon,
+    required this.optionsBuilder,
+    this.label,
+    this.suffixIcon,
+    this.onSuffixTap,
+    this.textCapitalization = TextCapitalization.sentences,
+    this.onSelected,
+    this.decoration,
+    super.key,
+  });
+
+  @override
+  State<CustomAutocompleteField> createState() =>
+      _CustomAutocompleteFieldState();
+}
+
+class _CustomAutocompleteFieldState extends State<CustomAutocompleteField> {
+  final LayerLink _layerLink = LayerLink();
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return RawAutocomplete<String>(
+          textEditingController: widget.controller,
+          focusNode: widget.focusNode,
+          onSelected: widget.onSelected,
+          optionsBuilder: (TextEditingValue textEditingValue) {
+            if (textEditingValue.text.isEmpty) {
+              return const Iterable<String>.empty();
+            }
+            return widget.optionsBuilder(textEditingValue.text);
+          },
+          fieldViewBuilder:
+              (
+                BuildContext context,
+                TextEditingController fieldTextEditingController,
+                FocusNode fieldFocusNode,
+                VoidCallback onFieldSubmitted,
+              ) {
+                return CompositedTransformTarget(
+                  link: _layerLink,
+                  child: TextField(
+                    controller: fieldTextEditingController,
+                    focusNode: fieldFocusNode,
+                    textCapitalization: widget.textCapitalization,
+                    decoration:
+                        widget.decoration ??
+                        InputDecoration(
+                          labelText: widget.label,
+                          hintText: widget.hint,
+                          prefixIcon: Icon(
+                            widget.prefixIcon,
+                            color: Theme.of(context).colorScheme.primary,
+                            size: 20,
+                          ),
+                          suffixIcon: widget.suffixIcon != null
+                              ? IconButton(
+                                  icon: Icon(
+                                    widget.suffixIcon,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    size: 20,
+                                  ),
+                                  onPressed: widget.onSuffixTap,
+                                )
+                              : null,
+                        ),
+                    onSubmitted: (String value) {
+                      onFieldSubmitted();
+                    },
+                  ),
+                );
+              },
+          optionsViewBuilder:
+              (
+                BuildContext context,
+                AutocompleteOnSelected<String> onSelected,
+                Iterable<String> options,
+              ) {
+                return Align(
+                  alignment: Alignment.topLeft,
+                  child: CompositedTransformFollower(
+                    link: _layerLink,
+                    showWhenUnlinked: false,
+                    offset: const Offset(
+                      0.0,
+                      56.0,
+                    ), // Approximate height of TextField
+                    child: Material(
+                      elevation: 8.0,
+                      color: context.tokens.surfaceContainer,
+                      borderRadius: const BorderRadius.vertical(
+                        bottom: Radius.circular(12),
+                      ),
+                      child: Container(
+                        width: constraints.maxWidth,
+                        constraints: const BoxConstraints(maxHeight: 200),
+                        child: ListView.builder(
+                          padding: EdgeInsets.zero,
+                          shrinkWrap: true,
+                          itemCount: options.length,
+                          itemBuilder: (BuildContext context, int index) {
+                            final String option = options.elementAt(index);
+                            return InkWell(
+                              onTap: () {
+                                onSelected(option);
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16.0,
+                                  vertical: 12.0,
+                                ),
+                                child: Text(
+                                  option,
+                                  style: Theme.of(context).textTheme.bodyMedium
+                                      ?.copyWith(
+                                        color: context.tokens.textPrimary,
+                                      ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              },
+        );
+      },
+    );
   }
 }

@@ -159,6 +159,8 @@ Legacy aliases: `radiusS`→`shapeS`, `radiusM`→`shapeM`, etc.
 - **Spacing**: 8px grid
 - **Control Height**: 32-36px
 
+- follow : <https://fluent2.microsoft.design/motion#choreography>, <https://fluent2.microsoft.design>, <https://developer.microsoft.com/en-ca/windows/develop>, <https://learn.microsoft.com/en-us/windows/apps/get-started/best-practices?source=recommendations>
+
 ### B. Color & Theming
 
 - **No Hardcoded Colors**: Use `FluentTheme.of(context).resources`

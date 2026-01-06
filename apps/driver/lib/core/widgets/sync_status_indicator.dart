@@ -244,6 +244,70 @@ class SyncDetailsSheet extends StatelessWidget {
               const SizedBox(height: 16),
             ],
 
+            // Pending Operations Details
+            if (syncQueueService.pendingOperations.isNotEmpty) ...[
+              Text(
+                'Pending Uploads',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: colorScheme.primary,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 200),
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(tokens.shapeM),
+                  border: Border.all(
+                    color: colorScheme.primary.withValues(alpha: 0.3),
+                  ),
+                ),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  padding: const EdgeInsets.all(12),
+                  itemCount: syncQueueService.pendingOperations.length,
+                  separatorBuilder: (context, index) =>
+                      Divider(color: colorScheme.outlineVariant, height: 16),
+                  itemBuilder: (context, index) {
+                    final op = syncQueueService.pendingOperations[index];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.cloud_upload_outlined,
+                              size: 16,
+                              color: colorScheme.primary,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${op.operationType.toUpperCase()} ${op.tableName}',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Created: ${op.createdAt.toLocal().toString().split('.')[0]}',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(
+                                fontFamily: 'monospace',
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+
             // Failed Operations Details
             if (syncQueueService.failedOperations.isNotEmpty) ...[
               Text(

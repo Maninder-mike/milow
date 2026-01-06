@@ -50,7 +50,7 @@ class AccessDeniedPage extends ConsumerWidget {
               const SizedBox(height: 16),
               Text(
                 'Drivers must use the mobile app. Access to the Terminal is restricted.',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.outfit(
                   fontSize: 16,
                   color: theme.secondaryContentColor,
                   decoration: TextDecoration.none,
@@ -76,7 +76,7 @@ class AccessDeniedPage extends ConsumerWidget {
                   ),
                   child: Text(
                     'Back to Login',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),

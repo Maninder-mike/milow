@@ -50,6 +50,8 @@ dependencies:
   # Workspace Packages
   milow_core:
     path: ../../packages/core
+  syncfusion_flutter_datagrid: ^32.1.21
+  syncfusion_flutter_core: ^32.1.21
 
 dev_dependencies:
   flutter_test:

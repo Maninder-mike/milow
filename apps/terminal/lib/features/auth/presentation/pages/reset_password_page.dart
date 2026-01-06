@@ -199,7 +199,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         const SizedBox(height: 8),
         Text(
           'Create a new password for your account',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 16,
             color: _theme.secondaryContentColor,
             decoration: TextDecoration.none,
@@ -308,7 +308,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
                 ? ProgressRing(activeColor: _theme.primaryContentColor)
                 : Text(
                     'Update Password',
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
@@ -325,7 +325,10 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           ),
           child: Text(
             'Back to Login',
-            style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+            style: GoogleFonts.outfit(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ),
       ],
@@ -355,7 +358,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
         const SizedBox(height: 12),
         Text(
           'Redirecting to login...',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.outfit(
             fontSize: 16,
             color: _theme.secondaryContentColor,
             decoration: TextDecoration.none,
@@ -409,7 +412,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
             const SizedBox(width: 8),
             Text(
               strengthText,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 color: strengthColor,
@@ -441,7 +444,7 @@ class _ResetPasswordPageState extends State<ResetPasswordPage> {
           Expanded(
             child: Text(
               _errorMessage!,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 color: _theme.errorColor,
                 fontSize: 13,
                 decoration: TextDecoration.none,

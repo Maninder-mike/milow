@@ -4,6 +4,7 @@ import 'package:milow_core/milow_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../users/data/user_repository_provider.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/choreographed_entrance.dart';
 import '../providers/driver_selection_provider.dart';
 
 class DriversSidebar extends ConsumerStatefulWidget {
@@ -31,18 +32,16 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
     final isLight = theme.brightness == Brightness.light;
-    final backgroundColor = isLight
-        ? const Color(0xFFE5E5E5) // Slightly darker for contrast
-        : const Color(0xFF252526);
-    final titleColor = isLight
-        ? const Color(0xFF616161)
-        : const Color(0xFFBBBBBB);
+    final backgroundColor = theme.resources.solidBackgroundFillColorTertiary;
+    final titleColor = theme.resources.textFillColorSecondary;
 
     final usersAsync = ref.watch(usersProvider);
     final selectedDriver = ref.watch(selectedDriverProvider);
 
-    return Container(
-      color: backgroundColor,
+    return Acrylic(
+      tint: backgroundColor,
+      tintAlpha: isLight ? 0.95 : 0.75,
+      luminosityAlpha: isLight ? 0.98 : 0.88,
       child: Column(
         children: [
           // Header
@@ -55,7 +54,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
               children: [
                 Text(
                   'DRIVERS',
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.outfit(
                     fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: titleColor,
@@ -78,11 +77,11 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             child: TextBox(
               placeholder: 'Search Drivers...',
-              placeholderStyle: GoogleFonts.inter(
+              placeholderStyle: GoogleFonts.outfit(
                 color: isLight ? Colors.grey[100] : const Color(0xFF858585),
                 fontSize: 13,
               ),
-              style: GoogleFonts.inter(
+              style: GoogleFonts.outfit(
                 color: isLight ? Colors.black : Colors.white,
                 fontSize: 13,
               ),
@@ -124,9 +123,17 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                       'ACTIVE DRIVERS',
                       isLight,
                       activeDrivers
+                          .asMap()
+                          .entries
                           .map(
-                            (driver) =>
-                                _buildUserItem(driver, isLight, selectedDriver),
+                            (entry) => ChoreographedEntrance(
+                              delay: Duration(milliseconds: entry.key * 50),
+                              child: _buildUserItem(
+                                entry.value,
+                                isLight,
+                                selectedDriver,
+                              ),
+                            ),
                           )
                           .toList(),
                     ),
@@ -204,7 +211,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                   const SizedBox(width: 4),
                   Text(
                     title,
-                    style: GoogleFonts.inter(
+                    style: GoogleFonts.outfit(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
                       color: textColor,
@@ -225,7 +232,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                     ),
                     child: Text(
                       '${children.length}',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 10,
                         color: textColor,
                         fontWeight: FontWeight.w600,
@@ -326,7 +333,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                     // Name row
                     Text(
                       driver.fullName ?? 'Unknown',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.outfit(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: textColor,
@@ -351,7 +358,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                           ),
                           child: Text(
                             tripNumber,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                               color: subTextColor,
@@ -362,7 +369,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                         Expanded(
                           child: Text(
                             currentTrip,
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.outfit(
                               fontSize: 11,
                               color: subTextColor,
                             ),
@@ -485,7 +492,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
       alignment: Alignment.center,
       child: Text(
         initials,
-        style: GoogleFonts.inter(
+        style: GoogleFonts.outfit(
           color: Colors.white,
           fontSize: 12,
           fontWeight: FontWeight.w500,

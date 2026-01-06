@@ -13,6 +13,7 @@ import 'package:milow/core/widgets/shimmer_loading.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow/core/models/recent_entry.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/core/utils/address_utils.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
@@ -130,7 +131,7 @@ class _DashboardPageState extends State<DashboardPage>
 
     // Initialize bell animation controller
     _bellAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 500),
+      duration: M3ExpressiveMotion.durationLong,
       vsync: this,
     );
 
@@ -138,7 +139,7 @@ class _DashboardPageState extends State<DashboardPage>
     _bellScaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
       CurvedAnimation(
         parent: _bellAnimationController,
-        curve: Curves.easeInOut,
+        curve: M3ExpressiveMotion.emphasized,
       ),
     );
 
@@ -603,7 +604,7 @@ class _DashboardPageState extends State<DashboardPage>
         ),
         child: InkWell(
           onTap: () {
-            // TODO: Navigate to learning content
+            context.push('/learning');
           },
           borderRadius: BorderRadius.circular(context.tokens.shapeL),
           child: Padding(
