@@ -233,9 +233,7 @@ class LoadDataSource extends DataGridSource {
           DataGridCell<String>(
             columnName: 'rate',
             value:
-                NumberFormat.currency(symbol: '\$').format(e.rate) +
-                ' ' +
-                e.currency,
+                '${NumberFormat.currency(symbol: '\$').format(e.rate)} ${e.currency}',
           ),
           DataGridCell<String>(
             columnName: 'pickup',

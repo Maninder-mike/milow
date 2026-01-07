@@ -42,7 +42,7 @@ void main() {
   });
 
   /// Creates a router with LoginPage as the initial route and a dashboard stub.
-  GoRouter _createTestRouter() {
+  GoRouter createTestRouter() {
     return GoRouter(
       initialLocation: '/login',
       routes: [
@@ -66,7 +66,7 @@ void main() {
           supabaseClientProvider.overrideWithValue(mockSupabaseClient),
           biometricServiceProvider.overrideWithValue(mockBiometricService),
         ],
-        child: fluent.FluentApp.router(routerConfig: _createTestRouter()),
+        child: fluent.FluentApp.router(routerConfig: createTestRouter()),
       ),
     );
 
@@ -100,7 +100,7 @@ void main() {
           supabaseClientProvider.overrideWithValue(mockSupabaseClient),
           biometricServiceProvider.overrideWithValue(mockBiometricService),
         ],
-        child: fluent.FluentApp.router(routerConfig: _createTestRouter()),
+        child: fluent.FluentApp.router(routerConfig: createTestRouter()),
       ),
     );
 

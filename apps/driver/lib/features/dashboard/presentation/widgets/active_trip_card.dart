@@ -259,6 +259,11 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
 
     // Build list of pages based on available locations
     final pages = <Widget>[];
+
+    // Check completion status
+    final allPickupsCompleted = widget.trip.allPickupsCompleted;
+    final allDeliveriesCompleted = widget.trip.allDeliveriesCompleted;
+
     if (_hasPickup) {
       pages.add(
         _buildCard(
@@ -267,13 +272,18 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
           address: _pickupAddress,
           distance: _pickupDistance,
           isLoading: _isLoadingPickup,
-          statusLabel: widget.trip.isEmptyLeg
-              ? 'EMPTY LEG'
-              : 'EN ROUTE TO PICKUP',
-          statusColor: widget.trip.isEmptyLeg
-              ? tokens.textSecondary
-              : tokens.warning,
-          icon: Icons.store_rounded,
+          statusLabel: allPickupsCompleted
+              ? 'PICKUP COMPLETE'
+              : (widget.trip.isEmptyLeg ? 'EMPTY LEG' : 'EN ROUTE TO PICKUP'),
+          statusColor: allPickupsCompleted
+              ? tokens.success
+              : (widget.trip.isEmptyLeg
+                    ? tokens.textSecondary
+                    : tokens.warning),
+          icon: allPickupsCompleted
+              ? Icons.check_circle_rounded
+              : Icons.store_rounded,
+          hideEta: allPickupsCompleted,
         ),
       );
     }
@@ -285,13 +295,16 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
           address: _deliveryAddress,
           distance: _deliveryDistance,
           isLoading: _isLoadingDelivery,
-          statusLabel: widget.trip.isEmptyLeg
-              ? 'EMPTY LEG'
-              : 'EN ROUTE TO DELIVERY',
-          statusColor: widget.trip.isEmptyLeg
-              ? tokens.textSecondary
-              : tokens.info,
-          icon: Icons.local_shipping_rounded,
+          statusLabel: allDeliveriesCompleted
+              ? 'DELIVERY COMPLETE'
+              : (widget.trip.isEmptyLeg ? 'EMPTY LEG' : 'EN ROUTE TO DELIVERY'),
+          statusColor: allDeliveriesCompleted
+              ? tokens.success
+              : (widget.trip.isEmptyLeg ? tokens.textSecondary : tokens.info),
+          icon: allDeliveriesCompleted
+              ? Icons.check_circle_rounded
+              : Icons.local_shipping_rounded,
+          hideEta: allDeliveriesCompleted,
         ),
       );
     }
@@ -360,6 +373,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
     required String statusLabel,
     required Color statusColor,
     required IconData icon,
+    bool hideEta = false,
   }) {
     final tokens = context.tokens;
     final progress = _calculateProgress(distance);
@@ -525,20 +539,22 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
               ),
               SizedBox(height: tokens.spacingS),
 
-              // Footer: Distance & ETA
+              // Footer: Distance & ETA (or completion status)
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isLoading
-                        ? 'Calculating...'
-                        : _formatDistance(distance ?? 0),
+                    hideEta
+                        ? 'Complete ✓'
+                        : (isLoading
+                              ? 'Calculating...'
+                              : _formatDistance(distance ?? 0)),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: tokens.textPrimary,
+                      color: hideEta ? tokens.success : tokens.textPrimary,
                     ),
                   ),
-                  if (!isLoading && distance != null)
+                  if (!hideEta && !isLoading && distance != null)
                     Text(
                       _formatETA(distance),
                       style: Theme.of(context).textTheme.labelSmall?.copyWith(

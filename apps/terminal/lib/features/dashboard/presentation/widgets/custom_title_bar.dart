@@ -99,9 +99,8 @@ class _WindowControlButtonsState extends State<_WindowControlButtons> {
 
   @override
   Widget build(BuildContext context) {
-    final iconColor = widget.isLight
-        ? AppColors.textPrimaryLight
-        : Colors.white;
+    final theme = FluentTheme.of(context);
+    final iconColor = theme.resources.textFillColorPrimary;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -110,9 +109,7 @@ class _WindowControlButtonsState extends State<_WindowControlButtons> {
         _WindowButton(
           icon: FluentIcons.subtract_24_regular,
           iconColor: iconColor,
-          hoverColor: widget.isLight
-              ? AppColors.sidebarSecondaryBackgroundLight
-              : AppColors.sidebarBackgroundDark.withValues(alpha: 0.8),
+          hoverColor: theme.resources.subtleFillColorSecondary,
           onPressed: () async {
             await windowManager.minimize();
           },
@@ -123,9 +120,7 @@ class _WindowControlButtonsState extends State<_WindowControlButtons> {
               ? FluentIcons.square_multiple_24_regular
               : FluentIcons.maximize_24_regular,
           iconColor: iconColor,
-          hoverColor: widget.isLight
-              ? AppColors.sidebarSecondaryBackgroundLight
-              : AppColors.sidebarBackgroundDark.withValues(alpha: 0.8),
+          hoverColor: theme.resources.subtleFillColorSecondary,
           onPressed: () async {
             if (_isMaximized) {
               await windowManager.restore();
@@ -229,16 +224,10 @@ class _WindowsSearchBarState extends State<_WindowsSearchBar> {
     final theme = FluentTheme.of(context);
 
     // Windows 11 style colors
-    final bgColor = widget.isLight
-        ? Colors.white
-        : AppColors.sidebarBackgroundDark;
-    final borderColor = widget.isLight
-        ? AppColors.borderLight
-        : AppColors.borderDark;
+    final bgColor = theme.resources.cardBackgroundFillColorDefault;
+    final borderColor = theme.resources.dividerStrokeColorDefault;
     final focusBorderColor = theme.accentColor;
-    final placeholderColor = widget.isLight
-        ? AppColors.textSecondaryLight
-        : AppColors.textSecondaryDark;
+    final placeholderColor = theme.resources.textFillColorSecondary;
 
     return SizedBox(
       width: 468,

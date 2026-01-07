@@ -16,6 +16,7 @@ import 'package:open_file/open_file.dart';
 import 'package:http/http.dart' as http;
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:milow_core/milow_core.dart';
 
 class ScanDocumentPage extends StatefulWidget {
@@ -646,6 +647,8 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
   }
 
   void _showDocumentDetails(TripDocument doc) {
+    final tokens = Theme.of(context).extension<DesignTokens>()!;
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -653,53 +656,300 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        final tokens = Theme.of(context).extension<DesignTokens>()!;
-        return Padding(
-          padding: const EdgeInsets.all(20),
+        return SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text(
-                    'Document Details',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ],
-              ),
-              const Divider(),
-              _buildDetailRow('Type', doc.documentType.label, tokens),
-              _buildDetailRow('File Name', doc.fileName, tokens),
-              _buildDetailRow(
-                'Size',
-                '${((doc.fileSize ?? 0) / 1024).toStringAsFixed(1)} KB',
-                tokens,
-              ),
-              _buildDetailRow('Created', doc.createdAt, tokens),
-              _buildDetailRow('Notes', doc.description ?? doc.notes, tokens),
-              const SizedBox(height: 20),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    unawaited(_previewDocument(doc));
-                  },
-                  icon: const Icon(Icons.open_in_new),
-                  label: const Text('View Document'),
+              // Drag Handle
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                width: 32,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: tokens.textTertiary.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(height: 10),
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Document info header
+                    Row(
+                      children: [
+                        Container(
+                          width: 48,
+                          height: 48,
+                          decoration: BoxDecoration(
+                            color: tokens.surfaceContainerHigh,
+                            borderRadius: BorderRadius.circular(tokens.shapeS),
+                          ),
+                          child: Icon(
+                            Icons.picture_as_pdf,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${_getShortDocType(doc.documentType)} - ${doc.tripNumber}',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                _formatFileSize(doc.fileSize),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(color: tokens.textSecondary),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    const Divider(),
+                    // Actions
+                    ListTile(
+                      leading: const Icon(Icons.open_in_new),
+                      title: const Text('View Document'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        unawaited(_previewDocument(doc));
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.share),
+                      title: const Text('Share'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await _shareDocument(doc);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.download),
+                      title: const Text('Download'),
+                      onTap: () async {
+                        Navigator.pop(context);
+                        await _downloadDocument(doc);
+                      },
+                    ),
+                    ListTile(
+                      leading: const Icon(Icons.info_outline),
+                      title: const Text('Details'),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _showDocumentDetailsDialog(doc);
+                      },
+                    ),
+                    const Divider(),
+                    ListTile(
+                      leading: Icon(Icons.delete_outline, color: tokens.error),
+                      title: Text(
+                        'Delete',
+                        style: TextStyle(color: tokens.error),
+                      ),
+                      onTap: () {
+                        Navigator.pop(context);
+                        _deleteDocument(doc);
+                      },
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         );
       },
+    );
+  }
+
+  /// Share document via system share sheet
+  Future<void> _shareDocument(TripDocument doc) async {
+    setState(() => _isUploading = true);
+    try {
+      String? downloadUrl;
+      final path = doc.filePath;
+      final externalUrl = doc.url;
+      final fileName = doc.fileName ?? 'document.pdf';
+
+      if (externalUrl != null && externalUrl.isNotEmpty) {
+        downloadUrl = externalUrl;
+      } else if (path.isNotEmpty) {
+        downloadUrl = await _client.storage
+            .from('trip_documents')
+            .createSignedUrl(path, 3600); // 1 hour
+      } else {
+        throw Exception('No document URL or path available');
+      }
+
+      // Download file
+      final response = await http.get(Uri.parse(downloadUrl));
+      if (response.statusCode != 200) throw Exception('Download failed');
+
+      // Save to temp
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsBytes(response.bodyBytes);
+
+      // Share
+      await SharePlus.instance.share(
+        ShareParams(files: [XFile(tempFile.path)]),
+      );
+    } catch (e) {
+      unawaited(logger.error('ScanDocument', 'Failed to share', error: e));
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not share document: $e')));
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  /// Download document to device
+  Future<void> _downloadDocument(TripDocument doc) async {
+    setState(() => _isUploading = true);
+    try {
+      String? downloadUrl;
+      final path = doc.filePath;
+      final externalUrl = doc.url;
+      final fileName = doc.fileName ?? 'document.pdf';
+
+      if (externalUrl != null && externalUrl.isNotEmpty) {
+        downloadUrl = externalUrl;
+      } else if (path.isNotEmpty) {
+        downloadUrl = await _client.storage
+            .from('trip_documents')
+            .createSignedUrl(path, 3600);
+      } else {
+        throw Exception('No document URL or path available');
+      }
+
+      // Download file
+      final response = await http.get(Uri.parse(downloadUrl));
+      if (response.statusCode != 200) throw Exception('Download failed');
+
+      // Save to Downloads folder or app documents
+      final directory = await getApplicationDocumentsDirectory();
+      final file = File('${directory.path}/$fileName');
+      await file.writeAsBytes(response.bodyBytes);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Downloaded to: ${file.path}')));
+      }
+    } catch (e) {
+      unawaited(logger.error('ScanDocument', 'Failed to download', error: e));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not download document: $e')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isUploading = false);
+    }
+  }
+
+  /// Delete a single document
+  Future<void> _deleteDocument(TripDocument doc) async {
+    final tokens = Theme.of(context).extension<DesignTokens>()!;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Document?'),
+        content: const Text('This action cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: tokens.error),
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(
+              'Delete',
+              style: TextStyle(color: Theme.of(context).colorScheme.onError),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true || doc.id == null) return;
+
+    setState(() => _isUploading = true);
+
+    try {
+      // Delete from Storage
+      if (doc.filePath.isNotEmpty) {
+        await _client.storage.from('trip_documents').remove([doc.filePath]);
+      }
+
+      // Delete from DB
+      await _client.from('trip_documents').delete().eq('id', doc.id!);
+
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('Document deleted')));
+        setState(() {
+          _existingDocuments.removeWhere((d) => d.id == doc.id);
+          _changesMade = true;
+          _isUploading = false;
+        });
+      }
+    } catch (e) {
+      unawaited(logger.error('ScanDocument', 'Failed to delete doc', error: e));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to delete document')),
+        );
+        setState(() => _isUploading = false);
+      }
+    }
+  }
+
+  /// Show document details dialog
+  void _showDocumentDetailsDialog(TripDocument doc) {
+    final tokens = Theme.of(context).extension<DesignTokens>()!;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Document Details'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildDetailRow('Type', doc.documentType.label, tokens),
+            _buildDetailRow('File Name', doc.fileName, tokens),
+            _buildDetailRow(
+              'Size',
+              '${((doc.fileSize ?? 0) / 1024).toStringAsFixed(1)} KB',
+              tokens,
+            ),
+            _buildDetailRow('Created', doc.createdAt, tokens),
+            _buildDetailRow('Notes', doc.description ?? doc.notes, tokens),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
     );
   }
 

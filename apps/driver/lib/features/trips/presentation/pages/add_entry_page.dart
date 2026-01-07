@@ -1505,7 +1505,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                   ),
                                 ],
                               ),
-                            ],
+                            ], 
                           ),
                           Row(
                             children: [

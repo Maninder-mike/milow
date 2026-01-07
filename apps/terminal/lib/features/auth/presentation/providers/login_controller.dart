@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/core/providers/biometric_provider.dart';
@@ -26,7 +27,7 @@ class LoginController extends _$LoginController {
       } catch (e) {
         // Log the error but don't fail the login
         // This is expected on macOS debug builds without proper entitlements
-        print('Warning: Failed to save credentials to secure storage: $e');
+        debugPrint('Warning: Failed to save credentials to secure storage: $e');
       }
     });
   }

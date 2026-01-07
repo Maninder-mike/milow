@@ -81,37 +81,16 @@ class _DashboardPageState extends State<DashboardPage>
       Color(0xFF16A34A), // Green 600
       Color(0xFF86EFAC), // Green 300
     ],
-    // Royal Purple
-    [
-      Color(0xFF581C87), // Purple 900
-      Color(0xFF9333EA), // Purple 600
-      Color(0xFFD8B4FE), // Purple 300
-    ],
-    // Golden Amber
     [
       Color(0xFF78350F), // Amber 900
       Color(0xFFD97706), // Amber 600
       Color(0xFFFCD34D), // Amber 300
     ],
-    // Rose Pink
-    [
-      Color(0xFF881337), // Rose 900
-      Color(0xFFE11D48), // Rose 600
-      Color(0xFFFDA4AF), // Rose 300
-    ],
-    // Teal Ocean
     [
       Color(0xFF134E4A), // Teal 900
       Color(0xFF0D9488), // Teal 600
       Color(0xFF5EEAD4), // Teal 300
     ],
-    // Indigo Night
-    [
-      Color(0xFF312E81), // Indigo 900
-      Color(0xFF4F46E5), // Indigo 600
-      Color(0xFFA5B4FC), // Indigo 300
-    ],
-    // Warm Peach
     [
       Color(0xFF431407), // Orange 950
       Color(0xFFF97316), // Orange 500
@@ -433,7 +412,8 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 SizedBox(height: context.tokens.spacingL),
               ],
-              if (_activeTrip != null)
+              // Only show active trip card if trip exists and is not fully completed
+              if (_activeTrip != null && !_activeTrip!.allDeliveriesCompleted)
                 GestureDetector(
                   onLongPressStart: (details) {
                     _showActivityMenu(
@@ -456,10 +436,7 @@ class _DashboardPageState extends State<DashboardPage>
                   ),
                 )
               else
-                // Start New Entry Button removed in favor of Search Pill flow,
-                // or we keep it below. Design shows Pill.
-                // We'll keep the logic clean: if no trip, show "Track Your Journey" + Pill.
-                // The "Start New Entry" button is likely redundant with "Add Data" below.
+                // No active trip or trip is complete - show "Track Your Journey" + Pill
                 const SizedBox.shrink(),
               SizedBox(height: context.tokens.spacingL),
             ],
@@ -471,7 +448,7 @@ class _DashboardPageState extends State<DashboardPage>
           padding: EdgeInsets.symmetric(horizontal: margin),
           child: Text(
             'Get started',
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
               fontWeight: FontWeight.bold,
               color: Theme.of(context).colorScheme.onSurface,
             ),
@@ -714,7 +691,7 @@ class _DashboardPageState extends State<DashboardPage>
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
                             colors: [..._currentGradientColors, baseColor],
-                            stops: const [0.0, 0.6, 0.9, 1.0],
+                            stops: const [0.0, 0.33, 0.65, 1.0],
                           ),
                         ),
                         child: Column(
@@ -1377,11 +1354,11 @@ class _DashboardPageState extends State<DashboardPage>
 
   void _showActivityMenu(BuildContext context, Trip trip, Offset position) {
     final tokens = Theme.of(context).extension<DesignTokens>()!;
-    // Logic matches ActiveTripCard: if pickup locations exist, we are in pickup mode.
-    final isPickup = trip.pickupLocations.isNotEmpty;
+    // Show pickup menu if there are incomplete pickups, otherwise show delivery menu
+    final hasIncompletePickups = !trip.allPickupsCompleted;
     final items = <PopupMenuEntry<String>>[];
 
-    if (isPickup) {
+    if (hasIncompletePickups) {
       items.addAll([
         _buildMenuItem(
           'Mark load picked up',
@@ -1395,9 +1372,9 @@ class _DashboardPageState extends State<DashboardPage>
         ),
         const PopupMenuDivider(),
         _buildMenuItem(
-          'Add Document (BOL)',
-          Icons.description_outlined,
-          'add_bol',
+          'Add Document (POD)',
+          Icons.assignment_turned_in_outlined,
+          'add_pod',
         ),
       ]);
     } else {
@@ -1539,21 +1516,183 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
+  /// Mark the next incomplete pickup as complete with current timestamp
+  Future<void> _markPickupComplete(Trip trip) async {
+    if (trip.pickupLocations.isEmpty) return;
+
+    // Find the first incomplete pickup index
+    int pickupIndex = -1;
+    for (int i = 0; i < trip.pickupLocations.length; i++) {
+      final isCompleted = i < trip.pickupCompleted.length
+          ? trip.pickupCompleted[i]
+          : false;
+      if (!isCompleted) {
+        pickupIndex = i;
+        break;
+      }
+    }
+
+    if (pickupIndex == -1) {
+      // All pickups already completed
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All pickups already completed'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Build new lists with updated values
+    final newPickupTimes = List<DateTime?>.from(trip.pickupTimes);
+    final newPickupCompleted = List<bool>.from(trip.pickupCompleted);
+
+    // Ensure lists are long enough
+    while (newPickupTimes.length <= pickupIndex) {
+      newPickupTimes.add(null);
+    }
+    while (newPickupCompleted.length <= pickupIndex) {
+      newPickupCompleted.add(false);
+    }
+
+    // Set current time and mark complete
+    newPickupTimes[pickupIndex] = DateTime.now();
+    newPickupCompleted[pickupIndex] = true;
+
+    // Create updated trip
+    final updatedTrip = trip.copyWith(
+      pickupTimes: newPickupTimes,
+      pickupCompleted: newPickupCompleted,
+    );
+
+    try {
+      // Update database
+      await TripRepository.updateTrip(updatedTrip);
+
+      if (mounted) {
+        // Show success feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Pickup ${pickupIndex + 1} of ${trip.pickupLocations.length} marked complete',
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: context.tokens.success,
+          ),
+        );
+
+        // Refresh dashboard to show updated state
+        unawaited(_onRefresh());
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update pickup: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: context.tokens.error,
+          ),
+        );
+      }
+    }
+  }
+
+  /// Mark the next incomplete delivery as complete with current timestamp
+  Future<void> _markDeliveryComplete(Trip trip) async {
+    if (trip.deliveryLocations.isEmpty) return;
+
+    // Find the first incomplete delivery index
+    int deliveryIndex = -1;
+    for (int i = 0; i < trip.deliveryLocations.length; i++) {
+      final isCompleted = i < trip.deliveryCompleted.length
+          ? trip.deliveryCompleted[i]
+          : false;
+      if (!isCompleted) {
+        deliveryIndex = i;
+        break;
+      }
+    }
+
+    if (deliveryIndex == -1) {
+      // All deliveries already completed
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('All deliveries already completed'),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    // Build new lists with updated values
+    final newDeliveryTimes = List<DateTime?>.from(trip.deliveryTimes);
+    final newDeliveryCompleted = List<bool>.from(trip.deliveryCompleted);
+
+    // Ensure lists are long enough
+    while (newDeliveryTimes.length <= deliveryIndex) {
+      newDeliveryTimes.add(null);
+    }
+    while (newDeliveryCompleted.length <= deliveryIndex) {
+      newDeliveryCompleted.add(false);
+    }
+
+    // Set current time and mark complete
+    newDeliveryTimes[deliveryIndex] = DateTime.now();
+    newDeliveryCompleted[deliveryIndex] = true;
+
+    // Create updated trip
+    final updatedTrip = trip.copyWith(
+      deliveryTimes: newDeliveryTimes,
+      deliveryCompleted: newDeliveryCompleted,
+    );
+
+    try {
+      // Update database
+      await TripRepository.updateTrip(updatedTrip);
+
+      if (mounted) {
+        // Show success feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Delivery ${deliveryIndex + 1} of ${trip.deliveryLocations.length} marked complete',
+            ),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: context.tokens.success,
+          ),
+        );
+
+        // Refresh dashboard to show updated state
+        unawaited(_onRefresh());
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update delivery: $e'),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: context.tokens.error,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _handleMenuAction(String value) async {
     final trip = _activeTrip;
     if (trip == null) return;
 
     switch (value) {
       case 'picked_up':
+        await _markPickupComplete(trip);
+        break;
+
       case 'delivered':
-        // Open edit form for user to manually mark pickup/delivery status
-        final result = await context.push(
-          '/add-entry',
-          extra: {'editingTrip': trip},
-        );
-        if (result == true) {
-          unawaited(_onRefresh());
-        }
+        await _markDeliveryComplete(trip);
         break;
 
       case 'navigate_pickup':

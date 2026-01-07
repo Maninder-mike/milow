@@ -51,6 +51,15 @@ class TripRepository {
     try {
       final serverTrips = await TripService.getTrips();
 
+      // Clear existing local cache for this user to prevent duplicates
+      // (local entries may have different IDs than server entries for same trip)
+      final existingLocal = LocalTripStore.getAllForUser(userId);
+      for (final trip in existingLocal) {
+        if (trip.id != null) {
+          await LocalTripStore.delete(trip.id!);
+        }
+      }
+
       // Update local cache with server data
       for (final trip in serverTrips) {
         await LocalTripStore.put(trip);
@@ -195,14 +204,26 @@ class TripRepository {
     }).toList();
   }
 
-  /// Get active trip (trip without end odometer)
+  /// Get active trip (trip that is not fully completed)
+  /// A trip is active if it has no end_odometer OR has incomplete deliveries
   static Future<Trip?> getActiveTrip() async {
     final userId = _userId;
     if (userId == null) return null;
 
     // Check locally first
     final trips = LocalTripStore.getAllForUser(userId);
-    final activeLocal = trips.where((t) => t.endOdometer == null).firstOrNull;
+
+    // Find first trip that is not fully completed
+    // Active = no end_odometer OR has incomplete deliveries
+    final activeLocal = trips.where((t) {
+      // Trip with no end odometer is always active
+      if (t.endOdometer == null) return true;
+
+      // Trip with incomplete deliveries is still active
+      if (!t.allDeliveriesCompleted) return true;
+
+      return false;
+    }).firstOrNull;
 
     if (activeLocal != null) return activeLocal;
 

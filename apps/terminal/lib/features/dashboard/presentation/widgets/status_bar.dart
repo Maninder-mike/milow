@@ -285,8 +285,12 @@ class _StatusBarState extends ConsumerState<StatusBar>
                             shape: BoxShape.circle,
                             border: Border.all(
                               color: isLight
-                                  ? AppColors.sidebarBackgroundLight
-                                  : AppColors.sidebarBackgroundDark,
+                                  ? theme
+                                        .resources
+                                        .solidBackgroundFillColorSecondary
+                                  : theme
+                                        .resources
+                                        .solidBackgroundFillColorBase,
                               width: 1.5,
                             ),
                           ),
@@ -376,10 +380,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
     Color? color,
   }) {
     final theme = FluentTheme.of(context);
-    final isLight = theme.brightness == Brightness.light;
-    final defaultColor = isLight
-        ? AppColors.textPrimaryLight.withValues(alpha: 0.7)
-        : AppColors.textPrimaryDark.withValues(alpha: 0.7);
+    final defaultColor = theme.resources.textFillColorSecondary;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -595,7 +596,6 @@ class _StatusBarState extends ConsumerState<StatusBar>
     );
 
     final theme = FluentTheme.of(context);
-    final isLight = theme.brightness == Brightness.light;
 
     final isEmpty =
         pendingUsers.isEmpty &&
@@ -607,11 +607,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
         padding: const EdgeInsets.all(16.0),
         child: Text(
           'No notifications',
-          style: TextStyle(
-            color: isLight
-                ? AppColors.textSecondaryLight
-                : AppColors.textSecondaryDark,
-          ),
+          style: TextStyle(color: theme.resources.textFillColorSecondary),
         ),
       );
     }
@@ -665,9 +661,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                 trailing: IconButton(
                   icon: Icon(
                     FluentIcons.dismiss_24_regular,
-                    color: isLight
-                        ? AppColors.textSecondaryLight
-                        : AppColors.textSecondaryDark,
+                    color: theme.resources.textFillColorSecondary,
                   ),
                   onPressed: () {
                     ref
@@ -807,9 +801,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                 trailing: IconButton(
                   icon: Icon(
                     FluentIcons.dismiss_24_regular,
-                    color: isLight
-                        ? AppColors.textSecondaryLight
-                        : AppColors.textSecondaryDark,
+                    color: theme.resources.textFillColorSecondary,
                   ),
                   onPressed: () {
                     ref

@@ -48,6 +48,15 @@ class FuelRepository {
     try {
       final serverEntries = await FuelService.getFuelEntries();
 
+      // Clear existing local cache for this user to prevent duplicates
+      // (local entries may have different IDs than server entries)
+      final existingLocal = LocalFuelStore.getAllForUser(userId);
+      for (final entry in existingLocal) {
+        if (entry.id != null) {
+          await LocalFuelStore.delete(entry.id!);
+        }
+      }
+
       // Update local cache with server data
       for (final entry in serverEntries) {
         await LocalFuelStore.put(entry);

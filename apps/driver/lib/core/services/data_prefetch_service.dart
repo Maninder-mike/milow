@@ -172,6 +172,9 @@ class DataPrefetchService {
 
   /// Invalidate cache (data changed, need to refetch)
   void invalidateCache() {
+    // Clear cached trips and fuel entries to prevent stale duplicates
+    _cachedTrips = null;
+    _cachedFuelEntries = null;
     _prefetchComplete = false;
 
     if (kDebugMode) {

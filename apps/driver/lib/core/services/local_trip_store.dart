@@ -53,9 +53,31 @@ class LocalTripStore {
         // Skip invalid entries
       }
     }
+
+    // De-duplicate by trip_number (keep the one with the most recent createdAt)
+    // This handles cases where a trip exists with both a local UUID and server ID
+    final Map<String, Trip> uniqueByTripNumber = {};
+    for (final trip in trips) {
+      final key = trip.tripNumber.toUpperCase();
+      final existing = uniqueByTripNumber[key];
+      if (existing == null) {
+        uniqueByTripNumber[key] = trip;
+      } else {
+        // Keep the one with a later createdAt
+        if (trip.createdAt != null && existing.createdAt != null) {
+          if (trip.createdAt!.isAfter(existing.createdAt!)) {
+            uniqueByTripNumber[key] = trip;
+          }
+        } else if (trip.createdAt != null) {
+          uniqueByTripNumber[key] = trip; // Prefer the one with createdAt
+        }
+      }
+    }
+
+    final uniqueTrips = uniqueByTripNumber.values.toList();
     // Sort by date descending
-    trips.sort((a, b) => b.tripDate.compareTo(a.tripDate));
-    return trips;
+    uniqueTrips.sort((a, b) => b.tripDate.compareTo(a.tripDate));
+    return uniqueTrips;
   }
 
   /// Save a trip
