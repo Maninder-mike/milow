@@ -51,17 +51,41 @@ class TripRepository {
     try {
       final serverTrips = await TripService.getTrips();
 
-      // Clear existing local cache for this user to prevent duplicates
-      // (local entries may have different IDs than server entries for same trip)
+      // Get pending sync operations to prevent overwriting/deleting unsynced data
+      final pendingOps = syncQueueService.pendingOperations
+          .where((op) => op.tableName == 'trips')
+          .toList();
+
+      final pendingCreateIds = pendingOps
+          .where((op) => op.operationType == 'create')
+          .map((op) => op.localId)
+          .toSet();
+
+      final pendingUpdateIds = pendingOps
+          .where((op) => op.operationType == 'update')
+          .map((op) => op.localId)
+          .toSet();
+
+      // Clear existing local cache for this user, BUT preserve pending creates
       final existingLocal = LocalTripStore.getAllForUser(userId);
       for (final trip in existingLocal) {
         if (trip.id != null) {
+          // If this trip is pending creation, DON'T delete it locally
+          // (Server doesn't have it yet, so if we delete, it's gone)
+          if (pendingCreateIds.contains(trip.id)) {
+            continue;
+          }
           await LocalTripStore.delete(trip.id!);
         }
       }
 
-      // Update local cache with server data
+      // Update local cache with server data, BUT respect pending updates
       for (final trip in serverTrips) {
+        // If this trip has a pending local update, DON'T overwrite it with server data
+        // (Local version is newer than server version)
+        if (trip.id != null && pendingUpdateIds.contains(trip.id)) {
+          continue;
+        }
         await LocalTripStore.put(trip);
       }
 

@@ -64,8 +64,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
     'cost': 'Cost',
   };
 
-  // Default selected columns
-  final Set<String> _selectedTripColumns = {
+  // Default selected columns (List for maintaining order)
+  final List<String> _selectedTripColumns = [
     'tripNumber',
     'date',
     'from',
@@ -73,21 +73,46 @@ class _RecordsListPageState extends State<RecordsListPage> {
     'to',
     'notes',
     'officialUse',
-  };
+  ];
 
-  final Set<String> _selectedFuelColumns = {
+  final List<String> _selectedFuelColumns = [
     'date',
     'type',
     'truck',
     'location',
     'odometer',
     'quantity',
-  };
+  ];
 
   @override
   void initState() {
     super.initState();
     _loadRecords();
+    _loadColumnPreferences();
+  }
+
+  Future<void> _loadColumnPreferences() async {
+    final savedTripCols = await PreferencesService.getTripColumns();
+    final savedFuelCols = await PreferencesService.getFuelColumns();
+
+    if (savedTripCols.isNotEmpty) {
+      setState(() {
+        _selectedTripColumns.clear();
+        _selectedTripColumns.addAll(savedTripCols);
+      });
+    }
+
+    if (savedFuelCols.isNotEmpty) {
+      setState(() {
+        _selectedFuelColumns.clear();
+        _selectedFuelColumns.addAll(savedFuelCols);
+      });
+    }
+  }
+
+  Future<void> _saveColumnPreferences() async {
+    await PreferencesService.setTripColumns(_selectedTripColumns);
+    await PreferencesService.setFuelColumns(_selectedFuelColumns);
   }
 
   /// Pull-to-refresh handler
@@ -1340,6 +1365,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
     DateTimeRange? tempDateRange = _selectedDateRange;
     String selectedExportFilter = _selectedFilter;
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    bool includeSummaryBanner = true;
 
     showModalBottomSheet(
       context: context,
@@ -1751,60 +1777,166 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 color: textColor,
                               ),
                         ),
+                        Text(
+                          'Drag to reorder • Tap to toggle',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: secondaryTextColor),
+                        ),
                         const SizedBox(height: 12),
                         Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: tripColumnLabels.entries.map((entry) {
-                            final isSelected = _selectedTripColumns.contains(
-                              entry.key,
-                            );
-                            return FilterChip(
-                              label: Text(
-                                entry.value,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: isSelected
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary
-                                          : textColor,
-                                    ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setModalState(() {
-                                  if (selected) {
-                                    _selectedTripColumns.add(entry.key);
-                                  } else {
-                                    // Ensure at least one column is selected
-                                    if (_selectedTripColumns.length > 1) {
-                                      _selectedTripColumns.remove(entry.key);
-                                    }
-                                  }
-                                });
-                              },
-                              selectedColor: Theme.of(
-                                context,
-                              ).colorScheme.primary,
-                              checkmarkColor: Theme.of(
-                                context,
-                              ).colorScheme.onPrimary,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerLow,
-                              shape: RoundedRectangleBorder(
+                          children: List.generate(_selectedTripColumns.length, (
+                            index,
+                          ) {
+                            final key = _selectedTripColumns[index];
+                            final label = tripColumnLabels[key] ?? key;
+                            return LongPressDraggable<int>(
+                              data: index,
+                              feedback: Material(
+                                elevation: 4,
                                 borderRadius: BorderRadius.circular(
-                                  tokens.shapeS,
+                                  tokens.shapeM,
                                 ),
-                                side: BorderSide(
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.primary
-                                      : tokens.subtleBorderColor,
+                                child: FilterChip(
+                                  label: Text(
+                                    label,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.onPrimary,
+                                        ),
+                                  ),
+                                  selected: true,
+                                  onSelected: (_) {},
+                                  selectedColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                  checkmarkColor: Theme.of(
+                                    context,
+                                  ).colorScheme.onPrimary,
                                 ),
                               ),
+                              childWhenDragging: Opacity(
+                                opacity: 0.4,
+                                child: FilterChip(
+                                  label: Text(label),
+                                  selected: true,
+                                  onSelected: (_) {},
+                                  selectedColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                ),
+                              ),
+                              child: DragTarget<int>(
+                                onAcceptWithDetails: (details) {
+                                  final fromIndex = details.data;
+                                  if (fromIndex != index) {
+                                    setModalState(() {
+                                      final item = _selectedTripColumns
+                                          .removeAt(fromIndex);
+                                      _selectedTripColumns.insert(
+                                        fromIndex < index ? index - 1 : index,
+                                        item,
+                                      );
+                                    });
+                                    _saveColumnPreferences();
+                                  }
+                                },
+                                builder:
+                                    (context, candidateData, rejectedData) {
+                                      return FilterChip(
+                                        label: Text(
+                                          label,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelSmall
+                                              ?.copyWith(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary,
+                                              ),
+                                        ),
+                                        selected: true,
+                                        onSelected: (selected) {
+                                          if (!selected &&
+                                              _selectedTripColumns.length > 1) {
+                                            setModalState(() {
+                                              _selectedTripColumns.remove(key);
+                                            });
+                                            _saveColumnPreferences();
+                                          }
+                                        },
+                                        selectedColor: candidateData.isNotEmpty
+                                            ? Theme.of(
+                                                context,
+                                              ).colorScheme.primaryContainer
+                                            : Theme.of(
+                                                context,
+                                              ).colorScheme.primary,
+                                        checkmarkColor: Theme.of(
+                                          context,
+                                        ).colorScheme.onPrimary,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            tokens.shapeS,
+                                          ),
+                                          side: BorderSide(
+                                            color: Theme.of(
+                                              context,
+                                            ).colorScheme.primary,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                              ),
                             );
-                          }).toList(),
+                          }),
+                        ),
+                        const SizedBox(height: 8),
+                        // Unselected trip columns
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: tripColumnLabels.entries
+                              .where(
+                                (e) => !_selectedTripColumns.contains(e.key),
+                              )
+                              .map(
+                                (entry) => FilterChip(
+                                  label: Text(
+                                    entry.value,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .labelSmall
+                                        ?.copyWith(color: textColor),
+                                  ),
+                                  selected: false,
+                                  onSelected: (selected) {
+                                    if (selected) {
+                                      setModalState(() {
+                                        _selectedTripColumns.add(entry.key);
+                                      });
+                                      _saveColumnPreferences();
+                                    }
+                                  },
+                                  backgroundColor: Theme.of(
+                                    context,
+                                  ).colorScheme.surfaceContainerLow,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(
+                                      tokens.shapeS,
+                                    ),
+                                    side: BorderSide(
+                                      color: tokens.subtleBorderColor,
+                                    ),
+                                  ),
+                                ),
+                              )
+                              .toList(),
                         ),
                         const SizedBox(height: 20),
                       ],
@@ -1852,6 +1984,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     }
                                   }
                                 });
+                                _saveColumnPreferences();
                               },
                               selectedColor: Theme.of(
                                 context,
@@ -1877,6 +2010,54 @@ class _RecordsListPageState extends State<RecordsListPage> {
                         ),
                         const SizedBox(height: 24),
                       ],
+                      // PDF Options
+                      Text(
+                        'PDF Options',
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: textColor,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        decoration: BoxDecoration(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.surfaceContainerLow,
+                          borderRadius: BorderRadius.circular(tokens.shapeM),
+                          border: Border.all(color: tokens.subtleBorderColor),
+                        ),
+                        child: SwitchListTile(
+                          value: includeSummaryBanner,
+                          onChanged: (value) {
+                            setModalState(() {
+                              includeSummaryBanner = value;
+                            });
+                          },
+                          title: Text(
+                            'Include Summary Banner',
+                            style: Theme.of(
+                              context,
+                            ).textTheme.bodyMedium?.copyWith(color: textColor),
+                          ),
+                          subtitle: Text(
+                            'Shows total records, trips, fuel entries & miles',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: secondaryTextColor),
+                          ),
+                          secondary: Icon(
+                            Icons.dashboard_outlined,
+                            color: secondaryTextColor,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(tokens.shapeM),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
 
                       // Download Button
                       Row(
@@ -1930,6 +2111,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                       _downloadPDF(
                                         selectedExportFilter,
                                         tempDateRange,
+                                        includeSummaryBanner:
+                                            includeSummaryBanner,
                                       );
                                     }
                                   : null,
@@ -2287,7 +2470,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
     }
   }
 
-  Future<void> _downloadPDF(String filter, DateTimeRange? dateRange) async {
+  Future<void> _downloadPDF(
+    String filter,
+    DateTimeRange? dateRange, {
+    bool includeSummaryBanner = true,
+  }) async {
     // Show loading indicator
     unawaited(
       showDialog(
@@ -2486,56 +2673,58 @@ class _RecordsListPageState extends State<RecordsListPage> {
             ],
           ),
           build: (context) => [
-            // Summary Cards
-            pw.Container(
-              padding: const pw.EdgeInsets.symmetric(
-                vertical: 16,
-                horizontal: 12,
-              ),
-              decoration: pw.BoxDecoration(
-                gradient: const pw.LinearGradient(
-                  colors: [PdfColors.blue50, PdfColors.white],
+            // Summary Cards (conditionally rendered)
+            if (includeSummaryBanner) ...[
+              pw.Container(
+                padding: const pw.EdgeInsets.symmetric(
+                  vertical: 16,
+                  horizontal: 12,
                 ),
-                borderRadius: pw.BorderRadius.circular(12),
-                border: pw.Border.all(color: PdfColors.blue100),
+                decoration: pw.BoxDecoration(
+                  gradient: const pw.LinearGradient(
+                    colors: [PdfColors.blue50, PdfColors.white],
+                  ),
+                  borderRadius: pw.BorderRadius.circular(12),
+                  border: pw.Border.all(color: PdfColors.blue100),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _buildPdfSummaryCard(
+                      'Total Records',
+                      '${recordsToExport.length}',
+                      PdfColors.blue700,
+                    ),
+                    _buildPdfSummaryDivider(),
+                    _buildPdfSummaryCard(
+                      'Trips',
+                      '${tripRecords.length}',
+                      PdfColors.blue600,
+                    ),
+                    _buildPdfSummaryDivider(),
+                    _buildPdfSummaryCard(
+                      'Fuel Entries',
+                      '${fuelRecords.length}',
+                      PdfColors.orange600,
+                    ),
+                    _buildPdfSummaryDivider(),
+                    _buildPdfSummaryCard(
+                      'Total Miles',
+                      tripRecords
+                          .fold<double>(
+                            0,
+                            (sum, r) =>
+                                sum +
+                                ((r['rawDistance'] as num?)?.toDouble() ?? 0),
+                          )
+                          .toStringAsFixed(0),
+                      PdfColors.green700,
+                    ),
+                  ],
+                ),
               ),
-              child: pw.Row(
-                mainAxisAlignment: pw.MainAxisAlignment.spaceEvenly,
-                children: [
-                  _buildPdfSummaryCard(
-                    'Total Records',
-                    '${recordsToExport.length}',
-                    PdfColors.blue700,
-                  ),
-                  _buildPdfSummaryDivider(),
-                  _buildPdfSummaryCard(
-                    'Trips',
-                    '${tripRecords.length}',
-                    PdfColors.blue600,
-                  ),
-                  _buildPdfSummaryDivider(),
-                  _buildPdfSummaryCard(
-                    'Fuel Entries',
-                    '${fuelRecords.length}',
-                    PdfColors.orange600,
-                  ),
-                  _buildPdfSummaryDivider(),
-                  _buildPdfSummaryCard(
-                    'Total Miles',
-                    tripRecords
-                        .fold<double>(
-                          0,
-                          (sum, r) =>
-                              sum +
-                              ((r['rawDistance'] as num?)?.toDouble() ?? 0),
-                        )
-                        .toStringAsFixed(0),
-                    PdfColors.green700,
-                  ),
-                ],
-              ),
-            ),
-            pw.SizedBox(height: 24),
+              pw.SizedBox(height: 24),
+            ],
 
             // TRIPS TABLE
             if (tripRecords.isNotEmpty) ...[

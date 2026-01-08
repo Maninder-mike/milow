@@ -19,6 +19,9 @@ import 'package:uuid/uuid.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:milow_core/milow_core.dart';
 
+import 'package:flutter_image_compress/flutter_image_compress.dart';
+import 'package:milow/core/theme/m3_expressive_motion.dart';
+
 class ScanDocumentPage extends StatefulWidget {
   final Map<String, dynamic> extra;
   final SupabaseClient? supabaseClient;
@@ -244,15 +247,26 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
       fileToUpload = _scannedPdf!;
     } else if (_scannedImages.isNotEmpty) {
       try {
-        final pdf = pw.Document();
+        // Create PDF with compression
+        final pdf = pw.Document(deflate: zlib.encode);
+
         for (final imagePath in _scannedImages) {
           final imageFile = File(imagePath);
-          final imageBytes = await imageFile.readAsBytes();
+          var imageBytes = await FlutterImageCompress.compressWithFile(
+            imagePath,
+            minWidth: 1275, // US Letter width @ ~150 DPI
+            minHeight: 1650,
+            quality: 75, // Good balance of size/quality
+          );
+
+          // Fallback if compression fails
+          imageBytes ??= await imageFile.readAsBytes();
+
           final image = pw.MemoryImage(imageBytes);
 
           pdf.addPage(
             pw.Page(
-              pageFormat: PdfPageFormat.a4,
+              pageFormat: PdfPageFormat.letter,
               margin: pw.EdgeInsets.zero,
               build: (pw.Context context) {
                 return pw.Center(
@@ -310,40 +324,25 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
             .eq('trip_number', tripNumberInput)
             .maybeSingle();
 
-        if (tripResponse == null) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Invalid Trip Number')),
-            );
-            setState(() => _isUploading = false);
-          }
-          return;
-        }
-        resolvedTripId = tripResponse['id'] as String;
-      } catch (e) {
-        if (!connectivityService.isOnline) {
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Cannot verify Trip Number while offline. Please try again when online.',
-                ),
-              ),
-            );
-            setState(() => _isUploading = false);
-          }
-          return;
-        }
-        unawaited(
-          logger.error('ScanDocument', 'Failed to resolve trip', error: e),
-        );
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Failed to verify Trip Number')),
+        if (tripResponse != null) {
+          resolvedTripId = tripResponse['id'] as String;
+        } else {
+          // Proceed without trip ID (new trip or invalid number)
+          unawaited(
+            logger.warning(
+              'ScanDocument',
+              'Trip number $tripNumberInput not found, proceeding locally',
+            ),
           );
-          setState(() => _isUploading = false);
         }
-        return;
+      } catch (e) {
+        // Proceed locally on error
+        unawaited(
+          logger.warning(
+            'ScanDocument',
+            'Trip check failed: $e, proceeding locally',
+          ),
+        );
       }
     }
 
@@ -351,9 +350,13 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
       final userId = _client.auth.currentUser!.id;
       final shortType = _getShortDocType(_selectedDocumentType!);
       final uniqueId = const Uuid().v4();
-      final fileName =
-          '$shortType-${tripNumberInput}_${uniqueId.split('-').first}$extension';
-      final storagePath = '$userId/$resolvedTripId/$fileName';
+      final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
+      // Format: BOL-TR12345-20240401.pdf
+      final fileName = '$shortType-$tripNumberInput-$dateStr$extension';
+
+      // Use trip number in path if ID is missing to avoid "null"
+      final folderId = resolvedTripId ?? tripNumberInput;
+      final storagePath = '$userId/$folderId/$fileName';
 
       if (!connectivityService.isOnline) {
         // --- OFFLINE MODE ---
@@ -366,7 +369,7 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
         await fileToUpload.copy(localFile.path);
 
         final dbData = {
-          'trip_id': resolvedTripId,
+          'trip_id': resolvedTripId, // Can be null
           'user_id': userId,
           'document_type': _selectedDocumentType?.value ?? 'other',
           'file_path': storagePath,
@@ -1001,7 +1004,7 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
     final tokens = Theme.of(context).extension<DesignTokens>()!;
 
     return PopScope(
-      canPop: !_isSelectionMode, // Intercept pop if in selection mode
+      canPop: !_isSelectionMode,
       onPopInvokedWithResult: (didPop, result) {
         if (!didPop && _isSelectionMode) {
           setState(() {
@@ -1010,140 +1013,143 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
           });
           return;
         }
-        if (didPop && _changesMade) {
-          // If changes made, we rely on the passing back flag via Navigator pop manually
-        }
       },
       child: Scaffold(
-        appBar: AppBar(
-          title: _isSelectionMode
-              ? Text('${_selectedIds.length} Selected')
-              : _isSearching
-              ? TextField(
-                  controller: _searchController,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Search documents...',
-                    border: InputBorder.none,
-                    hintStyle: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurface.withValues(alpha: 0.7),
-                    ),
-                  ),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  cursorColor: Theme.of(context).colorScheme.onSurface,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                )
-              : const Text('Add documents'),
-          leading: _isSelectionMode
-              ? IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    setState(() {
-                      _isSelectionMode = false;
-                      _selectedIds.clear();
-                    });
-                  },
-                )
-              : _isSearching
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = false;
-                      _searchQuery = null;
-                      _searchController.clear();
-                    });
-                  },
-                )
-              : IconButton(
-                  icon: const Icon(Icons.arrow_back),
-                  onPressed: () => Navigator.pop(context, _changesMade),
-                ),
-          actions: [
-            if (_isSelectionMode)
-              IconButton(
-                icon: const Icon(Icons.delete_outline),
-                onPressed: _deleteSelectedDocuments,
-              )
-            else ...[
-              if (!_isSearching &&
-                  _scannedPdf == null &&
-                  _scannedImages.isEmpty)
-                IconButton(
-                  icon: const Icon(Icons.search),
-                  onPressed: () {
-                    setState(() {
-                      _isSearching = true;
-                    });
-                  },
-                ),
-              PopupMenuButton<String>(
-                onSelected: (value) {
-                  if (value == 'select') {
-                    setState(() => _isSelectionMode = true);
-                  } else if (value.startsWith('sort_')) {
-                    setState(() {
-                      _sortBy = value.substring(5); // remove 'sort_'
-                      _sortDocuments(_existingDocuments);
-                    });
-                  }
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem(
-                    value: 'select',
-                    child: Row(
-                      children: [
-                        Icon(Icons.checklist, color: tokens.textPrimary),
-                        const SizedBox(width: 12),
-                        const Text('Select Documents'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuDivider(),
-                  const PopupMenuItem(
-                    value: 'sort_date_desc',
-                    child: Text('Sort by Date (Newest)'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'sort_date_asc',
-                    child: Text('Sort by Date (Oldest)'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'sort_trip_desc',
-                    child: Text('Sort by Trip (High-Low)'),
-                  ),
-                  const PopupMenuItem(
-                    value: 'sort_trip_asc',
-                    child: Text('Sort by Trip (Low-High)'),
-                  ),
-                ],
-              ),
-            ],
-          ],
-        ),
         body: _isUploading
             ? const Center(
                 child: CircularProgressIndicator(strokeCap: StrokeCap.round),
               )
-            : (_scannedPdf == null && _scannedImages.isEmpty)
-            ? _buildDocumentList(tokens)
-            : _buildReviewState(tokens),
+            : CustomScrollView(
+                slivers: [
+                  SliverAppBar(
+                    pinned: true,
+                    floating: true,
+                    leading: _isSelectionMode
+                        ? IconButton(
+                            icon: const Icon(Icons.close),
+                            onPressed: () {
+                              setState(() {
+                                _isSelectionMode = false;
+                                _selectedIds.clear();
+                              });
+                            },
+                          )
+                        : IconButton(
+                            icon: const Icon(Icons.arrow_back),
+                            onPressed: () =>
+                                Navigator.pop(context, _changesMade),
+                          ),
+                    title: _isSelectionMode
+                        ? Text('${_selectedIds.length} Selected')
+                        : _isSearching
+                        ? TextField(
+                            controller: _searchController,
+                            autofocus: true,
+                            decoration: InputDecoration(
+                              hintText: 'Search documents...',
+                              border: InputBorder.none,
+                              hintStyle: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurface.withValues(alpha: 0.7),
+                              ),
+                            ),
+                            style: TextStyle(
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                            cursorColor: Theme.of(
+                              context,
+                            ).colorScheme.onSurface,
+                            onChanged: (value) {
+                              setState(() {
+                                _searchQuery = value;
+                              });
+                            },
+                          )
+                        : const Text('Documents'),
+                    actions: [
+                      if (_isSelectionMode)
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline),
+                          onPressed: _deleteSelectedDocuments,
+                        )
+                      else ...[
+                        if (!_isSearching &&
+                            _scannedPdf == null &&
+                            _scannedImages.isEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.search),
+                            onPressed: () {
+                              setState(() {
+                                _isSearching = true;
+                              });
+                            },
+                          ),
+                        PopupMenuButton<String>(
+                          onSelected: (value) {
+                            if (value == 'select') {
+                              setState(() => _isSelectionMode = true);
+                            } else if (value.startsWith('sort_')) {
+                              setState(() {
+                                _sortBy = value.substring(5);
+                                _sortDocuments(_existingDocuments);
+                              });
+                            }
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(
+                              value: 'select',
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    Icons.checklist,
+                                    color: tokens.textPrimary,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  const Text('Select Documents'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuDivider(),
+                            const PopupMenuItem(
+                              value: 'sort_date_desc',
+                              child: Text('Sort by Date (Newest)'),
+                            ),
+                            const PopupMenuItem(
+                              value: 'sort_date_asc',
+                              child: Text('Sort by Date (Oldest)'),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                  _scannedPdf == null && _scannedImages.isEmpty
+                      ? _buildDocumentListSlivers(tokens)
+                      : SliverToBoxAdapter(child: _buildReviewState(tokens)),
+                ],
+              ),
+        floatingActionButton:
+            !_isSelectionMode &&
+                !_isSearching &&
+                _scannedPdf == null &&
+                _scannedImages.isEmpty
+            ? FloatingActionButton.extended(
+                onPressed: _startScan,
+                icon: const Icon(Icons.add_a_photo),
+                label: const Text('Scan New'),
+              )
+            : null,
       ),
     );
   }
 
-  Widget _buildDocumentList(DesignTokens tokens) {
+  Widget _buildDocumentListSlivers(DesignTokens tokens) {
     if (_isLoadingDocuments) {
-      return const Center(
-        child: CircularProgressIndicator(strokeCap: StrokeCap.round),
+      return const SliverFillRemaining(
+        child: Center(
+          child: CircularProgressIndicator(strokeCap: StrokeCap.round),
+        ),
       );
     }
 
@@ -1162,287 +1168,380 @@ class _ScanDocumentPageState extends State<ScanDocumentPage> {
           tripNum.contains(query);
     }).toList();
 
-    return Column(
-      children: [
-        if (!_isSearching && !_isSelectionMode)
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: FilledButton.icon(
-              onPressed: _startScan,
-              icon: const Icon(Icons.add_a_photo),
-              label: const Text('Add New Document'),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(double.infinity, 48),
-              ),
-            ),
-          ),
-        Expanded(
-          child: displayedDocs.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        _isSearching
-                            ? Icons.search_off
-                            : Icons.folder_open_outlined,
-                        size: 64,
-                        color: tokens.textSecondary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        _isSearching ? 'No matches found' : 'No documents yet',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(color: tokens.textSecondary),
-                      ),
-                    ],
+    if (displayedDocs.isEmpty) {
+      return SliverFillRemaining(
+        hasScrollBody: false,
+        child: M3ExpressiveEntrance(
+          child: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest
+                        .withValues(alpha: 0.5),
+                    shape: BoxShape.circle,
                   ),
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  itemCount: displayedDocs.length,
-                  separatorBuilder: (context, index) =>
-                      const SizedBox(height: 12),
-                  itemBuilder: (context, index) {
-                    final doc = displayedDocs[index];
-                    final isSelected = _selectedIds.contains(doc.id);
-
-                    return GestureDetector(
-                      onLongPress: () {
-                        if (doc.id == null) return;
-                        if (!_isSelectionMode) {
-                          _enterSelectionMode(doc.id!);
-                        } else {
-                          _toggleSelection(doc.id!);
-                        }
-                      },
-                      onTap: () {
-                        if (doc.id == null) return;
-                        if (_isSelectionMode) {
-                          _toggleSelection(doc.id!);
-                        } else {
-                          // Preview Document
-                          unawaited(_previewDocument(doc));
-                        }
-                      },
-                      child: Card(
-                        elevation: 0,
-                        color: isSelected
-                            ? Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.1)
-                            : tokens.surfaceContainer,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(tokens.shapeM),
-                          side: BorderSide(
-                            color: isSelected
-                                ? Theme.of(context).colorScheme.primary
-                                : tokens.subtleBorderColor,
-                            width: isSelected ? 2 : 1,
-                          ),
-                        ),
-                        child: IgnorePointer(
-                          ignoring:
-                              _isSelectionMode, // Consume all taps in selection mode
-                          child: ListTile(
-                            contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 8,
-                            ),
-                            leading: Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: tokens.surfaceContainerHigh,
-                                borderRadius: BorderRadius.circular(
-                                  tokens.shapeS,
-                                ),
-                              ),
-                              child: Icon(
-                                Icons.picture_as_pdf,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                            ),
-                            title: Text(
-                              // Format: BOL - 12345
-                              '${_getShortDocType(doc.documentType)} - ${doc.tripNumber}',
-                              style: Theme.of(context).textTheme.titleSmall
-                                  ?.copyWith(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const SizedBox(height: 4),
-                                Text(
-                                  _formatFileSize(doc.fileSize),
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: tokens.textSecondary),
-                                ),
-                                if (doc.notes != null && doc.notes!.isNotEmpty)
-                                  Text(
-                                    doc.notes!,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: tokens.textTertiary,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                  ),
-                              ],
-                            ),
-                            trailing: _isSelectionMode
-                                ? Checkbox(
-                                    value: isSelected,
-                                    onChanged: (val) {
-                                      if (doc.id != null) {
-                                        _toggleSelection(doc.id!);
-                                      }
-                                    },
-                                  )
-                                : IconButton(
-                                    icon: const Icon(Icons.more_vert),
-                                    onPressed: () => _showDocumentDetails(doc),
-                                  ),
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildReviewState(DesignTokens tokens) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Card(
-            elevation: 0,
-            color: tokens.surfaceContainer,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(tokens.shapeM),
-              side: BorderSide(color: tokens.subtleBorderColor),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                children: [
-                  Icon(
-                    Icons.picture_as_pdf,
+                  child: Icon(
+                    _isSearching
+                        ? Icons.search_off
+                        : Icons.folder_open_outlined,
                     size: 48,
                     color: tokens.textSecondary,
                   ),
-                  const SizedBox(height: 16),
-                  Text(
-                    _scannedPdf != null ? 'PDF Document Ready' : 'Image Ready',
-                    style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  _isSearching ? 'No matches found' : 'No documents yet',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: tokens.textSecondary,
+                    fontWeight: FontWeight.w600,
                   ),
-                  if (_scannedPdf != null)
+                ),
+                if (!_isSearching) ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap the camera button to scan',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: tokens.textTertiary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverPadding(
+      padding: const EdgeInsets.fromLTRB(
+        16,
+        8,
+        16,
+        80,
+      ), // Bottom padding for FAB
+      sliver: SliverList(
+        delegate: SliverChildBuilderDelegate((context, index) {
+          final doc = displayedDocs[index];
+          final isSelected = _selectedIds.contains(doc.id);
+
+          return M3ExpressiveEntrance(
+            delay: Duration(milliseconds: index * 50),
+            child: Padding(
+              padding: const EdgeInsets.only(bottom: 5),
+              child: GestureDetector(
+                onLongPress: () {
+                  if (doc.id == null) return;
+                  if (!_isSelectionMode) {
+                    _enterSelectionMode(doc.id!);
+                  } else {
+                    _toggleSelection(doc.id!);
+                  }
+                },
+                onTap: () {
+                  if (doc.id == null) return;
+                  if (_isSelectionMode) {
+                    _toggleSelection(doc.id!);
+                  } else {
+                    _previewDocument(doc);
+                  }
+                },
+                child: Card(
+                  elevation: 0,
+                  color: isSelected
+                      ? Theme.of(
+                          context,
+                        ).colorScheme.primary.withValues(alpha: 0.1)
+                      : tokens.surfaceContainer,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.primary
+                          : Colors.transparent, // Minimal border
+                      width: isSelected ? 2 : 1,
+                    ),
+                  ),
+                  child: IgnorePointer(
+                    ignoring: _isSelectionMode,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      leading: Container(
+                        width: 56,
+                        height: 56,
+                        decoration: BoxDecoration(
+                          color: tokens.surfaceContainerHigh,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: Icon(
+                          Icons.description_outlined,
+                          color: Theme.of(context).colorScheme.primary,
+                          size: 28,
+                        ),
+                      ),
+                      title: Text(
+                        doc.fileName ?? _getShortDocType(doc.documentType),
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w600),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 4),
+                          Text(
+                            doc.description?.isNotEmpty == true
+                                ? doc.description!
+                                : (doc.notes?.isNotEmpty == true
+                                      ? doc.notes!
+                                      : 'No notes'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodyMedium
+                                ?.copyWith(color: tokens.textSecondary),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.calendar_today,
+                                size: 14,
+                                color: tokens.textTertiary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatDate(doc.createdAt),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(color: tokens.textTertiary),
+                              ),
+                              const SizedBox(width: 12),
+                              Icon(
+                                Icons.sd_storage_outlined,
+                                size: 14,
+                                color: tokens.textTertiary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                _formatFileSize(doc.fileSize),
+                                style: Theme.of(context).textTheme.labelSmall
+                                    ?.copyWith(color: tokens.textTertiary),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                      trailing: _isSelectionMode
+                          ? Checkbox(
+                              value: isSelected,
+                              onChanged: (v) => _toggleSelection(doc.id!),
+                              shape: const CircleBorder(),
+                            )
+                          : IconButton(
+                              icon: const Icon(Icons.more_vert),
+                              onPressed: () => _showDocumentDetails(doc),
+                            ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }, childCount: displayedDocs.length),
+      ),
+    );
+  }
+
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return DateFormat('MMM d, y').format(date);
+  }
+
+  Widget _buildReviewState(DesignTokens tokens) {
+    return M3ExpressiveEntrance(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              elevation: 0,
+              color: tokens.surfaceContainer,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: tokens.inputBorder),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(32),
+                child: Column(
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: tokens.surfaceContainerHigh,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Icon(
+                        Icons.check_circle,
+                        size: 32,
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    const SizedBox(height: 16),
                     Text(
-                      '$_scannedPageCount pages',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      _scannedPdf != null
+                          ? 'Scan Successful'
+                          : 'Image Captured',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _scannedPdf != null
+                          ? '$_scannedPageCount pages ready to upload'
+                          : 'Review details below',
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: tokens.textSecondary,
                       ),
                     ),
-                  const SizedBox(height: 16),
-                  OutlinedButton.icon(
-                    onPressed: _startScan,
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retake / Add Pages'),
-                  ),
-                ],
+                    const SizedBox(height: 24),
+                    OutlinedButton.icon(
+                      onPressed: _startScan,
+                      icon: const Icon(Icons.refresh),
+                      label: const Text('Retake / Add Pages'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: tokens.textSecondary,
+                        side: BorderSide(color: tokens.inputBorder),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
+            const SizedBox(height: 24),
 
-          Text(
-            'Document Details',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
-          const SizedBox(height: 16),
-
-          // Trip Number Field - Editable
-          TextField(
-            controller: _tripNumberController,
-            decoration: InputDecoration(
-              labelText: 'Trip Number',
-              hintText: 'e.g. 123456',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.shapeS),
-              ),
-              filled: true,
-              fillColor: tokens.inputBackground,
+            Text(
+              'Document Details',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
             ),
-            keyboardType: TextInputType.text,
-          ),
-          const SizedBox(height: 16),
+            const SizedBox(height: 16),
 
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return DropdownMenu<TripDocumentType>(
-                width: constraints.maxWidth,
-                initialSelection: _selectedDocumentType,
-                label: const Text('Document Type'),
-                inputDecorationTheme: InputDecorationTheme(
-                  filled: true,
-                  fillColor: tokens.inputBackground,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(tokens.shapeS),
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+            // Trip Number Field - Editable
+            TextField(
+              controller: _tripNumberController,
+              decoration: InputDecoration(
+                labelText: 'Trip Number',
+                hintText: 'e.g. 123456',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: tokens.inputBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: tokens.inputBorder),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(
+                    color: Theme.of(context).colorScheme.primary,
                   ),
                 ),
-                dropdownMenuEntries: _documentTypes.map((type) {
-                  return DropdownMenuEntry<TripDocumentType>(
-                    value: type,
-                    label: _formatDocType(type),
-                  );
-                }).toList(),
-                onSelected: (value) {
-                  setState(() {
-                    _selectedDocumentType = value;
-                  });
-                },
-              );
-            },
-          ),
-          const SizedBox(height: 16),
-
-          TextField(
-            controller: _notesController,
-            decoration: InputDecoration(
-              labelText: 'Notes (Optional)',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(tokens.shapeS),
+                filled: true,
+                fillColor: tokens.inputBackground,
+                prefixIcon: Icon(Icons.numbers, color: tokens.textTertiary),
               ),
-              filled: true,
-              fillColor: tokens.inputBackground,
+              keyboardType: TextInputType.text,
+              textCapitalization: TextCapitalization.characters,
             ),
-            maxLines: 3,
-          ),
+            const SizedBox(height: 16),
 
-          const SizedBox(height: 32),
-
-          FilledButton.icon(
-            onPressed: (_selectedDocumentType != null) ? _uploadDocument : null,
-            icon: const Icon(Icons.cloud_upload),
-            label: const Text('Save Document'),
-            style: FilledButton.styleFrom(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                return DropdownMenu<TripDocumentType>(
+                  width: constraints.maxWidth,
+                  initialSelection: _selectedDocumentType,
+                  label: const Text('Document Type'),
+                  leadingIcon: Icon(Icons.category, color: tokens.textTertiary),
+                  inputDecorationTheme: InputDecorationTheme(
+                    filled: true,
+                    fillColor: tokens.inputBackground,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: tokens.inputBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: BorderSide(color: tokens.inputBorder),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                  ),
+                  dropdownMenuEntries: _documentTypes.map((type) {
+                    return DropdownMenuEntry<TripDocumentType>(
+                      value: type,
+                      label: _formatDocType(type),
+                    );
+                  }).toList(),
+                  onSelected: (value) {
+                    setState(() {
+                      _selectedDocumentType = value;
+                    });
+                  },
+                );
+              },
             ),
-          ),
-        ],
+            const SizedBox(height: 16),
+
+            TextField(
+              controller: _notesController,
+              decoration: InputDecoration(
+                labelText: 'Notes (Optional)',
+                hintText: 'Add description...',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: tokens.inputBorder),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: tokens.inputBorder),
+                ),
+                filled: true,
+                fillColor: tokens.inputBackground,
+                prefixIcon: Icon(Icons.note, color: tokens.textTertiary),
+              ),
+              maxLines: 3,
+            ),
+
+            const SizedBox(height: 32),
+
+            FilledButton.icon(
+              onPressed: (_selectedDocumentType != null)
+                  ? _uploadDocument
+                  : null,
+              icon: const Icon(Icons.cloud_upload),
+              label: const Text('Save Document'),
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                minimumSize: const Size(double.infinity, 56),
+              ),
+            ),
+            const SizedBox(height: 32), // Bottom padding
+          ],
+        ),
       ),
     );
   }

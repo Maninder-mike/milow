@@ -7,6 +7,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 // TabsShell provides navigation; this page returns content only
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/widgets/section_header.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
@@ -289,7 +290,7 @@ class _DashboardPageState extends State<DashboardPage>
   Future<void> _loadRecentEntries() async {
     try {
       // Load active trip (trip without end odometer)
-      final activeTrip = await TripRepository.getActiveTrip();
+      // final activeTrip = await TripRepository.getActiveTrip();
 
       final prefetch = DataPrefetchService.instance;
       List<Trip> trips;
@@ -300,16 +301,37 @@ class _DashboardPageState extends State<DashboardPage>
           prefetch.cachedTrips != null &&
           prefetch.cachedFuelEntries != null) {
         // Take first 5 from cached data
-        trips = prefetch.cachedTrips!.take(5).toList();
+        trips = prefetch.cachedTrips!.take(10).toList();
         fuelEntries = prefetch.cachedFuelEntries!.take(5).toList();
       } else {
         // Fetch from repositories (offline-first)
         // Note: Repositories return all items sorted by date
-        final allTrips = await TripRepository.getTrips(refresh: false);
-        final allFuel = await FuelRepository.getFuelEntries(refresh: false);
+        final allTrips = await TripRepository.getTrips(refresh: true);
+        final allFuel = await FuelRepository.getFuelEntries(refresh: true);
 
-        trips = allTrips.take(5).toList();
+        trips = allTrips.take(10).toList();
         fuelEntries = allFuel.take(5).toList();
+      }
+
+      // Filter out hidden trips
+      final hiddenTripIds = await PreferencesService.getHiddenTripIds();
+
+      // Determine active trip manually to support "Next Active" and filtering
+      // An active trip is one without an end odometer.
+      // We prioritize the most recent one that isn't hidden.
+      Trip? computedActiveTrip;
+
+      try {
+        computedActiveTrip = trips.firstWhere((t) {
+          final isHidden = t.id != null && hiddenTripIds.contains(t.id);
+          if (isHidden) return false;
+
+          // Active logic: incomplete end odometer OR incomplete deliveries
+          // But user wants to be able to "Finish" it, so basically created but not ended.
+          return t.endOdometer == null;
+        });
+      } catch (_) {
+        computedActiveTrip = null;
       }
 
       // Combine and sort by date using typed RecentEntry
@@ -326,7 +348,7 @@ class _DashboardPageState extends State<DashboardPage>
 
       if (mounted) {
         setState(() {
-          _activeTrip = activeTrip;
+          _activeTrip = computedActiveTrip;
           _recentEntries = recent;
           _isLoadingEntries = false;
         });
@@ -368,7 +390,9 @@ class _DashboardPageState extends State<DashboardPage>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              if (_activeTrip == null) ...[
+              // [MODIFIED] Show 'Start Trip' if no active trip OR active trip is completed
+              if (_activeTrip == null ||
+                  _activeTrip!.allDeliveriesCompleted) ...[
                 Text(
                   'Track Your Journey',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -378,41 +402,45 @@ class _DashboardPageState extends State<DashboardPage>
                   textAlign: TextAlign.center,
                 ),
                 SizedBox(height: context.tokens.spacingM),
-                // Hero Search Pill
-                Container(
+                // Hero Search Pill -> Replaced with "Start Trip" Button
+                SizedBox(
                   width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                    horizontal: context.tokens.spacingM,
-                    vertical:
-                        context.tokens.spacingS + 2, // Slight extra padding
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(
-                      context.tokens.shapeFull,
+                  height: 56, // Tall button for easy tapping
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      final result = await context.push('/add-entry');
+                      if (result == true) {
+                        unawaited(_onRefresh());
+                      }
+                    },
+                    icon: Icon(
+                      Icons.add,
+                      color: Theme.of(context).colorScheme.primary,
+                      // Using primary color for icon on white/surface button
                     ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.search,
+                    label: Text(
+                      'Start Trip',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
                         color: Theme.of(context).colorScheme.primary,
-                        size: 24,
+                        fontWeight: FontWeight.bold,
                       ),
-                      SizedBox(width: context.tokens.spacingS),
-                      Text(
-                        'Where to?',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          fontWeight: FontWeight.w500,
+                    ),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: Colors.white, // White against gradient
+                      foregroundColor: Theme.of(context).colorScheme.primary,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(
+                          context.tokens.shapeFull,
                         ),
                       ),
-                    ],
+                      elevation: 0,
+                    ),
                   ),
                 ),
                 SizedBox(height: context.tokens.spacingL),
               ],
-              // Only show active trip card if trip exists and is not fully completed
+              // Only show active trip card if trip exists AND deliveries are pending
+              // User requested to hide this bar if delivery is complete in database
               if (_activeTrip != null && !_activeTrip!.allDeliveriesCompleted)
                 GestureDetector(
                   onLongPressStart: (details) {
@@ -524,11 +552,12 @@ class _DashboardPageState extends State<DashboardPage>
           height: 72,
           child: Card(
             elevation: 0,
-            color: Colors.black.withValues(alpha: 0.2), // Semi-transparent dark
+            // Use a proper surface color that adapts to light/dark mode
+            // surfaceContainerHigh works well on top of background gradients/colors
+            color: Theme.of(context).colorScheme.surfaceContainerHigh,
             margin: EdgeInsets.zero,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(context.tokens.shapeL),
-              // No border for cleaner look on gradient
             ),
             child: InkWell(
               onTap: onTap,
@@ -537,7 +566,8 @@ class _DashboardPageState extends State<DashboardPage>
                 child: Icon(
                   icon,
                   size: 28,
-                  color: Colors.white, // White icon
+                  // Use onSurfaceVariant for the icon to match the container
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
             ),
@@ -549,8 +579,32 @@ class _DashboardPageState extends State<DashboardPage>
           child: Text(
             label,
             style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Colors.white.withValues(alpha: 0.9), // White text
-              fontWeight: FontWeight.w500,
+              // Use onSurface for text legibility against any background (since it's outside the card)
+              // But wait, the text is ON THE GRADIENT background.
+              // If the background is light, white text is bad.
+              // If the background is dark, black text is bad.
+              // The text is separate from the card.
+              // Check the screenshot. The text is below the buttons on the gradient background.
+              // The gradient seems to change based on `_currentGradientColors`.
+              // `_currentGradientColors` defaults to `_gradientPalettes[3]` (Amber/Orange).
+              // Text on Amber needs to be dark (or specifically handled).
+              // However, typically in M3, if we have a qualified background, we should probably check if we want
+              // to force a specific color or let it adapt.
+              // The user's compliant is "not seeing while light mode".
+              // If I change the text to `onSurface`, it will be Black in Light Mode (good for Amber background)
+              // and White in Dark Mode (good for Dark background).
+              // This relies on the Scaffold background being transparent or ignored if on gradient?
+              // `DashboardPage` has a Stack with Gradient Background.
+              // And the text is printed on top of that Gradient.
+              // The Gradient colors are fixed in `_gradientPalettes`.
+              // If we are in Light Mode, `colorScheme.onSurface` is usually dark (black/grey).
+              // Dark text on Amber gradient = Visible.
+              // If we are in Dark Mode, `colorScheme.onSurface` is light (white/grey).
+              // Light Text on Dark Blue gradient = Visible.
+              // So `onSurface` should be correct, UNLESS the gradient doesn't match the theme brightness.
+              // But let's assume standard theme behavior.
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,
             maxLines: 2,
@@ -1395,6 +1449,16 @@ class _DashboardPageState extends State<DashboardPage>
       ]);
     }
 
+    // Add generic options
+    items.addAll([
+      const PopupMenuDivider(),
+      _buildMenuItem(
+        'Hide Activity Bar',
+        Icons.visibility_off_outlined,
+        'hide_activity_bar',
+      ),
+    ]);
+
     showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -1685,6 +1749,15 @@ class _DashboardPageState extends State<DashboardPage>
   Future<void> _handleMenuAction(String value) async {
     final trip = _activeTrip;
     if (trip == null) return;
+
+    if (value == 'hide_activity_bar') {
+      if (_activeTrip!.id != null) {
+        await PreferencesService.addHiddenTripId(_activeTrip!.id!);
+        // Refresh to apply filter
+        unawaited(_loadRecentEntries());
+      }
+      return;
+    }
 
     switch (value) {
       case 'picked_up':

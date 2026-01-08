@@ -1,1 +1,1 @@
-Offline trip & fuel tracker. Syncs with dispatch to reduce check-in calls.
+Offline trip & fuel tracking for truckers. Syncs with dispatch in real-time.

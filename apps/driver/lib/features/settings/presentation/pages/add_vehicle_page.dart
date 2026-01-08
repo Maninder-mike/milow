@@ -218,7 +218,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                   },
                   style: TextButton.styleFrom(
                     backgroundColor: colorScheme.primary,
-                    foregroundColor: Colors.white,
+                    foregroundColor: colorScheme.onPrimary,
                     padding: EdgeInsets.symmetric(
                       horizontal: tokens.spacingL,
                       vertical: tokens.spacingM,
@@ -231,7 +231,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     'Save',
                     style: textTheme.labelLarge?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                      color: colorScheme.onPrimary,
                     ),
                   ),
                 ),
@@ -439,7 +439,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     },
                     style: TextButton.styleFrom(
                       backgroundColor: colorScheme.primary,
-                      foregroundColor: Colors.white,
+                      foregroundColor: colorScheme.onPrimary,
                       padding: EdgeInsets.symmetric(
                         horizontal: tokens.spacingL,
                         vertical: tokens.spacingM,
@@ -452,7 +452,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                       'Save',
                       style: textTheme.labelLarge?.copyWith(
                         fontWeight: FontWeight.w600,
-                        color: Colors.white,
+                        color: colorScheme.onPrimary,
                       ),
                     ),
                   ),

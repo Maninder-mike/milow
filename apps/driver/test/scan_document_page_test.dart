@@ -178,7 +178,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(find.textContaining('T123'), findsWidgets);
+      expect(find.textContaining('test.pdf'), findsWidgets);
     });
   });
 }

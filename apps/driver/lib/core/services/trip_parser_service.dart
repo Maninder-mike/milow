@@ -15,7 +15,10 @@ class TripParserService {
     }
 
     // Extract Trailer Number
-    final trailerMatch = RegExp(r'Trailer#\s*(\S+)').firstMatch(text);
+    final trailerMatch = RegExp(
+      r'Trailer\s*[#:]\s*(\S+)',
+      caseSensitive: false,
+    ).firstMatch(text);
     if (trailerMatch != null) {
       result['trailerNumber'] = trailerMatch.group(1);
     }

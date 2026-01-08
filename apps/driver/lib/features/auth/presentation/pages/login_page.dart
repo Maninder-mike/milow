@@ -8,6 +8,7 @@ import 'package:google_sign_in/google_sign_in.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/logging_service.dart';
+import 'package:milow/core/services/integrity_service.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
@@ -53,6 +54,34 @@ class _LoginPageState extends State<LoginPage>
     });
   }
 
+  /// Check device/app integrity after login (warn-only mode)
+  Future<void> _checkIntegrity() async {
+    final result = await IntegrityService.verify();
+
+    if (!result.isValid && !result.skipped && mounted) {
+      // Show warning but allow access (warn-only mode)
+      unawaited(
+        logger.warning(
+          'Integrity',
+          'Device integrity check failed',
+          extras: {'message': result.message},
+        ),
+      );
+
+      // Show a subtle warning to the user
+      if (!mounted) return;
+      final colorScheme = Theme.of(context).colorScheme;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Security notice: Device verification pending'),
+          backgroundColor: colorScheme.tertiary,
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+  }
+
   Future<void> _signIn() async {
     // Validation
     if (_emailController.text.trim().isEmpty) {
@@ -87,12 +116,17 @@ class _LoginPageState extends State<LoginPage>
         password: _passwordController.text,
       );
       if (res.session != null && mounted) {
+        // Verify device integrity (warn-only mode)
+        await _checkIntegrity();
+
+        if (!mounted) return;
         AppDialogs.showSuccess(
           context,
           '${AppLocalizations.of(context)!.welcomeBack}!',
         );
         context.go('/dashboard');
       } else {
+        if (!mounted) return;
         setState(
           () => _loginError = AppLocalizations.of(context)!.invalidCredentials,
         );
@@ -173,6 +207,10 @@ class _LoginPageState extends State<LoginPage>
         }
 
         if (mounted) {
+          // Verify device integrity (warn-only mode)
+          await _checkIntegrity();
+
+          if (!mounted) return;
           AppDialogs.showSuccess(
             context,
             AppLocalizations.of(context)!.signedInWithGoogle,

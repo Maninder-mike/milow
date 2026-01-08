@@ -155,6 +155,8 @@ class Trip {
       'border_crossing': borderCrossing,
       'notes': notes,
       'is_empty_leg': isEmptyLeg,
+      if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
     };
   }
 
