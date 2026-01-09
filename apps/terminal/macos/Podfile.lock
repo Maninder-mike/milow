@@ -5,6 +5,8 @@ PODS:
     - FlutterMacOS
   - file_selector_macos (0.0.1):
     - FlutterMacOS
+  - flutter_local_notifications (0.0.1):
+    - FlutterMacOS
   - flutter_secure_storage_darwin (10.0.0):
     - Flutter
     - FlutterMacOS
@@ -33,6 +35,7 @@ DEPENDENCIES:
   - app_links (from `Flutter/ephemeral/.symlinks/plugins/app_links/macos`)
   - connectivity_plus (from `Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos`)
   - file_selector_macos (from `Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos`)
+  - flutter_local_notifications (from `Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos`)
   - flutter_secure_storage_darwin (from `Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin`)
   - FlutterMacOS (from `Flutter/ephemeral`)
   - local_auth_darwin (from `Flutter/ephemeral/.symlinks/plugins/local_auth_darwin/darwin`)
@@ -51,6 +54,8 @@ EXTERNAL SOURCES:
     :path: Flutter/ephemeral/.symlinks/plugins/connectivity_plus/macos
   file_selector_macos:
     :path: Flutter/ephemeral/.symlinks/plugins/file_selector_macos/macos
+  flutter_local_notifications:
+    :path: Flutter/ephemeral/.symlinks/plugins/flutter_local_notifications/macos
   flutter_secure_storage_darwin:
     :path: Flutter/ephemeral/.symlinks/plugins/flutter_secure_storage_darwin/darwin
   FlutterMacOS:
@@ -76,6 +81,7 @@ SPEC CHECKSUMS:
   app_links: 05a6ec2341985eb05e9f97dc63f5837c39895c3f
   connectivity_plus: 4adf20a405e25b42b9c9f87feff8f4b6fde18a4e
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
+  flutter_local_notifications: 13862b132e32eb858dea558a86d45d08daeacfe7
   flutter_secure_storage_darwin: acdb3f316ed05a3e68f856e0353b133eec373a23
   FlutterMacOS: d0db08ddef1a9af05a5ec4b724367152bb0500b1
   local_auth_darwin: c3ee6cce0a8d56be34c8ccb66ba31f7f180aaebb

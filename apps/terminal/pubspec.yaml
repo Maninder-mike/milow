@@ -46,12 +46,16 @@ dependencies:
   package_info_plus: ^8.3.1
   app_links: ^6.4.1
   cupertino_icons: ^1.0.8
+  shared_preferences: ^2.3.5
+  flutter_local_notifications: ^18.0.0
 
   # Workspace Packages
   milow_core:
     path: ../../packages/core
   syncfusion_flutter_datagrid: ^32.1.21
   syncfusion_flutter_core: ^32.1.21
+  flutter_map: ^8.2.2
+  latlong2: ^0.9.1
 
 dev_dependencies:
   flutter_test:
@@ -76,6 +80,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/images/terminal_icon.png
 
 msix_config:

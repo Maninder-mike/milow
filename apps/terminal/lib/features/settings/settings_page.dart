@@ -6,6 +6,8 @@ import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../../../core/providers/theme_provider.dart';
+import '../../../../core/providers/permission_provider.dart';
+import '../../../../core/providers/user_preferences_provider.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -15,12 +17,6 @@ class SettingsPage extends ConsumerStatefulWidget {
 }
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
-  // Local state for UI toggles (mocking backend/prefs for now)
-  bool _pushNotifications = true;
-  bool _emailAlerts = true;
-  double _syncFrequency = 50.0;
-  String _selectedLanguage = 'English';
-  String _selectedMapProvider = 'Default Map';
   String _appVersion = '';
 
   final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
@@ -49,6 +45,10 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     // Current theme from provider
     final themeMode = ref.watch(themeProvider);
+    // Watch preferences
+    final prefs = ref.watch(userPreferencesProvider);
+    // Check if user can manage users/roles (admin permission)
+    final canManageUsers = ref.canRead('admin') || ref.canRead('roles');
 
     return ScaffoldPage.scrollable(
       header: PageHeader(
@@ -58,13 +58,46 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         ),
       ),
       children: [
-        // General Section
-        _buildSectionHeader('General'),
+        // ==== WORKSPACE (Admin only - at top like Slack/Notion) ====
+        if (canManageUsers) ...[
+          _buildSectionHeader('Workspace'),
+          const SizedBox(height: 8),
+          _buildSettingsCard(
+            children: [
+              _buildRow(
+                'Users, Roles, Groups',
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Manage team access',
+                      style: GoogleFonts.outfit(
+                        fontSize: 12,
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.textFillColorSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    FilledButton(
+                      onPressed: () => context.go('/settings/users-roles'),
+                      child: const Text('Manage'),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 32),
+        ],
+
+        // ==== PREFERENCES ====
+        _buildSectionHeader('Preferences'),
         const SizedBox(height: 8),
         _buildSettingsCard(
           children: [
             _buildRow(
-              'App Theme (Light/Dark/System)',
+              'App Theme',
               ComboBox<ThemeMode>(
                 value: themeMode,
                 items: const [
@@ -80,39 +113,39 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ),
             ),
             const SizedBox(height: 16),
-            // TODO: Implement language switching with localization (flutter_localizations)
             _buildRow(
               'Language',
               ComboBox<String>(
-                value: _selectedLanguage,
+                value: prefs.language,
                 items: _languages
                     .map((e) => ComboBoxItem(value: e, child: Text(e)))
                     .toList(),
                 onChanged: (val) {
-                  if (val != null) setState(() => _selectedLanguage = val);
+                  if (val != null) {
+                    ref.read(userPreferencesProvider.notifier).setLanguage(val);
+                  }
                 },
               ),
             ),
-          ],
-        ),
-
-        const SizedBox(height: 24),
-
-        // Notifications Section
-        _buildSectionHeader('Notifications'),
-        const SizedBox(height: 8),
-        _buildSettingsCard(
-          children: [
+            const Divider(
+              style: DividerThemeData(
+                horizontalMargin: EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
             _buildRow(
               'Push Notifications',
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_pushNotifications ? 'On' : 'Off'),
+                  Text(prefs.pushNotifications ? 'On' : 'Off'),
                   const SizedBox(width: 12),
                   ToggleSwitch(
-                    checked: _pushNotifications,
-                    onChanged: (v) => setState(() => _pushNotifications = v),
+                    checked: prefs.pushNotifications,
+                    onChanged: (v) {
+                      ref
+                          .read(userPreferencesProvider.notifier)
+                          .setPushNotifications(v);
+                    },
                   ),
                 ],
               ),
@@ -123,11 +156,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(_emailAlerts ? 'On' : 'Off'),
+                  Text(prefs.emailAlerts ? 'On' : 'Off'),
                   const SizedBox(width: 12),
                   ToggleSwitch(
-                    checked: _emailAlerts,
-                    onChanged: (v) => setState(() => _emailAlerts = v),
+                    checked: prefs.emailAlerts,
+                    onChanged: (v) {
+                      ref
+                          .read(userPreferencesProvider.notifier)
+                          .setEmailAlerts(v);
+                    },
                   ),
                 ],
               ),
@@ -135,22 +172,26 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ],
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
 
-        // Fleet Management Section
-        _buildSectionHeader('Fleet Management'),
+        // ==== FLEET MANAGEMENT ====
+        _buildSectionHeader('Fleet'),
         const SizedBox(height: 8),
         _buildSettingsCard(
           children: [
             _buildRow(
               'Default Map Provider',
               ComboBox<String>(
-                value: _selectedMapProvider,
+                value: prefs.mapProvider,
                 items: _mapProviders
                     .map((e) => ComboBoxItem(value: e, child: Text(e)))
                     .toList(),
                 onChanged: (val) {
-                  if (val != null) setState(() => _selectedMapProvider = val);
+                  if (val != null) {
+                    ref
+                        .read(userPreferencesProvider.notifier)
+                        .setMapProvider(val);
+                  }
                 },
               ),
             ),
@@ -160,24 +201,82 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               SizedBox(
                 width: 200,
                 child: Slider(
-                  value: _syncFrequency,
-                  min: 0,
-                  max: 100,
-                  onChanged: (v) => setState(() => _syncFrequency = v),
+                  value: prefs.syncFrequency,
+                  min: 10.0,
+                  max: 100.0,
+                  onChanged: (v) {
+                    ref
+                        .read(userPreferencesProvider.notifier)
+                        .setSyncFrequency(v);
+                  },
+                  label: '${prefs.syncFrequency.toInt()} min',
                 ),
               ),
             ),
           ],
         ),
 
-        const SizedBox(height: 24),
+        const SizedBox(height: 32),
 
-        // Account Section
+        // ==== SUPPORT & ABOUT ====
+        _buildSectionHeader('Support'),
+        const SizedBox(height: 8),
+        _buildSettingsCard(
+          children: [
+            _buildRow(
+              'Privacy Policy',
+              HyperlinkButton(
+                child: const Text('View'),
+                onPressed: () async {
+                  final url = Uri.parse(
+                    'https://www.maninder.co.in/milow/privacypolicy',
+                  );
+                  if (await canLaunchUrl(url)) {
+                    await launchUrl(url);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildRow(
+              'Terms of Service',
+              HyperlinkButton(
+                child: const Text('View'),
+                onPressed: () {
+                  // Placeholder for terms
+                },
+              ),
+            ),
+            const Divider(
+              style: DividerThemeData(
+                horizontalMargin: EdgeInsets.symmetric(vertical: 16),
+              ),
+            ),
+            _buildRow(
+              'App Version',
+              Text(
+                _appVersion.isEmpty ? 'Loading...' : _appVersion,
+                style: GoogleFonts.outfit(
+                  color: FluentTheme.of(
+                    context,
+                  ).resources.textFillColorSecondary,
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 32),
+
+        // ==== SIGN OUT (at bottom, danger zone) ====
         _buildSectionHeader('Account'),
         const SizedBox(height: 8),
         Align(
           alignment: Alignment.centerLeft,
           child: Button(
+            style: ButtonStyle(
+              foregroundColor: WidgetStateProperty.all(Colors.red.normal),
+            ),
             onPressed: () async {
               await Supabase.instance.client.auth.signOut();
               if (context.mounted) {
@@ -188,42 +287,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           ),
         ),
 
-        const SizedBox(height: 24),
-
-        // Footer Links
-        Row(
-          children: [
-            HyperlinkButton(
-              child: const Text('Privacy Policy'),
-              onPressed: () async {
-                final url = Uri.parse(
-                  'https://www.maninder.co.in/milow/privacypolicy',
-                );
-                if (await canLaunchUrl(url)) {
-                  await launchUrl(url);
-                }
-              },
-            ),
-            const SizedBox(width: 16),
-            HyperlinkButton(
-              child: const Text('Terms of Service'),
-              onPressed: () {
-                // Placeholder for terms
-              },
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: Text(
-            'Version ${_appVersion.isEmpty ? 'Loading...' : _appVersion}',
-            style: GoogleFonts.outfit(
-              color: FluentTheme.of(context).resources.textFillColorSecondary,
-              fontSize: 12,
-            ),
-          ),
-        ),
         const SizedBox(height: 48),
       ],
     );

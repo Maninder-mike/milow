@@ -111,6 +111,16 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
           Expanded(
             child: usersAsync.when(
               data: (users) {
+                if (users.isNotEmpty) {
+                  debugPrint('DEBUG: Fetched ${users.length} users');
+                  for (final u in users) {
+                    debugPrint(
+                      'DEBUG: User ${u.fullName} - Role: ${u.role}, Verified: ${u.isVerified}',
+                    );
+                  }
+                } else {
+                  debugPrint('DEBUG: No users fetched.');
+                }
                 // Filter drivers - only show verified/approved drivers
                 final activeDrivers = users
                     .where((u) => u.role == UserRole.driver && u.isVerified)

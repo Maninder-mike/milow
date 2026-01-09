@@ -35,7 +35,7 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
     String status,
   ) {
     return vehicles.where((v) {
-      final vStatus = (v['status'] as String?)?.toUpperCase() ?? 'UNKNOWN';
+      final vStatus = (v['status'] as String?)?.toUpperCase() ?? 'ACTIVE';
       final matchesStatus = vStatus == status;
 
       final matchesSearch =
@@ -107,12 +107,15 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'FLEET',
-                  style: GoogleFonts.outfit(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: titleColor,
+                Expanded(
+                  child: Text(
+                    'FLEET',
+                    style: GoogleFonts.outfit(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: titleColor,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ),
                 Row(
@@ -176,6 +179,18 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
           Expanded(
             child: vehiclesAsync.when(
               data: (vehicles) {
+                if (vehicles.isNotEmpty) {
+                  debugPrint(
+                    'DEBUG: FleetSidebar fetched ${vehicles.length} vehicles',
+                  );
+                  for (final v in vehicles) {
+                    debugPrint(
+                      'DEBUG: Vehicle ${v['truck_number']} - Status: ${v['status']}, Type: ${v['vehicle_type']}',
+                    );
+                  }
+                } else {
+                  debugPrint('DEBUG: FleetSidebar fetched 0 vehicles');
+                }
                 return ListView(
                   padding: EdgeInsets.zero,
                   children: [

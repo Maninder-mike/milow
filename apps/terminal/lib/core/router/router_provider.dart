@@ -17,6 +17,8 @@ import 'package:terminal/features/users/presentation/users_page.dart';
 import 'package:terminal/features/users/presentation/user_form_page.dart';
 import 'package:terminal/features/drivers/presentation/drivers_page.dart';
 import 'package:terminal/features/settings/settings_page.dart';
+import 'package:terminal/features/settings/users_roles_groups_page.dart';
+import 'package:terminal/features/settings/role_configuration_page.dart';
 import 'package:terminal/features/settings/profile_page.dart';
 import 'package:terminal/features/dashboard/screens/overview_page.dart';
 import 'package:terminal/features/dashboard/screens/entity_placeholder_page.dart';
@@ -87,6 +89,17 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settings',
             builder: (context, state) => const SettingsPage(),
+          ),
+          GoRoute(
+            path: '/settings/users-roles',
+            builder: (context, state) => const UsersRolesGroupsPage(),
+          ),
+          GoRoute(
+            path: '/settings/roles/:roleId',
+            builder: (context, state) {
+              final roleId = state.pathParameters['roleId'] ?? '';
+              return RoleConfigurationPage(roleId: roleId);
+            },
           ),
           GoRoute(
             path: '/profile',

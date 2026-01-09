@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../core/providers/supabase_provider.dart';
+import 'package:flutter/foundation.dart';
+import '../../../../core/providers/supabase_provider.dart';
 
 class VehicleService {
   final SupabaseClient _client;
@@ -19,10 +20,30 @@ class VehicleService {
   /// Fetches vehicles from the database.
   Future<List<Map<String, dynamic>>> getVehicles() async {
     try {
+      final user = _client.auth.currentUser;
+      if (user == null) {
+        debugPrint('DEBUG: VehicleService - No logged in user');
+        return [];
+      }
+
+      final profile = await _client
+          .from('profiles')
+          .select('company_id')
+          .eq('id', user.id)
+          .maybeSingle();
+      final companyId = profile?['company_id'];
+      debugPrint(
+        'DEBUG: VehicleService - User: ${user.id}, Company ID: $companyId',
+      );
+
       final data = await _client
           .from('vehicles')
           .select()
           .order('created_at', ascending: false);
+
+      debugPrint(
+        'DEBUG: VehicleService - Fetched ${data.length} raw rows from DB',
+      );
       return List<Map<String, dynamic>>.from(data);
     } catch (e) {
       // Fallback to dummy data if fetch fails (or table doesn't exist yet)

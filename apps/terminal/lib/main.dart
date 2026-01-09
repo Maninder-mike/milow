@@ -15,10 +15,17 @@ import 'core/router/router_provider.dart';
 import 'features/settings/widgets/custom_about_dialog.dart';
 import 'features/settings/utils/update_checker.dart';
 import 'core/services/app_links_service.dart';
+import 'core/services/notification_service.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
+import 'core/providers/shared_preferences_provider.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await windowManager.ensureInitialized();
+
+  // Initialize SharedPreferences
+  final prefs = await SharedPreferences.getInstance();
 
   try {
     await dotenv.load(fileName: ".env");
@@ -40,6 +47,7 @@ Future<void> main() async {
     await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
     await AppLinksService().initialize();
+    await NotificationService().init();
   } catch (e) {
     runApp(ConfigurationErrorApp(error: 'Initialization failed: $e'));
     return;
@@ -59,7 +67,12 @@ Future<void> main() async {
     });
   }
 
-  runApp(const ProviderScope(child: AdminApp()));
+  runApp(
+    ProviderScope(
+      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+      child: const AdminApp(),
+    ),
+  );
 }
 
 class ConfigurationErrorApp extends StatelessWidget {
@@ -87,108 +100,11 @@ class ConfigurationErrorApp extends StatelessWidget {
 class AdminApp extends ConsumerWidget {
   const AdminApp({super.key});
 
-  List<PlatformMenuItem> _buildAppMenuItems(GoRouter router) {
-    final items = <PlatformMenuItem>[
-      PlatformMenuItem(
-        label: 'About Milow Terminal',
-        onSelected: () {
-          final context = router.routerDelegate.navigatorKey.currentContext;
-          if (context != null) {
-            showCustomAboutDialog(context);
-          }
-        },
-      ),
-      PlatformMenuItem(
-        label: 'Check for Updates...',
-        onSelected: () {
-          final context = router.routerDelegate.navigatorKey.currentContext;
-          if (context != null) {
-            checkForUpdates(context);
-          }
-        },
-      ),
-    ];
-
-    // Only add quit menu item on platforms that support it (macOS)
-    if (PlatformProvidedMenuItem.hasMenu(PlatformProvidedMenuItemType.quit)) {
-      items.add(
-        const PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
-      );
-    } else {
-      // Add a manual exit option for Windows/Linux
-      items.add(
-        PlatformMenuItem(
-          label: 'Exit',
-          shortcut: const SingleActivator(
-            LogicalKeyboardKey.keyQ,
-            control: true,
-          ),
-          onSelected: () => exit(0),
-        ),
-      );
-    }
-
-    return items;
-  }
-
-  List<PlatformMenuItem> _buildViewMenuItems(WidgetRef ref) {
-    final items = <PlatformMenuItem>[];
-
-    // Theme Submenu
-    items.add(
-      PlatformMenu(
-        label: 'Theme',
-        menus: [
-          PlatformMenuItem(
-            label: 'System',
-            onSelected: () {
-              ref.read(themeProvider.notifier).setTheme(ThemeMode.system);
-            },
-          ),
-          PlatformMenuItem(
-            label: 'Light',
-            onSelected: () {
-              ref.read(themeProvider.notifier).setTheme(ThemeMode.light);
-            },
-          ),
-          PlatformMenuItem(
-            label: 'Dark',
-            onSelected: () {
-              ref.read(themeProvider.notifier).setTheme(ThemeMode.dark);
-            },
-          ),
-        ],
-      ),
-    );
-
-    // Only add toggleFullScreen on platforms that support it (macOS)
-    if (PlatformProvidedMenuItem.hasMenu(
-      PlatformProvidedMenuItemType.toggleFullScreen,
-    )) {
-      items.add(
-        const PlatformProvidedMenuItem(
-          type: PlatformProvidedMenuItemType.toggleFullScreen,
-        ),
-      );
-    } else {
-      // Add a manual fullscreen toggle for Windows/Linux
-      items.add(
-        PlatformMenuItem(
-          label: 'Toggle Full Screen',
-          shortcut: const SingleActivator(LogicalKeyboardKey.f11),
-          onSelected: () async {
-            final isFullScreen = await windowManager.isFullScreen();
-            await windowManager.setFullScreen(!isFullScreen);
-          },
-        ),
-      );
-    }
-
-    return items;
-  }
-
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Initialize system notifications listener
+    ref.watch(systemNotificationProvider);
+
     final router = ref.watch(routerProvider);
     final themeMode = ref.watch(themeProvider);
 
@@ -344,5 +260,105 @@ class AdminApp extends ConsumerWidget {
         debugShowCheckedModeBanner: false,
       ),
     );
+  }
+
+  List<PlatformMenuItem> _buildAppMenuItems(GoRouter router) {
+    final items = <PlatformMenuItem>[
+      PlatformMenuItem(
+        label: 'About Milow Terminal',
+        onSelected: () {
+          final context = router.routerDelegate.navigatorKey.currentContext;
+          if (context != null) {
+            showCustomAboutDialog(context);
+          }
+        },
+      ),
+      PlatformMenuItem(
+        label: 'Check for Updates...',
+        onSelected: () {
+          final context = router.routerDelegate.navigatorKey.currentContext;
+          if (context != null) {
+            checkForUpdates(context);
+          }
+        },
+      ),
+    ];
+
+    // Only add quit menu item on platforms that support it (macOS)
+    if (PlatformProvidedMenuItem.hasMenu(PlatformProvidedMenuItemType.quit)) {
+      items.add(
+        const PlatformProvidedMenuItem(type: PlatformProvidedMenuItemType.quit),
+      );
+    } else {
+      // Add a manual exit option for Windows/Linux
+      items.add(
+        PlatformMenuItem(
+          label: 'Exit',
+          shortcut: const SingleActivator(
+            LogicalKeyboardKey.keyQ,
+            control: true,
+          ),
+          onSelected: () => exit(0),
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  List<PlatformMenuItem> _buildViewMenuItems(WidgetRef ref) {
+    final items = <PlatformMenuItem>[];
+
+    // Theme Submenu
+    items.add(
+      PlatformMenu(
+        label: 'Theme',
+        menus: [
+          PlatformMenuItem(
+            label: 'System',
+            onSelected: () {
+              ref.read(themeProvider.notifier).setTheme(ThemeMode.system);
+            },
+          ),
+          PlatformMenuItem(
+            label: 'Light',
+            onSelected: () {
+              ref.read(themeProvider.notifier).setTheme(ThemeMode.light);
+            },
+          ),
+          PlatformMenuItem(
+            label: 'Dark',
+            onSelected: () {
+              ref.read(themeProvider.notifier).setTheme(ThemeMode.dark);
+            },
+          ),
+        ],
+      ),
+    );
+
+    // Only add toggleFullScreen on platforms that support it (macOS)
+    if (PlatformProvidedMenuItem.hasMenu(
+      PlatformProvidedMenuItemType.toggleFullScreen,
+    )) {
+      items.add(
+        const PlatformProvidedMenuItem(
+          type: PlatformProvidedMenuItemType.toggleFullScreen,
+        ),
+      );
+    } else {
+      // Add a manual fullscreen toggle for Windows/Linux
+      items.add(
+        PlatformMenuItem(
+          label: 'Toggle Full Screen',
+          shortcut: const SingleActivator(LogicalKeyboardKey.f11),
+          onSelected: () async {
+            final isFullScreen = await windowManager.isFullScreen();
+            await windowManager.setFullScreen(!isFullScreen);
+          },
+        ),
+      );
+    }
+
+    return items;
   }
 }

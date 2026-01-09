@@ -249,21 +249,52 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             );
           });
 
-          // Load Company Details (existing logic is fine if stored in profiles/companies)
+          // Load Company Details
+          // If NOT admin, try to fetch details from the Admin's profile (System of Record)
+          Map<String, dynamic> companyData = data;
+
+          if (!_isAdmin) {
+            final companyId = data['company_id'] as String?;
+            if (companyId != null) {
+              try {
+                final adminProfile = await Supabase.instance.client
+                    .from('profiles')
+                    .select()
+                    .eq('company_id', companyId)
+                    .eq('role', 'admin')
+                    .limit(1)
+                    .maybeSingle();
+
+                if (adminProfile != null) {
+                  companyData = adminProfile;
+                }
+              } catch (e) {
+                debugPrint(
+                  'Error fetching admin profile for company details: $e',
+                );
+              }
+            }
+          }
+
           setState(() {
-            _compNameController.text = data['company_name'] as String? ?? '';
-            // Assuming company details are still in profiles or companies table for now
-            // as per original code structure.
+            _compNameController.text =
+                companyData['company_name'] as String? ?? '';
             _compAddressController.text =
-                data['company_address'] as String? ?? '';
-            _compCityController.text = data['company_city'] as String? ?? '';
-            _compStateController.text = data['company_state'] as String? ?? '';
-            _compZipController.text = data['company_zip'] as String? ?? '';
+                companyData['company_address'] as String? ?? '';
+            _compCityController.text =
+                companyData['company_city'] as String? ?? '';
+            _compStateController.text =
+                companyData['company_state'] as String? ?? '';
+            _compZipController.text =
+                companyData['company_zip'] as String? ?? '';
             _compDotController.text =
-                data['company_dot_number'] as String? ?? '';
-            _compMcController.text = data['company_mc_number'] as String? ?? '';
-            _compPhoneController.text = data['company_phone'] as String? ?? '';
-            _compEmailController.text = data['company_email'] as String? ?? '';
+                companyData['company_dot_number'] as String? ?? '';
+            _compMcController.text =
+                companyData['company_mc_number'] as String? ?? '';
+            _compPhoneController.text =
+                companyData['company_phone'] as String? ?? '';
+            _compEmailController.text =
+                companyData['company_email'] as String? ?? '';
           });
         }
       } catch (e) {

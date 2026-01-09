@@ -35,7 +35,8 @@ class UserProfile {
   final String? fullName;
   final String? phone;
   final String? avatarUrl;
-  final UserRole role; // Uses the updated UserRole enum
+  final String? roleId; // New: FK to roles table
+  final UserRole role; // Legacy: Keep for backwards compat
   final bool isVerified;
   final DateTime? createdAt;
   final DateTime? updatedAt;
@@ -51,6 +52,7 @@ class UserProfile {
     this.fullName,
     this.phone,
     this.avatarUrl,
+    this.roleId,
     required this.role,
     this.isVerified = false,
     this.createdAt,
@@ -70,6 +72,7 @@ class UserProfile {
       fullName: json['full_name'] as String?,
       phone: json['phone'] as String?,
       avatarUrl: json['avatar_url'] as String?,
+      roleId: json['role_id'] as String?,
       role: _parseRole(json['role'] as String?),
       isVerified: json['is_verified'] as bool? ?? false,
       createdAt: json['created_at'] != null
@@ -96,6 +99,7 @@ class UserProfile {
       'full_name': fullName,
       'phone': phone,
       'avatar_url': avatarUrl,
+      'role_id': roleId,
       'role': role.name, // Store as string in DB
       'is_verified': isVerified,
       'license_number': licenseNumber,
@@ -109,7 +113,7 @@ class UserProfile {
   static UserRole _parseRole(String? role) {
     if (role == null) return UserRole.pending;
     return UserRole.values.firstWhere(
-      (e) => e.name == role,
+      (e) => e.name.toLowerCase() == role.toLowerCase(),
       orElse: () => UserRole.pending,
     );
   }
@@ -120,6 +124,7 @@ class UserProfile {
     String? fullName,
     String? phone,
     String? avatarUrl,
+    String? roleId,
     UserRole? role,
     bool? isVerified,
     DateTime? createdAt,
@@ -136,6 +141,7 @@ class UserProfile {
       fullName: fullName ?? this.fullName,
       phone: phone ?? this.phone,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      roleId: roleId ?? this.roleId,
       role: role ?? this.role,
       isVerified: isVerified ?? this.isVerified,
       createdAt: createdAt ?? this.createdAt,
