@@ -7,6 +7,7 @@ import 'package:milow/features/auth/presentation/pages/terms_page.dart';
 import 'package:milow/features/auth/presentation/pages/privacy_policy_page.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
+import 'package:milow/core/services/profile_service.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -119,6 +120,17 @@ class _SignUpPageState extends State<SignUpPage>
           'role': 'driver', // Mobile app users are drivers by default
         },
       );
+
+      // Fallback: Ensure profile exists via upsert (in case trigger fails)
+      if (mounted) {
+        await ProfileService.updateProfile({
+          'full_name': _nameController.text.trim(),
+          'email': _emailController.text
+              .trim(), // Ensure email is in profile too
+          'role': 'driver',
+        });
+      }
+
       if (mounted) {
         AppDialogs.showSuccess(
           context,

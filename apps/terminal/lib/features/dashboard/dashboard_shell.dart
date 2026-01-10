@@ -84,11 +84,14 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
       title = 'Delivery';
       icon = FluentIcons.vehicle_truck_24_regular;
     } else if (location.startsWith('/vehicles')) {
-      title = 'Vehicles';
-      icon = FluentIcons.vehicle_car_24_regular;
+      title = 'Fleet';
+      icon = FluentIcons.vehicle_truck_24_regular;
     } else if (location.startsWith('/highway-dispatch')) {
-      title = 'Dispatch';
-      icon = FluentIcons.layer_24_regular;
+      title = 'Loads';
+      icon = FluentIcons.document_text_24_regular;
+    } else if (location.startsWith('/quotes')) {
+      title = 'Quotes';
+      icon = FluentIcons.document_copy_24_regular;
     } else if (location.startsWith('/driver-hos')) {
       title = 'Driver HOS';
       icon = FluentIcons.clock_24_regular;
@@ -97,7 +100,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
       icon = FluentIcons.location_24_regular;
     } else if (location.startsWith('/drivers')) {
       title = 'Drivers';
-      icon = FluentIcons.vehicle_truck_24_regular;
+      icon = FluentIcons.people_team_24_regular;
     }
 
     final tab = TabInfo(
@@ -260,6 +263,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                 break;
               case 'HIGHWAY DISPATCH':
                 _navigateTo('/highway-dispatch');
+                break;
+              case 'QUOTES':
+                _navigateTo('/quotes');
                 break;
               case 'DRIVER HOS':
                 _navigateTo('/driver-hos');

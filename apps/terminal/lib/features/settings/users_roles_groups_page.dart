@@ -19,6 +19,129 @@ class UsersRolesGroupsPage extends ConsumerStatefulWidget {
 
 class _UsersRolesGroupsPageState extends ConsumerState<UsersRolesGroupsPage> {
   int _selectedTab = 0;
+  final _manualApprovalEmailController = TextEditingController();
+
+  Future<void> _manualApproveUser() async {
+    final email = _manualApprovalEmailController.text.trim();
+    if (email.isEmpty) return;
+
+    try {
+      // Find user by email (case-insensitive search)
+      final response = await Supabase.instance.client
+          .from('profiles')
+          .select('id, is_verified, full_name')
+          .ilike('email', email)
+          .maybeSingle();
+
+      if (response == null) {
+        if (mounted) {
+          displayInfoBar(
+            context,
+            builder: (context, close) => InfoBar(
+              title: const Text('User Not Found'),
+              content: Text('No user found with email: $email'),
+              severity: InfoBarSeverity.warning,
+              action: IconButton(
+                icon: const Icon(FluentIcons.dismiss_24_regular),
+                onPressed: close,
+              ),
+            ),
+          );
+        }
+        return;
+      }
+
+      // Check if user is already verified
+      final isVerified = response['is_verified'] == true;
+      final fullName = response['full_name'] ?? email;
+
+      if (isVerified) {
+        if (mounted) {
+          displayInfoBar(
+            context,
+            builder: (context, close) {
+              return InfoBar(
+                title: const Text('User Already Active'),
+                content: Text('$fullName is already in the Active Users list.'),
+                severity: InfoBarSeverity.info,
+                action: IconButton(
+                  icon: const Icon(FluentIcons.dismiss_24_regular),
+                  onPressed: close,
+                ),
+              );
+            },
+          );
+        }
+        _manualApprovalEmailController.clear();
+        return;
+      }
+
+      // Get admin's company_id to assign to the driver
+      final adminId = Supabase.instance.client.auth.currentUser?.id;
+      String? companyId;
+      if (adminId != null) {
+        final adminProfile = await Supabase.instance.client
+            .from('profiles')
+            .select('company_id, company_name')
+            .eq('id', adminId)
+            .maybeSingle();
+        companyId = adminProfile?['company_id'] as String?;
+      }
+
+      // Update user - the database trigger `notify_on_verification`
+      // automatically sends a notification to the driver when is_verified changes to true.
+      await Supabase.instance.client
+          .from('profiles')
+          .update({
+            'is_verified': true,
+            if (companyId != null) 'company_id': companyId,
+            // Verify implies driver role usually in this context, or keep existing
+          })
+          .eq('email', email);
+
+      if (mounted) {
+        _manualApprovalEmailController.clear();
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Success'),
+              content: Text('User $email has been approved and notified.'),
+              severity: InfoBarSeverity.success,
+              action: IconButton(
+                icon: const Icon(FluentIcons.dismiss_24_regular),
+                onPressed: close,
+              ),
+            );
+          },
+        );
+        setState(() {}); // Refresh lists
+      }
+    } catch (e) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Error'),
+              content: Text('Failed to approve user: $e'),
+              severity: InfoBarSeverity.error,
+              action: IconButton(
+                icon: const Icon(FluentIcons.dismiss_24_regular),
+                onPressed: close,
+              ),
+            );
+          },
+        );
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _manualApprovalEmailController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -28,25 +151,50 @@ class _UsersRolesGroupsPageState extends ConsumerState<UsersRolesGroupsPage> {
           'Users, Roles, Groups',
           style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
         ),
-        commandBar: CommandBar(
-          mainAxisAlignment: MainAxisAlignment.end,
-          primaryItems: [
-            CommandBarButton(
-              icon: const Icon(FluentIcons.add_24_regular),
-              label: Text(_getAddButtonLabel()),
-              onPressed: _handleAdd,
-            ),
-          ],
-          secondaryItems: _selectedTab == 0
-              ? [
-                  CommandBarButton(
-                    icon: const Icon(FluentIcons.arrow_upload_24_regular),
-                    label: const Text('Bulk Import'),
-                    onPressed: _showBulkImportDialog,
+        commandBar: _selectedTab == 1
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 300,
+                    child: TextBox(
+                      controller: _manualApprovalEmailController,
+                      placeholder: 'Enter requester email',
+                      prefix: const Padding(
+                        padding: EdgeInsets.only(left: 8),
+                        child: Icon(
+                          FluentIcons.person_add_24_regular,
+                          size: 16,
+                        ),
+                      ),
+                    ),
                   ),
-                ]
-              : [],
-        ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    onPressed: _manualApproveUser,
+                    child: const Text('Approve'),
+                  ),
+                ],
+              )
+            : CommandBar(
+                mainAxisAlignment: MainAxisAlignment.end,
+                primaryItems: [
+                  CommandBarButton(
+                    icon: const Icon(FluentIcons.add_24_regular),
+                    label: Text(_getAddButtonLabel()),
+                    onPressed: _handleAdd,
+                  ),
+                ],
+                secondaryItems: _selectedTab == 0
+                    ? [
+                        CommandBarButton(
+                          icon: const Icon(FluentIcons.arrow_upload_24_regular),
+                          label: const Text('Bulk Import'),
+                          onPressed: _showBulkImportDialog,
+                        ),
+                      ]
+                    : [],
+              ),
       ),
       content: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -59,6 +207,11 @@ class _UsersRolesGroupsPageState extends ConsumerState<UsersRolesGroupsPage> {
               text: const Text('Users'),
               icon: const Icon(FluentIcons.people_24_regular),
               body: _UsersTab(),
+            ),
+            Tab(
+              text: const Text('Drivers'),
+              icon: const Icon(FluentIcons.vehicle_truck_profile_24_regular),
+              body: _DriversTab(),
             ),
             Tab(
               text: const Text('Roles'),
@@ -80,9 +233,9 @@ class _UsersRolesGroupsPageState extends ConsumerState<UsersRolesGroupsPage> {
     switch (_selectedTab) {
       case 0:
         return 'Invite User';
-      case 1:
-        return 'Create Role';
       case 2:
+        return 'Create Role';
+      case 3:
         return 'Create Group';
       default:
         return 'Add';
@@ -94,19 +247,20 @@ class _UsersRolesGroupsPageState extends ConsumerState<UsersRolesGroupsPage> {
       case 0:
         _showInviteUserDialog();
         break;
-      case 1:
+      case 2:
         _showCreateRoleDialog();
         break;
-      case 2:
+      case 3:
         _showCreateGroupDialog();
         break;
     }
   }
 
-  void _showInviteUserDialog() {
+  void _showInviteUserDialog({bool isDriver = false}) {
     showDialog(
       context: context,
-      builder: (context) => const _InviteUserDialog(),
+      builder: (context) =>
+          _InviteUserDialog(initialRole: isDriver ? 'driver' : null),
     ).then((_) => setState(() {})); // Refresh users list
   }
 
@@ -494,8 +648,9 @@ class _UsersTab extends ConsumerWidget {
 
 class _UserListItem extends StatelessWidget {
   final Map<String, dynamic> user;
+  final VoidCallback? onRevoke;
 
-  const _UserListItem({required this.user});
+  const _UserListItem({required this.user, this.onRevoke});
 
   @override
   Widget build(BuildContext context) {
@@ -552,28 +707,43 @@ class _UserListItem extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            DropDownButton(
-              title: const Icon(FluentIcons.more_vertical_24_regular, size: 16),
-              items: [
-                MenuFlyoutItem(
-                  leading: const Icon(FluentIcons.key_reset_24_regular),
-                  text: const Text('Reset Password'),
-                  onPressed: () => _showResetPasswordDialog(context, user),
-                ),
-                const MenuFlyoutSeparator(),
-                MenuFlyoutItem(
-                  leading: Icon(
-                    FluentIcons.delete_24_regular,
-                    color: Colors.red.normal,
+            if (onRevoke != null)
+              Button(
+                onPressed: onRevoke,
+                style: ButtonStyle(
+                  backgroundColor: WidgetStateProperty.all(
+                    Colors.red.withValues(alpha: 0.1),
                   ),
-                  text: Text(
-                    'Delete User',
-                    style: TextStyle(color: Colors.red.normal),
-                  ),
-                  onPressed: () => _showDeleteUserDialog(context, user),
+                  foregroundColor: WidgetStateProperty.all(Colors.red),
                 ),
-              ],
-            ),
+                child: const Text('Revoke'),
+              )
+            else
+              DropDownButton(
+                title: const Icon(
+                  FluentIcons.more_vertical_24_regular,
+                  size: 16,
+                ),
+                items: [
+                  MenuFlyoutItem(
+                    leading: const Icon(FluentIcons.key_reset_24_regular),
+                    text: const Text('Reset Password'),
+                    onPressed: () => _showResetPasswordDialog(context, user),
+                  ),
+                  const MenuFlyoutSeparator(),
+                  MenuFlyoutItem(
+                    leading: Icon(
+                      FluentIcons.delete_24_regular,
+                      color: Colors.red.normal,
+                    ),
+                    text: Text(
+                      'Delete User',
+                      style: TextStyle(color: Colors.red.normal),
+                    ),
+                    onPressed: () => _showDeleteUserDialog(context, user),
+                  ),
+                ],
+              ),
           ],
         ),
       ),
@@ -727,6 +897,145 @@ class _UserListItem extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+// =============================================================================
+// DRIVERS TAB
+// =============================================================================
+
+class _DriversTab extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_DriversTab> createState() => _DriversTabState();
+}
+
+class _DriversTabState extends ConsumerState<_DriversTab> {
+  Future<void> _revokeDriver(String userId, String email) async {
+    try {
+      await Supabase.instance.client
+          .from('profiles')
+          .update({'is_verified': false})
+          .eq('id', userId);
+
+      if (mounted) {
+        await displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Access Revoked'),
+            content: Text('Access for $email has been revoked.'),
+            severity: InfoBarSeverity.success,
+          ),
+        );
+        setState(() {}); // Refresh list
+      }
+    } catch (e) {
+      if (mounted) {
+        await displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Error'),
+            content: Text('Failed to revoke access: $e'),
+            severity: InfoBarSeverity.error,
+          ),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+
+    return FutureBuilder<List<Map<String, dynamic>>>(
+      future: _fetchDrivers(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: ProgressRing());
+        }
+
+        if (snapshot.hasError) {
+          return Center(
+            child: Text('Error loading drivers: ${snapshot.error}'),
+          );
+        }
+
+        final drivers = snapshot.data ?? [];
+
+        if (drivers.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  FluentIcons.vehicle_truck_profile_24_regular,
+                  size: 48,
+                  color: theme.resources.textFillColorSecondary,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'No drivers found',
+                  style: GoogleFonts.outfit(
+                    fontSize: 16,
+                    color: theme.resources.textFillColorSecondary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Manually approve drivers using the input above.',
+                  style: GoogleFonts.outfit(
+                    fontSize: 14,
+                    color: theme.resources.textFillColorTertiary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return ListView.builder(
+          itemCount: drivers.length,
+          itemBuilder: (context, index) {
+            final driver = drivers[index];
+            return _UserListItem(
+              user: driver,
+              onRevoke: () =>
+                  _revokeDriver(driver['id'] as String, driver['email'] ?? ''),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchDrivers() async {
+    final supabase = Supabase.instance.client;
+    final currentUserProfile = await supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', supabase.auth.currentUser!.id)
+        .single();
+
+    final companyId = currentUserProfile['company_id'] as String?;
+    if (companyId == null) return [];
+
+    final response = await supabase
+        .from('profiles')
+        .select('''
+          id,
+          email,
+          full_name,
+          role,
+          role_id,
+          is_verified,
+          avatar_url,
+          created_at,
+          roles(name)
+        ''')
+        .eq('company_id', companyId)
+        .eq('role', 'driver')
+        .order('created_at', ascending: false);
+
+    return List<Map<String, dynamic>>.from(response as List);
   }
 }
 
@@ -933,7 +1242,9 @@ class _GroupsTab extends StatelessWidget {
 // =============================================================================
 
 class _InviteUserDialog extends ConsumerStatefulWidget {
-  const _InviteUserDialog();
+  final String? initialRole;
+
+  const _InviteUserDialog({this.initialRole});
 
   @override
   ConsumerState<_InviteUserDialog> createState() => _InviteUserDialogState();
@@ -1095,6 +1406,24 @@ class _InviteUserDialogState extends ConsumerState<_InviteUserDialog> {
                     placeholder: const Text('Select a role'),
                     isExpanded: true,
                     items: roles.map((role) {
+                      final isSelected =
+                          _selectedRoleId == role['id'] ||
+                          (_selectedRoleId == null &&
+                              widget.initialRole != null &&
+                              role['name'].toString().toLowerCase() ==
+                                  widget.initialRole!.toLowerCase());
+
+                      // Auto-select if matches initialRole and nothing selected
+                      if (_selectedRoleId == null && isSelected) {
+                        Future.microtask(() {
+                          if (mounted && _selectedRoleId == null) {
+                            setState(
+                              () => _selectedRoleId = role['id'] as String,
+                            );
+                          }
+                        });
+                      }
+
                       return ComboBoxItem<String>(
                         value: role['id'] as String,
                         child: Text(role['name'] as String),

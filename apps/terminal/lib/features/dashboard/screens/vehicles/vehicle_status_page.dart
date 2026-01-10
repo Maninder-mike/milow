@@ -413,15 +413,16 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
     try {
       // First get the assignment
       final assignment = await Supabase.instance.client
-          .from('driver_vehicle_assignments')
-          .select('driver_id')
-          .eq('vehicle_id', _vehicle['id'])
+          .from('fleet_assignments')
+          .select('assignee_id')
+          .eq('resource_id', _vehicle['id'])
+          .eq('type', 'driver_to_vehicle')
           .isFilter('unassigned_at', null)
           .maybeSingle();
 
       if (assignment == null) return null;
 
-      final driverId = assignment['driver_id'] as String?;
+      final driverId = assignment['assignee_id'] as String?;
       if (driverId == null) return null;
 
       // Then fetch the driver profile
@@ -574,9 +575,10 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
   Future<void> _unassignDriver() async {
     try {
       await Supabase.instance.client
-          .from('driver_vehicle_assignments')
+          .from('fleet_assignments')
           .update({'unassigned_at': DateTime.now().toIso8601String()})
-          .eq('vehicle_id', _vehicle['id'])
+          .eq('resource_id', _vehicle['id'])
+          .eq('type', 'driver_to_vehicle')
           .isFilter('unassigned_at', null);
 
       setState(() {}); // Refresh
@@ -676,16 +678,18 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
     try {
       // Unassign current driver if any
       await Supabase.instance.client
-          .from('driver_vehicle_assignments')
+          .from('fleet_assignments')
           .update({'unassigned_at': DateTime.now().toIso8601String()})
-          .eq('vehicle_id', _vehicle['id'])
+          .eq('resource_id', _vehicle['id'])
+          .eq('type', 'driver_to_vehicle')
           .isFilter('unassigned_at', null);
 
       // Create new assignment
       final currentUser = Supabase.instance.client.auth.currentUser;
-      await Supabase.instance.client.from('driver_vehicle_assignments').insert({
-        'driver_id': driverId,
-        'vehicle_id': _vehicle['id'],
+      await Supabase.instance.client.from('fleet_assignments').insert({
+        'assignee_id': driverId,
+        'resource_id': _vehicle['id'],
+        'type': 'driver_to_vehicle',
         'assigned_by': currentUser?.id,
       });
 

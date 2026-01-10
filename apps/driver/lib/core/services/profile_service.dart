@@ -99,14 +99,22 @@ class ProfileService {
       }
     });
 
-    // 1. Update Driver Profiles (Personal Data)
-    if (driverUpdates.isNotEmpty) {
-      await _client.from('driver_profiles').update(driverUpdates).eq('id', uid);
+    // 1. Update Base Profiles (Index & System Data)
+    // MUST do this first because 'driver_profiles' has a foreign key to 'profiles'
+    if (baseUpdates.isNotEmpty) {
+      // Use upsert to create if missing (e.g. trigger failed)
+      await _client.from(_profilesTable).upsert({
+        ...baseUpdates,
+        'id': uid,
+      }, onConflict: 'id');
     }
 
-    // 2. Update Base Profiles (Index & System Data)
-    if (baseUpdates.isNotEmpty) {
-      await _client.from(_profilesTable).update(baseUpdates).eq('id', uid);
+    // 2. Update Driver Profiles (Personal Data)
+    if (driverUpdates.isNotEmpty) {
+      await _client.from('driver_profiles').upsert({
+        ...driverUpdates,
+        'id': uid,
+      }, onConflict: 'id');
     }
   }
 

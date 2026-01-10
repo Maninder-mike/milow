@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -22,6 +23,8 @@ class _CustomerPageState extends State<CustomerPage> {
   final _faxController = TextEditingController();
   final _emailController = TextEditingController();
   final _addressController = TextEditingController();
+  final _addressLine2Controller = TextEditingController();
+  final _businessHoursController = TextEditingController();
   final _cityController = TextEditingController();
   final _stateController = TextEditingController();
   final _zipCodeController = TextEditingController();
@@ -35,6 +38,7 @@ class _CustomerPageState extends State<CustomerPage> {
   String _currency = 'CDN';
   String? _selectedEquipment = 'Dry Van';
   String? _selectedDispatcher;
+  String _selectedCustomerType = 'Shipper';
   List<String> _staffList = [];
 
   // Notes
@@ -62,6 +66,19 @@ class _CustomerPageState extends State<CustomerPage> {
   bool _nonStackable = false;
   bool _fragile = false;
 
+  // Extended Flags
+  bool _ppeRequired = false;
+  bool _overnightParking = false;
+  bool _strictLatePolicy = false;
+  bool _callBeforeArrival = false;
+  bool _blindShipment = false;
+  bool _scaleOnSite = false;
+  bool _cleanTrailer = false;
+  bool _facility247 = false;
+  bool _strapsRequired = false;
+  bool _lumperRequired = false;
+  bool _gateCodeRequired = false;
+
   // Data state
   List<Map<String, dynamic>> _customers = [];
   bool _isLoading = false;
@@ -72,6 +89,8 @@ class _CustomerPageState extends State<CustomerPage> {
   bool _isAscending = true;
 
   Offset _offset = Offset.zero;
+  double _dialogWidth = 1000;
+  double _dialogHeight = 800;
 
   @override
   void initState() {
@@ -82,7 +101,26 @@ class _CustomerPageState extends State<CustomerPage> {
 
     if (widget.customerData != null) {
       _populateFields(widget.customerData!);
+    } else {
+      // Load saved dialog size when opening new dialog
+      if (widget.isDialog) _loadDialogSize();
     }
+  }
+
+  Future<void> _loadDialogSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (mounted) {
+      setState(() {
+        _dialogWidth = prefs.getDouble('customer_dialog_width') ?? 1000;
+        _dialogHeight = prefs.getDouble('customer_dialog_height') ?? 800;
+      });
+    }
+  }
+
+  Future<void> _saveDialogSize() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('customer_dialog_width', _dialogWidth);
+    await prefs.setDouble('customer_dialog_height', _dialogHeight);
   }
 
   void _populateFields(Map<String, dynamic> data) {
@@ -91,12 +129,15 @@ class _CustomerPageState extends State<CustomerPage> {
     _faxController.text = data['fax'] ?? '';
     _emailController.text = data['email'] ?? '';
     _addressController.text = data['address_line1'] ?? '';
+    _addressLine2Controller.text = data['address_line2'] ?? '';
+    _businessHoursController.text = data['business_hours'] ?? '';
     _cityController.text = data['city'] ?? '';
     _stateController.text = data['state_province'] ?? '';
     _zipCodeController.text = data['postal_code'] ?? '';
     _countryController.text = data['country'] ?? 'Canada';
     _orderController.text = data['order_number'] ?? '';
     _referenceController.text = data['reference_numbers'] ?? '';
+    _selectedCustomerType = data['customer_type'] ?? 'Shipper';
     _rateController.text = (data['rate'] ?? 0.0).toString();
     _currency = data['currency'] ?? 'CDN';
     _paymentTermsController.text = data['payment_terms'] ?? '';
@@ -120,6 +161,19 @@ class _CustomerPageState extends State<CustomerPage> {
     _portRail = data['is_port_rail'] ?? false;
     _nonStackable = data['is_non_stackable'] ?? false;
     _fragile = data['is_fragile'] ?? false;
+
+    // Extended
+    _ppeRequired = data['is_ppe_required'] ?? false;
+    _overnightParking = data['is_overnight_parking'] ?? false;
+    _strictLatePolicy = data['is_strict_late_policy'] ?? false;
+    _callBeforeArrival = data['is_call_before_arrival'] ?? false;
+    _blindShipment = data['is_blind_shipment'] ?? false;
+    _scaleOnSite = data['is_scale_on_site'] ?? false;
+    _cleanTrailer = data['is_clean_trailer'] ?? false;
+    _facility247 = data['is_facility_247'] ?? false;
+    _strapsRequired = data['is_straps_required'] ?? false;
+    _lumperRequired = data['is_lumper_required'] ?? false;
+    _gateCodeRequired = data['is_gate_code_required'] ?? false;
   }
 
   @override
@@ -131,6 +185,8 @@ class _CustomerPageState extends State<CustomerPage> {
     _faxController.dispose();
     _emailController.dispose();
     _addressController.dispose();
+    _addressLine2Controller.dispose();
+    _businessHoursController.dispose();
     _cityController.dispose();
     _stateController.dispose();
     _zipCodeController.dispose();
@@ -237,51 +293,130 @@ class _CustomerPageState extends State<CustomerPage> {
     if (widget.isDialog) {
       return Transform.translate(
         offset: _offset,
-        child: ContentDialog(
-          constraints: const BoxConstraints(maxWidth: 1000, maxHeight: 800),
-          title: Row(
+        child: SizedBox(
+          width: _dialogWidth,
+          height: _dialogHeight,
+          child: Stack(
             children: [
-              Expanded(
-                child: GestureDetector(
-                  onPanUpdate: (details) {
-                    setState(() => _offset += details.delta);
-                  },
-                  child: Container(
-                    color: Colors.transparent,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      widget.customerData == null
-                          ? 'Add New Customer'
-                          : 'Edit Customer',
-                      style: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
+              ContentDialog(
+                constraints: BoxConstraints(
+                  maxWidth: _dialogWidth,
+                  maxHeight: _dialogHeight,
+                ),
+                title: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          GestureDetector(
+                            onPanUpdate: (details) {
+                              setState(() => _offset += details.delta);
+                            },
+                            child: Container(
+                              color: Colors.transparent,
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              child: Text(
+                                widget.customerData == null
+                                    ? 'Add New Customer'
+                                    : 'Edit Customer',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 24),
+                          SizedBox(
+                            width: 150,
+                            child: Tooltip(
+                              message: 'Customer Type',
+                              child: ComboBox<String>(
+                                value: _selectedCustomerType,
+                                placeholder: const Text('Type'),
+                                items: const [
+                                  ComboBoxItem(
+                                    value: 'Shipper',
+                                    child: Text('Shipper'),
+                                  ),
+                                  ComboBoxItem(
+                                    value: 'Broker',
+                                    child: Text('Broker'),
+                                  ),
+                                  ComboBoxItem(
+                                    value: 'Receiver',
+                                    child: Text('Receiver'),
+                                  ),
+                                  ComboBoxItem(
+                                    value: 'Other',
+                                    child: Text('Other'),
+                                  ),
+                                ],
+                                onChanged: (v) {
+                                  if (v != null) {
+                                    setState(() => _selectedCustomerType = v);
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
+                    ),
+                    Button(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('Cancel'),
+                    ),
+                    const SizedBox(width: 8),
+                    FilledButton(
+                      onPressed: _isSaving ? null : _saveRecord,
+                      child: _isSaving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: ProgressRing(strokeWidth: 2),
+                            )
+                          : const Text('Save Record'),
+                    ),
+                  ],
+                ),
+                content: Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: _selectedCustomerType == 'Shipper'
+                            ? _buildShipperForm(isLight)
+                            : _buildStandardForm(isLight),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Positioned(
+                right: 0,
+                bottom: 0,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.resizeDownRight,
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onPanUpdate: (details) {
+                      setState(() {
+                        _dialogWidth = (_dialogWidth + details.delta.dx).clamp(
+                          600.0,
+                          2000.0,
+                        );
+                        _dialogHeight = (_dialogHeight + details.delta.dy)
+                            .clamp(400.0, 1500.0);
+                      });
+                    },
+                    onPanEnd: (_) => _saveDialogSize(),
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      color: Colors.transparent,
                     ),
                   ),
                 ),
-              ),
-              Button(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('Cancel'),
-              ),
-              const SizedBox(width: 8),
-              FilledButton(
-                onPressed: _isSaving ? null : _saveRecord,
-                child: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: ProgressRing(strokeWidth: 2),
-                      )
-                    : const Text('Save Record'),
-              ),
-            ],
-          ),
-          content: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(child: _buildFormContent(isLight)),
               ),
             ],
           ),
@@ -307,7 +442,7 @@ class _CustomerPageState extends State<CustomerPage> {
         padding: const EdgeInsets.all(24.0),
         child: SingleChildScrollView(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildStatsRow(isLight),
               const SizedBox(height: 24),
@@ -662,149 +797,197 @@ class _CustomerPageState extends State<CustomerPage> {
 
   Widget _buildCustomerRow(Map<String, dynamic> customer, bool isLight) {
     final theme = FluentTheme.of(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: theme.resources.dividerStrokeColorDefault),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Customer Info
-          Expanded(
-            flex: 3,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    final flyoutController = FlyoutController();
+
+    return FlyoutTarget(
+      controller: flyoutController,
+      child: GestureDetector(
+        onSecondaryTapUp: (details) {
+          flyoutController.showFlyout(
+            position: details.globalPosition,
+            barrierDismissible: true,
+            dismissWithEsc: true,
+            barrierColor: Colors.transparent,
+            builder: (ctx) {
+              return MenuFlyout(
+                items: [
+                  MenuFlyoutItem(
+                    leading: const Icon(FluentIcons.edit, size: 16),
+                    text: const Text('Edit'),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _editCustomer(customer);
+                    },
+                  ),
+                  const MenuFlyoutSeparator(),
+                  MenuFlyoutItem(
+                    leading: Icon(
+                      FluentIcons.delete,
+                      size: 16,
+                      color: Colors.red,
+                    ),
+                    text: Text('Delete', style: TextStyle(color: Colors.red)),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      _deleteCustomer(customer);
+                    },
+                  ),
+                ],
+              );
+            },
+          );
+        },
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: theme.resources.dividerStrokeColorDefault,
+              ),
+            ),
+          ),
+          child: Row(
+            children: [
+              // Customer Info
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
+                    Row(
+                      children: [
+                        Text(
+                          customer['name'] ?? '',
+                          style: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (customer['is_high_priority'] == true) ...[
+                          const SizedBox(width: 8),
+                          _buildPropertyBadge(
+                            'PRIORITY',
+                            Colors.orange,
+                            isLight,
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
                     Text(
-                      customer['name'] ?? '',
-                      style: const TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
+                      customer['email'] ?? customer['phone'] ?? '-',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.resources.textFillColorSecondary,
                       ),
                     ),
-                    if (customer['is_high_priority'] == true) ...[
-                      const SizedBox(width: 8),
-                      _buildPropertyBadge('PRIORITY', Colors.orange, isLight),
-                    ],
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  customer['email'] ?? customer['phone'] ?? '-',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: theme.resources.textFillColorSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Location
-          Expanded(
-            flex: 2,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  customer['city'] ?? '-',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '${customer['state_province'] ?? ''}, ${customer['country'] ?? ''}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: theme.resources.textFillColorSecondary,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Dispatcher
-          Expanded(
-            flex: 2,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: theme.accentColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        FluentIcons.contact,
-                        size: 12,
-                        color: theme.accentColor,
+              ),
+              // Location
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      customer['city'] ?? '-',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        customer['assigned_dispatcher'] ?? 'Unassigned',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w500,
-                          color: theme.accentColor,
-                        ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${customer['state_province'] ?? ''}, ${customer['country'] ?? ''}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: theme.resources.textFillColorSecondary,
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ),
-          // Flags
-          Expanded(
-            flex: 2,
-            child: Wrap(
-              spacing: 4,
-              runSpacing: 4,
-              children: [
-                if (customer['is_hazmat'] == true)
-                  _buildPropertyBadge('HAZ', Colors.red, isLight),
-                if (customer['is_bonded_shipment'] == true)
-                  _buildPropertyBadge('BONDED', Colors.blue, isLight),
-                if (customer['is_csa_fast_load'] == true)
-                  _buildPropertyBadge('FAST', Colors.green, isLight),
-                if (customer['equipment_type'] != null)
-                  _buildPropertyBadge(
-                    customer['equipment_type'].toString().toUpperCase(),
-                    theme.resources.textFillColorSecondary,
-                    isLight,
-                  ),
-              ],
-            ),
-          ),
-          // Actions
-          SizedBox(
-            width: 80,
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                IconButton(
-                  icon: const Icon(FluentIcons.edit, size: 14),
-                  onPressed: () => _editCustomer(customer),
+              ),
+              // Dispatcher
+              Expanded(
+                flex: 2,
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: theme.accentColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            FluentIcons.contact,
+                            size: 12,
+                            color: theme.accentColor,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            customer['assigned_dispatcher'] ?? 'Unassigned',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w500,
+                              color: theme.accentColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-                IconButton(
-                  icon: const Icon(FluentIcons.delete, size: 14),
-                  onPressed: () => _deleteCustomer(customer),
+              ),
+              // Flags
+              Expanded(
+                flex: 2,
+                child: Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    if (customer['is_hazmat'] == true)
+                      _buildPropertyBadge('HAZ', Colors.red, isLight),
+                    if (customer['is_bonded_shipment'] == true)
+                      _buildPropertyBadge('BONDED', Colors.blue, isLight),
+                    if (customer['is_csa_fast_load'] == true)
+                      _buildPropertyBadge('FAST', Colors.green, isLight),
+                    if (customer['equipment_type'] != null)
+                      _buildPropertyBadge(
+                        customer['equipment_type'].toString().toUpperCase(),
+                        theme.resources.textFillColorSecondary,
+                        isLight,
+                      ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              // Actions
+              SizedBox(
+                width: 80,
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    IconButton(
+                      icon: const Icon(FluentIcons.edit, size: 14),
+                      onPressed: () => _editCustomer(customer),
+                    ),
+                    IconButton(
+                      icon: const Icon(FluentIcons.delete, size: 14),
+                      onPressed: () => _deleteCustomer(customer),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -828,7 +1011,7 @@ class _CustomerPageState extends State<CustomerPage> {
     );
   }
 
-  Widget _buildFormContent(bool isLight) {
+  Widget _buildStandardForm(bool isLight) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -876,8 +1059,13 @@ class _CustomerPageState extends State<CustomerPage> {
         const FluentSectionHeader(title: 'Address details', showDivider: true),
         const SizedBox(height: 20),
         FluentLabeledInput(
-          label: 'Street Address',
+          label: 'Street Address 1',
           controller: _addressController,
+        ),
+        const SizedBox(height: 20),
+        FluentLabeledInput(
+          label: 'Street Address 2',
+          controller: _addressLine2Controller,
         ),
         const SizedBox(height: 20),
         Row(
@@ -971,6 +1159,13 @@ class _CustomerPageState extends State<CustomerPage> {
           ],
         ),
 
+        const SizedBox(height: 20),
+        FluentLabeledInput(
+          label: 'Business Hours',
+          controller: _businessHoursController,
+          placeholder: 'e.g. Mon-Fri 8:00 AM - 5:00 PM',
+        ),
+
         const SizedBox(height: 32),
         const FluentSectionHeader(
           title: 'Order & Logistics',
@@ -1053,104 +1248,8 @@ class _CustomerPageState extends State<CustomerPage> {
         ),
 
         const SizedBox(height: 32),
-        const FluentSectionHeader(title: 'Additional flags', showDivider: true),
-        const SizedBox(height: 16),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: [
-            FluentOptionChip(
-              label: 'Round Trip',
-              value: _roundTrip,
-              icon: FluentIcons.repeat_all,
-              onChanged: (v) => setState(() => _roundTrip = v),
-            ),
-            FluentOptionChip(
-              label: 'Other Carriers',
-              value: _bookedForOtherCarriers,
-              icon: FluentIcons.account_management,
-              onChanged: (v) => setState(() => _bookedForOtherCarriers = v),
-            ),
-            FluentOptionChip(
-              label: 'CSA/FAST',
-              value: _csaFastLoad,
-              icon: FluentIcons.verified_brand,
-              onChanged: (v) => setState(() => _csaFastLoad = v),
-            ),
-            FluentOptionChip(
-              label: 'Bonded Load',
-              value: _bondedShipment,
-              icon: FluentIcons.lock,
-              onChanged: (v) => setState(() => _bondedShipment = v),
-            ),
-            FluentOptionChip(
-              label: 'Hazmat',
-              value: _dangerousHazmat,
-              icon: FluentIcons.warning,
-              onChanged: (v) => setState(() => _dangerousHazmat = v),
-            ),
-            FluentOptionChip(
-              label: 'Team Load',
-              value: _teamLoad,
-              icon: FluentIcons.people,
-              onChanged: (v) => setState(() => _teamLoad = v),
-            ),
-            FluentOptionChip(
-              label: 'Tarp Required',
-              value: _tarpRequired,
-              icon: FluentIcons.all_apps,
-              onChanged: (v) => setState(() => _tarpRequired = v),
-            ),
-            FluentOptionChip(
-              label: 'Appointment Req',
-              value: _appointmentRequired,
-              icon: FluentIcons.calendar,
-              onChanged: (v) => setState(() => _appointmentRequired = v),
-            ),
-            FluentOptionChip(
-              label: 'Liftgate Needed',
-              value: _liftgateNeeded,
-              icon: FluentIcons.up,
-              onChanged: (v) => setState(() => _liftgateNeeded = v),
-            ),
-            FluentOptionChip(
-              label: 'Residential',
-              value: _residentialDelivery,
-              icon: FluentIcons.home,
-              onChanged: (v) => setState(() => _residentialDelivery = v),
-            ),
-            FluentOptionChip(
-              label: 'Driver Assist',
-              value: _driverAssist,
-              icon: FluentIcons.customer_assets,
-              onChanged: (v) => setState(() => _driverAssist = v),
-            ),
-            FluentOptionChip(
-              label: 'Drop Trailer',
-              value: _dropTrailer,
-              icon: FluentIcons.down,
-              onChanged: (v) => setState(() => _dropTrailer = v),
-            ),
-            FluentOptionChip(
-              label: 'Port/Rail',
-              value: _portRail,
-              icon: FluentIcons.product,
-              onChanged: (v) => setState(() => _portRail = v),
-            ),
-            FluentOptionChip(
-              label: 'Non-Stackable',
-              value: _nonStackable,
-              icon: FluentIcons.stop,
-              onChanged: (v) => setState(() => _nonStackable = v),
-            ),
-            FluentOptionChip(
-              label: 'Fragile',
-              value: _fragile,
-              icon: FluentIcons.diamond,
-              onChanged: (v) => setState(() => _fragile = v),
-            ),
-          ],
-        ),
+        const SizedBox(height: 32),
+        _buildDynamicFlagsSection(),
 
         const SizedBox(height: 32),
         const FluentSectionHeader(
@@ -1167,6 +1266,452 @@ class _CustomerPageState extends State<CustomerPage> {
         ),
         const SizedBox(height: 24),
       ],
+    );
+  }
+
+  Widget _buildShipperForm(bool isLight) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Section: Address Details (First for Shipper)
+        const FluentSectionHeader(title: 'Pickup Location / Address'),
+        const SizedBox(height: 20),
+
+        FluentLabeledInput(
+          label: 'Location Name / Company',
+          controller: _customerNameController,
+        ),
+        const SizedBox(height: 16),
+        FluentLabeledInput(
+          label: 'Street Address',
+          controller: _addressController,
+        ),
+        const SizedBox(height: 16),
+        FluentLabeledInput(
+          label: 'Unit / Suite / Building',
+          controller: _addressLine2Controller,
+        ),
+        const SizedBox(height: 16),
+
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: FluentLabeledInput(
+                label: 'City',
+                controller: _cityController,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(left: 4, bottom: 4),
+                    child: Text(
+                      'State/Prov',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color:
+                            FluentTheme.of(context).brightness ==
+                                Brightness.light
+                            ? Colors.grey[140]
+                            : Colors.grey[80],
+                      ),
+                    ),
+                  ),
+                  ComboBox<String>(
+                    value: _stateController.text.isEmpty
+                        ? null
+                        : _stateController.text,
+                    placeholder: const Text(
+                      'Select...',
+                      style: TextStyle(fontSize: 14),
+                    ),
+                    items: [
+                      // Canada
+                      ...LocationData.canadianProvinces.entries.map(
+                        (e) => ComboBoxItem(
+                          value: '${e.key} - ${e.value}',
+                          child: Text(
+                            '${e.key} - ${e.value}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                      // USA
+                      ...LocationData.usStates.entries.map(
+                        (e) => ComboBoxItem(
+                          value: '${e.key} - ${e.value}',
+                          child: Text(
+                            '${e.key} - ${e.value}',
+                            style: const TextStyle(fontSize: 14),
+                          ),
+                        ),
+                      ),
+                    ],
+                    onChanged: (v) =>
+                        setState(() => _stateController.text = v ?? ''),
+                    isExpanded: true,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 1,
+              child: FluentLabeledInput(
+                label: 'Zip Code',
+                controller: _zipCodeController,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 1,
+              child: _buildDropdown(
+                'Country',
+                _countryController.text.isEmpty
+                    ? 'Canada'
+                    : _countryController.text,
+                LocationData.countries,
+                (v) => setState(() => _countryController.text = v ?? 'Canada'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        FluentLabeledInput(
+          label: 'Business Hours',
+          controller: _businessHoursController,
+          placeholder: 'e.g. Mon-Fri 8:00 AM - 5:00 PM',
+        ),
+
+        const SizedBox(height: 32),
+        const FluentSectionHeader(title: 'Contact Details', showDivider: true),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: FluentLabeledInput(
+                label: 'Phone',
+                controller: _phoneController,
+              ),
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: FluentLabeledInput(
+                label: 'Fax',
+                controller: _faxController,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        FluentLabeledInput(label: 'Email', controller: _emailController),
+
+        const SizedBox(height: 32),
+        const FluentSectionHeader(
+          title: 'Order & Logistics',
+          showDivider: true,
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              flex: 2,
+              child: _buildDropdown(
+                'Assigned Dispatcher',
+                _selectedDispatcher,
+                _staffList,
+                (v) => setState(() => _selectedDispatcher = v),
+              ),
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              child: FluentLabeledInput(
+                label: 'Order Number',
+                controller: _orderController,
+              ),
+            ),
+            const SizedBox(width: 24),
+            Padding(
+              padding: const EdgeInsets.only(top: 20),
+              child: ToggleSwitch(
+                checked: _highPriorityLoad,
+                onChanged: (v) => setState(() => _highPriorityLoad = v),
+                content: const Text('High Priority'),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          children: [
+            Expanded(
+              child: _buildDropdown(
+                'Equipment Type',
+                _selectedEquipment,
+                ['Dry Van', 'Reefer', 'Flatbed', 'Step Deck', 'Roll Tight'],
+                (v) => setState(() => _selectedEquipment = v),
+              ),
+            ),
+            const SizedBox(width: 24),
+            Expanded(
+              flex: 2,
+              child: FluentLabeledInput(
+                label: 'Reference Numbers',
+                controller: _referenceController,
+                placeholder: 'PO, BOL, Pickup #',
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: FluentLabeledInput(
+                label: 'Rate',
+                controller: _rateController,
+              ),
+            ),
+            const SizedBox(width: 24),
+            _buildCurrencyToggle(isLight),
+            const SizedBox(width: 24),
+            Expanded(
+              flex: 2,
+              child: FluentLabeledInput(
+                label: 'Payment Terms',
+                controller: _paymentTermsController,
+                placeholder: 'e.g. Net 30',
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 32),
+        _buildDynamicFlagsSection(),
+
+        const SizedBox(height: 32),
+        const FluentSectionHeader(
+          title: 'Special instructions & Notes',
+          showDivider: true,
+        ),
+        const SizedBox(height: 16),
+        FluentLabeledInput(
+          label: 'Instructions',
+          controller: _notesController,
+          maxLines: 4,
+          placeholder:
+              'Add any specific instructions for the driver or office...',
+        ),
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
+  Widget _buildDynamicFlagsSection() {
+    // 1. Common / Broker Flags
+    final brokerFlags = [
+      _buildChip(
+        'Round Trip',
+        FluentIcons.sync,
+        _roundTrip,
+        (v) => _roundTrip = v,
+      ),
+      _buildChip(
+        'Other Carriers',
+        FluentIcons.delivery_truck,
+        _bookedForOtherCarriers,
+        (v) => _bookedForOtherCarriers = v,
+      ),
+      _buildChip(
+        'CSA/FAST',
+        FluentIcons.certificate,
+        _csaFastLoad,
+        (v) => _csaFastLoad = v,
+      ),
+      _buildChip(
+        'Bonded',
+        FluentIcons.lock,
+        _bondedShipment,
+        (v) => _bondedShipment = v,
+      ),
+      _buildChip(
+        'Hazmat',
+        FluentIcons.warning,
+        _dangerousHazmat,
+        (v) => _dangerousHazmat = v,
+      ),
+      _buildChip(
+        'High Priority',
+        FluentIcons.alert_solid,
+        _highPriorityLoad,
+        (v) => _highPriorityLoad = v,
+      ),
+      _buildChip(
+        'Team Load',
+        FluentIcons.group,
+        _teamLoad,
+        (v) => _teamLoad = v,
+      ),
+      _buildChip(
+        'Tarp',
+        FluentIcons.package,
+        _tarpRequired,
+        (v) => _tarpRequired = v,
+      ),
+    ];
+
+    // 2. Shipper Flags
+    final shipperFlags = [
+      _buildChip(
+        'PPE Required',
+        FluentIcons.shield,
+        _ppeRequired,
+        (v) => _ppeRequired = v,
+      ),
+      _buildChip(
+        'Driver Assist',
+        FluentIcons.people,
+        _driverAssist,
+        (v) => _driverAssist = v,
+      ),
+      _buildChip(
+        'Overnight Parking',
+        FluentIcons.parking_location,
+        _overnightParking,
+        (v) => _overnightParking = v,
+      ),
+      _buildChip(
+        'Strict Late Policy',
+        FluentIcons.timer,
+        _strictLatePolicy,
+        (v) => _strictLatePolicy = v,
+      ),
+      _buildChip(
+        'Call Before',
+        FluentIcons.phone,
+        _callBeforeArrival,
+        (v) => _callBeforeArrival = v,
+      ),
+      _buildChip(
+        'Blind Shipment',
+        FluentIcons.hide,
+        _blindShipment,
+        (v) => _blindShipment = v,
+      ),
+      _buildChip(
+        'Scale On Site',
+        FluentIcons.toolbox,
+        _scaleOnSite,
+        (v) => _scaleOnSite = v,
+      ),
+      _buildChip(
+        'Clean Trailer',
+        FluentIcons.delete,
+        _cleanTrailer,
+        (v) => _cleanTrailer = v,
+      ),
+      _buildChip(
+        'Facility 24/7',
+        FluentIcons.clock,
+        _facility247,
+        (v) => _facility247 = v,
+      ),
+      _buildChip(
+        'Straps',
+        FluentIcons.link,
+        _strapsRequired,
+        (v) => _strapsRequired = v,
+      ),
+    ];
+
+    // 3. Receiver Flags
+    final receiverFlags = [
+      _buildChip(
+        'PPE Required',
+        FluentIcons.shield,
+        _ppeRequired,
+        (v) => _ppeRequired = v,
+      ),
+      _buildChip(
+        'Driver Assist',
+        FluentIcons.people,
+        _driverAssist,
+        (v) => _driverAssist = v,
+      ),
+      _buildChip(
+        'Overnight Parking',
+        FluentIcons.parking_location,
+        _overnightParking,
+        (v) => _overnightParking = v,
+      ),
+      _buildChip(
+        'Strict Late Policy',
+        FluentIcons.timer,
+        _strictLatePolicy,
+        (v) => _strictLatePolicy = v,
+      ),
+      _buildChip(
+        'Call Before',
+        FluentIcons.phone,
+        _callBeforeArrival,
+        (v) => _callBeforeArrival = v,
+      ),
+      _buildChip(
+        'Lumper Required',
+        FluentIcons.money,
+        _lumperRequired,
+        (v) => _lumperRequired = v,
+      ),
+      _buildChip(
+        'Gate Code',
+        FluentIcons.password_field,
+        _gateCodeRequired,
+        (v) => _gateCodeRequired = v,
+      ),
+    ];
+
+    List<Widget> activeFlags = [];
+
+    if (_selectedCustomerType == 'Shipper') {
+      activeFlags = [...shipperFlags, ...brokerFlags];
+    } else if (_selectedCustomerType == 'Receiver') {
+      activeFlags = [...receiverFlags, ...brokerFlags];
+    } else {
+      activeFlags = brokerFlags;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const FluentSectionHeader(
+          title: 'Logistics & Requirements',
+          showDivider: true,
+        ),
+        const SizedBox(height: 16),
+        Wrap(spacing: 12, runSpacing: 12, children: activeFlags),
+      ],
+    );
+  }
+
+  Widget _buildChip(
+    String label,
+    IconData icon,
+    bool value,
+    Function(bool) onChanged,
+  ) {
+    return FluentOptionChip(
+      label: label,
+      icon: icon,
+      value: value,
+      onChanged: (v) => setState(() => onChanged(v)),
     );
   }
 
@@ -1303,6 +1848,8 @@ class _CustomerPageState extends State<CustomerPage> {
         'fax': _faxController.text,
         'email': _emailController.text,
         'address_line1': _addressController.text,
+        'address_line2': _addressLine2Controller.text,
+        'business_hours': _businessHoursController.text,
         'city': _cityController.text,
         'state_province': _stateController.text,
         'postal_code': _zipCodeController.text,
@@ -1312,6 +1859,7 @@ class _CustomerPageState extends State<CustomerPage> {
         'rate': double.tryParse(_rateController.text) ?? 0.0,
         'currency': _currency,
         'payment_terms': _paymentTermsController.text,
+        'customer_type': _selectedCustomerType,
         'equipment_type': _selectedEquipment,
         'assigned_dispatcher': _selectedDispatcher,
         'is_round_trip': _roundTrip,
@@ -1330,6 +1878,20 @@ class _CustomerPageState extends State<CustomerPage> {
         'is_port_rail': _portRail,
         'is_non_stackable': _nonStackable,
         'is_fragile': _fragile,
+
+        // Extended
+        'is_ppe_required': _ppeRequired,
+        'is_overnight_parking': _overnightParking,
+        'is_strict_late_policy': _strictLatePolicy,
+        'is_call_before_arrival': _callBeforeArrival,
+        'is_blind_shipment': _blindShipment,
+        'is_scale_on_site': _scaleOnSite,
+        'is_clean_trailer': _cleanTrailer,
+        'is_facility_247': _facility247,
+        'is_straps_required': _strapsRequired,
+        'is_lumper_required': _lumperRequired,
+        'is_gate_code_required': _gateCodeRequired,
+
         'notes': _notesController.text,
       };
 

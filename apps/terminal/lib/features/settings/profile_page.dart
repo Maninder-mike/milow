@@ -226,7 +226,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             _phoneController.text =
                 (details?['work_phone'] ?? data['phone']) as String? ?? '';
             _streetController.text =
-                (details?['street'] ?? data['street']) as String? ?? '';
+                (details?['address'] ?? data['street']) as String? ?? '';
             _cityController.text =
                 (details?['city'] ?? data['city']) as String? ?? '';
             _stateController.text =
@@ -372,8 +372,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       // 2. Upsert Staff Details
       final staffUpdates = {
         'id': user.id, // PK is FK to profiles.id
-        'work_phone': _phoneController.text,
-        'street': _streetController.text,
+        // 'work_phone': _phoneController.text, // Column missing in company_staff_profiles
+        'address': _streetController
+            .text, // Column is 'address' in company_staff_profiles
         'city': _cityController.text,
         'state_province': _stateController.text,
         'postal_code': _zipController.text,
@@ -397,20 +398,50 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       // Save company details to profile if admin has edited them
       // (Assuming these stay on profiles for now as per schema or dedicated companies table update)
       if (_isAdmin) {
+        final companyId =
+            (await Supabase.instance.client
+                    .from('profiles')
+                    .select('company_id')
+                    .eq('id', user.id)
+                    .maybeSingle())?['company_id']
+                as String?;
+
+        final companyFields = {
+          'company_name': _compNameController.text,
+          'company_address': _compAddressController.text,
+          'company_city': _compCityController.text,
+          'company_state': _compStateController.text,
+          'company_zip': _compZipController.text,
+          'company_dot_number': _compDotController.text,
+          'company_mc_number': _compMcController.text,
+          'company_phone': _compPhoneController.text,
+          'company_email': _compEmailController.text,
+        };
+
+        // Update Profiles (denormalized)
         await Supabase.instance.client
             .from('profiles')
-            .update({
-              'company_name': _compNameController.text,
-              'company_address': _compAddressController.text,
-              'company_city': _compCityController.text,
-              'company_state': _compStateController.text,
-              'company_zip': _compZipController.text,
-              'company_dot_number': _compDotController.text,
-              'company_mc_number': _compMcController.text,
-              'company_phone': _compPhoneController.text,
-              'company_email': _compEmailController.text,
-            })
+            .update(companyFields)
             .eq('id', user.id);
+
+        // Update ACTUAL companies table for map centering consistency
+        if (companyId != null) {
+          await Supabase.instance.client
+              .from('companies')
+              .update({
+                'name': _compNameController.text,
+                'address': _compAddressController.text,
+                'city': _compCityController.text,
+                'state': _compStateController.text,
+                'zip_code': _compZipController.text,
+                'dot_number': _compDotController.text,
+                'mc_number': _compMcController.text,
+                'phone': _compPhoneController.text,
+                'email': _compEmailController.text,
+                'updated_at': DateTime.now().toIso8601String(),
+              })
+              .eq('id', companyId);
+        }
       }
 
       if (mounted) {
@@ -512,7 +543,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       content: LayoutBuilder(
         builder: (context, constraints) {
           final isWide = constraints.maxWidth > 900;
-          final double contentWidth = isWide ? 1000 : 600;
+          final double contentWidth = constraints.maxWidth;
 
           return ChoreographedEntrance(
             child: SingleChildScrollView(
@@ -927,27 +958,16 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
                 const SizedBox(height: 16),
                 _buildLabel('Assigned Role'),
-                if (_isEditing && _isAdmin)
-                  ComboBox<String>(
-                    value: _selectedRole,
-                    items: _roles
-                        .map((e) => ComboBoxItem(value: e, child: Text(e)))
-                        .toList(),
-                    onChanged: (v) =>
-                        setState(() => _selectedRole = v ?? 'Driver'),
-                    isExpanded: true,
-                  )
-                else
-                  TextFormBox(
-                    key: ValueKey(_role),
-                    initialValue: _role.toUpperCase(),
-                    readOnly: true,
-                    enabled: false,
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 8),
-                      child: Icon(FluentIcons.lock_closed_24_regular, size: 16),
-                    ),
+                TextFormBox(
+                  key: ValueKey(_role),
+                  initialValue: _role.toUpperCase(),
+                  readOnly: true,
+                  enabled: false,
+                  prefix: const Padding(
+                    padding: EdgeInsets.only(left: 8),
+                    child: Icon(FluentIcons.lock_closed_24_regular, size: 16),
                   ),
+                ),
               ],
             ),
           ),

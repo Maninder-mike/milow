@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../dispatch/presentation/providers/load_providers.dart';
 
 import 'package:milow_core/milow_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -138,63 +139,85 @@ class _StatusBarState extends ConsumerState<StatusBar>
           // 3. Daily Load Completion
           Builder(
             builder: (context) {
-              // TODO: Replace with dynamic data from provider
-              const completedLoads = 35;
-              const totalLoads = 45;
-              const delayedCount = 2;
+              final loadsAsync = ref.watch(loadsListProvider);
+              final now = DateTime.now();
 
-              return Tooltip(
-                message:
-                    '$completedLoads Completed\n${totalLoads - completedLoads - delayedCount} Active\n$delayedCount Delayed',
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Loads:',
-                      style: GoogleFonts.outfit(
-                        fontSize: 11,
-                        color: theme.resources.textFillColorSecondary,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    SizedBox(
-                      width: 100,
-                      height: 12,
-                      child: ProgressBar(
-                        value: (completedLoads / totalLoads) * 100,
-                        backgroundColor: isLight
-                            ? Colors.grey.withValues(alpha: 0.3)
-                            : Colors.white.withValues(alpha: 0.1),
-                        activeColor: delayedCount > 0
-                            ? AppColors.warning
-                            : AppColors.success,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    RichText(
-                      text: TextSpan(
-                        style: GoogleFonts.outfit(
-                          fontSize: 11,
-                          color: theme.resources.textFillColorPrimary,
-                        ),
-                        children: [
-                          TextSpan(
-                            text: '$completedLoads/$totalLoads ',
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+              return loadsAsync.maybeWhen(
+                data: (rawLoads) {
+                  final totalLoads = rawLoads.length;
+                  if (totalLoads == 0) return const SizedBox.shrink();
+
+                  final completedCount = rawLoads
+                      .where((l) => l.status.toLowerCase() == 'delivered')
+                      .length;
+
+                  final delayedCount = rawLoads.where((l) {
+                    final s = l.status.toLowerCase();
+                    return s == 'pending' && l.pickup.date.isBefore(now);
+                  }).length;
+
+                  final activeCount = rawLoads.where((l) {
+                    final s = l.status.toLowerCase();
+                    return s == 'assigned' || s == 'in transit';
+                  }).length;
+
+                  return Tooltip(
+                    message:
+                        '$completedCount Completed\n$activeCount Active\n$delayedCount Delayed',
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'Loads:',
+                          style: GoogleFonts.outfit(
+                            fontSize: 11,
+                            color: theme.resources.textFillColorSecondary,
                           ),
-                          if (delayedCount > 0)
-                            TextSpan(
-                              text: '• $delayedCount Delayed',
-                              style: TextStyle(
-                                color: AppColors.warning,
-                                fontWeight: FontWeight.bold,
-                              ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 100,
+                          height: 12,
+                          child: ProgressBar(
+                            value: (completedCount / totalLoads) * 100,
+                            backgroundColor: isLight
+                                ? Colors.grey.withValues(alpha: 0.3)
+                                : Colors.white.withValues(alpha: 0.1),
+                            activeColor: delayedCount > 0
+                                ? AppColors.warning
+                                : AppColors.success,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        RichText(
+                          text: TextSpan(
+                            style: GoogleFonts.outfit(
+                              fontSize: 11,
+                              color: theme.resources.textFillColorPrimary,
                             ),
-                        ],
-                      ),
+                            children: [
+                              TextSpan(
+                                text: '$completedCount/$totalLoads ',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (delayedCount > 0)
+                                TextSpan(
+                                  text: '• $delayedCount Delayed',
+                                  style: TextStyle(
+                                    color: AppColors.warning,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
+                orElse: () => const SizedBox.shrink(),
               );
             },
           ),
@@ -241,6 +264,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
             child: GestureDetector(
               onTap: () {
                 _flyoutController.showFlyout(
+                  barrierColor: Colors.transparent,
                   builder: (context) {
                     return FlyoutContent(
                       constraints: const BoxConstraints(maxWidth: 350),

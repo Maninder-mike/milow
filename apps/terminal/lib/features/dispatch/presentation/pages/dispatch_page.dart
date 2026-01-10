@@ -15,12 +15,8 @@ class DispatchPage extends ConsumerStatefulWidget {
 }
 
 class _DispatchPageState extends ConsumerState<DispatchPage> {
-  final List<Load> _loads = [];
-  final List<Broker> _brokers = [
-    Broker.empty().copyWith(name: 'TQL'),
-    Broker.empty().copyWith(name: 'CH Robinson'),
-    Broker.empty().copyWith(name: 'Cowan'),
-  ];
+  // No longer needed: local _loads and hardcoded _brokers
+  // Brokers are now fetched dynamically in LoadEntryForm or via provider
 
   @override
   Widget build(BuildContext context) {
@@ -42,7 +38,7 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                   CommandBarButton(
                     icon: const Icon(FluentIcons.arrow_clockwise_24_regular),
                     label: const Text('Refresh'),
-                    onPressed: () {},
+                    onPressed: () => ref.invalidate(loadsListProvider),
                   ),
                 ],
                 secondaryItems: [
@@ -56,13 +52,11 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
             ),
       content: isCreatingLoad
           ? LoadEntryForm(
-              brokers: _brokers,
               onAddBroker: _openNewBrokerDialog,
               onSave: (newLoad) async {
-                await Future.delayed(const Duration(seconds: 1));
-                setState(() {
-                  _loads.add(newLoad);
-                });
+                await ref
+                    .read(loadControllerProvider.notifier)
+                    .createLoad(newLoad);
                 ref.read(isCreatingLoadProvider.notifier).toggle(false);
                 ref.read(loadDraftProvider.notifier).reset();
               },
@@ -71,91 +65,96 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                 ref.read(loadDraftProvider.notifier).reset();
               },
             )
-          : _loads.isEmpty
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(8),
-              itemCount: _loads.length,
-              itemBuilder: (context, index) {
-                final load = _loads[index];
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Card(
-                    child: ListTile(
-                      leading: const Icon(FluentIcons.clock_24_regular),
-                      title: RichText(
-                        text: TextSpan(
-                          style: DefaultTextStyle.of(context).style,
-                          children: [
-                            TextSpan(
-                              text: load.brokerName,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            TextSpan(
-                              text: ' - #${load.loadReference}',
-                              style: TextStyle(
-                                color: FluentTheme.of(
-                                  context,
-                                ).resources.textFillColorSecondary,
-                                fontWeight: FontWeight.normal,
-                                fontSize: 13,
-                              ),
-                            ),
-                            const TextSpan(text: '  |  '),
-                            TextSpan(
-                              text: 'PU: ',
-                              style: TextStyle(
-                                color: FluentTheme.of(
-                                  context,
-                                ).resources.textFillColorSecondary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            TextSpan(
-                              text: '${load.pickup.city}, ${load.pickup.state}',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                            const TextSpan(text: ' -> '),
-                            TextSpan(
-                              text: 'DEL: ',
-                              style: TextStyle(
-                                color: FluentTheme.of(
-                                  context,
-                                ).resources.textFillColorSecondary,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 12,
-                              ),
-                            ),
-                            TextSpan(
-                              text:
-                                  '${load.delivery.city}, ${load.delivery.state}',
-                              style: const TextStyle(fontSize: 13),
-                            ),
-                          ],
-                        ),
-                      ),
-                      subtitle: Text(
-                        'Goods: ${load.goods}  |  Rate: \$${load.rate.toStringAsFixed(2)} ${load.currency}',
-                      ),
-                      trailing: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color(0x30808080),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(load.status),
+          : ref
+                .watch(loadsListProvider)
+                .when(
+                  data: (loads) => loads.isEmpty
+                      ? _buildEmptyState()
+                      : _buildLoadsList(loads),
+                  loading: () => const Center(child: ProgressRing()),
+                  error: (err, stack) =>
+                      Center(child: Text('Error loading loads: $err')),
+                ),
+    );
+  }
+
+  Widget _buildLoadsList(List<Load> loads) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: loads.length,
+      itemBuilder: (context, index) {
+        final load = loads[index];
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 8.0),
+          child: Card(
+            child: ListTile(
+              leading: const Icon(FluentIcons.list_24_regular),
+              title: RichText(
+                text: TextSpan(
+                  style: DefaultTextStyle.of(context).style,
+                  children: [
+                    TextSpan(
+                      text: load.brokerName,
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(
+                      text: ' - #${load.loadReference}',
+                      style: TextStyle(
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.textFillColorSecondary,
+                        fontWeight: FontWeight.normal,
+                        fontSize: 13,
                       ),
                     ),
-                  ),
-                );
-              },
+                    const TextSpan(text: '  |  '),
+                    TextSpan(
+                      text: 'PU: ',
+                      style: TextStyle(
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.textFillColorSecondary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '${load.pickup.city}, ${load.pickup.state}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                    const TextSpan(text: ' -> '),
+                    TextSpan(
+                      text: 'DEL: ',
+                      style: TextStyle(
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.textFillColorSecondary,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                    TextSpan(
+                      text: '${load.delivery.city}, ${load.delivery.state}',
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ],
+                ),
+              ),
+              subtitle: Text(
+                'Goods: ${load.goods}  |  Rate: \$${load.rate.toStringAsFixed(2)} ${load.currency}',
+              ),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0x30808080),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(load.status),
+              ),
             ),
+          ),
+        );
+      },
     );
   }
 
@@ -190,11 +189,7 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
       builder: (dialogContext) {
         return BrokerEntryDialog(
           onSave: (newBroker) async {
-            await Future.delayed(const Duration(seconds: 1));
-            if (!mounted) return;
-            setState(() {
-              _brokers.add(newBroker);
-            });
+            // In a real app, you might want to save to DB here or just return it
             createdBroker = newBroker;
             if (!mounted) return;
             displayInfoBar(

@@ -29,7 +29,7 @@ import 'package:terminal/features/dashboard/screens/vehicles/vehicles_page.dart'
 import 'package:terminal/features/dashboard/screens/vehicles/vehicle_status_page.dart';
 import 'package:terminal/features/dispatch/presentation/pages/dispatch_page.dart';
 import 'package:terminal/features/dispatch/presentation/pages/loads_page.dart'; // [NEW] import
-import 'package:flutter/material.dart'; // Added for ChangeNotifier
+import 'package:terminal/features/dispatch/presentation/pages/quotes_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -131,6 +131,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/highway-dispatch',
             builder: (context, state) => const LoadsPage(),
+          ),
+          GoRoute(
+            path: '/quotes',
+            builder: (context, state) => const QuotesPage(),
           ),
           GoRoute(
             path: '/driver-hos',

@@ -4,7 +4,7 @@ publish_to: "none"
 version: 0.0.2+2
 
 environment:
-  sdk: ^3.10.1
+  sdk: ^3.10.7
 
 resolution: workspace
 
@@ -15,9 +15,9 @@ dependencies:
   # Core
   intl: any
   go_router: ^17.0.0
+  http: ^1.1.0
 
   # State Management
-  provider: ^6.1.5+1
   flutter_riverpod: 3.0.3
   riverpod: 3.0.3
   riverpod_annotation: 3.0.3
@@ -45,17 +45,13 @@ dependencies:
   url_launcher: ^6.3.2
   package_info_plus: ^8.3.1
   app_links: ^6.4.1
-  cupertino_icons: ^1.0.8
   shared_preferences: ^2.3.5
   flutter_local_notifications: ^18.0.0
 
   # Workspace Packages
   milow_core:
     path: ../../packages/core
-  syncfusion_flutter_datagrid: ^32.1.21
-  syncfusion_flutter_core: ^32.1.21
-  flutter_map: ^8.2.2
-  latlong2: ^0.9.1
+  textfield_tags: ^3.0.1
 
 dev_dependencies:
   flutter_test:

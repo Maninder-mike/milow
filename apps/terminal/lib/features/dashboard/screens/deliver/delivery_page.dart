@@ -35,11 +35,6 @@ class _DeliveryPageState extends State<DeliveryPage> {
   final _internalNotesController = TextEditingController();
   final _searchController = TextEditingController();
 
-  // Cargo Controllers
-  final _commodityController = TextEditingController();
-  final _weightController = TextEditingController();
-  final _quantityController = TextEditingController();
-
   // Schedule & Flags
   DateTime _selectedDate = DateTime.now();
   DateTime _startTime = DateTime(
@@ -52,7 +47,6 @@ class _DeliveryPageState extends State<DeliveryPage> {
   String _status = 'Scheduled';
   String _appointmentType = 'Live Unload';
   String _schedulingWindow = 'Strict Appointment';
-  String _weightUnit = 'Lbs';
 
   bool _driverAssist = false;
   bool _ppeRequired = false;
@@ -101,9 +95,6 @@ class _DeliveryPageState extends State<DeliveryPage> {
     _notesController.dispose();
     _internalNotesController.dispose();
     _searchController.dispose();
-    _commodityController.dispose();
-    _weightController.dispose();
-    _quantityController.dispose();
     super.dispose();
   }
 
@@ -141,10 +132,6 @@ class _DeliveryPageState extends State<DeliveryPage> {
     _callBeforeArrival = data['is_call_before_arrival'] ?? false;
     _lumperRequired = data['is_lumper_required'] ?? false;
     _gateCodeRequired = data['is_gate_code_required'] ?? false;
-    _commodityController.text = data['commodity'] ?? '';
-    _weightController.text = data['weight']?.toString() ?? '';
-    _weightUnit = data['weight_unit'] ?? 'Lbs';
-    _quantityController.text = data['quantity'] ?? '';
     _notesController.text = data['driver_instructions'] ?? '';
     _internalNotesController.text = data['internal_notes'] ?? '';
     _status = data['status'] ?? 'Scheduled';
@@ -250,10 +237,6 @@ class _DeliveryPageState extends State<DeliveryPage> {
         'is_call_before_arrival': _callBeforeArrival,
         'is_lumper_required': _lumperRequired,
         'is_gate_code_required': _gateCodeRequired,
-        'commodity': _commodityController.text,
-        'weight': double.tryParse(_weightController.text) ?? 0,
-        'weight_unit': _weightUnit,
-        'quantity': _quantityController.text,
         'driver_instructions': _notesController.text,
         'internal_notes': _internalNotesController.text,
         'status': _status,
@@ -508,66 +491,6 @@ class _DeliveryPageState extends State<DeliveryPage> {
                             child: FluentLabeledInput(
                               label: 'Fax',
                               controller: _faxController,
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Cargo Information',
-                        showDivider: true,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 3,
-                            child: FluentLabeledInput(
-                              label: 'Commodity',
-                              controller: _commodityController,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Expanded(
-                                  child: FluentLabeledInput(
-                                    label: 'Weight',
-                                    controller: _weightController,
-                                    keyboardType: TextInputType.number,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                SizedBox(
-                                  width: 80,
-                                  child: ComboBox<String>(
-                                    value: _weightUnit,
-                                    items: ['Lbs', 'Kgs']
-                                        .map(
-                                          (e) => ComboBoxItem(
-                                            value: e,
-                                            child: Text(e),
-                                          ),
-                                        )
-                                        .toList(),
-                                    onChanged: (v) => setState(
-                                      () => _weightUnit = v ?? 'Lbs',
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: FluentLabeledInput(
-                              label: 'Quantity (Pallets/Pieces)',
-                              controller: _quantityController,
                             ),
                           ),
                         ],
@@ -853,7 +776,7 @@ class _DeliveryPageState extends State<DeliveryPage> {
         child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               _buildStatsRow(theme),
               const SizedBox(height: 24),

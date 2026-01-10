@@ -8,7 +8,7 @@ import 'package:url_launcher/url_launcher.dart';
 // TabsShell provides navigation; this page returns content only
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/preferences_service.dart';
-import 'package:milow/core/widgets/section_header.dart';
+
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
 import 'package:milow/core/models/border_wait_time.dart';
@@ -615,68 +615,6 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  Widget _buildLearningCard(
-    BuildContext context,
-    String title,
-    String subtitle,
-    Color color,
-    IconData icon,
-  ) {
-    return Container(
-      width: 200,
-      margin: EdgeInsets.only(right: context.tokens.spacingM),
-      child: Card(
-        elevation: 0,
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.tokens.shapeL),
-          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: InkWell(
-          onTap: () {
-            context.push('/learning');
-          },
-          borderRadius: BorderRadius.circular(context.tokens.shapeL),
-          child: Padding(
-            padding: EdgeInsets.all(context.tokens.spacingM),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: EdgeInsets.all(context.tokens.spacingS),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(context.tokens.shapeM),
-                  ),
-                  child: Icon(icon, color: color, size: 24),
-                ),
-                SizedBox(height: context.tokens.spacingM),
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(height: context.tokens.spacingXS),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
   Widget _buildNotificationBell(BuildContext context) {
     return Stack(
       children: [
@@ -1269,44 +1207,6 @@ class _DashboardPageState extends State<DashboardPage>
                       ),
                       SizedBox(height: context.tokens.spacingL),
 
-                      const SectionHeader(title: 'Learning Pages'),
-                      SizedBox(height: context.tokens.spacingM),
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        padding: EdgeInsets.symmetric(horizontal: margin),
-                        child: Row(
-                          children: [
-                            _buildLearningCard(
-                              context,
-                              'Using the ELD',
-                              'Master the electronic logging device features.',
-                              Theme.of(context).colorScheme.primary,
-                              Icons.devices_other,
-                            ),
-                            _buildLearningCard(
-                              context,
-                              'Safety First',
-                              'Essential safety protocols for long hauls.',
-                              Theme.of(context).colorScheme.error,
-                              Icons.health_and_safety,
-                            ),
-                            _buildLearningCard(
-                              context,
-                              'Fuel Optimization',
-                              'Tips to save fuel and reduce costs.',
-                              Theme.of(context).colorScheme.tertiary,
-                              Icons.local_gas_station,
-                            ),
-                            _buildLearningCard(
-                              context,
-                              'Border Crossing',
-                              'Guide to smooth border transitions.',
-                              Theme.of(context).colorScheme.secondary,
-                              Icons.flag_circle,
-                            ),
-                          ],
-                        ),
-                      ),
                       // Dynamic bottom padding for system navigation bar
                       SizedBox(
                         height: MediaQuery.of(context).padding.bottom + 24,

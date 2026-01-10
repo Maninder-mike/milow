@@ -1,5 +1,6 @@
 import 'dart:ui';
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class TermsPage extends StatelessWidget {
@@ -7,16 +8,14 @@ class TermsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final backgroundColor = isDark
-        ? const Color(0xFF0A0A0A)
-        : const Color(0xFFF0F4F8);
+    final theme = FluentTheme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF101828);
     final cardColor = isDark ? const Color(0xFF1E1E1E) : Colors.white;
 
-    return Scaffold(
-      backgroundColor: backgroundColor,
-      body: Stack(
+    return ScaffoldPage(
+      padding: EdgeInsets.zero,
+      content: Stack(
         children: [
           // Background orbs
           Positioned(
@@ -63,7 +62,7 @@ class TermsPage extends StatelessWidget {
                   child: Row(
                     children: [
                       _buildGlassButton(
-                        icon: Icons.arrow_back_ios_new,
+                        icon: FluentIcons.chevron_left_24_regular,
                         onTap: () => Navigator.pop(context),
                         isDark: isDark,
                       ),
@@ -101,8 +100,6 @@ class TermsPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // App Icon
-                        // Sizing it appropriately for desktop/admin view
                         const SizedBox(height: 24),
                         _buildSection(
                           title: '1. Acceptance of Terms',

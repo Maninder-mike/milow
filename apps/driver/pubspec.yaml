@@ -7,7 +7,7 @@ homepage: https://maninder.co.in/milow
 repository: https://github.com/maninder-mike/milow
 
 environment:
-  sdk: ^3.10.1
+  sdk: ^3.10.7
 
 resolution: workspace
 

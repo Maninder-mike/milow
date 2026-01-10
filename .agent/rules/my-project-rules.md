@@ -35,6 +35,8 @@ trigger: always_on
 - **Focus**: Information density, keyboard shortcuts, native feel
 - **Libs**: `fluent_ui`, `window_manager`, `flutter_riverpod`, `go_router`
 
+- while implement right click function always use Context Menu
+
 ---
 
 ## 3. Design: M3 Expressive (Driver App)

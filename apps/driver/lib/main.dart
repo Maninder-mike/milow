@@ -45,7 +45,6 @@ import 'package:milow/core/widgets/splash_screen.dart';
 import 'package:milow/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart';
-import 'package:milow/features/learning/presentation/pages/learning_hub_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -284,14 +283,6 @@ final GoRouter _router = GoRouter(
         context,
         state,
         const AuthWrapper(child: FeedbackPage()),
-      ),
-    ),
-    GoRoute(
-      path: '/learning',
-      pageBuilder: (context, state) => _buildTransitionPage(
-        context,
-        state,
-        const AuthWrapper(child: LearningHubPage()),
       ),
     ),
   ],

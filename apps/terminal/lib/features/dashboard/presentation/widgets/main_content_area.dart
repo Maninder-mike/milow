@@ -33,6 +33,7 @@ class MainContentArea extends ConsumerWidget {
     }
 
     return Container(
+      width: double.infinity,
       color: backgroundColor, // Editor Background
       child: TabView(
         header: Container(),
@@ -74,13 +75,7 @@ class MainContentArea extends ConsumerWidget {
                 : null,
             body: Container(
               color: backgroundColor, // Ensure body is also editor color
-              child: Align(
-                alignment: Alignment.topLeft,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1200),
-                  child: tab.child,
-                ),
-              ),
+              child: tab.child,
             ),
             onClosed: () {
               ref.read(tabManagerProvider.notifier).removeTab(index);

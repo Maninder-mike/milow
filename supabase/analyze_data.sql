@@ -1,0 +1,1 @@
+select count(*) as total_customers from public.customers; select count(*) as null_company_customers from public.customers where company_id is null; select id, email, company_id from public.profiles limit 5;

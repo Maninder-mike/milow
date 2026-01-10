@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:fluent_ui/fluent_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'tab_manager_provider.g.dart';

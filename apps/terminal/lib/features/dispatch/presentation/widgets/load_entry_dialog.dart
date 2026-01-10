@@ -290,6 +290,7 @@ class _LoadEntryDialogState extends State<LoadEntryDialog> {
       status: 'Pending',
       loadNotes: _loadNotes,
       companyNotes: _companyNotes,
+      tripNumber: '',
     );
 
     await widget.onSave(newLoad);

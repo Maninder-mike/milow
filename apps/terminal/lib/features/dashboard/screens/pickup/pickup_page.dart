@@ -981,7 +981,7 @@ class _PickUpPageState extends State<PickUpPage> {
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildStatsRow(theme, isLight),
             const SizedBox(height: 32),

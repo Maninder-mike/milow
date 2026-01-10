@@ -596,7 +596,7 @@ create policy "Company members can delete vehicle documents"
 drop policy if exists "Company members can view customers" on public.customers;
 create policy "Company members can view customers"
   on public.customers for select using (
-    company_id in (select company_id from public.profiles where id = auth.uid())
+    company_id = (select company_id from public.profiles where id = (select auth.uid()))
   );
 
 drop policy if exists "Company members can insert customers" on public.customers;

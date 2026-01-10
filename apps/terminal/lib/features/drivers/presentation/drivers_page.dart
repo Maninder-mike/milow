@@ -5,8 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'package:url_launcher/url_launcher.dart';
-
 import 'providers/driver_selection_provider.dart';
 import 'package:terminal/core/constants/app_elevation.dart';
 import '../../../core/widgets/choreographed_entrance.dart';
@@ -78,7 +76,7 @@ class _DriverDetailPanelState extends State<_DriverDetailPanel> {
   Widget build(BuildContext context) {
     return ChoreographedEntrance(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Custom Navigation Header
           Container(
@@ -185,20 +183,14 @@ class _OverviewTab extends StatelessWidget {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Page Title
-          Text(
-            'Driver Profile: ${driver.fullName ?? 'Unknown'}',
-            style: GoogleFonts.outfit(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: FluentTheme.of(context).resources.textFillColorPrimary,
-            ),
-          ),
+          // 1. Profile Header
+          _buildProfileHeader(context),
           const SizedBox(height: 24),
 
-          if (!driver.isVerified)
+          // 2. Alert for Inactive/Unverified
+          if (!driver.isVerified) ...[
             Container(
               margin: const EdgeInsets.only(bottom: 24),
               padding: const EdgeInsets.all(16),
@@ -241,174 +233,52 @@ class _OverviewTab extends StatelessWidget {
                 ],
               ),
             ),
+          ],
 
-          // Top Row: Photo + Contact Info + License | Recent Activity | Safety Score
-          LayoutBuilder(
-            builder: (context, constraints) {
-              // Responsive: stack vertically on narrow screens
-              final isNarrow = constraints.maxWidth < 900;
-
-              if (isNarrow) {
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    // Photo + Info cards row
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildPhotoCard(context),
-                            const SizedBox(height: 12),
-                            SizedBox(
-                              width: 160,
-                              child: FilledButton(
-                                onPressed: () => _showAssignDialog(context),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(FluentIcons.add, size: 14),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Assign',
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        Flexible(
-                          fit: FlexFit.loose,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildContactCard(context),
-                              const SizedBox(height: 12),
-                              _buildLicenseCard(context),
-                              const SizedBox(height: 12),
-                              _buildStatusCard(context),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 24),
-                    // Recent Activity
-                    _buildRecentActivityCard(context),
-                    const SizedBox(height: 24),
-
-                    // Safety Score
-                  ],
-                );
-              }
-
-              // Wide layout: horizontal row
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left: Photo + Contact + License stacked
-                  SizedBox(
-                    width: 400,
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Photo with assign button below
-                        Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            _buildPhotoCard(context),
-                            const SizedBox(height: 12),
-                            // Assign button
-                            SizedBox(
-                              width: 160,
-                              child: FilledButton(
-                                onPressed: () => _showAssignDialog(context),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    const Icon(FluentIcons.add, size: 14),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Assign',
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(width: 16),
-                        Flexible(
-                          fit: FlexFit.loose,
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              _buildContactCard(context),
-                              const SizedBox(height: 12),
-                              _buildLicenseCard(context),
-                              const SizedBox(height: 12),
-                              _buildStatusCard(context),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-
-                  // Center: Recent Activity
-                  Expanded(flex: 3, child: _buildRecentActivityCard(context)),
-                ],
-              );
-            },
-          ),
+          // 3. KPI Cards Row
+          _buildKPIRow(context),
           const SizedBox(height: 24),
 
-          // Bottom Row: Nationality & Visa + Quick Actions + Driver Stats
+          // 4. Main Content Grid (Activity Feed vs Details Sidebar)
           LayoutBuilder(
             builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 900;
+              final isNarrow = constraints.maxWidth < 1000;
 
               if (isNarrow) {
+                // Stack vertically on narrow screens
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _buildNationalityVisaCard(context),
-                    const SizedBox(height: 16),
-                    _buildQuickActionsRow(context),
+                    _buildDetailsPanel(context),
+                    const SizedBox(height: 24),
+                    _buildRecentActivityCard(context),
                     const SizedBox(height: 24),
                     _buildDriverStats(context),
                   ],
                 );
               }
 
+              // 2-Column Grid
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Left: Quick Actions & Nationality
-                  SizedBox(
-                    width: 400,
+                  // Main Column (Activity & Stats)
+                  Expanded(
+                    flex: 2, // 2/3 width
                     child: Column(
                       children: [
-                        _buildNationalityVisaCard(context),
-                        const SizedBox(height: 16),
-                        _buildQuickActionsRow(context),
+                        _buildRecentActivityCard(context),
+                        const SizedBox(height: 24),
+                        _buildDriverStats(context),
                       ],
                     ),
                   ),
                   const SizedBox(width: 24),
-
-                  // Center/Right: Driver Stats
-                  Expanded(child: _buildDriverStats(context)),
+                  // Sidebar Column (Details)
+                  Expanded(
+                    flex: 1, // 1/3 width
+                    child: _buildDetailsPanel(context),
+                  ),
                 ],
               );
             },
@@ -418,53 +288,304 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildPhotoCard(BuildContext context) {
+  Widget _buildProfileHeader(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final statusColor = driver.isVerified ? Colors.green : Colors.grey;
+    final statusText = driver.isVerified ? 'Active' : 'Pending';
+
     return Container(
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: theme.cardColor,
         borderRadius: BorderRadius.circular(12),
         boxShadow: AppElevation.shadow2(context),
       ),
-      child: SizedBox(
-        width: 160,
-        height: 200,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty
-              ? Image.network(
-                  driver.avatarUrl!,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) =>
-                      _buildAvatarPlaceholder(context),
-                )
-              : _buildAvatarPlaceholder(context),
-        ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Avatar
+          Container(
+            width: 80,
+            height: 80,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(40),
+              border: Border.all(
+                color: theme.resources.controlStrokeColorDefault,
+                width: 1,
+              ),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(40),
+              child: driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty
+                  ? Image.network(
+                      driver.avatarUrl!,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) =>
+                          _buildAvatarPlaceholder(context, size: 32),
+                    )
+                  : _buildAvatarPlaceholder(context, size: 32),
+            ),
+          ),
+          const SizedBox(width: 24),
+
+          // Name and Status
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    Text(
+                      driver.fullName ?? 'Unknown Driver',
+                      style: GoogleFonts.outfit(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: theme.resources.textFillColorPrimary,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            statusText,
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: statusColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Icon(
+                      FluentIcons.mail,
+                      size: 14,
+                      color: theme.resources.textFillColorSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      driver.email ?? 'No email',
+                      style: TextStyle(
+                        color: theme.resources.textFillColorSecondary,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Icon(
+                      FluentIcons.phone,
+                      size: 14,
+                      color: theme.resources.textFillColorSecondary,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      driver.phone ?? 'No phone',
+                      style: TextStyle(
+                        color: theme.resources.textFillColorSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+
+          // Actions
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              FilledButton(
+                onPressed: () => _showAssignDialog(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(FluentIcons.add, size: 16),
+                    SizedBox(width: 8),
+                    Text('Assign Work'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Button(
+                onPressed: () => _showSendMessageDialog(context),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(FluentIcons.chat, size: 16),
+                    SizedBox(width: 8),
+                    Text('Message'),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Button(
+                onPressed: () {
+                  // Navigate to edit or show edit dialog
+                },
+                child: const Text('Edit Profile'),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildAvatarPlaceholder(BuildContext context) {
+  Widget _buildKPIRow(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Use Grid or Wrap based on width
+        final width = constraints.maxWidth;
+        int columns = 4;
+        if (width < 800) columns = 2;
+        if (width < 500) columns = 1;
+
+        return Wrap(
+          spacing: 16,
+          runSpacing: 16,
+          children: [
+            SizedBox(
+              width: (width - (columns - 1) * 16) / columns,
+              child: _buildKPIStatCard(
+                context,
+                'Current Status',
+                'Active Trip',
+                FluentIcons.check_mark,
+                Colors.green,
+              ),
+            ),
+            SizedBox(
+              width: (width - (columns - 1) * 16) / columns,
+              child: FutureBuilder<Map<String, dynamic>?>(
+                future: _fetchAssignedVehicle(),
+                builder: (context, snapshot) {
+                  final vehicle = snapshot.data;
+                  final text = vehicle != null
+                      ? '${vehicle['truck_number']}'
+                      : 'None';
+                  return _buildKPIStatCard(
+                    context,
+                    'Vehicle',
+                    text,
+                    FluentIcons.delivery_truck,
+                    Colors.blue,
+                    caption: vehicle != null ? vehicle['vehicle_type'] : null,
+                  );
+                },
+              ),
+            ),
+            SizedBox(
+              width: (width - (columns - 1) * 16) / columns,
+              child: _buildKPIStatCard(
+                context,
+                'Safety Score',
+                '98/100',
+                FluentIcons.shield,
+                Colors.orange,
+              ),
+            ),
+            SizedBox(
+              width: (width - (columns - 1) * 16) / columns,
+              child: _buildKPIStatCard(
+                context,
+                'Total Miles',
+                '12,450',
+                FluentIcons.map_directions,
+                Colors.purple,
+                caption: 'This Month',
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildKPIStatCard(
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    Color color, {
+    String? caption,
+  }) {
     final theme = FluentTheme.of(context);
-    String initials = '?';
-    if (driver.fullName != null && driver.fullName!.isNotEmpty) {
-      final parts = driver.fullName!.trim().split(' ');
-      if (parts.length >= 2) {
-        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
-      } else if (parts.isNotEmpty) {
-        initials = parts[0][0].toUpperCase();
-      }
-    }
     return Container(
-      color: theme.accentColor.defaultBrushFor(theme.brightness),
-      alignment: Alignment.center,
-      child: Text(
-        initials,
-        style: GoogleFonts.outfit(
-          color: Colors.white,
-          fontSize: 48,
-          fontWeight: FontWeight.bold,
-        ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: AppElevation.shadow2(context),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: color, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    color: theme.resources.textFillColorSecondary,
+                    fontSize: 12,
+                  ),
+                ),
+                Text(
+                  value,
+                  style: GoogleFonts.outfit(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: theme.resources.textFillColorPrimary,
+                  ),
+                ),
+                if (caption != null)
+                  Text(
+                    caption,
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: theme.resources.textFillColorSecondary,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -475,7 +596,6 @@ class _OverviewTab extends StatelessWidget {
     required List<Widget> children,
     Widget? trailing,
   }) {
-    // using Container ensures proper theme background (mica/layer) and elevation
     return Container(
       decoration: BoxDecoration(
         color: FluentTheme.of(context).cardColor,
@@ -507,138 +627,19 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildContactCard(BuildContext context) {
-    return _buildInfoCard(
-      context: context,
-      title: 'Contact Info',
-      children: [
-        _buildInfoRow(context, 'Phone', driver.phone ?? 'Not set'),
-        const SizedBox(height: 8),
-        _buildInfoRow(context, 'Email', driver.email ?? '-'),
-      ],
-    );
-  }
-
-  Widget _buildLicenseCard(BuildContext context) {
-    // Implement license fields in Supabase profiles table
-    final licenseExpiry = driver.licenseExpiryDate;
-    final isExpiringSoon =
-        licenseExpiry != null &&
-        licenseExpiry.difference(DateTime.now()).inDays < 30;
-
-    return _buildInfoCard(
-      context: context,
-      title: 'License Details',
-      trailing: isExpiringSoon
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.orange.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'Expiring Soon',
-                style: TextStyle(fontSize: 10, color: Colors.orange),
-              ),
-            )
-          : null,
-      children: [
-        _buildInfoRow(context, 'CDL Class', driver.licenseType ?? 'Not set'),
-        const SizedBox(height: 8),
-        _buildInfoRow(
-          context,
-          'License #',
-          driver.licenseNumber ?? 'Not set',
-        ), // Added License Number
-        const SizedBox(height: 8),
-        _buildInfoRow(
-          context,
-          'Exp',
-          licenseExpiry != null
-              ? DateFormat('MM/yyyy').format(licenseExpiry)
-              : 'Not set',
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNationalityVisaCard(BuildContext context) {
-    // Note: Visa expiry not yet in profile, placeholder kept for layout or needs new column
-    final visaExpiry = DateTime.now().add(const Duration(days: 45));
-    final isExpiringSoon = visaExpiry.difference(DateTime.now()).inDays < 30;
-
-    return _buildInfoCard(
-      context: context,
-      title: 'Nationality & Visa',
-      trailing: isExpiringSoon
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: Text(
-                'Visa Expiring!',
-                style: TextStyle(fontSize: 10, color: Colors.red),
-              ),
-            )
-          : null,
-      children: [
-        _buildInfoRow(context, 'Nationality', driver.citizenship ?? 'Not set'),
-        const SizedBox(height: 8),
-        _buildInfoRow(
-          context,
-          'Visa Exp',
-          DateFormat('MM/dd/yyyy').format(visaExpiry),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildStatusCard(BuildContext context) {
-    return FutureBuilder<Map<String, dynamic>?>(
-      future: _fetchAssignedVehicle(),
-      builder: (context, snapshot) {
-        String truckDisplay = 'Not Assigned';
-        String statusDisplay = driver.isVerified
-            ? 'Active'
-            : 'Pending Verification';
-
-        if (snapshot.hasData && snapshot.data != null) {
-          final vehicle = snapshot.data!;
-          truckDisplay =
-              '${vehicle['truck_number']} (${vehicle['vehicle_type']})';
-        }
-
-        return _buildInfoCard(
-          context: context,
-          title: 'Current Status',
-          trailing: IconButton(
-            icon: const Icon(FluentIcons.edit, size: 14),
-            onPressed: () => _showTruckSelectionDialog(context),
-          ),
-          children: [
-            _buildInfoRow(context, 'Status', statusDisplay),
-            const SizedBox(height: 8),
-            _buildInfoRow(context, 'Assigned Vehicle', truckDisplay),
-          ],
-        );
-      },
-    );
-  }
-
   Future<Map<String, dynamic>?> _fetchAssignedVehicle() async {
     try {
       final assignment = await Supabase.instance.client
-          .from('driver_vehicle_assignments')
-          .select('vehicle_id')
-          .eq('driver_id', driver.id)
+          .from('fleet_assignments')
+          .select('resource_id')
+          .eq('assignee_id', driver.id)
+          .eq('type', 'driver_to_vehicle')
           .isFilter('unassigned_at', null)
           .maybeSingle();
 
       if (assignment == null) return null;
 
-      final vehicleId = assignment['vehicle_id'] as String?;
+      final vehicleId = assignment['resource_id'] as String?;
       if (vehicleId == null) return null;
 
       final vehicle = await Supabase.instance.client
@@ -652,6 +653,120 @@ class _OverviewTab extends StatelessWidget {
       debugPrint('Error fetching assigned vehicle: $e');
       return null;
     }
+  }
+
+  Widget _buildDetailsPanel(BuildContext context) {
+    return Column(
+      children: [
+        _buildSectionHeader(context, 'Personal Details'),
+        const SizedBox(height: 12),
+        _buildInfoCard(
+          context: context,
+          title: 'Citizenship & Visa',
+          children: [
+            _buildInfoRow(
+              context,
+              'Nationality',
+              driver.citizenship ?? 'Not Set',
+            ),
+            const SizedBox(height: 12),
+            _buildInfoRow(
+              context,
+              'Visa Expiry',
+              '02/23/2026', // Mock/Placeholder
+            ),
+          ],
+        ),
+        const SizedBox(height: 24),
+        _buildSectionHeader(context, 'License Information'),
+        const SizedBox(height: 12),
+        _buildInfoCard(
+          context: context,
+          title: 'CDL Details',
+          children: [
+            _buildInfoRow(
+              context,
+              'License Number',
+              driver.licenseNumber ?? 'Not Set',
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildInfoRow(
+                    context,
+                    'Class',
+                    driver.licenseType ?? 'N/A',
+                  ),
+                ),
+                Expanded(
+                  child: _buildInfoRow(
+                    context,
+                    'Expires',
+                    driver.licenseExpiryDate != null
+                        ? DateFormat(
+                            'MM/dd/yyyy',
+                          ).format(driver.licenseExpiryDate!)
+                        : 'N/A',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    return Row(
+      children: [
+        Text(
+          title.toUpperCase(),
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            letterSpacing: 0.5,
+            color: FluentTheme.of(context).resources.textFillColorSecondary,
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Container(
+            height: 1,
+            color: FluentTheme.of(
+              context,
+            ).resources.controlStrokeColorDefault.withValues(alpha: 0.2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Reusing existing _buildAvatarPlaceholder but making size dynamic
+  Widget _buildAvatarPlaceholder(BuildContext context, {double size = 48}) {
+    final theme = FluentTheme.of(context);
+    String initials = '?';
+    if (driver.fullName != null && driver.fullName!.isNotEmpty) {
+      final parts = driver.fullName!.trim().split(' ');
+      if (parts.length >= 2) {
+        initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+      } else if (parts.isNotEmpty) {
+        initials = parts[0][0].toUpperCase();
+      }
+    }
+    return Container(
+      color: theme.accentColor.defaultBrushFor(theme.brightness),
+      alignment: Alignment.center,
+      child: Text(
+        initials,
+        style: GoogleFonts.outfit(
+          color: Colors.white,
+          fontSize: size,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 
   Widget _buildInfoRow(BuildContext context, String label, String value) {
@@ -692,7 +807,6 @@ class _OverviewTab extends StatelessWidget {
           children: [
             const Text('Select what to assign:'),
             const SizedBox(height: 16),
-            // TODO: Replace with actual trip/truck selection from backend
             ListTile(
               leading: Icon(FluentIcons.open_folder_horizontal),
               title: const Text('Assign Trip'),
@@ -883,16 +997,18 @@ class _OverviewTab extends StatelessWidget {
     try {
       // 1. Unassign any current vehicle for this driver
       await Supabase.instance.client
-          .from('driver_vehicle_assignments')
+          .from('fleet_assignments')
           .update({'unassigned_at': DateTime.now().toIso8601String()})
-          .eq('driver_id', driver.id)
+          .eq('assignee_id', driver.id)
+          .eq('type', 'driver_to_vehicle')
           .isFilter('unassigned_at', null);
 
       // 2. Create new assignment
       final currentUser = Supabase.instance.client.auth.currentUser;
-      await Supabase.instance.client.from('driver_vehicle_assignments').insert({
-        'driver_id': driver.id,
-        'vehicle_id': vehicleId,
+      await Supabase.instance.client.from('fleet_assignments').insert({
+        'assignee_id': driver.id,
+        'resource_id': vehicleId,
+        'type': 'driver_to_vehicle',
         'assigned_by': currentUser?.id,
       });
 
@@ -922,65 +1038,6 @@ class _OverviewTab extends StatelessWidget {
         );
       }
     }
-  }
-
-  Widget _buildQuickActionsRow(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: FilledButton(
-            onPressed: () async {
-              final cleanPhone = driver.phone?.replaceAll(
-                RegExp(r'[^\d+]'),
-                '',
-              );
-              if (cleanPhone != null && cleanPhone.isNotEmpty) {
-                final uri = Uri.parse('tel:$cleanPhone');
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri);
-                } else {
-                  if (context.mounted) {
-                    displayInfoBar(
-                      context,
-                      builder: (context, close) {
-                        return InfoBar(
-                          title: const Text('Could not launch dialer'),
-                          content: Text('Phone: ${driver.phone}'),
-                          severity: InfoBarSeverity.warning,
-                          onClose: close,
-                        );
-                      },
-                    );
-                  }
-                }
-              }
-            },
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(FluentIcons.phone, size: 16),
-                const SizedBox(width: 8),
-                const Text('Call Driver'),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Button(
-            onPressed: () => _showSendMessageDialog(context),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(FluentIcons.chat, size: 16),
-                const SizedBox(width: 8),
-                const Text('Send Message'),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
   }
 
   void _showSendMessageDialog(BuildContext context) {
