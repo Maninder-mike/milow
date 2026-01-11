@@ -795,8 +795,9 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
           .from('trips')
           .select('trip_number, pickup_locations, delivery_locations')
           .eq('user_id', driverId)
-          .neq('status', 'completed')
-          .neq('status', 'cancelled')
+          .eq('delivery_completed', false)
+          .isFilter('deleted_at', null)
+          .order('trip_date', ascending: false)
           .limit(1)
           .maybeSingle();
       return response;

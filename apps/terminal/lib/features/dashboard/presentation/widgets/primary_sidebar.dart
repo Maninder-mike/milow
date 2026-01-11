@@ -58,81 +58,88 @@ class PrimarySidebar extends ConsumerWidget {
               onTap: onDashboardTap,
               isActive: activePane == null, // Assuming null is dashboard
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 8),
 
-            // Add Record (was Fleet)
-            _buildNavItem(
-              context,
-              FluentIcons.add_square_24_regular,
-              label: 'Add Record',
-              onTap: onAddRecordTap,
-              isActive:
-                  activePane == 'add_record', // aligned with activePane usage
+            // Scrollable area for nav items to prevent overflow
+            Expanded(
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Add Record (was Fleet)
+                    _buildNavItem(
+                      context,
+                      FluentIcons.add_square_24_regular,
+                      label: 'Add Record',
+                      onTap: onAddRecordTap,
+                      isActive: activePane == 'add_record',
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Loads (Recovered Dispatch)
+                    _buildNavItem(
+                      context,
+                      FluentIcons.document_text_24_regular,
+                      label: 'Loads',
+                      onTap: onLoadsTap,
+                      isActive: activePane == 'loads',
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Invoices
+                    _buildNavItem(
+                      context,
+                      FluentIcons.money_24_regular,
+                      label: 'Invoices',
+                      onTap: onInvoicesTap,
+                      isActive: activePane == 'invoices',
+                    ),
+                    const SizedBox(height: 8),
+
+                    // CRM / Directory
+                    _buildNavItem(
+                      context,
+                      FluentIcons.person_note_24_regular,
+                      label: 'CRM',
+                      onTap: onCrmTap,
+                      isActive: activePane == 'crm',
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Settlements
+                    _buildNavItem(
+                      context,
+                      FluentIcons.receipt_money_24_regular,
+                      label: 'Settlements',
+                      onTap: onSettlementsTap,
+                      isActive: activePane == 'settlements',
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Drivers
+                    _buildNavItem(
+                      context,
+                      FluentIcons.people_team_24_regular,
+                      label: 'Drivers',
+                      onTap: onDriversTap,
+                      isActive: activePane == 'drivers',
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Fleet
+                    _buildNavItem(
+                      context,
+                      FluentIcons.vehicle_truck_24_regular,
+                      label: 'Fleet',
+                      onTap: onFleetTap,
+                      isActive: activePane == 'fleet',
+                    ),
+                  ],
+                ),
+              ),
             ),
-            const SizedBox(height: 16),
 
-            // Loads (Recovered Dispatch)
-            _buildNavItem(
-              context,
-              FluentIcons.document_text_24_regular,
-              label: 'Loads',
-              onTap: onLoadsTap,
-              isActive: activePane == 'loads', // or route check
-            ),
-            const SizedBox(height: 16),
-
-            // Invoices
-            _buildNavItem(
-              context,
-              FluentIcons.money_24_regular,
-              label: 'Invoices',
-              onTap: onInvoicesTap,
-              isActive: activePane == 'invoices',
-            ),
-            const SizedBox(height: 16),
-
-            // CRM / Directory
-            _buildNavItem(
-              context,
-              FluentIcons.person_note_24_regular,
-              label: 'CRM',
-              onTap: onCrmTap,
-              isActive: activePane == 'crm',
-            ),
-            const SizedBox(height: 16),
-
-            // Settlements
-            _buildNavItem(
-              context,
-              FluentIcons.receipt_money_24_regular,
-              label: 'Settlements',
-              onTap: onSettlementsTap,
-              isActive: activePane == 'settlements',
-            ),
-            const SizedBox(height: 16),
-
-            // Drivers
-            _buildNavItem(
-              context,
-              FluentIcons.people_team_24_regular,
-              label: 'Drivers',
-              onTap: onDriversTap,
-              isActive: activePane == 'drivers',
-            ),
-            const SizedBox(height: 16),
-
-            // Fleet
-            _buildNavItem(
-              context,
-              FluentIcons.vehicle_truck_24_regular,
-              label: 'Fleet',
-              onTap: onFleetTap,
-              isActive:
-                  activePane == 'fleet', // Assuming logic for highlighting
-            ),
-
-            const Spacer(),
-
+            // Settings pinned at bottom
             _buildSettingsIcon(context, ref),
             const SizedBox(height: 12),
           ],

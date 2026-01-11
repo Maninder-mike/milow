@@ -58,6 +58,7 @@ class MainContentArea extends ConsumerWidget {
           }
 
           return Tab(
+            key: ValueKey(tab.id),
             text: Text(
               tabText,
               style: GoogleFonts.outfit(
@@ -74,6 +75,7 @@ class MainContentArea extends ConsumerWidget {
                   )
                 : null,
             body: Container(
+              key: ValueKey('${tab.id}_body'),
               color: backgroundColor, // Ensure body is also editor color
               child: tab.child,
             ),

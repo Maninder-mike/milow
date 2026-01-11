@@ -204,21 +204,25 @@ class _UsersRolesGroupsPageState extends ConsumerState<UsersRolesGroupsPage> {
           closeButtonVisibility: CloseButtonVisibilityMode.never,
           tabs: [
             Tab(
+              key: const ValueKey('settings_tab_users'),
               text: const Text('Users'),
               icon: const Icon(FluentIcons.people_24_regular),
               body: _UsersTab(),
             ),
             Tab(
+              key: const ValueKey('settings_tab_drivers'),
               text: const Text('Drivers'),
               icon: const Icon(FluentIcons.vehicle_truck_profile_24_regular),
               body: _DriversTab(),
             ),
             Tab(
+              key: const ValueKey('settings_tab_roles'),
               text: const Text('Roles'),
               icon: const Icon(FluentIcons.shield_24_regular),
               body: _RolesTab(),
             ),
             Tab(
+              key: const ValueKey('settings_tab_groups'),
               text: const Text('Groups'),
               icon: const Icon(FluentIcons.people_team_24_regular),
               body: _GroupsTab(),
@@ -1033,6 +1037,7 @@ class _DriversTabState extends ConsumerState<_DriversTab> {
         ''')
         .eq('company_id', companyId)
         .eq('role', 'driver')
+        .eq('is_data_sharing_enabled', true)
         .order('created_at', ascending: false);
 
     return List<Map<String, dynamic>>.from(response as List);

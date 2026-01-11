@@ -1,10 +1,4 @@
-enum SettlementItemType {
-  load_pay,
-  fuel_deduction,
-  bonus,
-  reimbursement,
-  other,
-}
+enum SettlementItemType { loadPay, fuelDeduction, bonus, reimbursement, other }
 
 class SettlementItem {
   final String id;

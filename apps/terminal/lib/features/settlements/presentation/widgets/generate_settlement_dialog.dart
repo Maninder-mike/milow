@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import '../../domain/models/driver_pay_config.dart';
@@ -94,30 +94,34 @@ class _GenerateSettlementDialogState
             ),
             loadsAsync.when(
               data: (loads) {
-                if (loads.isEmpty)
+                if (loads.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(8.0),
                     child: Text('No new delivered loads found.'),
                   );
+                }
                 return Column(
                   children: loads.map((load) {
                     final isSelected = _selectedLoadIds.contains(load['id']);
-                    return CheckboxListTile(
+                    return ListTile(
                       title: Text(
                         'Trip #${load['trip_number']} - ${load['load_reference'] ?? 'No Ref'}',
                       ),
                       subtitle: Text(
                         'Rate: ${currencyFormat.format(load['rate'])}',
                       ),
-                      value: isSelected,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true)
-                            _selectedLoadIds.add(load['id']);
-                          else
-                            _selectedLoadIds.remove(load['id']);
-                        });
-                      },
+                      leading: Checkbox(
+                        checked: isSelected,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              _selectedLoadIds.add(load['id']);
+                            } else {
+                              _selectedLoadIds.remove(load['id']);
+                            }
+                          });
+                        },
+                      ),
                     );
                   }).toList(),
                 );
@@ -134,30 +138,34 @@ class _GenerateSettlementDialogState
             ),
             fuelAsync.when(
               data: (entries) {
-                if (entries.isEmpty)
+                if (entries.isEmpty) {
                   return const Padding(
                     padding: EdgeInsets.all(8.0),
                     child: Text('No new fuel entries found.'),
                   );
+                }
                 return Column(
                   children: entries.map((fuel) {
                     final isSelected = _selectedFuelIds.contains(fuel['id']);
-                    return CheckboxListTile(
+                    return ListTile(
                       title: Text(
                         '${fuel['truck_number']} - ${fuel['location']}',
                       ),
                       subtitle: Text(
                         'Cost: ${currencyFormat.format(fuel['total_cost'])}',
                       ),
-                      value: isSelected,
-                      onChanged: (val) {
-                        setState(() {
-                          if (val == true)
-                            _selectedFuelIds.add(fuel['id']);
-                          else
-                            _selectedFuelIds.remove(fuel['id']);
-                        });
-                      },
+                      leading: Checkbox(
+                        checked: isSelected,
+                        onChanged: (val) {
+                          setState(() {
+                            if (val == true) {
+                              _selectedFuelIds.add(fuel['id']);
+                            } else {
+                              _selectedFuelIds.remove(fuel['id']);
+                            }
+                          });
+                        },
+                      ),
                     );
                   }).toList(),
                 );
@@ -206,7 +214,7 @@ class _GenerateSettlementDialogState
         SettlementItem(
           id: '',
           settlementId: '',
-          type: SettlementItemType.load_pay,
+          type: SettlementItemType.loadPay,
           description: 'Load Pay: Trip #${load['trip_number']}',
           amount: amount,
           referenceId: loadId,
@@ -221,7 +229,7 @@ class _GenerateSettlementDialogState
         SettlementItem(
           id: '',
           settlementId: '',
-          type: SettlementItemType.fuel_deduction,
+          type: SettlementItemType.fuelDeduction,
           description: 'Fuel Deduction: ${entry['location']}',
           amount: -(entry['total_cost'] as num).toDouble(),
           referenceId: fuelId,

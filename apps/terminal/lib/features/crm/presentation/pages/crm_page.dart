@@ -53,16 +53,19 @@ class _CRMPageState extends ConsumerState<CRMPage> {
         closeButtonVisibility: CloseButtonVisibilityMode.never,
         tabs: [
           Tab(
+            key: const ValueKey('crm_tab_brokers'),
             text: const Text('Brokers'),
             icon: const Icon(FluentIcons.people_24_regular),
             body: _buildEntityList(_tabs[0]),
           ),
           Tab(
+            key: const ValueKey('crm_tab_shippers'),
             text: const Text('Shippers'),
             icon: const Icon(FluentIcons.box_24_regular),
             body: _buildEntityList(_tabs[1]),
           ),
           Tab(
+            key: const ValueKey('crm_tab_receivers'),
             text: const Text('Receivers'),
             icon: const Icon(FluentIcons.vehicle_truck_24_regular),
             body: _buildEntityList(_tabs[2]),

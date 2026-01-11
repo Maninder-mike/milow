@@ -3,6 +3,7 @@ import 'package:local_auth/local_auth.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/local_auth_service.dart';
 import 'package:milow/features/settings/presentation/pages/pin_setup_page.dart';
+import 'package:milow/core/services/profile_repository.dart';
 
 class PrivacySecurityPage extends StatefulWidget {
   const PrivacySecurityPage({super.key});
@@ -17,6 +18,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
   bool _pinEnabled = false;
   bool _biometricAvailable = false;
   String _biometricType = 'Biometric';
+  bool _dataSharingEnabled = true;
 
   @override
   void initState() {
@@ -29,6 +31,10 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
     final pinEnabled = await _authService.isPinEnabled();
     final canCheckBiometrics = await _authService.canCheckBiometrics();
     final availableBiometrics = await _authService.getAvailableBiometrics();
+
+    // Load profile setting
+    final profile = await ProfileRepository.getCachedFirst(refresh: false);
+    final dataSharing = profile?['is_data_sharing_enabled'] as bool? ?? true;
 
     // Determine biometric type based on available biometrics
     String biometricType = 'Biometric';
@@ -64,6 +70,7 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
       _pinEnabled = pinEnabled;
       _biometricAvailable = canCheckBiometrics;
       _biometricType = biometricType;
+      _dataSharingEnabled = dataSharing;
     });
   }
 
@@ -221,6 +228,36 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
               '$_biometricType disabled',
               style: textTheme.bodyMedium,
             ),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _toggleDataSharing(bool value) async {
+    final tokens = context.tokens;
+    final textTheme = Theme.of(context).textTheme;
+
+    setState(() {
+      _dataSharingEnabled = value;
+    });
+
+    try {
+      await ProfileRepository.updateOptimistic({
+        'is_data_sharing_enabled': value,
+      });
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _dataSharingEnabled = !value;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to update setting',
+              style: textTheme.bodyMedium,
+            ),
+            backgroundColor: tokens.error,
           ),
         );
       }
@@ -451,6 +488,68 @@ class _PrivacySecurityPageState extends State<PrivacySecurityPage> {
                 ],
               ),
             ),
+
+            SizedBox(height: tokens.spacingL),
+            // Privacy Section
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: tokens.spacingM,
+                vertical: tokens.spacingS,
+              ),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'PRIVACY',
+                  style: textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: tokens.textTertiary,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ),
+            ),
+            Container(
+              margin: EdgeInsets.symmetric(horizontal: tokens.spacingM),
+              decoration: BoxDecoration(
+                color: tokens.surfaceContainer,
+                borderRadius: BorderRadius.circular(tokens.shapeL),
+              ),
+              child: Padding(
+                padding: EdgeInsets.all(tokens.spacingM),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Allow Data Sharing',
+                            style: textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w500,
+                              color: tokens.textPrimary,
+                            ),
+                          ),
+                          SizedBox(height: tokens.spacingXS),
+                          Text(
+                            'Allow company to fetch data',
+                            style: textTheme.bodyMedium?.copyWith(
+                              color: tokens.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Switch(
+                      value: _dataSharingEnabled,
+                      onChanged: _toggleDataSharing,
+                      activeTrackColor: colorScheme.primary,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SizedBox(height: tokens.spacingL),
           ],
         ),
       ),

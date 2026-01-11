@@ -43,12 +43,18 @@ class _CRMDetailsPageState extends ConsumerState<CRMDetailsPage> {
           onChanged: (i) => setState(() => _selectedTab = i),
           closeButtonVisibility: CloseButtonVisibilityMode.never,
           tabs: [
-            Tab(text: const Text('Overview'), body: _buildOverviewTab(entity)),
             Tab(
+              key: const ValueKey('crm_details_overview'),
+              text: const Text('Overview'),
+              body: _buildOverviewTab(entity),
+            ),
+            Tab(
+              key: const ValueKey('crm_details_contacts'),
               text: const Text('Contacts'),
               body: _buildContactsTab(entity.id),
             ),
             Tab(
+              key: const ValueKey('crm_details_history'),
               text: const Text('Load History'),
               body: _buildHistoryTab(entity.id),
             ),

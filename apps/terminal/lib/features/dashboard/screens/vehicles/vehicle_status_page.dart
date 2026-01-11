@@ -256,11 +256,13 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
           child: TabView(
             tabs: [
               Tab(
+                key: const ValueKey('vehicle_tab_documents'),
                 text: const Text('Documents'),
                 icon: const Icon(FluentIcons.document_24_regular),
                 body: _buildDocumentsTab(),
               ),
               Tab(
+                key: const ValueKey('vehicle_tab_diagnostics'),
                 text: const Text('Diagnostics-Health'),
                 icon: const Icon(FluentIcons.heart_pulse_24_regular),
                 body: SingleChildScrollView(
