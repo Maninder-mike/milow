@@ -4,10 +4,11 @@ import 'package:milow_core/milow_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../users/data/user_repository_provider.dart';
 import 'package:go_router/go_router.dart';
-import '../../../../core/widgets/choreographed_entrance.dart';
+
 import '../providers/driver_selection_provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/intl.dart';
+import 'package:flutter/services.dart';
 
 class DriversSidebar extends ConsumerStatefulWidget {
   const DriversSidebar({super.key});
@@ -29,6 +30,128 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
     setState(() {
       _expandedSections[title] = !(_expandedSections[title] ?? false);
     });
+  }
+
+  // Keyboard Navigation
+  final FocusNode _listFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  int? _focusedIndex;
+
+  @override
+  void dispose() {
+    _listFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  List<UserProfile> _filterDrivers(List<UserProfile> users) {
+    return users.where((u) => u.role == UserRole.driver && u.isVerified).where((
+      u,
+    ) {
+      if (_searchQuery.isEmpty) return true;
+      final query = _searchQuery.toLowerCase();
+      return (u.fullName?.toLowerCase().contains(query) ?? false) ||
+          (u.email?.toLowerCase().contains(query) ?? false);
+    }).toList();
+  }
+
+  List<dynamic> _buildFlatList(List<UserProfile> activeDrivers) {
+    final items = <dynamic>[];
+
+    // ACTIVE DRIVERS
+    items.add('ACTIVE DRIVERS');
+    if (_expandedSections['ACTIVE DRIVERS'] == true) {
+      items.addAll(activeDrivers);
+    }
+
+    // ON RESET (Empty for now)
+    items.add('ON RESET');
+    if (_expandedSections['ON RESET'] == true) {
+      items.addAll([]);
+    }
+
+    // OFF DUTY (Empty for now)
+    items.add('OFF DUTY');
+    if (_expandedSections['OFF DUTY'] == true) {
+      items.addAll([]);
+    }
+
+    // INACTIVE
+    items.add('INACTIVE');
+    if (_expandedSections['INACTIVE'] == true) {
+      items.addAll([]);
+    }
+
+    return items;
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      ref.read(usersProvider).whenData((users) {
+        final activeDrivers = _filterDrivers(users);
+        final items = _buildFlatList(activeDrivers);
+        if (items.isEmpty) return;
+
+        setState(() {
+          if (_focusedIndex == null || _focusedIndex! >= items.length - 1) {
+            _focusedIndex = 0;
+          } else {
+            _focusedIndex = _focusedIndex! + 1;
+          }
+        });
+        _scrollToFocused();
+      });
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      ref.read(usersProvider).whenData((users) {
+        final activeDrivers = _filterDrivers(users);
+        final items = _buildFlatList(activeDrivers);
+        if (items.isEmpty) return;
+
+        setState(() {
+          if (_focusedIndex == null || _focusedIndex! <= 0) {
+            _focusedIndex = items.length - 1;
+          } else {
+            _focusedIndex = _focusedIndex! - 1;
+          }
+        });
+        _scrollToFocused();
+      });
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+      if (_focusedIndex != null) {
+        ref.read(usersProvider).whenData((users) {
+          final activeDrivers = _filterDrivers(users);
+          final items = _buildFlatList(activeDrivers);
+          if (_focusedIndex! < items.length) {
+            final item = items[_focusedIndex!];
+            if (item is String) {
+              _toggleSection(item);
+            } else if (item is UserProfile) {
+              ref.read(selectedDriverProvider.notifier).select(item);
+              context.go('/drivers');
+            }
+          }
+        });
+      }
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _scrollToFocused() {
+    if (_focusedIndex == null) return;
+    final offset = _focusedIndex! * 50.0; // Rough guess
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        offset,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -116,52 +239,43 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
           Expanded(
             child: usersAsync.when(
               data: (users) {
-                if (users.isNotEmpty) {
-                  debugPrint('DEBUG: Fetched ${users.length} users');
-                  for (final u in users) {
-                    debugPrint(
-                      'DEBUG: User ${u.fullName} - Role: ${u.role}, Verified: ${u.isVerified}',
-                    );
-                  }
-                } else {
-                  debugPrint('DEBUG: No users fetched.');
-                }
-                // Filter drivers - only show verified/approved drivers
-                final activeDrivers = users
-                    .where((u) => u.role == UserRole.driver && u.isVerified)
-                    .where((u) {
-                      if (_searchQuery.isEmpty) return true;
-                      final query = _searchQuery.toLowerCase();
-                      return (u.fullName?.toLowerCase().contains(query) ??
-                              false) ||
-                          (u.email?.toLowerCase().contains(query) ?? false);
-                    })
-                    .toList();
+                final activeDrivers = _filterDrivers(users);
+                final items = _buildFlatList(activeDrivers);
 
-                return ListView(
-                  padding: EdgeInsets.zero,
-                  children: [
-                    _buildCollapsibleSection(
-                      'ACTIVE DRIVERS',
-                      isLight,
-                      activeDrivers
-                          .asMap()
-                          .entries
-                          .map(
-                            (entry) => ChoreographedEntrance(
-                              delay: Duration(milliseconds: entry.key * 50),
-                              child: _buildUserItem(
-                                entry.value,
-                                isLight,
-                                selectedDriver,
-                              ),
-                            ),
-                          )
-                          .toList(),
-                    ),
-                    _buildCollapsibleSection('ON RESET', isLight, []),
-                    _buildCollapsibleSection('OFF DUTY', isLight, []),
-                  ],
+                return Focus(
+                  focusNode: _listFocusNode,
+                  onKeyEvent: _handleKeyEvent,
+                  child: ListView.builder(
+                    controller: _scrollController,
+                    padding: EdgeInsets.zero,
+                    itemCount: items.length,
+                    itemBuilder: (context, index) {
+                      final item = items[index];
+                      final isFocused = index == _focusedIndex;
+
+                      if (item is String) {
+                        // Section Header
+                        int count = 0;
+                        if (item == 'ACTIVE DRIVERS') {
+                          count = activeDrivers.length;
+                        }
+                        return _buildSectionHeader(
+                          item,
+                          isLight,
+                          count,
+                          isFocused,
+                        );
+                      } else if (item is UserProfile) {
+                        return _buildUserItem(
+                          item,
+                          isLight,
+                          selectedDriver,
+                          isFocused,
+                        );
+                      }
+                      return const SizedBox.shrink();
+                    },
+                  ),
                 );
               },
               loading: () => const Center(child: ProgressRing()),
@@ -173,13 +287,12 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
     );
   }
 
-  Widget _buildCollapsibleSection(
+  Widget _buildSectionHeader(
     String title,
     bool isLight,
-    List<Widget> children,
+    int count,
+    bool isFocused,
   ) {
-    // Removed empty check to always show sections
-
     final textColor = isLight
         ? const Color(0xFF333333)
         : const Color(0xFFCCCCCC);
@@ -189,85 +302,76 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
 
     final isExpanded = _expandedSections[title] ?? false;
 
-    return Column(
-      children: [
-        HoverButton(
-          onPressed: () => _toggleSection(title),
-          builder: (context, states) {
-            return Container(
-              decoration: BoxDecoration(
-                color: states.isHovered
-                    ? hoverColor
-                    : (isLight
-                          ? const Color(0xFFFAFAFA)
-                          : const Color(
-                              0xFF252526,
-                            )), // Subtle bg or transparent
-                border: Border(
-                  top: BorderSide(
-                    color: isLight
-                        ? const Color(0xFFE5E5E5)
-                        : const Color(
-                            0xFF3E3E42,
-                          ), // VS Code sidebar toggle border color
-                    width: 1.0,
+    return HoverButton(
+      onPressed: () => _toggleSection(title),
+      builder: (context, states) {
+        return Container(
+          decoration: BoxDecoration(
+            color: states.isHovered
+                ? hoverColor
+                : (isLight
+                      ? const Color(0xFFFAFAFA)
+                      : const Color(0xFF252526)), // Subtle bg or transparent
+            border: Border(
+              top: BorderSide(
+                color: isLight
+                    ? const Color(0xFFE5E5E5)
+                    : const Color(
+                        0xFF3E3E42,
+                      ), // VS Code sidebar toggle border color
+                width: 1.0,
+              ),
+              left: isFocused
+                  ? BorderSide(
+                      color: FluentTheme.of(context).accentColor,
+                      width: 3,
+                    )
+                  : BorderSide.none,
+            ),
+          ),
+          padding: const EdgeInsets.only(left: 4, right: 8, top: 4, bottom: 4),
+          height: 28,
+          child: Row(
+            children: [
+              Icon(
+                isExpanded
+                    ? FluentIcons.chevron_down
+                    : FluentIcons.chevron_right,
+                size: 8,
+                color: textColor,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                title,
+                style: GoogleFonts.outfit(
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
+              ),
+              const Spacer(),
+              // Badge count
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 0),
+                decoration: BoxDecoration(
+                  color: isLight
+                      ? const Color(0xFFE0E0E0)
+                      : const Color(0xFF4D4D4D),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$count',
+                  style: GoogleFonts.outfit(
+                    fontSize: 10,
+                    color: textColor,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
-              padding: const EdgeInsets.only(
-                left: 4,
-                right: 8,
-                top: 4,
-                bottom: 4,
-              ), // increased padding slightly for touch/click
-              height: 28, // slight height increase for header
-              child: Row(
-                children: [
-                  Icon(
-                    isExpanded
-                        ? FluentIcons.chevron_down
-                        : FluentIcons.chevron_right,
-                    size: 8,
-                    color: textColor,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                  const Spacer(),
-                  // Badge count
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 0,
-                    ),
-                    decoration: BoxDecoration(
-                      color: isLight
-                          ? const Color(0xFFE0E0E0)
-                          : const Color(0xFF4D4D4D),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: Text(
-                      '${children.length}',
-                      style: GoogleFonts.outfit(
-                        fontSize: 10,
-                        color: textColor,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        ),
-        if (isExpanded) Column(children: children),
-      ],
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -275,6 +379,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
     UserProfile driver,
     bool isLight,
     UserProfile? selectedDriver,
+    bool isFocused,
   ) {
     final textColor = isLight
         ? const Color(0xFF333333)
@@ -319,10 +424,10 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                     : (states.isHovered ? hoverColor : Colors.transparent),
                 border: Border(
                   left: BorderSide(
-                    color: isSelected
+                    color: isSelected || isFocused
                         ? FluentTheme.of(context).accentColor
                         : Colors.transparent,
-                    width: 3,
+                    width: isFocused && !isSelected ? 4 : 3,
                   ),
                 ),
               ),

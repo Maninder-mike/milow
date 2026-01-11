@@ -20,6 +20,7 @@ class Load {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final String tripNumber;
+  final String? poNumber;
 
   Load({
     required this.id,
@@ -43,6 +44,7 @@ class Load {
     this.createdAt,
     this.updatedAt,
     required this.tripNumber,
+    this.poNumber,
   });
 
   factory Load.empty() {
@@ -63,6 +65,7 @@ class Load {
       loadNotes: '',
       companyNotes: '',
       tripNumber: '',
+      poNumber: null,
     );
   }
 
@@ -88,6 +91,7 @@ class Load {
     DateTime? createdAt,
     DateTime? updatedAt,
     String? tripNumber,
+    String? poNumber,
   }) {
     return Load(
       id: id ?? this.id,
@@ -111,6 +115,7 @@ class Load {
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
       tripNumber: tripNumber ?? this.tripNumber,
+      poNumber: poNumber ?? this.poNumber,
     );
   }
 
@@ -136,6 +141,7 @@ class Load {
       'assigned_truck_id': assignedTruckId,
       'assigned_trailer_id': assignedTrailerId,
       'trip_number': tripNumber,
+      'po_number': poNumber,
     };
   }
 
@@ -181,6 +187,7 @@ class Load {
       assignedTruckId: json['assigned_truck_id'] as String?,
       assignedTrailerId: json['assigned_trailer_id'] as String?,
       tripNumber: json['trip_number'] as String? ?? '',
+      poNumber: json['po_number'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

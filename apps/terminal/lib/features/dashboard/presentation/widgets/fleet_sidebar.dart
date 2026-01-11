@@ -179,18 +179,6 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
           Expanded(
             child: vehiclesAsync.when(
               data: (vehicles) {
-                if (vehicles.isNotEmpty) {
-                  debugPrint(
-                    'DEBUG: FleetSidebar fetched ${vehicles.length} vehicles',
-                  );
-                  for (final v in vehicles) {
-                    debugPrint(
-                      'DEBUG: Vehicle ${v['truck_number']} - Status: ${v['status']}, Type: ${v['vehicle_type']}',
-                    );
-                  }
-                } else {
-                  debugPrint('DEBUG: FleetSidebar fetched 0 vehicles');
-                }
                 return ListView(
                   padding: EdgeInsets.zero,
                   children: [

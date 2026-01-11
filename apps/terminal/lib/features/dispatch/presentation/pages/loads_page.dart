@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +19,7 @@ import '../widgets/dispatch_stat_card.dart';
 import '../widgets/load_assignment_dialog.dart';
 import '../widgets/load_quote_dialog.dart' hide QuoteLineItem;
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../features/billing/presentation/widgets/invoice_builder_dialog.dart';
 
 class LoadsPage extends ConsumerStatefulWidget {
   const LoadsPage({super.key});
@@ -32,6 +34,93 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
   @override
   void initState() {
     super.initState();
+  }
+
+  // Keyboard Navigation
+  final FocusNode _listFocusNode = FocusNode();
+  final ScrollController _scrollController = ScrollController();
+  int? _focusedIndex;
+
+  @override
+  void dispose() {
+    _listFocusNode.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  List<Load> _filterLoads(List<Load> rawLoads) {
+    if (_searchText.isEmpty) return rawLoads;
+    final search = _searchText.toLowerCase();
+    return rawLoads.where((load) {
+      return load.loadReference.toLowerCase().contains(search) ||
+          load.pickup.companyName.toLowerCase().contains(search) ||
+          load.delivery.companyName.toLowerCase().contains(search);
+    }).toList();
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent) return KeyEventResult.ignored;
+
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      ref.read(loadsListProvider).whenData((rawLoads) {
+        final loads = _filterLoads(rawLoads);
+        if (loads.isEmpty) return;
+
+        setState(() {
+          if (_focusedIndex == null || _focusedIndex! >= loads.length - 1) {
+            _focusedIndex = 0;
+          } else {
+            _focusedIndex = _focusedIndex! + 1;
+          }
+        });
+        _scrollToFocused();
+      });
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      ref.read(loadsListProvider).whenData((rawLoads) {
+        final loads = _filterLoads(rawLoads);
+        if (loads.isEmpty) return;
+
+        setState(() {
+          if (_focusedIndex == null || _focusedIndex! <= 0) {
+            _focusedIndex = loads.length - 1;
+          } else {
+            _focusedIndex = _focusedIndex! - 1;
+          }
+        });
+        _scrollToFocused();
+      });
+      return KeyEventResult.handled;
+    } else if (event.logicalKey == LogicalKeyboardKey.enter) {
+      if (_focusedIndex != null) {
+        ref.read(loadsListProvider).whenData((rawLoads) {
+          final loads = _filterLoads(rawLoads);
+          if (_focusedIndex! < loads.length) {
+            _onEditLoad(loads[_focusedIndex!]);
+          }
+        });
+      }
+      return KeyEventResult.handled;
+    }
+
+    return KeyEventResult.ignored;
+  }
+
+  void _scrollToFocused() {
+    if (_focusedIndex == null) return;
+    const itemHeight = 73.0; // 72 height + 1 separator approx
+    final offset = _focusedIndex! * itemHeight;
+
+    final minScroll = _scrollController.position.pixels;
+    final maxScroll = minScroll + _scrollController.position.viewportDimension;
+
+    if (offset < minScroll) {
+      _scrollController.jumpTo(offset);
+    } else if (offset + itemHeight > maxScroll) {
+      _scrollController.jumpTo(
+        offset + itemHeight - _scrollController.position.viewportDimension,
+      );
+    }
   }
 
   @override
@@ -91,18 +180,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                     final users = usersAsync.value ?? [];
                     final vehicles = vehiclesAsync.value ?? [];
 
-                    final loads = rawLoads.where((load) {
-                      if (_searchText.isEmpty) return true;
-                      final search = _searchText.toLowerCase();
-                      return load.loadReference.toLowerCase().contains(
-                            search,
-                          ) ||
-                          load.pickup.companyName.toLowerCase().contains(
-                            search,
-                          ) ||
-                          load.pickup.city.toLowerCase().contains(search) ||
-                          load.status.toLowerCase().contains(search);
-                    }).toList();
+                    final loads = _filterLoads(rawLoads);
                     final now = DateTime.now();
                     final todayCount = rawLoads.where((l) {
                       return l.pickup.date.year == now.year &&
@@ -335,7 +413,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
             final controllerState = ref.read(loadControllerProvider);
             if (controllerState.hasError) {
               debugPrint('UpdateLoad failed: ${controllerState.error}');
-              if (!context.mounted) return;
+              if (!mounted) return;
               displayInfoBar(
                 context,
                 builder: (context, close) => InfoBar(
@@ -376,7 +454,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                 }
               } catch (e) {
                 debugPrint('Error saving fleet assignments: $e');
-                if (!context.mounted) return;
+                if (!mounted) return;
                 displayInfoBar(
                   context,
                   builder: (context, close) => InfoBar(
@@ -424,7 +502,26 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                 required deliveryEndDate,
                 required notes,
                 required status,
+                required poNumber,
+                required loadReference,
+                required expiresOn,
               }) async {
+                // Check if meaningful load details changed
+                if ((poNumber != null && poNumber != load.poNumber) ||
+                    (loadReference != null &&
+                        loadReference != load.loadReference)) {
+                  // Update the load first
+                  final updatedLoad = load.copyWith(
+                    poNumber: poNumber,
+                    loadReference: loadReference?.isNotEmpty == true
+                        ? loadReference
+                        : load.loadReference,
+                  );
+                  await ref
+                      .read(loadControllerProvider.notifier)
+                      .updateLoad(updatedLoad);
+                }
+
                 // Convert dialog line items to Quote model format
                 final quoteLineItems = lineItems
                     .map(
@@ -451,6 +548,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                   lineItems: quoteLineItems,
                   total: total,
                   notes: notes,
+                  expiresOn: expiresOn,
                 );
 
                 try {
@@ -538,19 +636,26 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
           ),
           // Table Rows
           Expanded(
-            child: ListView.separated(
-              itemCount: loads.length,
-              separatorBuilder: (context, index) => const Divider(),
-              itemBuilder: (context, index) {
-                final load = loads[index];
-                return _buildRow(
-                  load,
-                  index + 1,
-                  theme,
-                  users: users,
-                  vehicles: vehicles,
-                );
-              },
+            child: Focus(
+              focusNode: _listFocusNode,
+              onKeyEvent: _handleKeyEvent,
+              child: ListView.separated(
+                controller: _scrollController,
+                itemCount: loads.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final load = loads[index];
+                  final isFocused = index == _focusedIndex;
+                  return _buildRow(
+                    load,
+                    index + 1,
+                    theme,
+                    isFocused: isFocused,
+                    users: users,
+                    vehicles: vehicles,
+                  );
+                },
+              ),
             ),
           ),
         ],
@@ -589,6 +694,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     Load load,
     int seq,
     FluentThemeData theme, {
+    required bool isFocused,
     required List<UserProfile> users,
     required List<Map<String, dynamic>> vehicles,
   }) {
@@ -596,6 +702,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
       load: load,
       seq: seq,
       theme: theme,
+      isFocused: isFocused,
       users: users,
       vehicles: vehicles,
       onEdit: () => _onEditLoad(load),
@@ -672,6 +779,7 @@ class _LoadRowItem extends StatefulWidget {
   final Load load;
   final int seq;
   final FluentThemeData theme;
+  final bool isFocused;
   final List<UserProfile> users;
   final List<Map<String, dynamic>> vehicles;
   final VoidCallback onEdit;
@@ -683,6 +791,7 @@ class _LoadRowItem extends StatefulWidget {
     required this.load,
     required this.seq,
     required this.theme,
+    required this.isFocused,
     required this.users,
     required this.vehicles,
     required this.onEdit,
@@ -727,256 +836,33 @@ class _LoadRowItemState extends State<_LoadRowItem> {
                 color: states.isHovered
                     ? widget.theme.resources.subtleFillColorSecondary
                     : Colors.transparent,
-                child: Row(
-                  children: [
-                    // Trip # & Ref
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.load.tripNumber,
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  widget.theme.resources.textFillColorPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            'Ref: ${widget.load.loadReference}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color:
-                                  widget.theme.resources.textFillColorTertiary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Date (Pickup)
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            DateFormat(
-                              'MM/dd/yy',
-                            ).format(widget.load.pickup.date),
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  widget.theme.resources.textFillColorPrimary,
-                            ),
-                          ),
-                          Text(
-                            DateFormat('HH:mm').format(widget.load.pickup.date),
-                            style: GoogleFonts.outfit(
-                              color:
-                                  widget.theme.resources.textFillColorTertiary,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Shipper (Name + Address)
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.load.pickup.companyName,
-                            style: GoogleFonts.outfit(
-                              fontSize: 13, // Slightly smaller
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  widget.theme.resources.textFillColorPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            '${widget.load.pickup.city}, ${widget.load.pickup.state} ${widget.load.pickup.zipCode}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color:
-                                  widget.theme.resources.textFillColorSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Cargo
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            '${widget.load.weight} ${widget.load.weightUnit}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  widget.theme.resources.textFillColorPrimary,
-                            ),
-                          ),
-                          Text(
-                            '${widget.load.quantity} Units',
-                            style: GoogleFonts.outfit(
-                              color:
-                                  widget.theme.resources.textFillColorTertiary,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Delivery Date
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            DateFormat(
-                              'MM/dd/yy',
-                            ).format(widget.load.delivery.date),
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color:
-                                  widget.theme.resources.textFillColorPrimary,
-                            ),
-                          ),
-                          Text(
-                            DateFormat(
-                              'HH:mm',
-                            ).format(widget.load.delivery.date),
-                            style: GoogleFonts.outfit(
-                              color:
-                                  widget.theme.resources.textFillColorTertiary,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Receiver (Name + Address)
-                    Expanded(
-                      flex: 4,
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            widget.load.delivery.companyName,
-                            style: GoogleFonts.outfit(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w700,
-                              color:
-                                  widget.theme.resources.textFillColorPrimary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            '${widget.load.delivery.city}, ${widget.load.delivery.state} ${widget.load.delivery.zipCode}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color:
-                                  widget.theme.resources.textFillColorSecondary,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Status
-                    Expanded(
-                      flex: 2,
-                      child: Align(
-                        alignment: Alignment.centerLeft,
-                        child: _buildStatusChip(widget.load.status),
-                      ),
-                    ),
-                    // Assigned To
-                    Expanded(
-                      flex: 3,
-                      child: Padding(
-                        padding: const EdgeInsets.only(left: 8.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    border: widget.isFocused
+                        ? Border.all(color: widget.theme.accentColor, width: 2)
+                        : null,
+                  ),
+                  child: Row(
+                    children: [
+                      // Trip # & Ref
+                      Expanded(
+                        flex: 2,
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Driver Name
                             Text(
-                              () {
-                                if (widget.load.assignedDriverId == null) {
-                                  return 'Unassigned';
-                                }
-                                final driver = widget.users.firstWhere(
-                                  (u) => u.id == widget.load.assignedDriverId,
-                                  orElse: () => const UserProfile(
-                                    id: '',
-                                    role: UserRole.driver,
-                                    fullName: 'Unknown',
-                                  ),
-                                );
-                                return driver.fullName ?? 'Unknown Driver';
-                              }(),
+                              widget.load.tripNumber,
                               style: GoogleFonts.outfit(
                                 fontSize: 13,
-                                fontWeight: FontWeight.w700,
+                                fontWeight: FontWeight.w600,
                                 color:
                                     widget.theme.resources.textFillColorPrimary,
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
-                            // Truck / Trailer
                             Text(
-                              () {
-                                final parts = <String>[];
-                                if (widget.load.assignedTruckId != null) {
-                                  final truck = widget.vehicles.firstWhere(
-                                    (v) =>
-                                        v['id'] == widget.load.assignedTruckId,
-                                    orElse: () => {},
-                                  );
-                                  if (truck.isNotEmpty) {
-                                    parts.add(
-                                      'Trk: ${truck['truck_number'] ?? 'N/A'}',
-                                    );
-                                  }
-                                }
-                                if (widget.load.assignedTrailerId != null) {
-                                  final trailer = widget.vehicles.firstWhere(
-                                    (v) =>
-                                        v['id'] ==
-                                        widget.load.assignedTrailerId,
-                                    orElse: () => {},
-                                  );
-                                  if (trailer.isNotEmpty) {
-                                    parts.add(
-                                      'Trl: ${trailer['truck_number'] ?? 'N/A'}',
-                                    );
-                                  }
-                                }
-                                return parts.isEmpty
-                                    ? 'No Resources'
-                                    : parts.join(' / ');
-                              }(),
+                              'Ref: ${widget.load.loadReference}',
                               style: GoogleFonts.outfit(
                                 fontSize: 11,
                                 color: widget
@@ -989,8 +875,255 @@ class _LoadRowItemState extends State<_LoadRowItem> {
                           ],
                         ),
                       ),
-                    ),
-                  ],
+                      // Date (Pickup)
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat(
+                                'MM/dd/yy',
+                              ).format(widget.load.pickup.date),
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    widget.theme.resources.textFillColorPrimary,
+                              ),
+                            ),
+                            Text(
+                              DateFormat(
+                                'HH:mm',
+                              ).format(widget.load.pickup.date),
+                              style: GoogleFonts.outfit(
+                                color: widget
+                                    .theme
+                                    .resources
+                                    .textFillColorTertiary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Shipper (Name + Address)
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.load.pickup.companyName,
+                              style: GoogleFonts.outfit(
+                                fontSize: 13, // Slightly smaller
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    widget.theme.resources.textFillColorPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${widget.load.pickup.city}, ${widget.load.pickup.state} ${widget.load.pickup.zipCode}',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                color: widget
+                                    .theme
+                                    .resources
+                                    .textFillColorSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Cargo
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              '${widget.load.weight} ${widget.load.weightUnit}',
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    widget.theme.resources.textFillColorPrimary,
+                              ),
+                            ),
+                            Text(
+                              '${widget.load.quantity} Units',
+                              style: GoogleFonts.outfit(
+                                color: widget
+                                    .theme
+                                    .resources
+                                    .textFillColorTertiary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Delivery Date
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              DateFormat(
+                                'MM/dd/yy',
+                              ).format(widget.load.delivery.date),
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    widget.theme.resources.textFillColorPrimary,
+                              ),
+                            ),
+                            Text(
+                              DateFormat(
+                                'HH:mm',
+                              ).format(widget.load.delivery.date),
+                              style: GoogleFonts.outfit(
+                                color: widget
+                                    .theme
+                                    .resources
+                                    .textFillColorTertiary,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Receiver (Name + Address)
+                      Expanded(
+                        flex: 4,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              widget.load.delivery.companyName,
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color:
+                                    widget.theme.resources.textFillColorPrimary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            Text(
+                              '${widget.load.delivery.city}, ${widget.load.delivery.state} ${widget.load.delivery.zipCode}',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                color: widget
+                                    .theme
+                                    .resources
+                                    .textFillColorSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ],
+                        ),
+                      ),
+                      // Status
+                      Expanded(
+                        flex: 2,
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: _buildStatusChip(widget.load.status),
+                        ),
+                      ),
+                      // Assigned To
+                      Expanded(
+                        flex: 3,
+                        child: Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              // Driver Name
+                              Text(
+                                () {
+                                  if (widget.load.assignedDriverId == null) {
+                                    return 'Unassigned';
+                                  }
+                                  final driver = widget.users.firstWhere(
+                                    (u) => u.id == widget.load.assignedDriverId,
+                                    orElse: () => const UserProfile(
+                                      id: '',
+                                      role: UserRole.driver,
+                                      fullName: 'Unknown',
+                                    ),
+                                  );
+                                  return driver.fullName ?? 'Unknown Driver';
+                                }(),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  color: widget
+                                      .theme
+                                      .resources
+                                      .textFillColorPrimary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              // Truck / Trailer
+                              Text(
+                                () {
+                                  final parts = <String>[];
+                                  if (widget.load.assignedTruckId != null) {
+                                    final truck = widget.vehicles.firstWhere(
+                                      (v) =>
+                                          v['id'] ==
+                                          widget.load.assignedTruckId,
+                                      orElse: () => {},
+                                    );
+                                    if (truck.isNotEmpty) {
+                                      parts.add(
+                                        'Trk: ${truck['truck_number'] ?? 'N/A'}',
+                                      );
+                                    }
+                                  }
+                                  if (widget.load.assignedTrailerId != null) {
+                                    final trailer = widget.vehicles.firstWhere(
+                                      (v) =>
+                                          v['id'] ==
+                                          widget.load.assignedTrailerId,
+                                      orElse: () => {},
+                                    );
+                                    if (trailer.isNotEmpty) {
+                                      parts.add(
+                                        'Trl: ${trailer['truck_number'] ?? 'N/A'}',
+                                      );
+                                    }
+                                  }
+                                  return parts.isEmpty
+                                      ? 'No Resources'
+                                      : parts.join(' / ');
+                                }(),
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  color: widget
+                                      .theme
+                                      .resources
+                                      .textFillColorTertiary,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               );
             },
@@ -1078,6 +1211,19 @@ class _LoadRowItemState extends State<_LoadRowItem> {
                 widget.onBuildQuote();
               },
             ),
+            if (widget.load.status.toLowerCase() == 'delivered')
+              MenuFlyoutItem(
+                leading: const Icon(FluentIcons.money_24_regular),
+                text: const Text('Generate Invoice'),
+                onPressed: () {
+                  Navigator.pop(context);
+                  showDialog(
+                    context: context,
+                    builder: (context) =>
+                        InvoiceBuilderDialog(load: widget.load),
+                  );
+                },
+              ),
             const MenuFlyoutSeparator(),
             MenuFlyoutItem(
               leading: const Icon(FluentIcons.contact_card_24_regular),

@@ -75,4 +75,27 @@ class QuoteRepository {
   Future<void> deleteQuote(String id) async {
     await _supabase.from('quotes').delete().eq('id', id);
   }
+
+  /// Update just the status of a quote
+  Future<void> updateStatus(String id, String status) async {
+    await _supabase.from('quotes').update({'status': status}).eq('id', id);
+  }
+
+  /// Fetch a single quote by ID
+  Future<Quote?> fetchQuoteById(String id) async {
+    final response = await _supabase
+        .from('quotes')
+        .select('''
+          *,
+          loads!inner(load_reference)
+        ''')
+        .eq('id', id)
+        .maybeSingle();
+
+    if (response == null) return null;
+    final loadData = response['loads'] as Map<String, dynamic>?;
+    final quoteJson = Map<String, dynamic>.from(response);
+    quoteJson['load_reference'] = loadData?['load_reference'] ?? '';
+    return Quote.fromJson(quoteJson);
+  }
 }

@@ -8,6 +8,9 @@ class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onDriversTap;
   final VoidCallback onFleetTap;
   final VoidCallback onLoadsTap;
+  final VoidCallback onInvoicesTap;
+  final VoidCallback onCrmTap;
+  final VoidCallback onSettlementsTap;
   final VoidCallback onSettingsTap;
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
@@ -19,6 +22,9 @@ class PrimarySidebar extends ConsumerWidget {
     required this.onDriversTap,
     required this.onFleetTap,
     required this.onLoadsTap,
+    required this.onInvoicesTap,
+    required this.onCrmTap,
+    required this.onSettlementsTap,
     required this.onSettingsTap,
     required this.onProfileTap,
     required this.onDashboardTap,
@@ -72,6 +78,36 @@ class PrimarySidebar extends ConsumerWidget {
               label: 'Loads',
               onTap: onLoadsTap,
               isActive: activePane == 'loads', // or route check
+            ),
+            const SizedBox(height: 16),
+
+            // Invoices
+            _buildNavItem(
+              context,
+              FluentIcons.money_24_regular,
+              label: 'Invoices',
+              onTap: onInvoicesTap,
+              isActive: activePane == 'invoices',
+            ),
+            const SizedBox(height: 16),
+
+            // CRM / Directory
+            _buildNavItem(
+              context,
+              FluentIcons.person_note_24_regular,
+              label: 'CRM',
+              onTap: onCrmTap,
+              isActive: activePane == 'crm',
+            ),
+            const SizedBox(height: 16),
+
+            // Settlements
+            _buildNavItem(
+              context,
+              FluentIcons.receipt_money_24_regular,
+              label: 'Settlements',
+              onTap: onSettlementsTap,
+              isActive: activePane == 'settlements',
             ),
             const SizedBox(height: 16),
 

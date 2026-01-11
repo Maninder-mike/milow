@@ -92,6 +92,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     } else if (location.startsWith('/quotes')) {
       title = 'Quotes';
       icon = FluentIcons.document_copy_24_regular;
+    } else if (location.startsWith('/invoices')) {
+      title = 'Invoices';
+      icon = FluentIcons.money_24_regular;
     } else if (location.startsWith('/driver-hos')) {
       title = 'Driver HOS';
       icon = FluentIcons.clock_24_regular;
@@ -101,6 +104,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     } else if (location.startsWith('/drivers')) {
       title = 'Drivers';
       icon = FluentIcons.people_team_24_regular;
+    } else if (location.startsWith('/crm')) {
+      title = 'CRM / Directory';
+      icon = FluentIcons.person_note_24_regular;
     }
 
     final tab = TabInfo(
@@ -177,6 +183,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                         onDriversTap: () => _toggleSidebar('drivers'),
                         onFleetTap: () => _toggleSidebar('fleet_list'),
                         onLoadsTap: () => _navigateTo('/highway-dispatch'),
+                        onInvoicesTap: () => _navigateTo('/invoices'),
+                        onCrmTap: () => _navigateTo('/crm'),
+                        onSettlementsTap: () => _navigateTo('/settlements'),
                         onSettingsTap: () => _navigateTo('/settings'),
                         onProfileTap: () => _navigateTo('/profile'),
                         onDashboardTap: () => _navigateTo('/dashboard'),
@@ -266,6 +275,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                 break;
               case 'QUOTES':
                 _navigateTo('/quotes');
+                break;
+              case 'INVOICES':
+                _navigateTo('/invoices');
                 break;
               case 'DRIVER HOS':
                 _navigateTo('/driver-hos');

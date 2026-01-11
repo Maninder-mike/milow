@@ -39,13 +39,16 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Quick Actions',
-                  style: GoogleFonts.outfit(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: titleColor,
-                    letterSpacing: 0.5,
+                Flexible(
+                  child: Text(
+                    'Quick Actions',
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.outfit(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: titleColor,
+                      letterSpacing: 0.5,
+                    ),
                   ),
                 ),
                 IconButton(
@@ -99,6 +102,15 @@ class _SecondarySidebarState extends State<SecondarySidebar> {
                   title: 'Quotes',
                   description: 'View saved quotes',
                   color: AppColors.info,
+                ),
+                const SizedBox(height: 8),
+                _buildActionCard(
+                  context,
+                  isLight,
+                  icon: FluentIcons.money_24_regular,
+                  title: 'Invoices',
+                  description: 'Manage billing',
+                  color: AppColors.warning,
                 ),
               ],
             ),

@@ -121,10 +121,14 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           EOF
 
-      # Install dependencies
+      # Install dependencies from workspace root
       - name: Install dependencies
         run: |
           echo "📦 Installing Flutter dependencies..."
+          # Clean and get deps from workspace root to respect SDK constraint
+          rm -rf .dart_tool
+          flutter pub get
+          # Also clean driver app specifically
           cd apps/driver
           flutter clean
           flutter pub get

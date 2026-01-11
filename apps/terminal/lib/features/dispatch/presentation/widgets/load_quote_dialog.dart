@@ -30,16 +30,23 @@ class LoadQuoteDialog extends StatefulWidget {
   const LoadQuoteDialog({
     required this.load,
     required this.onPublish,
+    this.existingQuote,
     super.key,
   });
 
   final Load load;
+
+  /// If provided, the dialog will be pre-populated for editing
+  final dynamic existingQuote; // Quote from quote.dart (avoid circular import)
   final Future<void> Function({
     required List<QuoteLineItem> lineItems,
     required DateTime? deliveryStartDate,
     required DateTime? deliveryEndDate,
     required String notes,
     required String status,
+    required String? poNumber,
+    required String? loadReference,
+    required DateTime? expiresOn,
   })
   onPublish;
 
@@ -49,15 +56,7 @@ class LoadQuoteDialog extends StatefulWidget {
 
 class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
   // Quote Line Items
-  final List<QuoteLineItem> _lineItems = [
-    QuoteLineItem(
-      type: 'Linehaul',
-      description: 'Base freight rate',
-      rate: 0.0,
-      quantity: 1.0,
-      unit: 'flat',
-    ),
-  ];
+  late List<QuoteLineItem> _lineItems;
 
   // Quote metadata
   DateTime? _pickupDate;
@@ -68,24 +67,6 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
   final TextEditingController _poNumberController = TextEditingController();
   final TextEditingController _refNumberController = TextEditingController();
 
-  // Charge Types
-  final List<String> _chargeTypes = [
-    'Linehaul',
-    'Fuel Surcharge',
-    'Accessorial',
-    'Detention',
-    'Layover',
-    'TONU',
-    'Lumper',
-    'Stop Off',
-    'Hazmat',
-    'Reefer',
-    'Other',
-  ];
-
-  // Units
-  final List<String> _units = ['flat', 'per mile', 'per hour', '%'];
-
   // Status options
   final List<String> _statusOptions = ['draft', 'sent', 'won', 'lost'];
 
@@ -93,11 +74,48 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
       _lineItems.fold(0.0, (sum, item) => sum + item.total);
 
   @override
+  @override
   void initState() {
     super.initState();
     _pickupDate = widget.load.pickup.date;
     _deliveryDate = widget.load.delivery.date;
     _expiresOn = DateTime.now().add(const Duration(days: 7));
+    _refNumberController.text = widget.load.loadReference;
+    _poNumberController.text = widget.load.poNumber ?? '';
+
+    // Pre-populate from existing quote if editing
+    if (widget.existingQuote != null) {
+      final existing = widget.existingQuote;
+      _quoteStatus = existing.status ?? 'draft';
+      _notesController.text = existing.notes ?? '';
+      _expiresOn = existing.expiresOn;
+      // Inherit loading reference from load if quote doesn't have it (or override)
+      if (existing.loadReference.isNotEmpty) {
+        _refNumberController.text = existing.loadReference;
+      }
+
+      // Convert existing line items
+      final existingItems = existing.lineItems as List<dynamic>?;
+      if (existingItems != null && existingItems.isNotEmpty) {
+        _lineItems = existingItems.map((item) {
+          // Check if item is already QuoteLineItem or needs conversion (from JSON/Map)
+          if (item is QuoteLineItem) return item;
+          // If it's from JSON it might be a Map, or passed as object depending on how it's stored.
+          // The Quote model definition suggests List<QuoteLineItem> but let's be safe.
+          return QuoteLineItem(
+            type: item.type ?? 'Linehaul',
+            description: item.description ?? '',
+            rate: item.rate ?? 0.0,
+            quantity: item.quantity ?? 1.0,
+            unit: item.unit ?? 'flat',
+          );
+        }).toList();
+      } else {
+        _lineItems = [QuoteLineItem()];
+      }
+    } else {
+      _lineItems = [QuoteLineItem()];
+    }
   }
 
   @override
@@ -437,6 +455,7 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                 ),
               ),
               child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Header
                   Container(
@@ -452,8 +471,8 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                     ),
                     child: Row(
                       children: [
-                        SizedBox(
-                          width: 150,
+                        Expanded(
+                          flex: 3,
                           child: Text(
                             'TYPE',
                             style: GoogleFonts.outfit(
@@ -464,8 +483,9 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                             ),
                           ),
                         ),
+                        const SizedBox(width: 8),
                         Expanded(
-                          flex: 2,
+                          flex: 5,
                           child: Text(
                             'DESCRIPTION',
                             style: GoogleFonts.outfit(
@@ -476,8 +496,9 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                             ),
                           ),
                         ),
-                        SizedBox(
-                          width: 100,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
                           child: Text(
                             'RATE',
                             style: GoogleFonts.outfit(
@@ -488,8 +509,9 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                             ),
                           ),
                         ),
-                        SizedBox(
-                          width: 80,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 1,
                           child: Text(
                             'QTY',
                             style: GoogleFonts.outfit(
@@ -500,8 +522,9 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                             ),
                           ),
                         ),
-                        SizedBox(
-                          width: 100,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
                           child: Text(
                             'UNIT',
                             style: GoogleFonts.outfit(
@@ -512,8 +535,9 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                             ),
                           ),
                         ),
-                        SizedBox(
-                          width: 100,
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
                           child: Text(
                             'TOTAL',
                             textAlign: TextAlign.right,
@@ -525,7 +549,7 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                             ),
                           ),
                         ),
-                        const SizedBox(width: 40),
+                        const SizedBox(width: 48), // Padding + Icon space
                       ],
                     ),
                   ),
@@ -546,7 +570,17 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
                           ),
                         ),
                       ),
-                      child: _buildChargeRow(item, index),
+                      child: _ChargeRow(
+                        key: ObjectKey(
+                          item,
+                        ), // Important: preserve state during reorders/edits
+                        item: item,
+                        onDelete: () => _removeLineItem(index),
+                        onChanged: () {
+                          // Trigger rebuild to update total
+                          setState(() {});
+                        },
+                      ),
                     );
                   }),
                   // Add Line Item
@@ -654,14 +688,18 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
         ),
         FilledButton(
           onPressed: () async {
+            final navigator = Navigator.of(context);
             await widget.onPublish(
               lineItems: _lineItems,
               deliveryStartDate: _pickupDate,
               deliveryEndDate: _deliveryDate,
               notes: _notesController.text,
               status: _quoteStatus,
+              poNumber: _poNumberController.text,
+              loadReference: _refNumberController.text,
+              expiresOn: _expiresOn,
             );
-            if (mounted) Navigator.pop(context);
+            if (mounted) navigator.pop();
           },
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -671,99 +709,6 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
               Text(_quoteStatus == 'draft' ? 'Save Draft' : 'Send Quote'),
             ],
           ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildChargeRow(QuoteLineItem item, int index) {
-    return Row(
-      children: [
-        // Type
-        SizedBox(
-          width: 150,
-          child: ComboBox<String>(
-            value: item.type,
-            items: _chargeTypes
-                .map((t) => ComboBoxItem<String>(value: t, child: Text(t)))
-                .toList(),
-            onChanged: (v) {
-              if (v != null) setState(() => item.type = v);
-            },
-            isExpanded: true,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Description
-        Expanded(
-          flex: 2,
-          child: TextBox(
-            placeholder: 'Description',
-            onChanged: (v) => item.description = v,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Rate
-        SizedBox(
-          width: 100,
-          child: TextBox(
-            placeholder: '\$0.00',
-            onChanged: (v) {
-              setState(() {
-                item.rate = double.tryParse(v) ?? 0.0;
-              });
-            },
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Quantity
-        SizedBox(
-          width: 80,
-          child: TextBox(
-            placeholder: '1',
-            onChanged: (v) {
-              setState(() {
-                item.quantity = double.tryParse(v) ?? 1.0;
-              });
-            },
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Unit
-        SizedBox(
-          width: 100,
-          child: ComboBox<String>(
-            value: item.unit,
-            items: _units
-                .map((u) => ComboBoxItem<String>(value: u, child: Text(u)))
-                .toList(),
-            onChanged: (v) {
-              if (v != null) setState(() => item.unit = v);
-            },
-            isExpanded: true,
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Total
-        SizedBox(
-          width: 100,
-          child: Text(
-            '\$${item.total.toStringAsFixed(2)}',
-            textAlign: TextAlign.right,
-            style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
-          ),
-        ),
-        const SizedBox(width: 8),
-        // Delete
-        IconButton(
-          icon: Icon(
-            FluentIcons.delete_24_regular,
-            color: _lineItems.length > 1 ? AppColors.error : AppColors.neutral,
-            size: 18,
-          ),
-          onPressed: _lineItems.length > 1
-              ? () => _removeLineItem(index)
-              : null,
         ),
       ],
     );
@@ -782,5 +727,155 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
       default:
         return AppColors.neutral;
     }
+  }
+}
+
+class _ChargeRow extends StatefulWidget {
+  final QuoteLineItem item;
+  final VoidCallback onDelete;
+  final VoidCallback onChanged;
+
+  const _ChargeRow({
+    required this.item,
+    required this.onDelete,
+    required this.onChanged,
+    super.key,
+  });
+
+  @override
+  State<_ChargeRow> createState() => _ChargeRowState();
+}
+
+class _ChargeRowState extends State<_ChargeRow> {
+  late TextEditingController _descController;
+  late TextEditingController _rateController;
+  late TextEditingController _qtyController;
+
+  final List<String> _chargeTypes = [
+    'Linehaul',
+    'Fuel Surcharge',
+    'Accessorial',
+    'Detention',
+    'Layover',
+    'TONU',
+    'Lumper',
+    'Stop Off',
+    'Hazmat',
+    'Reefer',
+    'Other',
+  ];
+  final List<String> _units = ['flat', 'per mile', 'per hour', '%'];
+
+  @override
+  void initState() {
+    super.initState();
+    _descController = TextEditingController(text: widget.item.description);
+    _rateController = TextEditingController(text: widget.item.rate.toString());
+    _qtyController = TextEditingController(
+      text: widget.item.quantity.toString(),
+    );
+
+    _descController.addListener(_updateItem);
+    _rateController.addListener(_updateItem);
+    _qtyController.addListener(_updateItem);
+  }
+
+  void _updateItem() {
+    widget.item.description = _descController.text;
+    widget.item.rate = double.tryParse(_rateController.text) ?? 0.0;
+    widget.item.quantity = double.tryParse(_qtyController.text) ?? 1.0;
+    widget.onChanged();
+  }
+
+  @override
+  void dispose() {
+    _descController.dispose();
+    _rateController.dispose();
+    _qtyController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        // Type
+        Expanded(
+          flex: 3,
+          child: ComboBox<String>(
+            value: widget.item.type,
+            items: _chargeTypes
+                .map((t) => ComboBoxItem<String>(value: t, child: Text(t)))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) {
+                setState(() => widget.item.type = v);
+                widget.onChanged();
+              }
+            },
+            isExpanded: true,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Description
+        Expanded(
+          flex: 5,
+          child: TextBox(
+            placeholder: 'Description',
+            controller: _descController,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Rate
+        Expanded(
+          flex: 2,
+          child: TextBox(placeholder: '\$0.00', controller: _rateController),
+        ),
+        const SizedBox(width: 8),
+        // Quantity
+        Expanded(
+          flex: 1,
+          child: TextBox(placeholder: '1', controller: _qtyController),
+        ),
+        const SizedBox(width: 8),
+        // Unit
+        Expanded(
+          flex: 2,
+          child: ComboBox<String>(
+            value: widget.item.unit,
+            items: _units
+                .map((u) => ComboBoxItem<String>(value: u, child: Text(u)))
+                .toList(),
+            onChanged: (v) {
+              if (v != null) {
+                setState(() => widget.item.unit = v);
+                widget.onChanged();
+              }
+            },
+            isExpanded: true,
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Total
+        Expanded(
+          flex: 2,
+          child: Text(
+            '\$${widget.item.total.toStringAsFixed(2)}',
+            textAlign: TextAlign.right,
+            style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 8),
+        // Delete
+        IconButton(
+          icon: Icon(
+            FluentIcons.delete_24_regular,
+            size: 16,
+            color: AppColors.error,
+          ),
+          onPressed: widget.onDelete,
+        ),
+      ],
+    );
   }
 }

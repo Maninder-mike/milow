@@ -30,6 +30,10 @@ import 'package:terminal/features/dashboard/screens/vehicles/vehicle_status_page
 import 'package:terminal/features/dispatch/presentation/pages/dispatch_page.dart';
 import 'package:terminal/features/dispatch/presentation/pages/loads_page.dart'; // [NEW] import
 import 'package:terminal/features/dispatch/presentation/pages/quotes_page.dart';
+import 'package:terminal/features/billing/presentation/pages/invoices_page.dart';
+import 'package:terminal/features/crm/presentation/pages/crm_page.dart';
+import 'package:terminal/features/crm/presentation/pages/crm_details_page.dart';
+import 'package:terminal/features/settlements/presentation/pages/settlements_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -153,6 +157,23 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/dispatch',
             builder: (context, state) => const DispatchPage(),
+          ),
+          GoRoute(
+            path: '/invoices',
+            builder: (context, state) => const InvoicesPage(),
+          ),
+          GoRoute(path: '/crm', builder: (context, state) => const CRMPage()),
+          GoRoute(
+            path: '/crm/:type/:id',
+            builder: (context, state) {
+              final type = state.pathParameters['type'] ?? '';
+              final id = state.pathParameters['id'] ?? '';
+              return CRMDetailsPage(typeString: type, entityId: id);
+            },
+          ),
+          GoRoute(
+            path: '/settlements',
+            builder: (context, state) => const SettlementsPage(),
           ),
         ],
       ),

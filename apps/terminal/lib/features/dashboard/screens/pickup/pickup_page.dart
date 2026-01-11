@@ -1,6 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:terminal/core/constants/location_data.dart';
 import 'package:terminal/core/widgets/form_widgets.dart';
 import '../shared/trip_entry_scaffold.dart';
@@ -28,6 +29,7 @@ class _PickUpPageState extends State<PickUpPage> {
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _faxController = TextEditingController();
+  final _gateCodeController = TextEditingController();
 
   // Schedule & Reference
   DateTime _selectedDate = DateTime.now();
@@ -38,7 +40,14 @@ class _PickUpPageState extends State<PickUpPage> {
     8,
     0,
   );
-  final _refNumberController = TextEditingController(); // PO / PU numbers
+  DateTime? _endTime; // Optional End Time for windows
+
+  final _poNumberController = TextEditingController();
+  final _pickupNumberController = TextEditingController();
+
+  // Legacy ref controller kept for search compatibility if needed,
+  // but primary UI will use PO/Pickup Numbers
+  final _refNumberController = TextEditingController();
   String _status = 'Scheduled'; // New status field
   String _sortColumn = 'pickup_date';
   bool _isAscending = false;
@@ -60,11 +69,24 @@ class _PickUpPageState extends State<PickUpPage> {
   bool _hazmat = false;
   bool _facility247 = false;
   bool _strapsRequired = false;
+  bool _lumperRequired = false;
+  bool _gateCodeRequired = false;
+  bool _liftgateRequired = false;
+  bool _insideDelivery = false;
+  bool _residential = false;
+  bool _tempControl = false;
+  bool _highValue = false;
+  bool _teamRequired = false;
+  bool _twicRequired = false;
+  bool _noTouchFreight = false;
 
   // Cargo Details
   final _goodsController = TextEditingController();
   final _weightController = TextEditingController();
   final _quantityController = TextEditingController();
+  final _linearFeetController = TextEditingController();
+  final _cubeController = TextEditingController();
+  final _trailerNumberController = TextEditingController();
   String _weightUnit = 'Lbs';
 
   // Notes
@@ -105,7 +127,12 @@ class _PickUpPageState extends State<PickUpPage> {
     _goodsController.dispose();
     _weightController.dispose();
     _quantityController.dispose();
+    _linearFeetController.dispose();
+    _cubeController.dispose();
     _notesController.dispose();
+    _gateCodeController.dispose();
+    _poNumberController.dispose();
+    _pickupNumberController.dispose();
     _internalNotesController.dispose();
     _searchController.dispose();
     super.dispose();
@@ -125,6 +152,7 @@ class _PickUpPageState extends State<PickUpPage> {
     if (data['pickup_date'] != null) {
       _selectedDate = DateTime.parse(data['pickup_date']);
     }
+
     if (data['start_time'] != null) {
       final parts = data['start_time'].split(':');
       _startTime = DateTime(
@@ -135,7 +163,19 @@ class _PickUpPageState extends State<PickUpPage> {
         int.parse(parts[1]),
       );
     }
+    if (data['end_time'] != null) {
+      final parts = data['end_time'].split(':');
+      _endTime = DateTime(2000, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
+    }
+
+    // References
     _refNumberController.text = data['reference_number'] ?? '';
+    _poNumberController.text = data['po_number'] ?? '';
+    _pickupNumberController.text = data['pickup_number'] ?? '';
+
+    // Access
+    _gateCodeController.text = data['gate_code'] ?? '';
+
     _appointmentType = data['appointment_type'] ?? 'Live Load';
     _schedulingWindow = data['scheduling_window'] ?? 'Strict Appointment';
     _ppeRequired = data['is_ppe_required'] ?? false;
@@ -149,10 +189,25 @@ class _PickUpPageState extends State<PickUpPage> {
     _hazmat = data['is_hazmat'] ?? false;
     _facility247 = data['is_facility_247'] ?? false;
     _strapsRequired = data['is_straps_required'] ?? false;
+    _lumperRequired = data['is_lumper_required'] ?? false;
+    _gateCodeRequired = data['is_gate_code_required'] ?? false;
+    _liftgateRequired = data['is_liftgate_required'] ?? false;
+    _insideDelivery = data['is_inside_delivery'] ?? false;
+    _residential = data['is_residential'] ?? false;
+    _tempControl = data['is_temp_control'] ?? false;
+    _highValue = data['is_high_value'] ?? false;
+    _teamRequired = data['is_team_required'] ?? false;
+    _twicRequired = data['is_twic_required'] ?? false;
+    _noTouchFreight = data['is_no_touch_freight'] ?? false;
     _goodsController.text = data['commodity'] ?? '';
     _weightController.text = (data['weight'] ?? '').toString();
     _weightUnit = data['weight_unit'] ?? 'Lbs';
     _quantityController.text = data['quantity'] ?? '';
+
+    // Dimensions
+    _linearFeetController.text = (data['linear_feet'] ?? '').toString();
+    _cubeController.text = (data['cube'] ?? '').toString();
+
     _notesController.text = data['driver_instructions'] ?? '';
     _internalNotesController.text = data['internal_notes'] ?? '';
     _status = data['status'] ?? 'Scheduled';
@@ -324,9 +379,16 @@ class _PickUpPageState extends State<PickUpPage> {
         'pickup_date': _selectedDate.toIso8601String().split('T')[0],
         'start_time':
             '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}:00',
+        'end_time': _endTime != null
+            ? '${_endTime!.hour.toString().padLeft(2, '0')}:${_endTime!.minute.toString().padLeft(2, '0')}:00'
+            : null,
         'appointment_type': _appointmentType,
         'scheduling_window': _schedulingWindow,
-        'reference_number': _refNumberController.text,
+        'reference_number': _refNumberController.text, // Legacy support
+        'po_number': _poNumberController.text,
+        'pickup_number': _pickupNumberController.text,
+        'trailer_number': _trailerNumberController.text,
+        'gate_code': _gateCodeController.text,
         'is_ppe_required': _ppeRequired,
         'is_driver_assist': _driverAssist,
         'is_overnight_parking': _overnightParking,
@@ -338,10 +400,22 @@ class _PickUpPageState extends State<PickUpPage> {
         'is_hazmat': _hazmat,
         'is_facility_247': _facility247,
         'is_straps_required': _strapsRequired,
+        'is_lumper_required': _lumperRequired,
+        'is_gate_code_required': _gateCodeRequired,
+        'is_liftgate_required': _liftgateRequired,
+        'is_inside_delivery': _insideDelivery,
+        'is_residential': _residential,
+        'is_temp_control': _tempControl,
+        'is_high_value': _highValue,
+        'is_team_required': _teamRequired,
+        'is_twic_required': _twicRequired,
+        'is_no_touch_freight': _noTouchFreight,
         'commodity': _goodsController.text,
         'weight': double.tryParse(_weightController.text) ?? 0.0,
         'weight_unit': _weightUnit,
         'quantity': _quantityController.text,
+        'linear_feet': double.tryParse(_linearFeetController.text),
+        'cube': double.tryParse(_cubeController.text),
         'driver_instructions': _notesController.text,
         'internal_notes': _internalNotesController.text,
         'status': _status,
@@ -395,7 +469,7 @@ class _PickUpPageState extends State<PickUpPage> {
       return Transform.translate(
         offset: _offset,
         child: ContentDialog(
-          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 850),
+          constraints: const BoxConstraints(maxWidth: 1200, maxHeight: 850),
           title: Row(
             children: [
               Expanded(
@@ -410,14 +484,12 @@ class _PickUpPageState extends State<PickUpPage> {
                       widget.pickupData == null
                           ? 'Add New Pickup'
                           : 'Edit Pickup',
-                      style: GoogleFonts.outfit(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w600,
-                      ),
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),
               ),
+              const Spacer(),
               Button(
                 onPressed: () => Navigator.pop(context),
                 child: const Text('Cancel'),
@@ -426,284 +498,368 @@ class _PickUpPageState extends State<PickUpPage> {
               FilledButton(
                 onPressed: _isSaving ? null : _savePickup,
                 child: _isSaving
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: ProgressRing(),
-                      )
-                    : const Text('Save Pickup'),
+                    ? const ProgressRing(strokeWidth: 2.5)
+                    : const Text('Save Record'),
               ),
             ],
           ),
-          content: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section: Location
-                      const FluentSectionHeader(title: 'Pickup Location'),
-                      const SizedBox(height: 16),
-
-                      // Search Row
-                      FluentLabeledInput(
-                        label: 'Company / Shipper Name',
+          actions: [],
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // --- FACILITY & REFERENCES (Combined High Density) ---
+                Text(
+                  'FACILITY & REFERENCES',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: FluentLabeledInput(
+                        label: 'Shipper / Facility Name',
                         controller: _companyNameController,
                       ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Street Address',
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Gate Code',
+                        controller: _gateCodeController,
+                        placeholder: '#1234',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Pickup #',
+                        controller: _pickupNumberController,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'PO #',
+                        controller: _poNumberController,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Ref #',
+                        controller: _refNumberController,
+                        placeholder: 'BOL',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // --- LOCATION & ADDRESS ---
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Address',
                         controller: _addressController,
                       ),
-                      const SizedBox(height: 16),
-                      Row(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'City',
+                        controller: _cityController,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            flex: 2,
-                            child: FluentLabeledInput(
-                              label: 'City',
-                              controller: _cityController,
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 6, left: 2),
+                            child: Text(
+                              'State',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(
-                                    left: 2,
-                                    bottom: 6,
-                                  ),
-                                  child: Text(
-                                    'State/Prov',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                          ComboBox<String>(
+                            value: _state,
+                            placeholder: const Text('Select'),
+                            items: [
+                              ...LocationData.canadianProvinces.entries.map(
+                                (e) => ComboBoxItem(
+                                  value: e.key,
+                                  child: Text("${e.key} - ${e.value}"),
+                                ),
+                              ),
+                              ...LocationData.usStates.entries.map(
+                                (e) => ComboBoxItem(
+                                  value: e.key,
+                                  child: Text("${e.key} - ${e.value}"),
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) =>
+                                setState(() => _state = v ?? 'ON'),
+                            isExpanded: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Zip',
+                        controller: _zipCodeController,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(bottom: 6, left: 2),
+                            child: Text(
+                              'Country',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          ComboBox<String>(
+                            value: _countryController.text.isEmpty
+                                ? 'Canada'
+                                : _countryController.text,
+                            items: LocationData.countries
+                                .map(
+                                  (e) => ComboBoxItem(
+                                    value: e,
+                                    child: Text(
+                                      e,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ),
-                                ComboBox<String>(
-                                  value: _state,
-                                  placeholder: const Text(
-                                    'Select...',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  items: [
-                                    // Canada
-                                    ...LocationData.canadianProvinces.entries
-                                        .map(
-                                          (e) => ComboBoxItem(
-                                            value: e.value,
-                                            child: Text(
-                                              '${e.key} - ${e.value}',
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    // USA
-                                    ...LocationData.usStates.entries.map(
+                                )
+                                .toList(),
+                            onChanged: (v) => setState(
+                              () => _countryController.text = v ?? 'Canada',
+                            ),
+                            isExpanded: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+
+                // --- CONTACT ---
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Contact Name',
+                        controller: _contactController,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Phone',
+                        controller: _phoneController,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Email',
+                        controller: _emailController,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Fax',
+                        controller: _faxController,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // --- SCHEDULE ---
+                Text(
+                  'SCHEDULE',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Window',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          ComboBox<String>(
+                            value: _schedulingWindow,
+                            items:
+                                [
+                                      'Strict Appointment',
+                                      'FCFS',
+                                      'Window (2hr)',
+                                      'Window (4hr)',
+                                    ]
+                                    .map(
                                       (e) => ComboBoxItem(
-                                        value: e.value,
-                                        child: Text(
-                                          '${e.key} - ${e.value}',
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
+                                        value: e,
+                                        child: Text(e),
                                       ),
-                                    ),
-                                  ],
-                                  onChanged: (v) =>
-                                      setState(() => _state = v ?? 'Ontario'),
-                                  isExpanded: true,
-                                ),
-                              ],
+                                    )
+                                    .toList(),
+                            onChanged: (v) => setState(
+                              () =>
+                                  _schedulingWindow = v ?? 'Strict Appointment',
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Zip Code',
-                              controller: _zipCodeController,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Country',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                ComboBox<String>(
-                                  value: _countryController.text.isEmpty
-                                      ? 'Canada'
-                                      : _countryController.text,
-                                  items: LocationData.countries
-                                      .map(
-                                        (e) => ComboBoxItem(
-                                          value: e,
-                                          child: Text(
-                                            e,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) => setState(
-                                    () =>
-                                        _countryController.text = v ?? 'Canada',
-                                  ),
-                                  isExpanded: true,
-                                ),
-                              ],
-                            ),
+                            isExpanded: true,
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Contact Details',
-                        showDivider: true,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Contact Person',
-                              controller: _contactController,
+                          const Text(
+                            'Date',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Phone',
-                              controller: _phoneController,
-                            ),
+                          const SizedBox(height: 4),
+                          DatePicker(
+                            selected: _selectedDate,
+                            onChanged: (v) => setState(() => _selectedDate = v),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Row(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Email',
-                              controller: _emailController,
+                          const Text(
+                            'Start',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Fax',
-                              controller: _faxController,
-                            ),
+                          const SizedBox(height: 4),
+                          TimePicker(
+                            selected: _startTime,
+                            onChanged: (v) => setState(() => _startTime = v),
+                            hourFormat: HourFormat.HH,
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Schedule & Reference',
-                        showDivider: true,
+                    ),
+                    if (_schedulingWindow != 'Strict Appointment') ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 1,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'End',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TimePicker(
+                              selected:
+                                  _endTime ??
+                                  _startTime.add(const Duration(hours: 2)),
+                              onChanged: (v) => setState(() => _endTime = v),
+                              hourFormat: HourFormat.HH,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                    ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: Row(
                         children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'Pickup Date',
+                                  'Type',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                DatePicker(
-                                  selected: _selectedDate,
-                                  onChanged: (v) =>
-                                      setState(() => _selectedDate = v),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Start Time',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                TimePicker(
-                                  selected: _startTime,
-                                  onChanged: (v) =>
-                                      setState(() => _startTime = v),
-                                  hourFormat: HourFormat.HH,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      // Row: Appointment Type & Scheduling Window
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Appointment Type',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
                                 ComboBox<String>(
                                   value: _appointmentType,
                                   items: ['Live Load', 'Pickup Trailer']
                                       .map(
                                         (e) => ComboBoxItem(
                                           value: e,
-                                          child: Text(
-                                            e,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                            ),
-                                          ),
+                                          child: Text(e),
                                         ),
                                       )
                                       .toList(),
@@ -715,261 +871,266 @@ class _PickUpPageState extends State<PickUpPage> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Scheduling Window',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                ComboBox<String>(
-                                  value: _schedulingWindow,
-                                  items:
-                                      [
-                                            'Strict Appointment',
-                                            'FCFS',
-                                            'Window (2hr)',
-                                          ]
-                                          .map(
-                                            (e) => ComboBoxItem(
-                                              value: e,
-                                              child: Text(
-                                                e,
-                                                style: const TextStyle(
-                                                  fontSize: 14,
-                                                ),
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                  onChanged: (v) => setState(
-                                    () => _schedulingWindow =
-                                        v ?? 'Strict Appointment',
-                                  ),
-                                  isExpanded: true,
-                                ),
-                              ],
+                          if (_appointmentType == 'Pickup Trailer') ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: FluentLabeledInput(
+                                label: 'Trailer #',
+                                controller: _trailerNumberController,
+                                placeholder: 'e.g. 5301',
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          FluentOptionChip(
-                            label: 'PPE Required',
-                            icon: FluentIcons.shield,
-                            value: _ppeRequired,
-                            onChanged: (v) => setState(() => _ppeRequired = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Driver Assist',
-                            icon: FluentIcons.people,
-                            value: _driverAssist,
-                            onChanged: (v) => setState(() => _driverAssist = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Overnight Parking',
-                            icon: FluentIcons.parking_location,
-                            value: _overnightParking,
-                            onChanged: (v) =>
-                                setState(() => _overnightParking = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Strict "Late" Policy',
-                            icon: FluentIcons.timer,
-                            value: _strictLatePolicy,
-                            onChanged: (v) =>
-                                setState(() => _strictLatePolicy = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Call 1hr Before',
-                            icon: FluentIcons.phone,
-                            value: _callBeforeArrival,
-                            onChanged: (v) =>
-                                setState(() => _callBeforeArrival = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Blind Shipment',
-                            icon: FluentIcons.lock,
-                            value: _blindShipment,
-                            onChanged: (v) =>
-                                setState(() => _blindShipment = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Scale on Site',
-                            icon: FluentIcons.speed_high,
-                            value: _scaleOnSite,
-                            onChanged: (v) => setState(() => _scaleOnSite = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Clean / Food Grade',
-                            icon: FluentIcons.health,
-                            value: _cleanTrailer,
-                            onChanged: (v) => setState(() => _cleanTrailer = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Hazmat',
-                            icon: FluentIcons.warning,
-                            value: _hazmat,
-                            onChanged: (v) => setState(() => _hazmat = v),
-                          ),
-                          FluentOptionChip(
-                            label: '24/7 Facility',
-                            icon: FluentIcons.clock,
-                            value: _facility247,
-                            onChanged: (v) => setState(() => _facility247 = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Straps / Load Bars',
-                            icon: FluentIcons.link,
-                            value: _strapsRequired,
-                            onChanged: (v) =>
-                                setState(() => _strapsRequired = v),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: FluentLabeledInput(
-                              label: 'Reference Numbers',
-                              controller: _refNumberController,
-                              placeholder: 'PO #, Pickup #, DO #',
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Status',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                ComboBox<String>(
-                                  value: _status,
-                                  items: ['Scheduled', 'Picked Up', 'Cancelled']
-                                      .map((e) {
-                                        return ComboBoxItem(
-                                          value: e,
-                                          child: Text(e),
-                                        );
-                                      })
-                                      .toList(),
-                                  onChanged: (v) => setState(
-                                    () => _status = v ?? 'Scheduled',
-                                  ),
-                                  isExpanded: true,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
+                    ),
+                  ],
+                ),
 
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Cargo Information',
-                        showDivider: true,
-                      ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Commodity / Goods',
-                        controller: _goodsController,
-                        placeholder: 'e.g. Auto Parts, Produce',
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Weight',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: TextFormBox(
-                                        controller: _weightController,
-                                        placeholder: '0.00',
-                                        padding: const EdgeInsets.all(10),
-                                        style: const TextStyle(fontSize: 14),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 8),
-                                    _buildWeightUnitToggle(isLight),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Quantity',
-                              controller: _quantityController,
-                              placeholder: 'Pallets / Pieces',
-                            ),
-                          ),
-                        ],
-                      ),
+                const SizedBox(height: 24),
 
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Instructions & Notes',
-                        showDivider: true,
-                      ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Driver Instructions',
-                        controller: _notesController,
-                        maxLines: 3,
-                        placeholder: 'Specific instructions for the driver...',
-                      ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Internal / Office Notes',
-                        controller: _internalNotesController,
-                        maxLines: 2,
-                        placeholder: 'Private notes for dispatch...',
-                      ),
-                      const SizedBox(height: 24),
-                    ],
+                // --- CARGO Details ---
+                Text(
+                  'CARGO & SPECS',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey,
                   ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: FluentLabeledInput(
+                        label: 'Commodity',
+                        controller: _goodsController,
+                        placeholder: 'e.g. Auto Parts',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Qty',
+                        controller: _quantityController,
+                        placeholder: 'Skids',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    SizedBox(
+                      width: 90,
+                      child: InfoLabel(
+                        label: 'Unit',
+                        labelStyle: GoogleFonts.outfit(
+                          color: Colors.black,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        child: ComboBox<String>(
+                          value: _weightUnit,
+                          items: const [
+                            ComboBoxItem(value: 'Lbs', child: Text('Lbs')),
+                            ComboBoxItem(value: 'Kgs', child: Text('Kgs')),
+                          ],
+                          onChanged: (v) =>
+                              setState(() => _weightUnit = v ?? 'Lbs'),
+                          placeholder: const Text('Unit'),
+                          isExpanded: true,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Weight ($_weightUnit)',
+                        controller: _weightController,
+                        placeholder: '0.0',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Lin Ft',
+                        controller: _linearFeetController,
+                        placeholder: '53',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Cube',
+                        controller: _cubeController,
+                        placeholder: '0',
+                      ),
+                    ),
+                  ],
+                ),
+
+                _buildSectionHeader('Logistics & Instructions'),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FluentOptionChip(
+                      label: 'PPE Required',
+                      icon: FluentIcons.shield,
+                      value: _ppeRequired,
+                      onChanged: (v) => setState(() => _ppeRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Driver Assist',
+                      icon: FluentIcons.people,
+                      value: _driverAssist,
+                      onChanged: (v) => setState(() => _driverAssist = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Overnight Pkg',
+                      icon: FluentIcons.parking_location,
+                      value: _overnightParking,
+                      onChanged: (v) => setState(() => _overnightParking = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Strict Policy',
+                      icon: FluentIcons.timer,
+                      value: _strictLatePolicy,
+                      onChanged: (v) => setState(() => _strictLatePolicy = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Call Before',
+                      icon: FluentIcons.phone,
+                      value: _callBeforeArrival,
+                      onChanged: (v) => setState(() => _callBeforeArrival = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Lumper Req.',
+                      icon: FluentIcons.money,
+                      value: _lumperRequired,
+                      onChanged: (v) => setState(() => _lumperRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Gate Code',
+                      icon: FluentIcons.lock,
+                      value: _gateCodeRequired,
+                      onChanged: (v) => setState(() => _gateCodeRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Blind Shipment',
+                      icon: FluentIcons.hide,
+                      value: _blindShipment,
+                      onChanged: (v) => setState(() => _blindShipment = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Scale On Site',
+                      icon: FluentIcons.circle_shape_solid,
+                      value: _scaleOnSite,
+                      onChanged: (v) => setState(() => _scaleOnSite = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Clean Trailer',
+                      icon: FluentIcons.check_mark,
+                      value: _cleanTrailer,
+                      onChanged: (v) => setState(() => _cleanTrailer = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Hazmat',
+                      icon: FluentIcons.warning,
+                      value: _hazmat,
+                      onChanged: (v) => setState(() => _hazmat = v),
+                    ),
+                    FluentOptionChip(
+                      label: '24/7 Facility',
+                      icon: FluentIcons.clock,
+                      value: _facility247,
+                      onChanged: (v) => setState(() => _facility247 = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Straps Req.',
+                      icon: FluentIcons.link,
+                      value: _strapsRequired,
+                      onChanged: (v) => setState(() => _strapsRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Liftgate Req.',
+                      icon: FluentIcons.chevron_down,
+                      value: _liftgateRequired,
+                      onChanged: (v) => setState(() => _liftgateRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Inside Deliv.',
+                      icon: FluentIcons.door,
+                      value: _insideDelivery,
+                      onChanged: (v) => setState(() => _insideDelivery = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Residential',
+                      icon: FluentIcons.home,
+                      value: _residential,
+                      onChanged: (v) => setState(() => _residential = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Temp Control',
+                      icon: FluentIcons.snowflake,
+                      value: _tempControl,
+                      onChanged: (v) => setState(() => _tempControl = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'High Value',
+                      icon: FluentIcons.diamond,
+                      value: _highValue,
+                      onChanged: (v) => setState(() => _highValue = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Team Req.',
+                      icon: FluentIcons.group,
+                      value: _teamRequired,
+                      onChanged: (v) => setState(() => _teamRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'TWIC/Port',
+                      icon: FluentIcons.location,
+                      value: _twicRequired,
+                      onChanged: (v) => setState(() => _twicRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'No Touch',
+                      icon: FluentIcons.contact_info,
+                      value: _noTouchFreight,
+                      onChanged: (v) => setState(() => _noTouchFreight = v),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // --- NOTES ---
+                Text(
+                  'NOTES',
+                  style: GoogleFonts.outfit(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.grey,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                FluentLabeledInput(
+                  label: 'Driver Instructions (Visible on App)',
+                  controller: _notesController,
+                  maxLines: 2,
+                ),
+                const SizedBox(height: 8),
+                FluentLabeledInput(
+                  label: 'Internal Notes (Dispatch Only)',
+                  controller: _internalNotesController,
+                  maxLines: 2,
+                ),
+              ],
+            ),
           ),
         ),
       );
@@ -1132,52 +1293,6 @@ class _PickUpPageState extends State<PickUpPage> {
       barrierDismissible: true,
       builder: (context) => const PickUpPage(isDialog: true),
     ).then((_) => _fetchPickups());
-  }
-
-  Widget _buildWeightUnitButton(String unit, bool isLight) {
-    final theme = FluentTheme.of(context);
-    final isSelected = _weightUnit == unit;
-    return GestureDetector(
-      onTap: () => setState(() => _weightUnit = unit),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-        decoration: BoxDecoration(
-          color: isSelected ? theme.accentColor : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Text(
-          unit,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w700,
-            color: isSelected
-                ? Colors.white
-                : theme.resources.textFillColorSecondary,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWeightUnitToggle(bool isLight) {
-    final theme = FluentTheme.of(context);
-    return Container(
-      height: 38,
-      padding: const EdgeInsets.all(3),
-      decoration: BoxDecoration(
-        color: theme.resources.subtleFillColorSecondary,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(color: theme.resources.dividerStrokeColorDefault),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildWeightUnitButton('Lbs', isLight),
-          const SizedBox(width: 2),
-          _buildWeightUnitButton('Kg', isLight),
-        ],
-      ),
-    );
   }
 
   Widget _buildSortableHeader(String title, String column, {int flex = 1}) {
@@ -1454,4 +1569,28 @@ class _PickUpPageState extends State<PickUpPage> {
       ),
     );
   }
-} // End of Class
+
+  Widget _buildSectionHeader(String title) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 16, top: 24),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+          ),
+        ),
+      ),
+      child: Text(
+        title.toUpperCase(),
+        style: GoogleFonts.outfit(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: FluentTheme.of(context).resources.textFillColorSecondary,
+          letterSpacing: 1.0,
+        ),
+      ),
+    );
+  }
+}

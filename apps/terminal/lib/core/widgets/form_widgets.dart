@@ -68,6 +68,7 @@ class FluentLabeledInput extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(String?)? validator;
   final Widget? suffix;
+  final bool enabled;
 
   const FluentLabeledInput({
     super.key,
@@ -78,6 +79,7 @@ class FluentLabeledInput extends StatelessWidget {
     this.keyboardType,
     this.validator,
     this.suffix,
+    this.enabled = true,
   });
 
   @override
@@ -107,6 +109,7 @@ class FluentLabeledInput extends StatelessWidget {
           keyboardType: keyboardType,
           validator: validator,
           suffix: suffix,
+          enabled: enabled,
         ),
       ],
     );

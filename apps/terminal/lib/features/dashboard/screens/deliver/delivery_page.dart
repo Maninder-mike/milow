@@ -20,22 +20,19 @@ class _DeliveryPageState extends State<DeliveryPage> {
   // Address & Contact Controllers
   final _companyNameController = TextEditingController();
   final _addressController = TextEditingController();
-  // Removed unused _stateController
   String _state = 'Ontario';
   final _cityController = TextEditingController();
-  // Removed unused _unitController
   final _zipCodeController = TextEditingController();
+  final _countryController = TextEditingController();
+
+  // Contact & Access
   final _contactController = TextEditingController();
   final _phoneController = TextEditingController();
   final _faxController = TextEditingController();
   final _emailController = TextEditingController();
-  final _countryController = TextEditingController();
-  final _refNumberController = TextEditingController();
-  final _notesController = TextEditingController();
-  final _internalNotesController = TextEditingController();
-  final _searchController = TextEditingController();
+  final _gateCodeController = TextEditingController(); // New
 
-  // Schedule & Flags
+  // Schedule & Reference
   DateTime _selectedDate = DateTime.now();
   DateTime _startTime = DateTime(
     DateTime.now().year,
@@ -44,7 +41,28 @@ class _DeliveryPageState extends State<DeliveryPage> {
     8,
     0,
   );
+  DateTime _endTime = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    DateTime.now().day,
+    9,
+    0,
+  );
+
+  final _poNumberController = TextEditingController(); // New
+  final _deliveryNumberController = TextEditingController(); // New
+  final _refNumberController = TextEditingController(); // Legacy/Search
+
+  // App State
+  bool _isLoading = false;
+  bool _isSaving = false;
+  List<Map<String, dynamic>> _receivers = [];
+  List<Map<String, dynamic>> _filteredReceivers = [];
+  String _sortColumn = 'delivery_date';
+  bool _isAscending = false;
   String _status = 'Scheduled';
+
+  // Schedule & Logistics
   String _appointmentType = 'Live Unload';
   String _schedulingWindow = 'Strict Appointment';
 
@@ -54,15 +72,36 @@ class _DeliveryPageState extends State<DeliveryPage> {
   bool _strictLatePolicy = false;
   bool _callBeforeArrival = false;
   bool _lumperRequired = false;
-  bool _gateCodeRequired = false;
+  bool _gateCodeRequired = false; // Kept specific to receiver
 
-  // App State
-  bool _isLoading = false;
-  bool _isSaving = false;
-  List<Map<String, dynamic>> _receivers = [];
-  List<Map<String, dynamic>> _filteredReceivers = [];
-  String _sortColumn = 'delivery_date';
-  bool _isAscending = false;
+  // New Flags matching Pickup
+  bool _blindShipment = false;
+  bool _scaleOnSite = false;
+  bool _cleanTrailer = false;
+  bool _hazmat = false;
+  bool _facility247 = false;
+  bool _strapsRequired = false;
+  bool _liftgateRequired = false;
+  bool _insideDelivery = false;
+  bool _residential = false;
+  bool _tempControl = false;
+  bool _highValue = false;
+  bool _teamRequired = false;
+  bool _twicRequired = false;
+  bool _noTouchFreight = false;
+
+  // Cargo Details
+  final _goodsController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _quantityController = TextEditingController();
+  final _linearFeetController = TextEditingController();
+  final _cubeController = TextEditingController();
+  final _trailerNumberController = TextEditingController();
+  String _weightUnit = 'Lbs';
+
+  final _notesController = TextEditingController();
+  final _internalNotesController = TextEditingController();
+  final _searchController = TextEditingController();
 
   Offset _offset = Offset.zero;
 
@@ -95,6 +134,18 @@ class _DeliveryPageState extends State<DeliveryPage> {
     _notesController.dispose();
     _internalNotesController.dispose();
     _searchController.dispose();
+
+    // New Disposes
+    _gateCodeController.dispose();
+    _poNumberController.dispose();
+    _deliveryNumberController.dispose();
+    _goodsController.dispose();
+    _weightController.dispose();
+    _quantityController.dispose();
+    _linearFeetController.dispose();
+    _cubeController.dispose();
+    _trailerNumberController.dispose();
+
     super.dispose();
   }
 
@@ -115,16 +166,28 @@ class _DeliveryPageState extends State<DeliveryPage> {
     if (data['delivery_time'] != null) {
       final parts = data['delivery_time'].split(':');
       _startTime = DateTime(
-        _selectedDate.year,
-        _selectedDate.month,
-        _selectedDate.day,
+        2000,
+        1,
+        1,
         int.parse(parts[0]),
         int.parse(parts[1]),
       );
     }
+    if (data['end_time'] != null) {
+      final parts = data['end_time'].split(':');
+      _endTime = DateTime(2000, 1, 1, int.parse(parts[0]), int.parse(parts[1]));
+    }
+
     _appointmentType = data['appointment_type'] ?? 'Live Unload';
     _schedulingWindow = data['scheduling_window'] ?? 'Strict Appointment';
+
+    // References
     _refNumberController.text = data['reference_number'] ?? '';
+    _poNumberController.text = data['po_number'] ?? '';
+    _deliveryNumberController.text = data['delivery_number'] ?? '';
+    _gateCodeController.text = data['gate_code'] ?? '';
+
+    // Flags
     _ppeRequired = data['is_ppe_required'] ?? false;
     _driverAssist = data['is_driver_assist'] ?? false;
     _overnightParking = data['is_overnight_parking'] ?? false;
@@ -132,6 +195,30 @@ class _DeliveryPageState extends State<DeliveryPage> {
     _callBeforeArrival = data['is_call_before_arrival'] ?? false;
     _lumperRequired = data['is_lumper_required'] ?? false;
     _gateCodeRequired = data['is_gate_code_required'] ?? false;
+    _blindShipment = data['is_blind_shipment'] ?? false;
+    _scaleOnSite = data['is_scale_on_site'] ?? false;
+    _cleanTrailer = data['is_clean_trailer'] ?? false;
+    _hazmat = data['is_hazmat'] ?? false;
+    _facility247 = data['is_facility_247'] ?? false;
+    _strapsRequired = data['is_straps_required'] ?? false;
+    _liftgateRequired = data['is_liftgate_required'] ?? false;
+    _insideDelivery = data['is_inside_delivery'] ?? false;
+    _residential = data['is_residential'] ?? false;
+    _tempControl = data['is_temp_control'] ?? false;
+    _highValue = data['is_high_value'] ?? false;
+    _teamRequired = data['is_team_required'] ?? false;
+    _twicRequired = data['is_twic_required'] ?? false;
+    _noTouchFreight = data['is_no_touch_freight'] ?? false;
+
+    // Cargo
+    _goodsController.text = data['commodity'] ?? '';
+    _weightController.text = (data['weight'] ?? '').toString();
+    _weightUnit = data['weight_unit'] ?? 'Lbs';
+    _quantityController.text = data['quantity'] ?? '';
+    _linearFeetController.text = (data['linear_feet'] ?? '').toString();
+    _cubeController.text = (data['cube'] ?? '').toString();
+    _trailerNumberController.text = data['trailer_number'] ?? '';
+
     _notesController.text = data['driver_instructions'] ?? '';
     _internalNotesController.text = data['internal_notes'] ?? '';
     _status = data['status'] ?? 'Scheduled';
@@ -208,6 +295,18 @@ class _DeliveryPageState extends State<DeliveryPage> {
   }
 
   Future<void> _saveReceiver() async {
+    if (_companyNameController.text.isEmpty) {
+      displayInfoBar(
+        context,
+        builder: (context, close) => InfoBar(
+          title: const Text('Receiver name is required'),
+          severity: InfoBarSeverity.error,
+          onClose: close,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isSaving = true);
     try {
       final user = Supabase.instance.client.auth.currentUser;
@@ -226,10 +325,18 @@ class _DeliveryPageState extends State<DeliveryPage> {
         'fax': _faxController.text,
         'delivery_date': _selectedDate.toIso8601String().substring(0, 10),
         'delivery_time':
-            '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}',
+            '${_startTime.hour.toString().padLeft(2, '0')}:${_startTime.minute.toString().padLeft(2, '0')}:00',
+        'end_time': _schedulingWindow != 'Strict Appointment'
+            ? '${_endTime.hour.toString().padLeft(2, '0')}:${_endTime.minute.toString().padLeft(2, '0')}:00'
+            : null,
         'appointment_type': _appointmentType,
         'scheduling_window': _schedulingWindow,
         'reference_number': _refNumberController.text,
+        'po_number': _poNumberController.text,
+        'delivery_number': _deliveryNumberController.text,
+        'gate_code': _gateCodeController.text,
+        'trailer_number': _trailerNumberController.text,
+
         'is_ppe_required': _ppeRequired,
         'is_driver_assist': _driverAssist,
         'is_overnight_parking': _overnightParking,
@@ -237,6 +344,28 @@ class _DeliveryPageState extends State<DeliveryPage> {
         'is_call_before_arrival': _callBeforeArrival,
         'is_lumper_required': _lumperRequired,
         'is_gate_code_required': _gateCodeRequired,
+        'is_blind_shipment': _blindShipment,
+        'is_scale_on_site': _scaleOnSite,
+        'is_clean_trailer': _cleanTrailer,
+        'is_hazmat': _hazmat,
+        'is_facility_247': _facility247,
+        'is_straps_required': _strapsRequired,
+        'is_liftgate_required': _liftgateRequired,
+        'is_inside_delivery': _insideDelivery,
+        'is_residential': _residential,
+        'is_temp_control': _tempControl,
+        'is_high_value': _highValue,
+        'is_team_required': _teamRequired,
+        'is_twic_required': _twicRequired,
+        'is_no_touch_freight': _noTouchFreight,
+
+        'commodity': _goodsController.text,
+        'weight': double.tryParse(_weightController.text) ?? 0.0,
+        'weight_unit': _weightUnit,
+        'quantity': _quantityController.text,
+        'linear_feet': double.tryParse(_linearFeetController.text),
+        'cube': double.tryParse(_cubeController.text),
+
         'driver_instructions': _notesController.text,
         'internal_notes': _internalNotesController.text,
         'status': _status,
@@ -261,7 +390,17 @@ class _DeliveryPageState extends State<DeliveryPage> {
       }
     } catch (e) {
       debugPrint('Error saving receiver: $e');
-      if (mounted) setState(() => _isSaving = false);
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: Text('Error saving record: $e'),
+            severity: InfoBarSeverity.error,
+            onClose: close,
+          ),
+        );
+        setState(() => _isSaving = false);
+      }
     }
   }
 
@@ -274,6 +413,30 @@ class _DeliveryPageState extends State<DeliveryPage> {
     }
   }
 
+  Widget _buildSectionHeader(String title) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 16, top: 24),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+          ),
+        ),
+      ),
+      child: Text(
+        title.toUpperCase(),
+        style: GoogleFonts.outfit(
+          fontSize: 12,
+          fontWeight: FontWeight.w700,
+          color: FluentTheme.of(context).resources.textFillColorSecondary,
+          letterSpacing: 1.0,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
@@ -282,7 +445,7 @@ class _DeliveryPageState extends State<DeliveryPage> {
       return Transform.translate(
         offset: _offset,
         child: ContentDialog(
-          constraints: const BoxConstraints(maxWidth: 900, maxHeight: 850),
+          constraints: const BoxConstraints(maxWidth: 1200, maxHeight: 900),
           title: Row(
             children: [
               Expanded(
@@ -313,294 +476,348 @@ class _DeliveryPageState extends State<DeliveryPage> {
               FilledButton(
                 onPressed: _isSaving ? null : _saveReceiver,
                 child: _isSaving
-                    ? const ProgressRing(strokeWidth: 2)
+                    ? const ProgressRing(strokeWidth: 2.5)
                     : const Text('Save Record'),
               ),
             ],
           ),
-          content: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(right: 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Section: Receiver Location
-                      const FluentSectionHeader(title: 'Receiver Location'),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Receiver Company Name',
+          content: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // SECTION 1: FACILITY & REFERENCES
+                _buildSectionHeader('Facility & References'),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: FluentLabeledInput(
+                        label: 'Facility Name',
                         controller: _companyNameController,
+                        placeholder: 'Enter facility name',
                       ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Street Address',
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Internal Code / ID',
+                        controller: _refNumberController,
+                        placeholder: 'Plant ID etc.',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'PO Number',
+                        controller: _poNumberController,
+                        placeholder: 'PO #',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Delivery Number',
+                        controller: _deliveryNumberController,
+                        placeholder: 'DEL #',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Gate Code',
+                        controller: _gateCodeController,
+                        placeholder: 'Optional',
+                      ),
+                    ),
+                  ],
+                ),
+
+                // SECTION 2: LOCATION & ADDRESS
+                _buildSectionHeader('Location & Address'),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Address',
                         controller: _addressController,
+                        placeholder: 'Street address',
                       ),
-                      const SizedBox(height: 16),
-                      Row(
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FluentLabeledInput(
+                        label: 'City',
+                        controller: _cityController,
+                        placeholder: 'City',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            flex: 2,
-                            child: FluentLabeledInput(
-                              label: 'City',
-                              controller: _cityController,
+                          const Padding(
+                            padding: EdgeInsets.only(left: 2, bottom: 6),
+                            child: Text(
+                              'State / Province',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 2,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'State/Prov',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
+                          ComboBox<String>(
+                            value: _state,
+                            placeholder: const Text('Select State'),
+                            items: [
+                              ...LocationData.canadianProvinces.entries.map(
+                                (e) => ComboBoxItem(
+                                  value: e.key,
+                                  child: Text("${e.key} - ${e.value}"),
+                                ),
+                              ),
+                              ...LocationData.usStates.entries.map(
+                                (e) => ComboBoxItem(
+                                  value: e.key,
+                                  child: Text("${e.key} - ${e.value}"),
+                                ),
+                              ),
+                            ],
+                            onChanged: (v) {
+                              if (v != null) setState(() => _state = v);
+                            },
+                            isExpanded: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FluentLabeledInput(
+                        label: 'Zip / Postal',
+                        controller: _zipCodeController,
+                        placeholder: 'Code',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.only(left: 2, bottom: 6),
+                            child: Text(
+                              'Country',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                          ComboBox<String>(
+                            value: _countryController.text.isEmpty
+                                ? 'Canada'
+                                : _countryController.text,
+                            items: LocationData.countries
+                                .map(
+                                  (e) => ComboBoxItem(
+                                    value: e,
+                                    child: Text(
+                                      e,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
-                                ),
-                                ComboBox<String>(
-                                  value: _state,
-                                  placeholder: const Text(
-                                    'Select...',
-                                    style: TextStyle(fontSize: 14),
-                                  ),
-                                  items: [
-                                    ...LocationData.canadianProvinces.entries
-                                        .map(
-                                          (e) => ComboBoxItem(
-                                            value: e.value,
-                                            child: Text(
-                                              '${e.key} - ${e.value}',
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                    ...LocationData.usStates.entries.map(
+                                )
+                                .toList(),
+                            onChanged: (v) => setState(
+                              () => _countryController.text = v ?? 'Canada',
+                            ),
+                            isExpanded: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // SECTION 3: CONTACT
+                _buildSectionHeader('Contact Information'),
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 2,
+                      child: FluentLabeledInput(
+                        label: 'Contact Person',
+                        controller: _contactController,
+                        placeholder: 'Name',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FluentLabeledInput(
+                        label: 'Phone',
+                        controller: _phoneController,
+                        placeholder: '(555) 123-4567',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FluentLabeledInput(
+                        label: 'Email',
+                        controller: _emailController,
+                        placeholder: 'contact@email.com',
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FluentLabeledInput(
+                        label: 'Fax',
+                        controller: _faxController,
+                        placeholder: 'Optional',
+                      ),
+                    ),
+                  ],
+                ),
+
+                // SECTION 4: SCHEDULE
+                _buildSectionHeader('SCHEDULE'),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: _schedulingWindow == 'Strict Appointment' ? 3 : 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Window',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          ComboBox<String>(
+                            value: _schedulingWindow,
+                            items:
+                                [
+                                      'Strict Appointment',
+                                      'FCFS',
+                                      'Window (2hr)',
+                                      'Window (4hr)',
+                                    ]
+                                    .map(
                                       (e) => ComboBoxItem(
-                                        value: e.value,
-                                        child: Text(
-                                          '${e.key} - ${e.value}',
-                                          style: const TextStyle(fontSize: 14),
-                                        ),
+                                        value: e,
+                                        child: Text(e),
                                       ),
-                                    ),
-                                  ],
-                                  onChanged: (v) =>
-                                      setState(() => _state = v ?? 'Ontario'),
-                                  isExpanded: true,
-                                ),
-                              ],
+                                    )
+                                    .toList(),
+                            onChanged: (v) => setState(
+                              () =>
+                                  _schedulingWindow = v ?? 'Strict Appointment',
                             ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Zip Code',
-                              controller: _zipCodeController,
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            flex: 1,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Country',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                ComboBox<String>(
-                                  value: _countryController.text.isEmpty
-                                      ? 'Canada'
-                                      : _countryController.text,
-                                  items: LocationData.countries
-                                      .map(
-                                        (e) => ComboBoxItem(
-                                          value: e,
-                                          child: Text(
-                                            e,
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                            ),
-                                          ),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) => setState(
-                                    () =>
-                                        _countryController.text = v ?? 'Canada',
-                                  ),
-                                  isExpanded: true,
-                                ),
-                              ],
-                            ),
+                            isExpanded: true,
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Contact Details',
-                        showDivider: true,
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: _schedulingWindow == 'Strict Appointment' ? 3 : 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Contact Person',
-                              controller: _contactController,
+                          const Text(
+                            'Date',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Phone',
-                              controller: _phoneController,
-                            ),
+                          const SizedBox(height: 4),
+                          DatePicker(
+                            selected: _selectedDate,
+                            onChanged: (v) => setState(() => _selectedDate = v),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
-                      Row(
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Email',
-                              controller: _emailController,
+                          const Text(
+                            'Start',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: FluentLabeledInput(
-                              label: 'Fax',
-                              controller: _faxController,
-                            ),
+                          const SizedBox(height: 4),
+                          TimePicker(
+                            selected: _startTime,
+                            onChanged: (v) => setState(() => _startTime = v),
+                            hourFormat: HourFormat.HH,
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Schedule & Reference',
-                        showDivider: true,
+                    ),
+                    if (_schedulingWindow != 'Strict Appointment') ...[
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'End',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            TimePicker(
+                              selected: _endTime,
+                              onChanged: (v) => setState(() => _endTime = v),
+                              hourFormat: HourFormat.HH,
+                            ),
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 16),
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.end,
+                    ],
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: _schedulingWindow == 'Strict Appointment' ? 3 : 2,
+                      child: Row(
                         children: [
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  'Delivery Date',
+                                  'Type',
                                   style: TextStyle(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
-                                DatePicker(
-                                  selected: _selectedDate,
-                                  onChanged: (v) =>
-                                      setState(() => _selectedDate = v),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Text(
-                                  'Appointment Time',
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                TimePicker(
-                                  selected: _startTime,
-                                  onChanged: (v) =>
-                                      setState(() => _startTime = v),
-                                  hourFormat: HourFormat.HH,
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Status',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                ComboBox<String>(
-                                  value: _status,
-                                  items: ['Scheduled', 'Delivered', 'Cancelled']
-                                      .map(
-                                        (e) => ComboBoxItem(
-                                          value: e,
-                                          child: Text(e),
-                                        ),
-                                      )
-                                      .toList(),
-                                  onChanged: (v) => setState(
-                                    () => _status = v ?? 'Scheduled',
-                                  ),
-                                  isExpanded: true,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Appointment Type',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
                                 ComboBox<String>(
                                   value: _appointmentType,
                                   items: ['Live Unload', 'Drop Trailer']
@@ -619,139 +836,237 @@ class _DeliveryPageState extends State<DeliveryPage> {
                               ],
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Padding(
-                                  padding: EdgeInsets.only(left: 2, bottom: 6),
-                                  child: Text(
-                                    'Scheduling Window',
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                ComboBox<String>(
-                                  value: _schedulingWindow,
-                                  items:
-                                      [
-                                            'Strict Appointment',
-                                            'FCFS',
-                                            'Window (2hr)',
-                                          ]
-                                          .map(
-                                            (e) => ComboBoxItem(
-                                              value: e,
-                                              child: Text(e),
-                                            ),
-                                          )
-                                          .toList(),
-                                  onChanged: (v) => setState(
-                                    () => _schedulingWindow =
-                                        v ?? 'Strict Appointment',
-                                  ),
-                                  isExpanded: true,
-                                ),
-                              ],
+                          if (_appointmentType == 'Drop Trailer') ...[
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: FluentLabeledInput(
+                                label: 'Trailer #',
+                                controller: _trailerNumberController,
+                                placeholder: 'Trlr #',
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+
+                // SECTION 5: CARGO & SPECS
+                _buildSectionHeader('CARGO & SPECS'),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Expanded(
+                      flex: 4,
+                      child: FluentLabeledInput(
+                        label: 'Commodity',
+                        controller: _goodsController,
+                        placeholder: 'e.g. Auto Parts',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Qty',
+                        controller: _quantityController,
+                        placeholder: 'Skids',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Unit',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
                             ),
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Reference Numbers',
-                        controller: _refNumberController,
-                        placeholder: 'DEL #, REF #',
-                      ),
-
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Logistics Flags',
-                        showDivider: true,
-                      ),
-                      const SizedBox(height: 16),
-                      Wrap(
-                        spacing: 12,
-                        runSpacing: 12,
-                        children: [
-                          FluentOptionChip(
-                            label: 'PPE Required',
-                            icon: FluentIcons.shield,
-                            value: _ppeRequired,
-                            onChanged: (v) => setState(() => _ppeRequired = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Driver Assist',
-                            icon: FluentIcons.people,
-                            value: _driverAssist,
-                            onChanged: (v) => setState(() => _driverAssist = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Overnight Parking',
-                            icon: FluentIcons.parking_location,
-                            value: _overnightParking,
+                          const SizedBox(height: 4),
+                          ComboBox<String>(
+                            value: _weightUnit,
+                            items: ['Lbs', 'Kgs']
+                                .map(
+                                  (e) => ComboBoxItem(value: e, child: Text(e)),
+                                )
+                                .toList(),
                             onChanged: (v) =>
-                                setState(() => _overnightParking = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Strict Policy',
-                            icon: FluentIcons.timer,
-                            value: _strictLatePolicy,
-                            onChanged: (v) =>
-                                setState(() => _strictLatePolicy = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Call Before',
-                            icon: FluentIcons.phone,
-                            value: _callBeforeArrival,
-                            onChanged: (v) =>
-                                setState(() => _callBeforeArrival = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Lumper Req.',
-                            icon: FluentIcons.money,
-                            value: _lumperRequired,
-                            onChanged: (v) =>
-                                setState(() => _lumperRequired = v),
-                          ),
-                          FluentOptionChip(
-                            label: 'Gate Code',
-                            icon: FluentIcons.lock,
-                            value: _gateCodeRequired,
-                            onChanged: (v) =>
-                                setState(() => _gateCodeRequired = v),
+                                setState(() => _weightUnit = v ?? 'Lbs'),
+                            isExpanded: true,
                           ),
                         ],
                       ),
-
-                      const SizedBox(height: 24),
-                      const FluentSectionHeader(
-                        title: 'Instructions & Notes',
-                        showDivider: true,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Weight ($_weightUnit)',
+                        controller: _weightController,
+                        placeholder: '0.0',
                       ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Driver Instructions',
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Lin Ft',
+                        controller: _linearFeetController,
+                        placeholder: '53',
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 1,
+                      child: FluentLabeledInput(
+                        label: 'Cube',
+                        controller: _cubeController,
+                        placeholder: '0',
+                      ),
+                    ),
+                  ],
+                ),
+
+                // SECTION 6: NOTES & FLAGS
+                _buildSectionHeader('Logistics & Instructions'),
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    FluentOptionChip(
+                      label: 'PPE Required',
+                      icon: FluentIcons.shield,
+                      value: _ppeRequired,
+                      onChanged: (v) => setState(() => _ppeRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Driver Assist',
+                      icon: FluentIcons.people,
+                      value: _driverAssist,
+                      onChanged: (v) => setState(() => _driverAssist = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Overnight Pkg',
+                      icon: FluentIcons.parking_location,
+                      value: _overnightParking,
+                      onChanged: (v) => setState(() => _overnightParking = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Strict Policy',
+                      icon: FluentIcons.timer,
+                      value: _strictLatePolicy,
+                      onChanged: (v) => setState(() => _strictLatePolicy = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Call Before',
+                      icon: FluentIcons.phone,
+                      value: _callBeforeArrival,
+                      onChanged: (v) => setState(() => _callBeforeArrival = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Lumper Req.',
+                      icon: FluentIcons.money,
+                      value: _lumperRequired,
+                      onChanged: (v) => setState(() => _lumperRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Gate Code',
+                      icon: FluentIcons.lock,
+                      value: _gateCodeRequired,
+                      onChanged: (v) => setState(() => _gateCodeRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Hazmat',
+                      icon: FluentIcons.warning,
+                      value: _hazmat,
+                      onChanged: (v) => setState(() => _hazmat = v),
+                    ),
+                    FluentOptionChip(
+                      label: '24/7 Facility',
+                      icon: FluentIcons.clock,
+                      value: _facility247,
+                      onChanged: (v) => setState(() => _facility247 = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Liftgate Req.',
+                      icon: FluentIcons.chevron_down,
+                      value: _liftgateRequired,
+                      onChanged: (v) => setState(() => _liftgateRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Inside Deliv.',
+                      icon: FluentIcons.door,
+                      value: _insideDelivery,
+                      onChanged: (v) => setState(() => _insideDelivery = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Residential',
+                      icon: FluentIcons.home,
+                      value: _residential,
+                      onChanged: (v) => setState(() => _residential = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Temp Control',
+                      icon: FluentIcons.snowflake,
+                      value: _tempControl,
+                      onChanged: (v) => setState(() => _tempControl = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'High Value',
+                      icon: FluentIcons.diamond,
+                      value: _highValue,
+                      onChanged: (v) => setState(() => _highValue = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'Team Req.',
+                      icon: FluentIcons.group,
+                      value: _teamRequired,
+                      onChanged: (v) => setState(() => _teamRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'TWIC/Port',
+                      icon: FluentIcons.location,
+                      value: _twicRequired,
+                      onChanged: (v) => setState(() => _twicRequired = v),
+                    ),
+                    FluentOptionChip(
+                      label: 'No Touch',
+                      icon: FluentIcons.contact_info,
+                      value: _noTouchFreight,
+                      onChanged: (v) => setState(() => _noTouchFreight = v),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: FluentLabeledInput(
+                        label: 'Driver Instructions (Visible in Mobile App)',
                         controller: _notesController,
                         maxLines: 3,
-                        placeholder: 'Visibility to Driver',
+                        placeholder: 'Enter instructions for the driver...',
                       ),
-                      const SizedBox(height: 16),
-                      FluentLabeledInput(
-                        label: 'Internal Warehouse Notes',
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: FluentLabeledInput(
+                        label: 'Internal Office Notes',
                         controller: _internalNotesController,
                         maxLines: 3,
-                        placeholder: 'Dispatch Visibility Only',
+                        placeholder: 'Dispatch/Broker notes...',
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+              ],
+            ),
           ),
         ),
       );

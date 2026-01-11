@@ -84,4 +84,34 @@ class QuoteController extends _$QuoteController {
       ref.invalidate(quotesListProvider);
     });
   }
+
+  /// Update just the status of a quote
+  Future<void> updateQuoteStatus(String quoteId, String status) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(quoteRepositoryProvider);
+      await repository.updateStatus(quoteId, status);
+      ref.invalidate(quotesListProvider);
+    });
+  }
+
+  /// Clone an existing quote (creates a new draft copy)
+  Future<void> cloneQuote(Quote original) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(quoteRepositoryProvider);
+      final clonedQuote = Quote(
+        id: '',
+        loadId: original.loadId,
+        loadReference: original.loadReference,
+        status: 'draft',
+        lineItems: original.lineItems,
+        total: original.total,
+        notes: original.notes,
+        expiresOn: DateTime.now().add(const Duration(days: 7)),
+      );
+      await repository.createQuote(clonedQuote);
+      ref.invalidate(quotesListProvider);
+    });
+  }
 }
