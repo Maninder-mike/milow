@@ -23,7 +23,6 @@ jobs:
 
       - name: Increment Build Number
         run: |
-          cd apps/terminal
           # Extract current version line, e.g., "version: 0.0.2+4"
           CURRENT_VERSION=$(grep '^version:' pubspec.yaml)
           # Extract build number, e.g., "4"
@@ -39,7 +38,7 @@ jobs:
         run: |
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
-          git add apps/terminal/pubspec.yaml
+          git add pubspec.yaml
           git commit -m "chore: bump build number [skip ci]"
           git push
 
