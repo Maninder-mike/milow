@@ -34,6 +34,7 @@ import 'package:terminal/features/billing/presentation/pages/invoices_page.dart'
 import 'package:terminal/features/crm/presentation/pages/crm_page.dart';
 import 'package:terminal/features/crm/presentation/pages/crm_details_page.dart';
 import 'package:terminal/features/settlements/presentation/pages/settlements_page.dart';
+import 'package:terminal/features/settlements/presentation/pages/settlement_details_page.dart'; // [NEW]
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -174,6 +175,16 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/settlements',
             builder: (context, state) => const SettlementsPage(),
+            routes: [
+              GoRoute(
+                path: 'details/:settlementId',
+                builder: (context, state) {
+                  final settlementId =
+                      state.pathParameters['settlementId'] ?? '';
+                  return SettlementDetailsPage(settlementId: settlementId);
+                },
+              ),
+            ],
           ),
         ],
       ),

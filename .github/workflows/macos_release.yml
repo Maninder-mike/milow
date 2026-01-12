@@ -19,6 +19,29 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Increment Build Number
+        run: |
+          cd apps/terminal
+          # Extract current version line, e.g., "version: 0.0.2+4"
+          CURRENT_VERSION=$(grep '^version:' pubspec.yaml)
+          # Extract build number, e.g., "4"
+          BUILD_NUMBER=$(echo $CURRENT_VERSION | sed 's/.*+//')
+          # Increment
+          NEW_BUILD_NUMBER=$((BUILD_NUMBER + 1))
+          # Replace in file
+          sed -i '' "s/+$BUILD_NUMBER/+$NEW_BUILD_NUMBER/" pubspec.yaml
+          
+          echo "Bumping version to build +$NEW_BUILD_NUMBER"
+
+      - name: Commit and Push Version Bump
+        run: |
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add apps/terminal/pubspec.yaml
+          git commit -m "chore: bump build number [skip ci]"
+          git push
 
       - name: Read version
         id: version

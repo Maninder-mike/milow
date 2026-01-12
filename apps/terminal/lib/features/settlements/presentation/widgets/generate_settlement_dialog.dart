@@ -149,7 +149,7 @@ class _GenerateSettlementDialogState
                     final isSelected = _selectedFuelIds.contains(fuel['id']);
                     return ListTile(
                       title: Text(
-                        '${fuel['truck_number']} - ${fuel['location']}',
+                        '${fuel['truck_number'] ?? 'Unknown Truck'} - ${fuel['location']}',
                       ),
                       subtitle: Text(
                         'Cost: ${currencyFormat.format(fuel['total_cost'])}',
@@ -237,15 +237,33 @@ class _GenerateSettlementDialogState
       );
     }
 
-    await ref
-        .read(settlementControllerProvider.notifier)
-        .createSettlement(
-          driverId: widget.driverId,
-          startDate: _startDate,
-          endDate: _endDate,
-          items: items,
-        );
+    try {
+      await ref
+          .read(settlementControllerProvider.notifier)
+          .createSettlement(
+            driverId: widget.driverId,
+            startDate: _startDate,
+            endDate: _endDate,
+            items: items,
+          );
 
-    if (mounted) Navigator.pop(context);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (context) => ContentDialog(
+            title: const Text('Error'),
+            content: Text('Failed to generate settlement: $e'),
+            actions: [
+              Button(
+                child: const Text('OK'),
+                onPressed: () => Navigator.pop(context),
+              ),
+            ],
+          ),
+        );
+      }
+    }
   }
 }

@@ -146,25 +146,43 @@ class _InvoiceBuilderDialogState extends ConsumerState<InvoiceBuilderDialog> {
         ),
         FilledButton(
           onPressed: () async {
-            final invoice = Invoice(
-              id: '',
-              loadId: widget.load.id,
-              customerId: widget.load.brokerId,
-              invoiceNumber: _invoiceNumberController.text,
-              status: 'draft',
-              lineItems: _lineItems,
-              subtotal: _subtotal,
-              totalAmount: _total,
-              issueDate: _issueDate,
-              dueDate: _dueDate,
-              notes: _notesController.text,
-            );
+            try {
+              final invoice = Invoice(
+                id: '',
+                loadId: widget.load.id,
+                customerId: widget.load.brokerId,
+                invoiceNumber: _invoiceNumberController.text,
+                status: 'draft',
+                lineItems: _lineItems,
+                subtotal: _subtotal,
+                totalAmount: _total,
+                issueDate: _issueDate,
+                dueDate: _dueDate,
+                notes: _notesController.text,
+              );
 
-            await ref
-                .read(invoiceControllerProvider.notifier)
-                .createInvoice(invoice);
-            if (!context.mounted) return;
-            Navigator.pop(context);
+              await ref
+                  .read(invoiceControllerProvider.notifier)
+                  .createInvoice(invoice);
+              if (!context.mounted) return;
+              Navigator.pop(context);
+            } catch (e) {
+              debugPrint('Error creating invoice: $e');
+              if (!context.mounted) return;
+              await showDialog(
+                context: context,
+                builder: (context) => ContentDialog(
+                  title: const Text('Error Creating Invoice'),
+                  content: Text('Failed to create invoice: $e'),
+                  actions: [
+                    Button(
+                      child: const Text('Close'),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+              );
+            }
           },
           child: const Text('Create Invoice'),
         ),

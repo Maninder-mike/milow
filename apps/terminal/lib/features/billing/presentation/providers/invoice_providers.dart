@@ -60,6 +60,9 @@ class InvoiceController extends _$InvoiceController {
       await repository.createInvoice(invoice);
       ref.invalidate(invoicesListProvider);
     });
+    if (state.hasError) {
+      throw state.error!;
+    }
   }
 
   Future<void> updateInvoice(Invoice invoice) async {
@@ -76,6 +79,15 @@ class InvoiceController extends _$InvoiceController {
     state = await AsyncValue.guard(() async {
       final repository = ref.read(invoiceRepositoryProvider);
       await repository.deleteInvoice(id);
+      ref.invalidate(invoicesListProvider);
+    });
+  }
+
+  Future<void> updateStatus(String id, String status) async {
+    state = const AsyncValue.loading();
+    state = await AsyncValue.guard(() async {
+      final repository = ref.read(invoiceRepositoryProvider);
+      await repository.updateStatus(id, status);
       ref.invalidate(invoicesListProvider);
     });
   }

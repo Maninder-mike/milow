@@ -9,3 +9,5 @@ export 'src/models/permission.dart';
 export 'src/models/role.dart';
 export 'src/utils/app_dialogs.dart';
 export 'src/repositories/vehicle_repository.dart';
+export 'src/models/company.dart';
+export 'src/repositories/company_repository.dart';

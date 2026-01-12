@@ -48,6 +48,11 @@ dependencies:
   shared_preferences: ^2.3.5
   flutter_local_notifications: ^18.0.0
 
+  # PDF & Printing
+  pdf: ^3.11.0
+  printing: ^5.13.1
+  path_provider: ^2.1.2
+
   # Workspace Packages
   milow_core:
     path: ../../packages/core

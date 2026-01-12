@@ -3,8 +3,10 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import 'package:go_router/go_router.dart';
 import 'package:terminal/features/drivers/presentation/providers/driver_selection_provider.dart';
 import '../providers/settlement_providers.dart';
+import '../widgets/generate_settlement_dialog.dart';
 
 class SettlementsPage extends ConsumerStatefulWidget {
   const SettlementsPage({super.key});
@@ -97,7 +99,7 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
                     ],
                   ),
                   onPressed: () {
-                    // TODO: Navigate to details
+                    context.go('/settlements/details/${s.id}');
                   },
                 ),
               );
@@ -110,7 +112,13 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
     );
   }
 
-  void _showGenerateSettlementDialog(BuildContext context, String driverId) {
-    // TODO: Implement settlement generation wizard
+  Future<void> _showGenerateSettlementDialog(
+    BuildContext context,
+    String driverId,
+  ) async {
+    await showDialog(
+      context: context,
+      builder: (context) => GenerateSettlementDialog(driverId: driverId),
+    );
   }
 }
