@@ -23,7 +23,7 @@ jobs:
       - name: Read version
         id: version
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/+/\./')
           echo "version=v$VERSION" >> $GITHUB_OUTPUT
           echo "version_number=$VERSION" >> $GITHUB_OUTPUT
           echo "📦 Building version: v$VERSION"
@@ -94,6 +94,7 @@ jobs:
           # Update the version and SHA256 in the cask file
           sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" Casks/milow-terminal.rb
           sed -i '' "s/sha256 \"[a-f0-9]*\"/sha256 \"$SHA256\"/" Casks/milow-terminal.rb
+          sed -i '' "s|url \".*\"|url \"https://github.com/Maninder-mike/milow/releases/download/v$VERSION/MilowTerminal-v$VERSION-macos.zip\"|" Casks/milow-terminal.rb
           
           # Commit and push
           git config user.name "GitHub Actions"
