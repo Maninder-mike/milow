@@ -169,8 +169,8 @@ jobs:
           echo "🏗️ Building release APK & App Bundle..."
           echo "🔢 Build Number: ${{ github.run_number }}"
           cd apps/driver
-          flutter build apk --release --build-number=${{ steps.version.outputs.version_code }} --verbose
-          flutter build appbundle --release --build-number=${{ steps.version.outputs.version_code }} --verbose
+          flutter build apk --release --build-number=${{ steps.version.outputs.version_code }} --no-tree-shake-icons --verbose
+          flutter build appbundle --release --build-number=${{ steps.version.outputs.version_code }} --no-tree-shake-icons --verbose
           echo "✅ Build complete!"
 
       # Verify APK Signature
