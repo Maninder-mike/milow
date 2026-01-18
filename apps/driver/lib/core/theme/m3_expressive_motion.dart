@@ -1,3 +1,4 @@
+import 'package:animations/animations.dart';
 import 'package:flutter/material.dart';
 
 /// Material 3 Expressive Motion Utilities
@@ -25,6 +26,56 @@ class M3ExpressiveMotion {
 
   /// Spring-like curve for bouncy, playful animations
   static const Curve spring = Curves.elasticOut;
+
+  /// Overshoot curve for emphasis effects
+  static const Curve overshoot = Curves.easeOutBack;
+
+  /// Anticipate curve - slight pullback before action
+  static const Curve anticipate = Curves.easeInBack;
+
+  // ============= PHYSICS-BASED SPRINGS =============
+
+  /// Gentle spring for subtle, natural movements
+  static const SpringDescription gentleSpring = SpringDescription(
+    mass: 1.0,
+    stiffness: 100.0,
+    damping: 15.0,
+  );
+
+  /// Bouncy spring for playful, energetic animations
+  static const SpringDescription bouncySpring = SpringDescription(
+    mass: 1.0,
+    stiffness: 300.0,
+    damping: 10.0,
+  );
+
+  /// Stiff spring for quick, responsive feedback
+  static const SpringDescription stiffSpring = SpringDescription(
+    mass: 1.0,
+    stiffness: 500.0,
+    damping: 25.0,
+  );
+
+  /// Slow spring for dramatic, cinematic effects
+  static const SpringDescription slowSpring = SpringDescription(
+    mass: 1.5,
+    stiffness: 50.0,
+    damping: 12.0,
+  );
+
+  // ============= SHARED AXIS TYPES =============
+
+  /// Horizontal shared axis (left-right navigation)
+  static const SharedAxisTransitionType sharedAxisHorizontal =
+      SharedAxisTransitionType.horizontal;
+
+  /// Vertical shared axis (up-down navigation)
+  static const SharedAxisTransitionType sharedAxisVertical =
+      SharedAxisTransitionType.vertical;
+
+  /// Scaled shared axis (zoom in/out navigation)
+  static const SharedAxisTransitionType sharedAxisScaled =
+      SharedAxisTransitionType.scaled;
 
   // ============= DURATIONS =============
 
@@ -91,6 +142,74 @@ class M3ExpressiveMotion {
     );
   }
 
+  // ============= ACCESSIBILITY =============
+
+  /// Check if user prefers reduced motion
+  static bool shouldReduceMotion(BuildContext context) {
+    return MediaQuery.of(context).disableAnimations;
+  }
+
+  /// Get duration respecting reduced motion preference
+  static Duration getAccessibleDuration(
+    BuildContext context,
+    Duration normalDuration,
+  ) {
+    return shouldReduceMotion(context) ? Duration.zero : normalDuration;
+  }
+
+  /// Get curve respecting reduced motion preference
+  static Curve getAccessibleCurve(BuildContext context, Curve normalCurve) {
+    return shouldReduceMotion(context) ? Curves.linear : normalCurve;
+  }
+
+  // ============= CONTAINER TRANSFORM =============
+
+  /// Creates a container transform page route (card expanding to full screen)
+  static Route<T> containerTransformRoute<T>({
+    required Widget Function(BuildContext, Animation<double>, Animation<double>)
+    pageBuilder,
+    Color? backgroundColor,
+    Duration duration = durationEmphasis,
+  }) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          pageBuilder(context, animation, secondaryAnimation),
+      transitionDuration: duration,
+      reverseTransitionDuration: duration,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return FadeThroughTransition(
+          animation: animation,
+          secondaryAnimation: secondaryAnimation,
+          fillColor: backgroundColor ?? Colors.transparent,
+          child: child,
+        );
+      },
+    );
+  }
+
+  // ============= SHARED AXIS TRANSITIONS =============
+
+  /// Creates a shared axis page route
+  static Route<T> sharedAxisRoute<T>({
+    required Widget page,
+    SharedAxisTransitionType type = SharedAxisTransitionType.horizontal,
+    Duration duration = durationMedium,
+  }) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionDuration: duration,
+      reverseTransitionDuration: duration,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return SharedAxisTransition(
+          animation: animation,
+          secondaryAnimation: secondaryAnimation,
+          transitionType: type,
+          child: child,
+        );
+      },
+    );
+  }
+
   // ============= STAGGERED ANIMATIONS =============
 
   /// Calculates staggered interval for list animations
@@ -101,6 +220,25 @@ class M3ExpressiveMotion {
     final double itemStart = start + (index * itemGap);
     final double itemEnd = (itemStart + 0.3).clamp(0.0, 1.0);
     return Interval(itemStart, itemEnd, curve: decelerated);
+  }
+
+  /// Calculates staggered delay for grid animations
+  static Duration staggeredDelay(int index, {int columns = 2}) {
+    final row = index ~/ columns;
+    final col = index % columns;
+    final diagonalIndex = row + col;
+    return Duration(milliseconds: diagonalIndex * 50);
+  }
+
+  /// Creates staggered animation controller delays
+  static List<Duration> staggeredDelays(
+    int count, {
+    Duration gap = const Duration(milliseconds: 50),
+  }) {
+    return List.generate(
+      count,
+      (i) => Duration(milliseconds: i * gap.inMilliseconds),
+    );
   }
 }
 
@@ -176,5 +314,151 @@ class _M3ExpressiveEntranceState extends State<M3ExpressiveEntrance>
       opacity: _opacity,
       child: SlideTransition(position: _slide, child: widget.child),
     );
+  }
+}
+
+/// A wrapper for OpenContainer that expands a card into a full-screen detail page
+/// Enterprise-grade container transform animation
+class M3ContainerTransform extends StatelessWidget {
+  /// The closed (thumbnail/card) widget builder
+  final Widget Function(BuildContext, VoidCallback) closedBuilder;
+
+  /// The open (full-screen detail) widget builder
+  final Widget Function(BuildContext, VoidCallback) openBuilder;
+
+  /// Background color during the transition
+  final Color? transitionBackgroundColor;
+
+  /// Border radius of the closed container
+  final BorderRadius closedBorderRadius;
+
+  /// Duration of the animation
+  final Duration transitionDuration;
+
+  /// Elevation of the closed container
+  final double closedElevation;
+
+  /// Elevation of the open container
+  final double openElevation;
+
+  const M3ContainerTransform({
+    required this.closedBuilder,
+    required this.openBuilder,
+    super.key,
+    this.transitionBackgroundColor,
+    this.closedBorderRadius = const BorderRadius.all(Radius.circular(16)),
+    this.transitionDuration = M3ExpressiveMotion.durationEmphasis,
+    this.closedElevation = 0,
+    this.openElevation = 0,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = M3ExpressiveMotion.shouldReduceMotion(context);
+
+    return OpenContainer(
+      transitionType: ContainerTransitionType.fadeThrough,
+      transitionDuration: reduceMotion ? Duration.zero : transitionDuration,
+      openBuilder: (context, action) => openBuilder(context, action),
+      closedBuilder: (context, action) => closedBuilder(context, action),
+      closedShape: RoundedRectangleBorder(borderRadius: closedBorderRadius),
+      closedElevation: closedElevation,
+      openElevation: openElevation,
+      closedColor:
+          transitionBackgroundColor ?? Theme.of(context).colorScheme.surface,
+      openColor:
+          transitionBackgroundColor ?? Theme.of(context).colorScheme.surface,
+    );
+  }
+}
+
+/// A widget that staggers child animations in a list
+class M3StaggeredList extends StatefulWidget {
+  /// The list of children to animate
+  final List<Widget> children;
+
+  /// Main axis direction
+  final Axis direction;
+
+  /// Main axis alignment
+  final MainAxisAlignment mainAxisAlignment;
+
+  /// Cross axis alignment
+  final CrossAxisAlignment crossAxisAlignment;
+
+  /// Spacing between items
+  final double spacing;
+
+  /// Delay between each item's animation start
+  final Duration staggerDelay;
+
+  /// Duration of each item's animation
+  final Duration itemDuration;
+
+  const M3StaggeredList({
+    required this.children,
+    super.key,
+    this.direction = Axis.vertical,
+    this.mainAxisAlignment = MainAxisAlignment.start,
+    this.crossAxisAlignment = CrossAxisAlignment.start,
+    this.spacing = 0,
+    this.staggerDelay = const Duration(milliseconds: 50),
+    this.itemDuration = M3ExpressiveMotion.durationMedium,
+  });
+
+  @override
+  State<M3StaggeredList> createState() => _M3StaggeredListState();
+}
+
+class _M3StaggeredListState extends State<M3StaggeredList> {
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = M3ExpressiveMotion.shouldReduceMotion(context);
+
+    final animatedChildren = widget.children.asMap().entries.map((entry) {
+      final index = entry.key;
+      final child = entry.value;
+
+      if (reduceMotion) return child;
+
+      return M3ExpressiveEntrance(
+        delay: Duration(
+          milliseconds: index * widget.staggerDelay.inMilliseconds,
+        ),
+        duration: widget.itemDuration,
+        child: child,
+      );
+    }).toList();
+
+    if (widget.direction == Axis.horizontal) {
+      return Row(
+        mainAxisAlignment: widget.mainAxisAlignment,
+        crossAxisAlignment: widget.crossAxisAlignment,
+        children: _addSpacing(
+          animatedChildren,
+          widget.spacing,
+          Axis.horizontal,
+        ),
+      );
+    }
+
+    return Column(
+      mainAxisAlignment: widget.mainAxisAlignment,
+      crossAxisAlignment: widget.crossAxisAlignment,
+      children: _addSpacing(animatedChildren, widget.spacing, Axis.vertical),
+    );
+  }
+
+  List<Widget> _addSpacing(List<Widget> children, double spacing, Axis axis) {
+    if (spacing == 0 || children.isEmpty) return children;
+
+    final spacer = axis == Axis.vertical
+        ? SizedBox(height: spacing)
+        : SizedBox(width: spacing);
+
+    return children
+        .expand((child) => [child, spacer])
+        .take(children.length * 2 - 1)
+        .toList();
   }
 }

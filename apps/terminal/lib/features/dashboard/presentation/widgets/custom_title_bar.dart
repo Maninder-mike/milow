@@ -41,25 +41,20 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
             const Expanded(
               child: DragToMoveArea(child: SizedBox(height: double.infinity)),
             ),
-            // Center search bar
-            _WindowsSearchBar(
-              focusNode: widget.searchFocusNode,
-              foregroundColor: foregroundColor,
-              isLight: isLight,
+            // Center search bar (constrained but flexible)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 468),
+              child: _WindowsSearchBar(
+                focusNode: widget.searchFocusNode,
+                foregroundColor: foregroundColor,
+                isLight: isLight,
+              ),
             ),
-            // Right drag area with user header
+            // Right area with user header
             Expanded(
               child: Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  const Expanded(
-                    child: DragToMoveArea(
-                      child: SizedBox(height: double.infinity),
-                    ),
-                  ),
-                  const _UserHeader(),
-                  const SizedBox(width: 8),
-                ],
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [const _UserHeader(), const SizedBox(width: 8)],
               ),
             ),
             // Windows control buttons (fixed width, at the end)

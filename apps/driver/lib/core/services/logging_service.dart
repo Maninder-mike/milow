@@ -1,7 +1,9 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:intl/intl.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 
 /// Log levels for categorizing log messages
 enum LogLevel { debug, info, warning, error, critical }
@@ -136,6 +138,30 @@ class LoggingService {
 
     // Write to file
     await _writeToFile(logEntry);
+
+    // Integrate with Crashlytics for remote monitoring
+    try {
+      // Use FirebaseCrashlytics.log() for all log entries as breadcrumbs
+      unawaited(FirebaseCrashlytics.instance.log(logEntry));
+
+      // Record high-priority errors to Crashlytics as non-fatal
+      if (level == LogLevel.error || level == LogLevel.critical) {
+        unawaited(
+          FirebaseCrashlytics.instance.recordError(
+            error ?? message,
+            stackTrace,
+            reason: '[$tag] $message',
+            information: extras != null ? [extras.toString()] : [],
+            fatal: level == LogLevel.critical,
+          ),
+        );
+      }
+    } catch (e) {
+      // Silently fail if Crashlytics is not ready/configured
+      if (kDebugMode) {
+        debugPrint('Crashlytics logging failed: $e');
+      }
+    }
   }
 
   Future<void> _writeToFile(String content) async {

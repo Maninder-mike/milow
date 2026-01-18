@@ -1,195 +1,251 @@
 import 'dart:async';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:milow/core/services/logging_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-/// Notification types
 enum NotificationType { reminder, company, news, message }
 
-/// Data Class for Notification
 class ServiceNotificationItem {
+  final String id;
+  final NotificationType type;
   final String title;
   final String body;
-  final NotificationType type;
+  final Map<String, dynamic>? data;
 
   ServiceNotificationItem({
+    required this.id,
+    required this.type,
     required this.title,
     required this.body,
-    required this.type,
+    this.data,
   });
-
-  static ServiceNotificationItem fromPayload(Map<String, dynamic> payload) {
-    final typeStr = payload['type'] as String?;
-    NotificationType type;
-    if (typeStr == 'reminder') {
-      type = NotificationType.reminder;
-    } else if (typeStr == 'company' || typeStr == 'company_invite') {
-      type = NotificationType.company;
-    } else if (typeStr == 'message') {
-      type = NotificationType.message;
-    } else {
-      type = NotificationType.news;
-    }
-
-    return ServiceNotificationItem(
-      title: payload['title'] ?? 'Notification',
-      body: payload['body'] ?? payload['message'] ?? '',
-      type: type,
-    );
-  }
 }
 
-/// Service to manage notifications and provide unread count across the app
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  unawaited(
+    logger.info('FCM', 'Handling a background message: ${message.messageId}'),
+  );
+}
+
 class NotificationService {
-  NotificationService._();
-  static final NotificationService instance = NotificationService._();
+  static final NotificationService instance = NotificationService._internal();
+  factory NotificationService() => instance;
+  NotificationService._internal();
 
-  /// Stream controller for unread count
-  final _countController = StreamController<int>.broadcast();
-  Stream<int> get unreadCountStream => _countController.stream;
+  final FirebaseMessaging _fcm = FirebaseMessaging.instance;
+  final FlutterLocalNotificationsPlugin _localNotifications =
+      FlutterLocalNotificationsPlugin();
 
-  /// Stream controller for incoming notifications (to show toast/snackbar)
+  bool _initialized = false;
+  int _currentUnreadCount = 0;
+
+  // Streams for compatibility with Dashboard/Settings
+  final _unreadCountController = StreamController<int>.broadcast();
+  Stream<int> get unreadCountStream => _unreadCountController.stream;
+  int get unreadCount => _currentUnreadCount;
+
   final _incomingController =
       StreamController<ServiceNotificationItem>.broadcast();
   Stream<ServiceNotificationItem> get incomingStream =>
       _incomingController.stream;
 
-  /// Current unread count
-  int _unreadCount = 0;
-  int get unreadCount => _unreadCount;
-
-  // Realtime subscription handle
-  RealtimeChannel? _subscription;
-
-  /// Initialize the service
   Future<void> init() async {
-    await refreshUnreadCount();
-    _setupRealtimeSubscription();
-  }
+    if (_initialized) return;
 
-  void _setupRealtimeSubscription() {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-    if (userId == null) return;
+    // 1. Request Permission (iOS/Android 13+)
+    final NotificationSettings settings = await _fcm.requestPermission(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
 
-    // Avoid duplicate subscriptions
-    if (_subscription != null) return;
+    if (settings.authorizationStatus == AuthorizationStatus.authorized) {
+      unawaited(logger.info('FCM', 'User granted permission'));
+    }
 
-    _subscription = Supabase.instance.client
-        .channel('public:notifications')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: 'notifications',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'user_id',
-            value: userId,
+    // 2. Setup Local Notifications
+    const AndroidInitializationSettings initializationSettingsAndroid =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+
+    const InitializationSettings initializationSettings =
+        InitializationSettings(
+          android: initializationSettingsAndroid,
+          iOS: DarwinInitializationSettings(),
+        );
+
+    await _localNotifications.initialize(
+      initializationSettings,
+      onDidReceiveNotificationResponse: (details) {
+        logger.info('Notification', 'Notification clicked: ${details.payload}');
+      },
+    );
+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      description: 'This channel is used for important notifications.',
+      importance: Importance.max,
+    );
+
+    await _localNotifications
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >()
+        ?.createNotificationChannel(channel);
+
+    // 3. Handle Foreground Messages
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      logger.info('FCM', 'Got a message whilst in the foreground!');
+
+      final RemoteNotification? notification = message.notification;
+      final AndroidNotification? android = message.notification?.android;
+
+      if (notification != null && !kIsWeb) {
+        // Show Local Notification
+        unawaited(
+          _localNotifications.show(
+            notification.hashCode,
+            notification.title,
+            notification.body,
+            NotificationDetails(
+              android: AndroidNotificationDetails(
+                channel.id,
+                channel.name,
+                channelDescription: channel.description,
+                icon: android?.smallIcon,
+                importance: Importance.max,
+                priority: Priority.high,
+              ),
+            ),
+            payload: message.data.toString(),
           ),
-          callback: (payload) {
-            // Handle INSERT specifically to broadcast event
-            if (payload.eventType == PostgresChangeEvent.insert) {
-              final newRecord = payload.newRecord;
+        );
 
-              _incomingController.add(
-                ServiceNotificationItem.fromPayload(newRecord),
-              );
-            }
-            // Always refresh count on any change (insert/update/delete)
-            refreshUnreadCount();
-          },
-        )
-        .subscribe();
+        // Emit to incoming stream for UI updates
+        _incomingController.add(
+          ServiceNotificationItem(
+            id: message.messageId ?? DateTime.now().toIso8601String(),
+            type: _parseType(message.data['type']),
+            title: notification.title ?? '',
+            body: notification.body ?? '',
+            data: message.data,
+          ),
+        );
+
+        // Refresh count
+        unawaited(refreshUnreadCount());
+      }
+    });
+
+    // 4. Handle Background Messages
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+    // 5. Initial unread count
+    unawaited(refreshUnreadCount());
+
+    _initialized = true;
   }
 
-  /// Refresh the unread notification count from Supabase
-  Future<int> refreshUnreadCount() async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) {
-        _unreadCount = 0;
-        _countController.add(0);
-        return 0;
-      }
+  Future<void> refreshUnreadCount() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      _currentUnreadCount = 0;
+      _unreadCountController.add(0);
+      return;
+    }
 
+    try {
       final response = await Supabase.instance.client
           .from('notifications')
-          .count(CountOption.exact)
-          .eq('user_id', userId)
+          .select('id')
+          .eq('user_id', user.id)
           .eq('is_read', false);
 
-      _unreadCount = response;
-      _countController.add(_unreadCount);
-      return _unreadCount;
+      _currentUnreadCount = response.length;
+      _unreadCountController.add(_currentUnreadCount);
     } catch (e) {
-      debugPrint('Error getting unread count: $e');
-      return 0;
+      unawaited(
+        logger.error('FCM', 'Failed to refresh unread count', error: e),
+      );
     }
   }
 
-  /// Add a new notification
-  Future<void> addNotification({
-    required String title,
-    required String message,
-    NotificationType type = NotificationType.reminder,
-  }) async {
-    try {
-      debugPrint('🔔 Adding notification: $title');
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      await Supabase.instance.client.from('notifications').insert({
-        'user_id': userId,
-        'type': type.toString().split('.').last,
-        'title': title,
-        'body': message, // mapped to 'body' in DB
-        'is_read': false,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-    } catch (e) {
-      debugPrint('🔔 Error adding notification: $e');
-    }
-  }
-
-  /// Add a reminder for missing end odometer
+  /// Adds a local notification reminder for missing end odometer
   Future<void> addMissingOdometerReminder({
     required String tripNumber,
     required String truckNumber,
   }) async {
-    await addNotification(
-      title: 'Missing End Odometer',
-      message:
-          'Trip #$tripNumber ($truckNumber) is missing the end odometer reading. Please update it to track your mileage accurately.',
-      type: NotificationType.reminder,
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'reminders_channel',
+          'Reminders',
+          channelDescription: 'Important reminders for drivers',
+          importance: Importance.max,
+          priority: Priority.high,
+        );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
     );
-  }
 
-  /// Mark all notifications as read
-  Future<void> markAllAsRead() async {
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
+    await _localNotifications.show(
+      0,
+      'Missing End Odometer',
+      'Trip #$tripNumber (Truck #$truckNumber) is missing an end odometer reading.',
+      details,
+    );
 
-      await Supabase.instance.client
-          .from('notifications')
-          .update({'is_read': true})
-          .eq('user_id', userId)
-          .eq('is_read', false);
-
-      await refreshUnreadCount();
-    } catch (e) {
-      debugPrint('Error marking all as read: $e');
+    // Also record it in the database so it shows up in history
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      unawaited(
+        Supabase.instance.client.from('notifications').insert({
+          'user_id': user.id,
+          'type': 'reminder',
+          'title': 'Missing End Odometer',
+          'body':
+              'Trip #$tripNumber (Truck #$truckNumber) is missing an end odometer reading.',
+          'data': {'trip_number': tripNumber, 'truck_number': truckNumber},
+          'is_read': false,
+        }),
+      );
+      unawaited(refreshUnreadCount());
     }
   }
 
-  /// Check if there are any unread notifications
-  bool get hasUnreadNotifications => _unreadCount > 0;
+  NotificationType _parseType(String? type) {
+    switch (type) {
+      case 'reminder':
+        return NotificationType.reminder;
+      case 'company':
+        return NotificationType.company;
+      case 'message':
+        return NotificationType.message;
+      default:
+        return NotificationType.news;
+    }
+  }
 
-  /// Dispose the service
+  Future<String?> getToken() async {
+    try {
+      final String? token = await _fcm.getToken();
+      return token;
+    } catch (e) {
+      unawaited(logger.error('FCM', 'Failed to get token', error: e));
+      return null;
+    }
+  }
+
+  Stream<String> get onTokenRefresh => _fcm.onTokenRefresh;
+
   void dispose() {
-    _countController.close();
+    _unreadCountController.close();
     _incomingController.close();
-    _subscription?.unsubscribe();
   }
 }
 
-/// Global shortcut for the notification service
-NotificationService get notificationService => NotificationService.instance;
+final notificationService = NotificationService.instance;

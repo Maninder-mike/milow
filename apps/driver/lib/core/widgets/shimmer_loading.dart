@@ -408,3 +408,177 @@ class ShimmerEntryItem extends StatelessWidget {
     );
   }
 }
+
+/// Pre-built shimmer skeleton for inbox/chat list items
+class ShimmerInboxItem extends StatelessWidget {
+  final bool showDivider;
+
+  const ShimmerInboxItem({super.key, this.showDivider = true});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final baseColor = tokens.inputBorder;
+
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: tokens.spacingM,
+            vertical: tokens.radiusM,
+          ),
+          child: Row(
+            children: [
+              // Avatar placeholder (circular)
+              Container(
+                width: 48,
+                height: 48,
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              SizedBox(width: tokens.radiusM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Name placeholder
+                    Container(
+                      width: 120,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: baseColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    SizedBox(height: tokens.spacingXS + 2),
+                    // Message preview placeholder
+                    Container(
+                      width: double.infinity,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: baseColor,
+                        borderRadius: BorderRadius.circular(tokens.spacingXS),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(width: tokens.radiusM),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  // Time placeholder
+                  Container(
+                    width: 40,
+                    height: 10,
+                    decoration: BoxDecoration(
+                      color: baseColor,
+                      borderRadius: BorderRadius.circular(tokens.spacingXS),
+                    ),
+                  ),
+                  SizedBox(height: tokens.spacingXS + 4),
+                  // Unread badge placeholder
+                  Container(
+                    width: 20,
+                    height: 20,
+                    decoration: BoxDecoration(
+                      color: baseColor,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Divider(
+            height: 1,
+            indent: 76,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+      ],
+    );
+  }
+}
+
+/// Pre-built shimmer skeleton for settings list items
+class ShimmerSettingsItem extends StatelessWidget {
+  final bool showDivider;
+
+  const ShimmerSettingsItem({super.key, this.showDivider = true});
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    final baseColor = tokens.inputBorder;
+
+    return Column(
+      children: [
+        Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: tokens.spacingM,
+            vertical: tokens.radiusM,
+          ),
+          child: Row(
+            children: [
+              // Icon placeholder
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius: BorderRadius.circular(tokens.radiusS + 2),
+                ),
+              ),
+              SizedBox(width: tokens.radiusM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Title placeholder
+                    Container(
+                      width: 100,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: baseColor,
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                    ),
+                    SizedBox(height: tokens.spacingXS),
+                    // Subtitle placeholder
+                    Container(
+                      width: 160,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: baseColor,
+                        borderRadius: BorderRadius.circular(tokens.spacingXS),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Chevron/toggle placeholder
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                  color: baseColor,
+                  borderRadius: BorderRadius.circular(tokens.radiusS),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (showDivider)
+          Divider(
+            height: 1,
+            indent: 68,
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+      ],
+    );
+  }
+}

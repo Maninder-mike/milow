@@ -164,6 +164,24 @@ class _GeneralPanelState extends ConsumerState<GeneralPanel> {
                 ),
               ),
             ),
+            const SizedBox(height: 16),
+            _buildRow(
+              'Unit System',
+              ComboBox<String>(
+                value: prefs.unitSystem,
+                items: const [
+                  ComboBoxItem(value: 'Imperial', child: Text('Imperial')),
+                  ComboBoxItem(value: 'Metric', child: Text('Metric')),
+                ],
+                onChanged: (val) {
+                  if (val != null) {
+                    ref
+                        .read(userPreferencesProvider.notifier)
+                        .setUnitSystem(val);
+                  }
+                },
+              ),
+            ),
           ],
         ),
 

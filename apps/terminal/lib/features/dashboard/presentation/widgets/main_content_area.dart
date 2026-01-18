@@ -77,7 +77,7 @@ class MainContentArea extends ConsumerWidget {
             body: Container(
               key: ValueKey('${tab.id}_body'),
               color: backgroundColor, // Ensure body is also editor color
-              child: tab.child,
+              child: tab.child ?? const Center(child: ProgressRing()),
             ),
             onClosed: () {
               ref.read(tabManagerProvider.notifier).removeTab(index);

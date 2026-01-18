@@ -12,6 +12,7 @@ import '../../../../core/providers/connectivity_provider.dart';
 import '../providers/database_health_provider.dart';
 import 'package:terminal/core/constants/app_elevation.dart';
 import '../../../../core/constants/app_colors.dart';
+import '../../../../core/widgets/toast_notification.dart';
 
 class StatusBar extends ConsumerStatefulWidget {
   const StatusBar({super.key});
@@ -80,7 +81,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
 
     return Container(
       height: 28,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      padding: const EdgeInsets.only(left: 16),
       decoration: BoxDecoration(
         color: backgroundColor,
         border: Border(top: BorderSide(color: borderColor)),
@@ -136,90 +137,98 @@ class _StatusBarState extends ConsumerState<StatusBar>
           ),
           _buildDivider(),
 
-          // 3. Daily Load Completion
-          Builder(
-            builder: (context) {
-              final loadsAsync = ref.watch(loadsListProvider);
-              final now = DateTime.now();
+          // 3. Daily Load Completion (Wrap in Flexible to prevent overflow)
+          Flexible(
+            child: Builder(
+              builder: (context) {
+                final loadsAsync = ref.watch(loadsListProvider);
+                final now = DateTime.now();
 
-              return loadsAsync.maybeWhen(
-                data: (rawLoads) {
-                  final totalLoads = rawLoads.length;
-                  if (totalLoads == 0) return const SizedBox.shrink();
+                return loadsAsync.maybeWhen(
+                  data: (rawLoads) {
+                    final totalLoads = rawLoads.length;
+                    if (totalLoads == 0) return const SizedBox.shrink();
 
-                  final completedCount = rawLoads
-                      .where((l) => l.status.toLowerCase() == 'delivered')
-                      .length;
+                    final completedCount = rawLoads
+                        .where((l) => l.status.toLowerCase() == 'delivered')
+                        .length;
 
-                  final delayedCount = rawLoads.where((l) {
-                    final s = l.status.toLowerCase();
-                    return s == 'pending' && l.pickup.date.isBefore(now);
-                  }).length;
+                    final delayedCount = rawLoads.where((l) {
+                      final s = l.status.toLowerCase();
+                      return s == 'pending' && l.pickup.date.isBefore(now);
+                    }).length;
 
-                  final activeCount = rawLoads.where((l) {
-                    final s = l.status.toLowerCase();
-                    return s == 'assigned' || s == 'in transit';
-                  }).length;
+                    final activeCount = rawLoads.where((l) {
+                      final s = l.status.toLowerCase();
+                      return s == 'assigned' || s == 'in transit';
+                    }).length;
 
-                  return Tooltip(
-                    message:
-                        '$completedCount Completed\n$activeCount Active\n$delayedCount Delayed',
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          'Loads:',
-                          style: GoogleFonts.outfit(
-                            fontSize: 11,
-                            color: theme.resources.textFillColorSecondary,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        SizedBox(
-                          width: 100,
-                          height: 12,
-                          child: ProgressBar(
-                            value: (completedCount / totalLoads) * 100,
-                            backgroundColor: isLight
-                                ? Colors.grey.withValues(alpha: 0.3)
-                                : Colors.white.withValues(alpha: 0.1),
-                            activeColor: delayedCount > 0
-                                ? AppColors.warning
-                                : AppColors.success,
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        RichText(
-                          text: TextSpan(
-                            style: GoogleFonts.outfit(
-                              fontSize: 11,
-                              color: theme.resources.textFillColorPrimary,
-                            ),
-                            children: [
-                              TextSpan(
-                                text: '$completedCount/$totalLoads ',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                    return Tooltip(
+                      message:
+                          '$completedCount Completed\n$activeCount Active\n$delayedCount Delayed',
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              'Loads:',
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                color: theme.resources.textFillColorSecondary,
                               ),
-                              if (delayedCount > 0)
-                                TextSpan(
-                                  text: '• $delayedCount Delayed',
-                                  style: TextStyle(
-                                    color: AppColors.warning,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                            ],
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-                orElse: () => const SizedBox.shrink(),
-              );
-            },
+                          const SizedBox(width: 8),
+                          SizedBox(
+                            width: 60, // Reduce width for narrow screens
+                            height: 12,
+                            child: ProgressBar(
+                              value: (completedCount / totalLoads) * 100,
+                              backgroundColor: isLight
+                                  ? Colors.grey.withValues(alpha: 0.3)
+                                  : Colors.white.withValues(alpha: 0.1),
+                              activeColor: delayedCount > 0
+                                  ? AppColors.warning
+                                  : AppColors.success,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: RichText(
+                              overflow: TextOverflow.ellipsis,
+                              text: TextSpan(
+                                style: GoogleFonts.outfit(
+                                  fontSize: 11,
+                                  color: theme.resources.textFillColorPrimary,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: '$completedCount/$totalLoads ',
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                  if (delayedCount > 0)
+                                    TextSpan(
+                                      text: 'Delayed',
+                                      style: TextStyle(
+                                        color: AppColors.warning,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                  orElse: () => const SizedBox.shrink(),
+                );
+              },
+            ),
           ),
 
           const Spacer(),
@@ -266,11 +275,24 @@ class _StatusBarState extends ConsumerState<StatusBar>
                 _flyoutController.showFlyout(
                   barrierColor: Colors.transparent,
                   builder: (context) {
+                    final flyoutTheme = FluentTheme.of(context);
+                    final flyoutIsLight =
+                        flyoutTheme.brightness == Brightness.light;
+                    final flyoutBgColor = flyoutIsLight
+                        ? flyoutTheme
+                              .resources
+                              .solidBackgroundFillColorSecondary
+                        : flyoutTheme.resources.solidBackgroundFillColorBase;
                     return FlyoutContent(
                       constraints: const BoxConstraints(maxWidth: 350),
                       padding: EdgeInsets.zero,
                       child: Container(
                         decoration: BoxDecoration(
+                          color: flyoutBgColor,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: flyoutTheme.resources.cardStrokeColorDefault,
+                          ),
                           boxShadow: AppElevation.shadow8(context),
                         ),
                         child: _buildCombinedNotificationList(
@@ -325,6 +347,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
               ),
             ),
           ),
+          const SizedBox(width: 16),
         ],
       ),
     );
@@ -499,76 +522,57 @@ class _StatusBarState extends ConsumerState<StatusBar>
   // ---------------------------------------------------------------------------
 
   void _showNotificationToast(BuildContext context, UserProfile user) {
-    displayInfoBar(
+    showFluentToast(
       context,
+      title: 'New approval request',
+      body: '${user.fullName ?? 'Unknown'} requested ${user.role.label}',
+      intent: ToastIntent.info,
       duration: const Duration(seconds: 10),
-      alignment: Alignment.bottomRight,
-      builder: (context, close) {
-        return InfoBar(
-          title: Text('New Approval Request'),
-          content: Text(
-            '${user.fullName ?? 'Unknown'} requested ${user.role.label}',
-          ),
-          severity: InfoBarSeverity.info,
-          action: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Button(
-                onPressed: () {
-                  ref
-                      .read(notificationActionsProvider)
-                      .approveUser(user.id, user.role);
-                  close();
-                },
-                child: const Text('Approve'),
-              ),
-              const SizedBox(width: 8),
-              Button(
-                onPressed: () {
-                  ref.read(notificationActionsProvider).rejectUser(user.id);
-                  close();
-                },
-                child: const Text('Reject'),
-              ),
-            ],
-          ),
-          onClose: close,
-        );
-      },
+      action: ToastAction(
+        label: 'View requests',
+        onPressed: () {
+          // Navigate to pending users section
+          _flyoutController.showFlyout(
+            barrierColor: Colors.transparent,
+            builder: (context) {
+              return FlyoutContent(
+                constraints: const BoxConstraints(maxWidth: 350),
+                padding: EdgeInsets.zero,
+                child: Container(
+                  decoration: BoxDecoration(
+                    boxShadow: AppElevation.shadow8(context),
+                  ),
+                  child: _buildCombinedNotificationList(
+                    ref.read(pendingUsersProvider),
+                    ref.read(driverLeftNotificationsProvider),
+                    ref.read(companyInviteNotificationsProvider),
+                  ),
+                ),
+              );
+            },
+          );
+        },
+      ),
     );
   }
 
   void _showOfflineNotification(BuildContext context) {
-    displayInfoBar(
+    showFluentToast(
       context,
+      title: 'No internet connection',
+      body: 'You are currently offline. Some features may not be available.',
+      intent: ToastIntent.error,
       duration: const Duration(seconds: 5),
-      alignment: Alignment.bottomRight,
-      builder: (context, close) {
-        return InfoBar(
-          title: const Text('No Internet Connection'),
-          content: const Text(
-            'You are currently offline. Some features may not be available.',
-          ),
-          severity: InfoBarSeverity.error,
-          onClose: close,
-        );
-      },
     );
   }
 
   void _showOnlineNotification(BuildContext context) {
-    displayInfoBar(
+    showFluentToast(
       context,
+      title: 'Back online',
+      body: 'Your internet connection has been restored.',
+      intent: ToastIntent.success,
       duration: const Duration(seconds: 4),
-      alignment: Alignment.bottomRight,
-      builder: (context, close) {
-        return InfoBar(
-          title: const Text('Back Online'),
-          content: const Text('Your internet connection has been restored.'),
-          severity: InfoBarSeverity.success,
-          onClose: close,
-        );
-      },
     );
   }
 
@@ -577,27 +581,20 @@ class _StatusBarState extends ConsumerState<StatusBar>
     Map<String, dynamic> notification,
   ) {
     final driverName = notification['data']?['driver_name'] ?? 'A driver';
-    displayInfoBar(
+    showFluentToast(
       context,
+      title: 'Driver left company',
+      body: '$driverName has left the company.',
+      intent: ToastIntent.warning,
       duration: const Duration(seconds: 10),
-      alignment: Alignment.bottomRight,
-      builder: (context, close) {
-        return InfoBar(
-          title: const Text('Driver Left Company'),
-          content: Text('$driverName has left the company.'),
-          severity: InfoBarSeverity.warning,
-          action: Button(
-            onPressed: () {
-              ref
-                  .read(notificationActionsProvider)
-                  .dismissNotification(notification['id']);
-              close();
-            },
-            child: const Text('Dismiss'),
-          ),
-          onClose: close,
-        );
-      },
+      action: ToastAction(
+        label: 'View details',
+        onPressed: () {
+          ref
+              .read(notificationActionsProvider)
+              .dismissNotification(notification['id']);
+        },
+      ),
     );
   }
 
@@ -627,11 +624,14 @@ class _StatusBarState extends ConsumerState<StatusBar>
         companyInviteNotifs.isEmpty;
 
     if (isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.all(16.0),
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
         child: Text(
           'No notifications',
-          style: TextStyle(color: theme.resources.textFillColorSecondary),
+          style: GoogleFonts.outfit(
+            fontSize: 13,
+            color: theme.resources.textFillColorSecondary,
+          ),
         ),
       );
     }

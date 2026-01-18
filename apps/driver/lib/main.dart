@@ -13,6 +13,10 @@ import 'package:milow/core/services/theme_service.dart';
 import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/services/logging_service.dart';
 import 'package:milow/core/services/locale_service.dart';
+import 'package:milow/core/services/notification_service.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:flutter/foundation.dart';
 
 import 'package:flutter/services.dart';
 import 'package:milow/core/services/trip_parser_service.dart';
@@ -49,53 +53,58 @@ import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Enable edge-to-edge display
+  // 1. Critical Base Services
+  try {
+    await Firebase.initializeApp();
+    FlutterError.onError = (errorDetails) {
+      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+    };
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  } catch (e) {
+    debugPrint('Failed to initialize Firebase: $e');
+  }
+
+  // 2. Load environment and UI settings
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
       statusBarColor: Colors.transparent,
       systemNavigationBarColor: Colors.transparent,
     ),
   );
-  await SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  await dotenv.load(fileName: '.env');
+  await Future.wait([
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
+    dotenv.load(fileName: '.env'),
+    logger.init(),
+    localeService.loadLocale(),
+    connectivityService.init(),
+  ]);
 
-  // Initialize logging service first to capture all activities
-  await logger.init();
-  await logger.logLifecycle('App starting');
+  // 3. Dependent Core Services
+  // Hive must start after logger/dotenv but can run in parallel with Supabase
+  await Future.wait([
+    Supabase.initialize(
+      url: SupabaseConstants.supabaseUrl,
+      anonKey: SupabaseConstants.supabaseAnonKey,
+    ).then((_) => NotificationService.instance.init()),
 
-  // Initialize Hive for local caching
-  await Hive.initFlutter();
-  Hive.registerAdapter(SyncOperationAdapter());
-  await LocalProfileStore.init();
-  await LocalTripStore.init();
-  await LocalFuelStore.init();
-  await LocalDocumentStore.init();
-  await syncQueueService.init();
-  await logger.info('Init', 'Hive, local stores, and sync queue initialized');
+    Hive.initFlutter().then((_) async {
+      Hive.registerAdapter(SyncOperationAdapter());
+      await Future.wait([
+        LocalProfileStore.init(),
+        LocalTripStore.init(),
+        LocalFuelStore.init(),
+        LocalDocumentStore.init(),
+      ]);
+      return syncQueueService.init();
+    }),
+  ]);
 
-  // Initialize connectivity service for offline detection
-  await connectivityService.init();
-  await logger.info('Init', 'Connectivity service initialized');
-
-  // Validate Supabase environment quickly to avoid silent issues
-  final supabaseUrl = SupabaseConstants.supabaseUrl;
-  final supabaseAnon = SupabaseConstants.supabaseAnonKey;
-  if (supabaseUrl.isEmpty || supabaseAnon.isEmpty) {
-    debugPrint(
-      '[Milow] WARNING: Supabase env not set. Check .env for NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    );
-    await logger.warning('Init', 'Supabase environment variables not set');
-  }
-
-  await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnon);
-  await logger.info('Init', 'Supabase initialized');
-
-  // Clean up old log files (older than 7 days)
-  await logger.cleanOldLogs();
-
-  // Initialize locale service
-  await localeService.loadLocale();
+  // 4. Non-blocking tasks
+  unawaited(logger.cleanOldLogs());
 
   await logger.logLifecycle('App initialization complete');
 
@@ -143,6 +152,17 @@ final GoRouter _router = GoRouter(
     // If not logged in and trying to access protected routes, redirect to login
     if (!isLoggedIn && !isAuthPage) {
       return '/login';
+    }
+
+    // Protect /inbox route: only accessible if connected to a company
+    if (state.matchedLocation == '/inbox') {
+      final profileProvider = Provider.of<ProfileProvider>(
+        context,
+        listen: false,
+      );
+      if (!profileProvider.isConnectedToCompany) {
+        return '/dashboard';
+      }
     }
 
     return null;

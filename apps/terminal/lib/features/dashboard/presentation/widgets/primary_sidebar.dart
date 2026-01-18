@@ -15,6 +15,7 @@ class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
   final String? activePane; // 'add_record', 'drivers', etc
+  final String currentLocation;
 
   const PrimarySidebar({
     super.key,
@@ -28,6 +29,7 @@ class PrimarySidebar extends ConsumerWidget {
     required this.onSettingsTap,
     required this.onProfileTap,
     required this.onDashboardTap,
+    required this.currentLocation,
     this.activePane,
   });
 
@@ -56,7 +58,9 @@ class PrimarySidebar extends ConsumerWidget {
               FluentIcons.home_24_regular,
               label: 'Dashboard',
               onTap: onDashboardTap,
-              isActive: activePane == null, // Assuming null is dashboard
+              isActive:
+                  (activePane == null || activePane == 'dashboard') &&
+                  currentLocation == '/dashboard',
             ),
             const SizedBox(height: 8),
 
@@ -82,7 +86,7 @@ class PrimarySidebar extends ConsumerWidget {
                       FluentIcons.document_text_24_regular,
                       label: 'Loads',
                       onTap: onLoadsTap,
-                      isActive: activePane == 'loads',
+                      isActive: currentLocation.startsWith('/highway-dispatch'),
                     ),
                     const SizedBox(height: 8),
 
@@ -92,7 +96,7 @@ class PrimarySidebar extends ConsumerWidget {
                       FluentIcons.money_24_regular,
                       label: 'Invoices',
                       onTap: onInvoicesTap,
-                      isActive: activePane == 'invoices',
+                      isActive: currentLocation.startsWith('/invoices'),
                     ),
                     const SizedBox(height: 8),
 
@@ -102,7 +106,7 @@ class PrimarySidebar extends ConsumerWidget {
                       FluentIcons.person_note_24_regular,
                       label: 'CRM',
                       onTap: onCrmTap,
-                      isActive: activePane == 'crm',
+                      isActive: currentLocation.startsWith('/crm'),
                     ),
                     const SizedBox(height: 8),
 
@@ -112,7 +116,7 @@ class PrimarySidebar extends ConsumerWidget {
                       FluentIcons.receipt_money_24_regular,
                       label: 'Settlements',
                       onTap: onSettlementsTap,
-                      isActive: activePane == 'settlements',
+                      isActive: currentLocation.startsWith('/settlements'),
                     ),
                     const SizedBox(height: 8),
 
@@ -122,7 +126,9 @@ class PrimarySidebar extends ConsumerWidget {
                       FluentIcons.people_team_24_regular,
                       label: 'Drivers',
                       onTap: onDriversTap,
-                      isActive: activePane == 'drivers',
+                      isActive:
+                          activePane == 'drivers' ||
+                          currentLocation.startsWith('/drivers'),
                     ),
                     const SizedBox(height: 8),
 
@@ -132,7 +138,9 @@ class PrimarySidebar extends ConsumerWidget {
                       FluentIcons.vehicle_truck_24_regular,
                       label: 'Fleet',
                       onTap: onFleetTap,
-                      isActive: activePane == 'fleet',
+                      isActive:
+                          activePane == 'fleet' ||
+                          currentLocation.startsWith('/vehicles'),
                     ),
                   ],
                 ),
@@ -154,7 +162,7 @@ class PrimarySidebar extends ConsumerWidget {
       FluentIcons.settings_24_regular,
       label: 'Settings',
       onTap: onSettingsTap,
-      isActive: activePane == 'settings',
+      isActive: currentLocation.startsWith('/settings'),
     );
   }
 

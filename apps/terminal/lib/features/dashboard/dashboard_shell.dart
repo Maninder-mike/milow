@@ -135,8 +135,18 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     if (!mounted) return;
     final currentLocation = GoRouterState.of(context).matchedLocation;
 
-    if (currentLocation == path) {
-      _syncTabWithRoute();
+    setState(() {
+      _activeSidebarPane = null; // Close sidebars on main nav
+    });
+
+    if (currentLocation == path ||
+        (path == '/settings' && currentLocation.startsWith('/settings/')) ||
+        (path == '/profile' && currentLocation.startsWith('/profile/'))) {
+      if (path == '/settings' || path == '/profile') {
+        context.go('/dashboard');
+      } else {
+        _syncTabWithRoute();
+      }
     } else {
       context.go(path);
     }
@@ -158,15 +168,58 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
 
   @override
   Widget build(BuildContext context) {
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.keyP, meta: true): () {
-          _searchFocusNode.requestFocus();
-        },
-        const SingleActivator(LogicalKeyboardKey.keyP, control: true): () {
-          _searchFocusNode.requestFocus();
-        },
+    final tabState = ref.watch(tabManagerProvider);
+    final tabs = tabState.tabs;
+    final selectedIndex = tabState.selectedIndex;
+
+    // Define shortcuts map
+    final shortcuts = <ShortcutActivator, VoidCallback>{
+      const SingleActivator(LogicalKeyboardKey.keyP, meta: true): () {
+        _searchFocusNode.requestFocus();
       },
+      const SingleActivator(LogicalKeyboardKey.keyP, control: true): () {
+        _searchFocusNode.requestFocus();
+      },
+      const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
+        if (tabs.isNotEmpty) {
+          ref.read(tabManagerProvider.notifier).removeTab(selectedIndex);
+        }
+      },
+      const SingleActivator(LogicalKeyboardKey.keyW, control: true): () {
+        if (tabs.isNotEmpty) {
+          ref.read(tabManagerProvider.notifier).removeTab(selectedIndex);
+        }
+      },
+    };
+
+    // Add Cmd+1 to Cmd+9
+    final numberKeys = [
+      LogicalKeyboardKey.digit1,
+      LogicalKeyboardKey.digit2,
+      LogicalKeyboardKey.digit3,
+      LogicalKeyboardKey.digit4,
+      LogicalKeyboardKey.digit5,
+      LogicalKeyboardKey.digit6,
+      LogicalKeyboardKey.digit7,
+      LogicalKeyboardKey.digit8,
+      LogicalKeyboardKey.digit9,
+    ];
+
+    for (int i = 0; i < numberKeys.length; i++) {
+      shortcuts[SingleActivator(numberKeys[i], meta: true)] = () {
+        if (i < tabs.length) {
+          _navigateTo(tabs[i].path ?? '/dashboard');
+        }
+      };
+      shortcuts[SingleActivator(numberKeys[i], control: true)] = () {
+        if (i < tabs.length) {
+          _navigateTo(tabs[i].path ?? '/dashboard');
+        }
+      };
+    }
+
+    return CallbackShortcuts(
+      bindings: shortcuts,
       child: Focus(
         autofocus: true,
         child: Column(
@@ -181,7 +234,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                       PrimarySidebar(
                         onAddRecordTap: () => _toggleSidebar('add_record'),
                         onDriversTap: () => _toggleSidebar('drivers'),
-                        onFleetTap: () => _toggleSidebar('fleet_list'),
+                        onFleetTap: () => _toggleSidebar('fleet'),
                         onLoadsTap: () => _navigateTo('/highway-dispatch'),
                         onInvoicesTap: () => _navigateTo('/invoices'),
                         onCrmTap: () => _navigateTo('/crm'),
@@ -190,6 +243,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                         onProfileTap: () => _navigateTo('/profile'),
                         onDashboardTap: () => _navigateTo('/dashboard'),
                         activePane: _activeSidebarPane,
+                        currentLocation: GoRouterState.of(
+                          context,
+                        ).matchedLocation,
                       ),
 
                       // Resizable Sidebar Area
@@ -290,7 +346,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
         );
       case 'drivers':
         return const DriversSidebar();
-      case 'fleet_list':
+      case 'fleet':
         return const FleetSidebar();
       default:
         return const SizedBox.shrink();

@@ -10,6 +10,7 @@ class UserPreferencesState {
   final double syncFrequency;
   final String language;
   final String mapProvider;
+  final String unitSystem; // 'Imperial' or 'Metric'
 
   const UserPreferencesState({
     required this.emailAlerts,
@@ -17,6 +18,7 @@ class UserPreferencesState {
     required this.syncFrequency,
     required this.language,
     required this.mapProvider,
+    required this.unitSystem,
   });
 
   UserPreferencesState copyWith({
@@ -25,6 +27,7 @@ class UserPreferencesState {
     double? syncFrequency,
     String? language,
     String? mapProvider,
+    String? unitSystem,
   }) {
     return UserPreferencesState(
       emailAlerts: emailAlerts ?? this.emailAlerts,
@@ -32,6 +35,7 @@ class UserPreferencesState {
       syncFrequency: syncFrequency ?? this.syncFrequency,
       language: language ?? this.language,
       mapProvider: mapProvider ?? this.mapProvider,
+      unitSystem: unitSystem ?? this.unitSystem,
     );
   }
 }
@@ -50,6 +54,7 @@ class UserPreferencesNotifier extends _$UserPreferencesNotifier {
       syncFrequency: _prefs.getDouble('sync_frequency') ?? 50.0,
       language: _prefs.getString('language') ?? 'English',
       mapProvider: _prefs.getString('map_provider') ?? 'Default Map',
+      unitSystem: _prefs.getString('unit_system') ?? 'Imperial',
     );
   }
 
@@ -76,5 +81,10 @@ class UserPreferencesNotifier extends _$UserPreferencesNotifier {
   Future<void> setMapProvider(String value) async {
     await _prefs.setString('map_provider', value);
     state = state.copyWith(mapProvider: value);
+  }
+
+  Future<void> setUnitSystem(String value) async {
+    await _prefs.setString('unit_system', value);
+    state = state.copyWith(unitSystem: value);
   }
 }

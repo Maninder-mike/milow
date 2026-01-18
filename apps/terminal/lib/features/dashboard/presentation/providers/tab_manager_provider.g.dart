@@ -41,7 +41,7 @@ final class TabManagerProvider
   }
 }
 
-String _$tabManagerHash() => r'5898019129e6845cb380e166c553f018ce143f73';
+String _$tabManagerHash() => r'b8f3aaea2bb86be2572ecfed40f23bce492beca0';
 
 abstract class _$TabManager extends $Notifier<TabManagerState> {
   TabManagerState build();

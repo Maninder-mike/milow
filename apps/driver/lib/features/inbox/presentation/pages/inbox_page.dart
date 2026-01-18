@@ -3,10 +3,12 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/features/inbox/presentation/pages/chat_detail_page.dart';
 
 class InboxPage extends StatefulWidget {
@@ -56,7 +58,7 @@ class _InboxPageState extends State<InboxPage> {
           },
         ),
         title: Text(
-          'Inbox',
+          context.watch<ProfileProvider>().companyName ?? 'Inbox',
           style: Theme.of(
             context,
           ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),

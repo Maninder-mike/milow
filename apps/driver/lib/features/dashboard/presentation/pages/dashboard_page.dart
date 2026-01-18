@@ -3,12 +3,14 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // TabsShell provides navigation; this page returns content only
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/preferences_service.dart';
 
+import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
 import 'package:milow/core/models/border_wait_time.dart';
@@ -503,13 +505,15 @@ class _DashboardPageState extends State<DashboardPage>
                 () => context.go('/explore'),
               ),
               SizedBox(width: context.tokens.spacingM),
-              _buildGetStartedCard(
-                context,
-                'Inbox',
-                Icons.inbox_outlined,
-                () => context.go('/inbox'),
-              ),
-              SizedBox(width: context.tokens.spacingM),
+              if (context.watch<ProfileProvider>().isConnectedToCompany) ...[
+                _buildGetStartedCard(
+                  context,
+                  'Inbox',
+                  Icons.inbox_outlined,
+                  () => context.go('/inbox'),
+                ),
+                SizedBox(width: context.tokens.spacingM),
+              ],
               _buildGetStartedCard(
                 context,
                 'Scan Documents',
