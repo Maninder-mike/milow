@@ -28,15 +28,25 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Extract version from apps/terminal/pubspec.yaml (using bash on Windows)
-      - name: Read version
+      # Extract version and auto-increment with GitHub Run Number
+      - name: Read & Bump Version
         id: version
         shell: bash
         run: |
-          VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
-          echo "version=v$VERSION" >> $GITHUB_OUTPUT
-          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
-          echo "📦 Building version: v$VERSION"
+          # Read base version (e.g., 0.0.3 from 0.0.3+19)
+          BASE_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          
+          # Construct unique Windows version: Major.Minor.Patch.RunNumber
+          AUTO_VERSION="${BASE_VERSION}.${{ github.run_number }}"
+          
+          echo "version=v$AUTO_VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$AUTO_VERSION" >> $GITHUB_OUTPUT
+          
+          echo "🔢 Base Version: $BASE_VERSION"
+          echo "🚀 Auto-incremented Version: $AUTO_VERSION"
+          
+          # Update pubspec.yaml so msix:create uses this version
+          sed -i "s/^version: .*/version: $AUTO_VERSION/" pubspec.yaml
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
