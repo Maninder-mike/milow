@@ -1,40 +1,40 @@
 Milow Driver is the professional companion app for owner-operators and company drivers who want to simplify their daily operations. Built for the road, designed for efficiency.
 
-🔌 OFFLINE-FIRST RELIABILITY
+OFFLINE-FIRST RELIABILITY
 Work confidently in dead zones. Milow stores everything locally and syncs automatically when you're back online. No signal? No problem.
 
-📡 REAL-TIME DISPATCH SYNC
+REAL-TIME DISPATCH SYNC
 Your company's terminal sees your updates instantly. Reduce check-in calls and keep dispatch informed without extra effort.
 
-📋 SMART TRIP MANAGEMENT
+SMART TRIP MANAGEMENT
 • Organize loads with trip numbers, pickup locations, and delivery details
 • Track multiple trailers and complex multi-stop routes
 • Scan and attach BOL, POD, and rate confirmations directly to trips
 • Never lose paperwork again with cloud-backed document storage
 
-⛽ ONE-TAP FUEL LOGGING
+ONE-TAP FUEL LOGGING
 Record fuel stops in seconds. Track gallons, DEF, costs, and location. Generate IFTA-ready reports when tax season arrives.
 
-📸 DOCUMENT SCANNER
+DOCUMENT SCANNER
 Built-in document scanner with intelligent edge detection. Capture receipts, bills of lading, and proof of delivery without needing another app.
 
-📊 DRIVER DASHBOARD
+DRIVER DASHBOARD
 View your vital statistics at a glance:
 • Miles driven this week/month/year
 • Fuel efficiency trends
 • Earnings breakdown
 • Trip history
 
-💬 BUILT-IN MESSAGING
+BUILT-IN MESSAGING
 Communicate directly with dispatch, safety, and back-office through the app. All messages synced and searchable.
 
-🌙 DESIGNED FOR DRIVERS
+DESIGNED FOR DRIVERS
 • High-contrast dark mode for night driving
 • Large touch targets for ease of use while on the road
 • Clean, professional interface that's fast to learn
 • Works on phones and tablets
 
-🔐 SECURE & PRIVATE
+SECURE & PRIVATE
 • Encrypted cloud backup
 • Your data stays yours
 • Play Integrity verified for enterprise compliance
