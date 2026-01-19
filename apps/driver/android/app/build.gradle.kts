@@ -35,7 +35,7 @@ android {
         applicationId = "maninder.co.in.milow"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21 // Required for flutter_local_notifications and desugaring
+        minSdk = flutter.minSdkVersion // Required for flutter_local_notifications and desugaring
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
