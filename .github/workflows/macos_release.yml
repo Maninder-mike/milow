@@ -76,6 +76,7 @@ jobs:
       - name: Build macOS App
         run: |
           flutter build macos --release \
+            --no-tree-shake-icons \
             --dart-define=SUPABASE_URL=${{ secrets.SUPABASE_URL }} \
             --dart-define=SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
 
