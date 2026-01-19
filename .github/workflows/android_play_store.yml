@@ -282,13 +282,13 @@ jobs:
 
 
       # Upload to Play Store
-      - name: Upload to Play Store (Alpha/Closed Testing)
+      - name: Upload to Play Store (Beta/Open Testing)
         uses: r0adkll/upload-google-play@v1
         with:
           serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
           packageName: maninder.co.in.milow
           releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
-          track: alpha
+          track: beta
           status: completed
           whatsNewDirectory: apps/driver/fastlane/metadata/android
 
