@@ -9,6 +9,7 @@ on:
       - "apps/driver/lib/**"
       - "apps/driver/android/**"
       - "apps/driver/fastlane/**"  # Play Store metadata
+      - ".github/workflows/android_play_store.yml" # Trigger on CI changes
   workflow_dispatch:  # Allow manual triggering
       
 jobs:
@@ -79,7 +80,6 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-
           channel: 'stable'
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:'
@@ -124,6 +124,7 @@ jobs:
             exit 1
           fi
           echo "$GOOGLE_SERVICES_JSON_BASE64" | base64 --decode > apps/driver/android/app/google-services.json
+          ls -lh apps/driver/android/app/google-services.json
           echo "✅ google-services.json created"
 
       # Create .env file from secrets
