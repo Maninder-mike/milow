@@ -112,20 +112,22 @@ jobs:
       - name: Publish to Microsoft Store
         shell: pwsh
         run: |
-          msstore reconfigure `
-            --tenantId $env:WINDOWS_STORE_TENANT_ID `
-            --clientId $env:WINDOWS_STORE_CLIENT_ID `
-            --clientSecret $env:WINDOWS_STORE_CLIENT_SECRET `
-            --sellerId $env:WINDOWS_STORE_SELLER_ID `
-            --verbose
+          # Validation
+          if (-not $env:WINDOWS_STORE_TENANT_ID) { Write-Error "WINDOWS_STORE_TENANT_ID is missing"; exit 1 }
+          if (-not $env:WINDOWS_STORE_CLIENT_ID) { Write-Error "WINDOWS_STORE_CLIENT_ID is missing"; exit 1 }
+          if (-not $env:WINDOWS_STORE_CLIENT_SECRET) { Write-Error "WINDOWS_STORE_CLIENT_SECRET is missing"; exit 1 }
+          if (-not $env:WINDOWS_STORE_SELLER_ID) { Write-Error "WINDOWS_STORE_SELLER_ID is missing"; exit 1 }
+
+          Write-Host "Reconfiguring MSStore CLI..."
+          msstore reconfigure --tenantId $env:WINDOWS_STORE_TENANT_ID --clientId $env:WINDOWS_STORE_CLIENT_ID --clientSecret $env:WINDOWS_STORE_CLIENT_SECRET --sellerId $env:WINDOWS_STORE_SELLER_ID --verbose
+
+          if ($LASTEXITCODE -ne 0) { Write-Error "msstore reconfigure failed"; exit 1 }
 
           Write-Host "Listing available apps..."
           msstore apps list
 
-          msstore publish `
-            --inputDirectory build/windows/x64/runner/Release `
-            --appId $env:WINDOWS_STORE_APP_ID `
-            --verbose
+          Write-Host "Publishing to Store..."
+          msstore publish --inputDirectory build/windows/x64/runner/Release --appId $env:WINDOWS_STORE_APP_ID --verbose
         env:
           WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
           WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
