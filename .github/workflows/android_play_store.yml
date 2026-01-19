@@ -288,7 +288,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
           packageName: maninder.co.in.milow
           releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
-          track: alpha
+          track: beta
           status: completed
           whatsNewDirectory: apps/driver/fastlane/metadata/android
 
@@ -410,7 +410,7 @@ jobs:
           ## 🗄️ Database & Backend
           
           - **Supabase Catalog**: Automatic schema & version sync.
-          - **Google Play**: Alpha Track Release.
+          - **Google Play**: Beta Track (Open Testing) Release.
           
           ## 📝 What's Changed
           
@@ -535,5 +535,5 @@ jobs:
           echo "- **Version**: ${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "- **APK Size**: ${{ steps.prepare_apk.outputs.apk_size }}" >> $GITHUB_STEP_SUMMARY
           echo "- **Release URL**: https://github.com/${{ github.repository }}/releases/tag/${{ steps.version.outputs.version }}" >> $GITHUB_STEP_SUMMARY
-          echo "- **Play Store**: Alpha Track (Closed Testing) Upload Completed" >> $GITHUB_STEP_SUMMARY
+          echo "- **Play Store**: Beta Track (Open Testing) Upload Completed" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
