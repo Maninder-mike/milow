@@ -1,7 +1,7 @@
 name: terminal
 description: "Milow Terminal - Fleet management application for dispatchers and admins"
 publish_to: "none"
-version: 0.0.2+16
+version: 0.0.2+17
 
 environment:
   sdk: ^3.10.7
