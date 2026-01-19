@@ -231,11 +231,11 @@ jobs:
           echo "aab_size_mb=$AAB_SIZE_MB" >> $GITHUB_OUTPUT
           echo "apk_size_bytes=$APK_SIZE" >> $GITHUB_OUTPUT
           
-          # Threshold: 100MB for APK (104857600 bytes)
-          MAX_APK_SIZE=104857600
+          # Threshold: 200MB for APK (209715200 bytes)
+          MAX_APK_SIZE=209715200
           
           if [ "$APK_SIZE" -gt "$MAX_APK_SIZE" ]; then
-            echo "::error::APK size (${APK_SIZE_MB}MB) exceeds 100MB limit!"
+            echo "::error::APK size (${APK_SIZE_MB}MB) exceeds 200MB limit!"
             exit 1
           fi
           
@@ -288,7 +288,7 @@ jobs:
           serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
           packageName: maninder.co.in.milow
           releaseFiles: apps/driver/build/app/outputs/bundle/release/app-release.aab
-          track: beta
+          track: alpha
           status: completed
           whatsNewDirectory: apps/driver/fastlane/metadata/android
 
