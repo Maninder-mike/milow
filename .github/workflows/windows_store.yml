@@ -166,63 +166,6 @@ jobs:
           path: apps/terminal/build/windows/runner/Release/*.msix
           if-no-files-found: warn
 
-      # Update Supabase with retry logic (Ported from Android Workflow)
-      - name: Update Supabase Version
-        continue-on-error: true
-        shell: bash
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-          # Secrets for Supabase
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
-        run: |
-          echo "🔄 Updating Supabase app version for Windows..."
 
-          # Validate secrets
-          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
-            echo "::warning::Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secrets. Skipping Supabase update."
-            exit 0
-          fi
-
-          # Wait for GitHub to process the release (Optional, but good for logging)
-          echo "⏳ Waiting 5s..."
-          sleep 5
-          
-          # Use the official Microsoft Store URL
-          echo "🔗 Setting download URL to Microsoft Store..."
-          DOWNLOAD_URL="https://apps.microsoft.com/detail/9p641q1x1bmg?ocid=webpdpshare"
-          
-          # Construct JSON payload using pure strings
-          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          
-          # Create a temp json file
-          jq -n \
-            --arg version "$VERSION" \
-            --arg url "$DOWNLOAD_URL" \
-            --arg changelog "Release $VERSION" \
-            --arg time "$TIMESTAMP" \
-            '{latest_version: $version, download_url: $url, changelog: $changelog, updated_at: $time}' > payload.json
-          
-          # Update Supabase (platform=windows)
-          echo "📤 Sending update to Supabase..."
-          RESPONSE=$(curl -s -w "\n%{http_code}" -X PATCH \
-            "$SUPABASE_URL/rest/v1/app_version?platform=eq.windows" \
-            -H "apikey: $SUPABASE_KEY" \
-            -H "Authorization: Bearer $SUPABASE_KEY" \
-            -H "Content-Type: application/json" \
-            -H "Prefer: return=minimal" \
-            -d @payload.json)
-          
-          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
-          
-          if [ "$HTTP_CODE" -ge 200 ] && [ "$HTTP_CODE" -lt 300 ]; then
-            echo "✅ Supabase updated successfully (HTTP $HTTP_CODE)"
-          else
-            echo "::error::Supabase update failed with HTTP $HTTP_CODE"
-            echo "Response: $RESPONSE"
-            exit 1
-          fi
 
 
