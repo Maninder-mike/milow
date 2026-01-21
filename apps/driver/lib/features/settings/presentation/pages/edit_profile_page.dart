@@ -40,6 +40,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   DateTime? _dob;
   DateTime? _licenseExpiryDate;
   CountryCode? _citizenship;
+  DriverType _driverType = DriverType.companyDriver;
 
   bool _isLoading = false;
   File? _imageFile;
@@ -112,6 +113,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
           orElse: () => countryCodes[0],
         );
       } catch (_) {}
+    }
+
+    // Driver type
+    final driverTypeStr = data['driver_type'] as String?;
+    if (driverTypeStr != null) {
+      final normalized = driverTypeStr.replaceAll('_', '').toLowerCase();
+      _driverType = DriverType.values.firstWhere(
+        (e) => e.name.toLowerCase() == normalized,
+        orElse: () => DriverType.companyDriver,
+      );
     }
 
     _avatarUrl = data['avatar_url'];
@@ -189,6 +200,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         'date_of_birth': _dob?.toIso8601String(),
         'license_expiry_date': _licenseExpiryDate?.toIso8601String(),
         'citizenship': _citizenship?.code,
+        'driver_type': _driverType.name,
       };
 
       await ProfileRepository.updateOptimistic(values);
@@ -475,6 +487,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
                         _buildLabel('Citizenship'),
                         SizedBox(height: tokens.spacingS),
                         _buildCitizenshipSelector(),
+                        SizedBox(height: tokens.spacingL),
+                        _buildLabel('Driver Type'),
+                        SizedBox(height: tokens.spacingS),
+                        _buildDriverTypeSelector(),
                       ],
                     ),
 
@@ -644,6 +660,61 @@ class _EditProfilePageState extends State<EditProfilePage> {
         showDialCode: false,
       ),
     );
+  }
+
+  Widget _buildDriverTypeSelector() {
+    final tokens = context.tokens;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
+      decoration: BoxDecoration(
+        color: tokens.inputBackground,
+        borderRadius: BorderRadius.circular(tokens.shapeS),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<DriverType>(
+          value: _driverType,
+          isExpanded: true,
+          icon: Icon(Icons.keyboard_arrow_down, color: primaryColor),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyLarge?.copyWith(color: tokens.textPrimary),
+          dropdownColor: tokens.surfaceContainer,
+          borderRadius: BorderRadius.circular(tokens.shapeM),
+          items: DriverType.values.map((type) {
+            return DropdownMenuItem<DriverType>(
+              value: type,
+              child: Row(
+                children: [
+                  Icon(_getDriverTypeIcon(type), size: 20, color: primaryColor),
+                  SizedBox(width: tokens.spacingS),
+                  Text(type.label),
+                ],
+              ),
+            );
+          }).toList(),
+          onChanged: (value) {
+            if (value != null) {
+              setState(() => _driverType = value);
+            }
+          },
+        ),
+      ),
+    );
+  }
+
+  IconData _getDriverTypeIcon(DriverType type) {
+    switch (type) {
+      case DriverType.companyDriver:
+        return Icons.business_outlined;
+      case DriverType.ownerOperator:
+        return Icons.person_outline;
+      case DriverType.leaseOperator:
+        return Icons.handshake_outlined;
+    }
   }
 
   Widget _buildLabel(String text) {

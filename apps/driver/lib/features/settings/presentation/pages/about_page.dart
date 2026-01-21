@@ -78,7 +78,7 @@ class _AboutPageState extends State<AboutPage> {
                 ),
                 child: ClipOval(
                   child: Image.asset(
-                    'assets/images/milow_icon_beta.png',
+                    'assets/images/milow_icon.png',
                     fit: BoxFit.cover,
                   ),
                 ),

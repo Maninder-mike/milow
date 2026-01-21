@@ -41,7 +41,29 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
   // Determine initial page based on trip state
   // If pickup locations exist, we're in pickup mode (show pickup first)
   // If no pickups, we're in delivery mode
-  int get _initialPage => _hasPickup ? 0 : 0;
+  // Determine initial page based on trip state
+  // If all pickups are completed, default to the delivery card (page 1)
+  int get _initialPage {
+    if (!_hasPickup) return 0;
+    if (widget.trip.allPickupsCompleted && _hasDelivery) return 1;
+    return 0;
+  }
+
+  @override
+  void didUpdateWidget(ActiveTripCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Auto-advance to delivery if pickups just completed
+    if (!oldWidget.trip.allPickupsCompleted &&
+        widget.trip.allPickupsCompleted &&
+        _hasDelivery &&
+        _currentPage == 0) {
+      _pageController.animateToPage(
+        1,
+        duration: M3ExpressiveMotion.durationMedium,
+        curve: M3ExpressiveMotion.standard,
+      );
+    }
+  }
 
   String get _pickupAddress {
     if (_hasPickup) {

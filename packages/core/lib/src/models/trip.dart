@@ -22,6 +22,13 @@ class Trip {
   final DateTime? updatedAt;
   final bool isEmptyLeg;
 
+  // Load details (owner-operator features)
+  final String? commodity;
+  final double? weight;
+  final String weightUnit; // 'lbs' or 'kg'
+  final int? pieces;
+  final List<String> referenceNumbers;
+
   Trip({
     required this.tripNumber,
     required this.truckNumber,
@@ -44,6 +51,12 @@ class Trip {
     this.isEmptyLeg = false,
     this.createdAt,
     this.updatedAt,
+    // Load details
+    this.commodity,
+    this.weight,
+    this.weightUnit = 'lbs',
+    this.pieces,
+    this.referenceNumbers = const [],
   });
 
   /// Calculate total distance if both odometer readings are available
@@ -60,14 +73,14 @@ class Trip {
   /// Check if all pickups are completed
   bool get allPickupsCompleted {
     if (pickupLocations.isEmpty) return true;
-    if (pickupCompleted.isEmpty) return false;
+    if (pickupCompleted.length < pickupLocations.length) return false;
     return pickupCompleted.every((c) => c);
   }
 
   /// Check if all deliveries are completed
   bool get allDeliveriesCompleted {
     if (deliveryLocations.isEmpty) return true;
-    if (deliveryCompleted.isEmpty) return false;
+    if (deliveryCompleted.length < deliveryLocations.length) return false;
     return deliveryCompleted.every((c) => c);
   }
 
@@ -130,6 +143,18 @@ class Trip {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
+      // Load details
+      commodity: json['commodity'] as String?,
+      weight: json['weight'] != null
+          ? (json['weight'] as num).toDouble()
+          : null,
+      weightUnit: json['weight_unit'] as String? ?? 'lbs',
+      pieces: json['pieces'] as int?,
+      referenceNumbers:
+          (json['reference_numbers'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          [],
     );
   }
 
@@ -157,6 +182,12 @@ class Trip {
       'is_empty_leg': isEmptyLeg,
       if (createdAt != null) 'created_at': createdAt!.toIso8601String(),
       if (updatedAt != null) 'updated_at': updatedAt!.toIso8601String(),
+      // Load details
+      if (commodity != null) 'commodity': commodity,
+      if (weight != null) 'weight': weight,
+      'weight_unit': weightUnit,
+      if (pieces != null) 'pieces': pieces,
+      if (referenceNumbers.isNotEmpty) 'reference_numbers': referenceNumbers,
     };
   }
 
@@ -183,6 +214,12 @@ class Trip {
     bool? isEmptyLeg,
     DateTime? createdAt,
     DateTime? updatedAt,
+    // Load details
+    String? commodity,
+    double? weight,
+    String? weightUnit,
+    int? pieces,
+    List<String>? referenceNumbers,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -206,6 +243,12 @@ class Trip {
       isEmptyLeg: isEmptyLeg ?? this.isEmptyLeg,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      // Load details
+      commodity: commodity ?? this.commodity,
+      weight: weight ?? this.weight,
+      weightUnit: weightUnit ?? this.weightUnit,
+      pieces: pieces ?? this.pieces,
+      referenceNumbers: referenceNumbers ?? this.referenceNumbers,
     );
   }
 

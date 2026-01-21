@@ -197,13 +197,22 @@ class _LoginPageState extends State<LoginPage>
           });
           unawaited(logger.info('GoogleSignIn', 'Profile synced successfully'));
         } catch (e) {
+          // Critical: Profile sync failed - user is authenticated but broken
           unawaited(
-            logger.warning(
+            logger.error(
               'GoogleSignIn',
-              'Profile sync failed',
+              'Profile sync failed - signing out to prevent broken state',
               extras: {'error': e.toString()},
             ),
           );
+          // Sign out to prevent zombie user state
+          await Supabase.instance.client.auth.signOut();
+          if (mounted) {
+            setState(
+              () => _loginError = 'Profile setup failed. Please try again.',
+            );
+          }
+          return; // Exit early - don't proceed to dashboard
         }
 
         if (mounted) {
@@ -516,7 +525,7 @@ class _LoginPageState extends State<LoginPage>
       child: ClipRRect(
         borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
         child: Image.asset(
-          'assets/images/milow_icon_beta.png',
+          'assets/images/milow_icon.png',
           width: 100,
           height: 100,
           fit: BoxFit.contain,

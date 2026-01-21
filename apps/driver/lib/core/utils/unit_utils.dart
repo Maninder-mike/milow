@@ -3,19 +3,37 @@ class UnitUtils {
   /// Get default distance unit based on country
   static String getDistanceUnit(String? country) {
     final countryLower = country?.toLowerCase().trim() ?? '';
-    if (countryLower == 'canada' || countryLower == 'ca') {
-      return 'km';
+    if (countryLower == 'usa' ||
+        countryLower == 'us' ||
+        countryLower == 'united states') {
+      return 'mi';
     }
-    return 'mi'; // Default for USA and others
+    return 'km'; // Default for Canada and others
   }
 
   /// Get default fuel unit based on country
   static String getFuelUnit(String? country) {
     final countryLower = country?.toLowerCase().trim() ?? '';
-    if (countryLower == 'canada' || countryLower == 'ca') {
-      return 'L';
+    if (countryLower == 'usa' ||
+        countryLower == 'us' ||
+        countryLower == 'united states') {
+      return 'gal';
     }
-    return 'gal'; // Default for USA and others
+    return 'L'; // Default for Canada and others
+  }
+
+  /// Get default volume unit based on country (Alias for getFuelUnit)
+  static String getVolumeUnit(String? country) {
+    return getFuelUnit(country);
+  }
+
+  /// Get default weight unit based on country
+  static String getWeightUnit(String? country) {
+    final countryLower = country?.toLowerCase().trim() ?? '';
+    if (countryLower == 'usa' || countryLower == 'us') {
+      return 'lb';
+    }
+    return 'kg'; // Default for Canada and others
   }
 
   /// Get currency code based on country
@@ -23,6 +41,14 @@ class UnitUtils {
     final countryLower = country?.toLowerCase().trim() ?? '';
     if (countryLower == 'canada' || countryLower == 'ca') {
       return 'CAD';
+    }
+    if (countryLower == 'united kingdom' ||
+        countryLower == 'uk' ||
+        countryLower == 'gb') {
+      return 'GBP';
+    }
+    if (countryLower == 'germany' || countryLower == 'de') {
+      return 'EUR';
     }
     return 'USD'; // Default for USA and others
   }
@@ -46,6 +72,11 @@ class UnitUtils {
   /// Get fuel unit label
   static String getFuelUnitLabel(String unit) {
     return unit == 'L' ? 'L' : 'gal';
+  }
+
+  /// Get weight unit label
+  static String getWeightUnitLabel(String unit) {
+    return unit == 'kg' ? 'kg' : 'lb';
   }
 
   /// Format currency with symbol
@@ -82,18 +113,47 @@ class UnitUtils {
     return {
       'distanceUnit': getDistanceUnit(country),
       'fuelUnit': getFuelUnit(country),
+      'weightUnit': getWeightUnit(country),
       'currency': getCurrency(country),
     };
   }
 
   /// Check if using metric system
   static bool isMetric(String? country) {
-    final countryLower = country?.toLowerCase().trim() ?? '';
-    return countryLower == 'canada' || countryLower == 'ca';
+    return !isImperial(country);
   }
 
   /// Check if using imperial system
   static bool isImperial(String? country) {
-    return !isMetric(country);
+    final countryLower = country?.toLowerCase().trim() ?? '';
+    return countryLower == 'usa' ||
+        countryLower == 'us' ||
+        countryLower == 'united states';
   }
+
+  // ================= CONVERSION METHODS =================
+
+  static const double _kmToMilesFactor = 0.621371;
+  static const double _litersToGallonsFactor = 0.264172; // US Gallons
+  static const double _kgToLbsFactor = 2.20462;
+
+  /// Convert Kilometers to Miles
+  static double kmToMiles(double km) => km * _kmToMilesFactor;
+
+  /// Convert Miles to Kilometers
+  static double milesToKm(double miles) => miles / _kmToMilesFactor;
+
+  /// Convert Liters to US Gallons
+  static double litersToGallons(double liters) =>
+      liters * _litersToGallonsFactor;
+
+  /// Convert US Gallons to Liters
+  static double gallonsToLiters(double gallons) =>
+      gallons / _litersToGallonsFactor;
+
+  /// Convert Kilograms to Pounds
+  static double kgToLbs(double kg) => kg * _kgToLbsFactor;
+
+  /// Convert Pounds to Kilograms
+  static double lbsToKg(double lbs) => lbs / _kgToLbsFactor;
 }

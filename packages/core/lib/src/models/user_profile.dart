@@ -27,7 +27,28 @@ enum UserRole {
   }
 }
 
-/// Model representing a user profile
+/// Driver type for feature gating
+enum DriverType {
+  companyDriver,
+  ownerOperator,
+  leaseOperator;
+
+  String get label {
+    switch (this) {
+      case DriverType.companyDriver:
+        return 'Company Driver';
+      case DriverType.ownerOperator:
+        return 'Owner Operator';
+      case DriverType.leaseOperator:
+        return 'Lease Operator';
+    }
+  }
+
+  /// Check if this driver type should see owner-operator features
+  bool get showOwnerOpFeatures =>
+      this == DriverType.ownerOperator || this == DriverType.leaseOperator;
+}
+
 /// Model representing a user profile
 class UserProfile {
   final String id;
@@ -45,6 +66,7 @@ class UserProfile {
   final String? licenseType;
   final String? citizenship;
   final String? fastId;
+  final DriverType driverType;
 
   const UserProfile({
     required this.id,
@@ -62,6 +84,7 @@ class UserProfile {
     this.licenseType,
     this.citizenship,
     this.fastId,
+    this.driverType = DriverType.companyDriver,
   });
 
   /// Create UserProfile from JSON (Supabase response)
@@ -88,6 +111,7 @@ class UserProfile {
       licenseType: json['license_type'] as String?,
       citizenship: json['citizenship'] as String?,
       fastId: json['fast_id'] as String?,
+      driverType: _parseDriverType(json['driver_type'] as String?),
     );
   }
 
@@ -107,6 +131,7 @@ class UserProfile {
       'license_type': licenseType,
       'citizenship': citizenship,
       'fast_id': fastId,
+      'driver_type': driverType.name,
     };
   }
 
@@ -115,6 +140,16 @@ class UserProfile {
     return UserRole.values.firstWhere(
       (e) => e.name.toLowerCase() == role.toLowerCase(),
       orElse: () => UserRole.pending,
+    );
+  }
+
+  static DriverType _parseDriverType(String? type) {
+    if (type == null) return DriverType.companyDriver;
+    // Handle snake_case from database
+    final normalized = type.replaceAll('_', '').toLowerCase();
+    return DriverType.values.firstWhere(
+      (e) => e.name.toLowerCase() == normalized,
+      orElse: () => DriverType.companyDriver,
     );
   }
 
@@ -134,6 +169,7 @@ class UserProfile {
     String? licenseType,
     String? citizenship,
     String? fastId,
+    DriverType? driverType,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -151,6 +187,7 @@ class UserProfile {
       licenseType: licenseType ?? this.licenseType,
       citizenship: citizenship ?? this.citizenship,
       fastId: fastId ?? this.fastId,
+      driverType: driverType ?? this.driverType,
     );
   }
 }

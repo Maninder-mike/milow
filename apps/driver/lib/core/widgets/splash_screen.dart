@@ -35,14 +35,14 @@ class _SplashScreenState extends State<SplashScreen>
     _opacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _contentController,
-        curve: const Interval(0.0, 0.5, curve: M3ExpressiveMotion.decelerated),
+        curve: const Interval(0.0, 0.4, curve: M3ExpressiveMotion.decelerated),
       ),
     );
 
-    _scale = Tween<double>(begin: 0.9, end: 1.0).animate(
+    _scale = Tween<double>(begin: 0.5, end: 1.0).animate(
       CurvedAnimation(
         parent: _contentController,
-        curve: const Interval(0.0, 0.5, curve: M3ExpressiveMotion.emphasized),
+        curve: const Interval(0.1, 0.6, curve: M3ExpressiveMotion.overshoot),
       ),
     );
   }
@@ -92,7 +92,7 @@ class _SplashScreenState extends State<SplashScreen>
                   child: ClipRRect(
                     borderRadius: BorderRadius.circular(tokens.radiusXL),
                     child: Image.asset(
-                      'assets/images/milow_icon_beta.png',
+                      'assets/images/milow_icon.png',
                       width: 120,
                       height: 120,
                       fit: BoxFit.contain,

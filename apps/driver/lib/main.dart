@@ -60,6 +60,14 @@ Future<void> main() async {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
     };
     PlatformDispatcher.instance.onError = (error, stack) {
+      // Handle "refresh_token_already_used" error to prevent crash loop
+      if (error is AuthException &&
+          error.code == 'refresh_token_already_used') {
+        debugPrint('⚠️ Refresh token already used. Signing out...');
+        Supabase.instance.client.auth.signOut();
+        return true;
+      }
+
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
@@ -89,6 +97,9 @@ Future<void> main() async {
     Supabase.initialize(
       url: SupabaseConstants.supabaseUrl,
       anonKey: SupabaseConstants.supabaseAnonKey,
+      authOptions: const FlutterAuthClientOptions(
+        authFlowType: AuthFlowType.pkce,
+      ),
     ).then((_) => NotificationService.instance.init()),
 
     Hive.initFlutter().then((_) async {

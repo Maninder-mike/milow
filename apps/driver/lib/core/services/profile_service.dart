@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow/core/services/logging_service.dart';
 
 class ProfileService {
   static const String _profilesTable = 'profiles';
@@ -86,7 +87,14 @@ class ProfileService {
     final driverUpdates = <String, dynamic>{};
     final baseUpdates = <String, dynamic>{};
 
-    values.forEach((key, value) {
+    // 0. Filter out sensitive fields that triggers/RLS might reject
+    // 'role' and 'is_verified' are protected by 'protect_sensitive_profile_fields' trigger
+    // and can only be modified by admins.
+    final safeValues = Map<String, dynamic>.from(values);
+    safeValues.remove('role');
+    safeValues.remove('is_verified');
+
+    safeValues.forEach((key, value) {
       if (driverFields.contains(key)) {
         driverUpdates[key] = value;
       } else if (sharedFields.contains(key)) {
@@ -94,27 +102,46 @@ class ProfileService {
         driverUpdates[key] = value;
         baseUpdates[key] = value;
       } else {
-        // Any other field (e.g. role, specific flags) goes to base
+        // Any other field (e.g. specific flags) goes to base
         baseUpdates[key] = value;
       }
     });
 
-    // 1. Update Base Profiles (Index & System Data)
-    // MUST do this first because 'driver_profiles' has a foreign key to 'profiles'
-    if (baseUpdates.isNotEmpty) {
-      // Use upsert to create if missing (e.g. trigger failed)
-      await _client.from(_profilesTable).upsert({
-        ...baseUpdates,
-        'id': uid,
-      }, onConflict: 'id');
-    }
+    try {
+      // 1. Update Base Profiles (Index & System Data)
+      // MUST do this first because 'driver_profiles' has a foreign key to 'profiles'
+      if (baseUpdates.isNotEmpty) {
+        // Use upsert to create if missing (e.g. trigger failed)
+        await _client.from(_profilesTable).upsert({
+          ...baseUpdates,
+          'id': uid,
+        }, onConflict: 'id');
+      }
 
-    // 2. Update Driver Profiles (Personal Data)
-    if (driverUpdates.isNotEmpty) {
-      await _client.from('driver_profiles').upsert({
-        ...driverUpdates,
-        'id': uid,
-      }, onConflict: 'id');
+      // 2. Update Driver Profiles (Personal Data)
+      if (driverUpdates.isNotEmpty) {
+        await _client.from('driver_profiles').upsert({
+          ...driverUpdates,
+          'id': uid,
+        }, onConflict: 'id');
+      }
+    } on PostgrestException catch (e) {
+      // Log the error but don't crash the app.
+      // This is often due to RLS or Triggers rejecting the update (e.g. permissions).
+      await logger.error(
+        'ProfileService',
+        'Failed to update profile (PostgrestException)',
+        error: e,
+        extras: {'code': e.code, 'details': e.details, 'message': e.message},
+      );
+    } catch (e, stack) {
+      // Catch other potential errors
+      await logger.error(
+        'ProfileService',
+        'Failed to update profile (Unexpected)',
+        error: e,
+        stackTrace: stack,
+      );
     }
   }
 

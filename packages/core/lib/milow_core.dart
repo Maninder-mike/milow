@@ -11,3 +11,4 @@ export 'src/utils/app_dialogs.dart';
 export 'src/repositories/vehicle_repository.dart';
 export 'src/models/company.dart';
 export 'src/repositories/company_repository.dart';
+export 'src/models/trip_template.dart';

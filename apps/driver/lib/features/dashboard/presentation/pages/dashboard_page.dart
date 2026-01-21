@@ -12,13 +12,13 @@ import 'package:milow/core/services/preferences_service.dart';
 
 import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
+import 'package:milow/core/widgets/m3_spring_button.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow/core/models/recent_entry.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/core/utils/address_utils.dart';
-import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/global_search_page.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
 
@@ -328,9 +328,9 @@ class _DashboardPageState extends State<DashboardPage>
           final isHidden = t.id != null && hiddenTripIds.contains(t.id);
           if (isHidden) return false;
 
-          // Active logic: incomplete end odometer OR incomplete deliveries
-          // But user wants to be able to "Finish" it, so basically created but not ended.
-          return t.endOdometer == null;
+          // Active logic: incomplete end odometer AND incomplete deliveries
+          // If all deliveries are done, it's no longer "active" on the dashboard
+          return t.endOdometer == null && !t.allDeliveriesCompleted;
         });
       } catch (_) {
         computedActiveTrip = null;
@@ -383,6 +383,11 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Widget _buildHeroContent(BuildContext context, double margin) {
+    // ENTERPRISE PATTERN: Capture nullable state in local final variable
+    final activeTrip = _activeTrip;
+    final bool showStartTrip =
+        activeTrip == null || activeTrip.allDeliveriesCompleted;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -392,9 +397,8 @@ class _DashboardPageState extends State<DashboardPage>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              // [MODIFIED] Show 'Start Trip' if no active trip OR active trip is completed
-              if (_activeTrip == null ||
-                  _activeTrip!.allDeliveriesCompleted) ...[
+              // Show 'Start Trip' if no active trip OR active trip is completed
+              if (showStartTrip) ...[
                 Text(
                   'Track Your Journey',
                   style: Theme.of(context).textTheme.headlineMedium?.copyWith(
@@ -442,22 +446,21 @@ class _DashboardPageState extends State<DashboardPage>
                 SizedBox(height: context.tokens.spacingL),
               ],
               // Only show active trip card if trip exists AND deliveries are pending
-              // User requested to hide this bar if delivery is complete in database
-              if (_activeTrip != null && !_activeTrip!.allDeliveriesCompleted)
+              if (activeTrip != null && !activeTrip.allDeliveriesCompleted)
                 GestureDetector(
                   onLongPressStart: (details) {
                     _showActivityMenu(
                       context,
-                      _activeTrip!,
+                      activeTrip,
                       details.globalPosition,
                     );
                   },
                   child: ActiveTripCard(
-                    trip: _activeTrip!,
+                    trip: activeTrip,
                     onComplete: () async {
                       final result = await context.push(
                         '/add-entry',
-                        extra: {'editingTrip': _activeTrip},
+                        extra: {'editingTrip': activeTrip},
                       );
                       if (result == true) {
                         unawaited(_onRefresh());
@@ -488,8 +491,9 @@ class _DashboardPageState extends State<DashboardPage>
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: EdgeInsets.symmetric(horizontal: margin),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: M3StaggeredList(
+            direction: Axis.horizontal,
+            spacing: context.tokens.spacingM,
             children: [
               _buildGetStartedCard(context, 'Add Data', Icons.add, () async {
                 final result = await context.push('/add-entry');
@@ -497,23 +501,19 @@ class _DashboardPageState extends State<DashboardPage>
                   unawaited(_onRefresh());
                 }
               }),
-              SizedBox(width: context.tokens.spacingM),
               _buildGetStartedCard(
                 context,
                 'Explore',
                 Icons.explore_outlined,
                 () => context.go('/explore'),
               ),
-              SizedBox(width: context.tokens.spacingM),
-              if (context.watch<ProfileProvider>().isConnectedToCompany) ...[
+              if (context.watch<ProfileProvider>().isConnectedToCompany)
                 _buildGetStartedCard(
                   context,
                   'Inbox',
                   Icons.inbox_outlined,
                   () => context.go('/inbox'),
                 ),
-                SizedBox(width: context.tokens.spacingM),
-              ],
               _buildGetStartedCard(
                 context,
                 'Scan Documents',
@@ -522,14 +522,13 @@ class _DashboardPageState extends State<DashboardPage>
                   await context.push(
                     '/scan-document',
                     extra: {
-                      if (_activeTrip != null) 'tripId': _activeTrip!.id,
-                      if (_activeTrip != null)
-                        'tripNumber': _activeTrip!.tripNumber,
+                      if (activeTrip != null) 'tripId': activeTrip.id,
+                      if (activeTrip != null)
+                        'tripNumber': activeTrip.tripNumber,
                     },
                   );
                 },
               ),
-              SizedBox(width: context.tokens.spacingM),
               _buildGetStartedCard(
                 context,
                 'Settings',
@@ -551,21 +550,20 @@ class _DashboardPageState extends State<DashboardPage>
   ) {
     return Column(
       children: [
-        SizedBox(
-          width: 72, // Slightly smaller to look refined
-          height: 72,
-          child: Card(
-            elevation: 0,
-            // Use a proper surface color that adapts to light/dark mode
-            // surfaceContainerHigh works well on top of background gradients/colors
-            color: Theme.of(context).colorScheme.surfaceContainerHigh,
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(context.tokens.shapeL),
-            ),
-            child: InkWell(
-              onTap: onTap,
-              borderRadius: BorderRadius.circular(context.tokens.shapeL),
+        M3SpringButton(
+          onTap: onTap,
+          child: SizedBox(
+            width: 72, // Slightly smaller to look refined
+            height: 72,
+            child: Card(
+              elevation: 0,
+              // Use a proper surface color that adapts to light/dark mode
+              // surfaceContainerHigh works well on top of background gradients/colors
+              color: Theme.of(context).colorScheme.surfaceContainerHigh,
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(context.tokens.shapeL),
+              ),
               child: Center(
                 child: Icon(
                   icon,
@@ -1028,7 +1026,7 @@ class _DashboardPageState extends State<DashboardPage>
                                         ).colorScheme.outlineVariant,
                                       ),
                                     ),
-                                    child: Column(
+                                    child: M3StaggeredList(
                                       children: [
                                         ..._recentEntries.asMap().entries.map((
                                           entry,
@@ -1165,24 +1163,8 @@ class _DashboardPageState extends State<DashboardPage>
                                           );
                                         }),
                                         // View All Button
-                                        InkWell(
-                                          onTap: () {
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(
-                                                builder: (context) =>
-                                                    const RecordsListPage(),
-                                              ),
-                                            );
-                                          },
-                                          borderRadius: BorderRadius.only(
-                                            bottomLeft: Radius.circular(
-                                              context.tokens.shapeL,
-                                            ),
-                                            bottomRight: Radius.circular(
-                                              context.tokens.shapeL,
-                                            ),
-                                          ),
+                                        M3SpringButton(
+                                          onTap: () => context.push('/records'),
                                           child: Container(
                                             width: double.infinity,
                                             padding: const EdgeInsets.symmetric(

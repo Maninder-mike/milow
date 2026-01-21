@@ -10,6 +10,7 @@ import '../../../settings/utils/update_checker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/theme_provider.dart';
+import 'notification_bell.dart';
 
 class CustomTitleBar extends StatefulWidget {
   final FocusNode? searchFocusNode;
@@ -42,19 +43,26 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
               child: DragToMoveArea(child: SizedBox(height: double.infinity)),
             ),
             // Center search bar (constrained but flexible)
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 468),
-              child: _WindowsSearchBar(
-                focusNode: widget.searchFocusNode,
-                foregroundColor: foregroundColor,
-                isLight: isLight,
+            Flexible(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 468),
+                child: _WindowsSearchBar(
+                  focusNode: widget.searchFocusNode,
+                  foregroundColor: foregroundColor,
+                  isLight: isLight,
+                ),
               ),
             ),
             // Right area with user header
             Expanded(
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
-                children: [const _UserHeader(), const SizedBox(width: 8)],
+                children: [
+                  const NotificationBell(),
+                  const SizedBox(width: 16),
+                  const _UserHeader(),
+                  const SizedBox(width: 8),
+                ],
               ),
             ),
             // Windows control buttons (fixed width, at the end)
@@ -224,62 +232,61 @@ class _WindowsSearchBarState extends State<_WindowsSearchBar> {
     final focusBorderColor = theme.accentColor;
     final placeholderColor = theme.resources.textFillColorSecondary;
 
-    return SizedBox(
-      width: 468,
+    return Container(
+      width: 468, // Intrinsic target width
       height: 32,
-      child: Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: _isFocused ? focusBorderColor : borderColor,
-            width: _isFocused ? 1.5 : 1,
-          ),
+      constraints: const BoxConstraints(maxWidth: 468, minWidth: 200),
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: _isFocused ? focusBorderColor : borderColor,
+          width: _isFocused ? 1.5 : 1,
         ),
-        child: Focus(
-          onFocusChange: (focused) => setState(() => _isFocused = focused),
-          child: Row(
-            children: [
-              Expanded(
-                child: TextBox(
-                  controller: _controller,
-                  focusNode: widget.focusNode,
-                  placeholder: 'Search loads, drivers, and more',
-                  placeholderStyle: TextStyle(
-                    color: placeholderColor,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w400,
-                  ),
-                  style: TextStyle(color: widget.foregroundColor, fontSize: 13),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 6,
-                  ),
-                  decoration: WidgetStateProperty.all(
-                    const BoxDecoration(
-                      color: Colors.transparent,
-                      border: Border.fromBorderSide(BorderSide.none),
-                    ),
-                  ),
-                  unfocusedColor: Colors.transparent,
-                  highlightColor: Colors.transparent,
-                  onSubmitted: (value) {
-                    if (value.isNotEmpty) {
-                      debugPrint('Search: $value');
-                    }
-                  },
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.only(right: 10),
-                child: Icon(
-                  FluentIcons.search_24_regular,
-                  size: 16,
+      ),
+      child: Focus(
+        onFocusChange: (focused) => setState(() => _isFocused = focused),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextBox(
+                controller: _controller,
+                focusNode: widget.focusNode,
+                placeholder: 'Search loads, drivers, and more',
+                placeholderStyle: TextStyle(
                   color: placeholderColor,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w400,
                 ),
+                style: TextStyle(color: widget.foregroundColor, fontSize: 13),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: WidgetStateProperty.all(
+                  const BoxDecoration(
+                    color: Colors.transparent,
+                    border: Border.fromBorderSide(BorderSide.none),
+                  ),
+                ),
+                unfocusedColor: Colors.transparent,
+                highlightColor: Colors.transparent,
+                onSubmitted: (value) {
+                  if (value.isNotEmpty) {
+                    debugPrint('Search: $value');
+                  }
+                },
               ),
-            ],
-          ),
+            ),
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: Icon(
+                FluentIcons.search_24_regular,
+                size: 16,
+                color: placeholderColor,
+              ),
+            ),
+          ],
         ),
       ),
     );

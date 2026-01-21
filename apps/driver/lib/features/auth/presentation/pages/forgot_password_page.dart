@@ -215,7 +215,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage>
               border: Border.all(color: colorScheme.outlineVariant),
             ),
             child: Image.asset(
-              'assets/images/milow_icon_beta.png',
+              'assets/images/milow_icon.png',
               width: 80,
               height: 80,
               fit: BoxFit.contain,

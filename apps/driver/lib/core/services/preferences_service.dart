@@ -1,4 +1,5 @@
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:milow/core/utils/unit_utils.dart';
 
 enum UnitSystem { metric, imperial }
 
@@ -55,19 +56,44 @@ class PreferencesService {
     return system == UnitSystem.imperial ? 'gal' : 'L';
   }
 
-  static Future<double> convertDistance(
-    double value, {
-    bool toMetric = true,
-  }) async {
-    final system = await getUnitSystem();
-    if (system == UnitSystem.metric && !toMetric) {
-      // Convert km to miles
-      return value * 0.621371;
-    } else if (system == UnitSystem.imperial && toMetric) {
-      // Convert miles to km
-      return value * 1.60934;
-    }
-    return value;
+  // ================= CONVERSION HELPERS =================
+
+  /// Convert value from User Pref to Metric (for Saving)
+  static Future<double> standardizeDistance(double val) async {
+    return (await getUnitSystem()) == UnitSystem.imperial
+        ? UnitUtils.milesToKm(val)
+        : val;
+  }
+
+  static Future<double> standardizeVolume(double val) async {
+    return (await getUnitSystem()) == UnitSystem.imperial
+        ? UnitUtils.gallonsToLiters(val)
+        : val;
+  }
+
+  static Future<double> standardizeWeight(double val) async {
+    return (await getUnitSystem()) == UnitSystem.imperial
+        ? UnitUtils.lbsToKg(val)
+        : val;
+  }
+
+  /// Convert value from Metric to User Pref (for Loading/Display)
+  static Future<double> localizeDistance(double val) async {
+    return (await getUnitSystem()) == UnitSystem.imperial
+        ? UnitUtils.kmToMiles(val)
+        : val;
+  }
+
+  static Future<double> localizeVolume(double val) async {
+    return (await getUnitSystem()) == UnitSystem.imperial
+        ? UnitUtils.litersToGallons(val)
+        : val;
+  }
+
+  static Future<double> localizeWeight(double val) async {
+    return (await getUnitSystem()) == UnitSystem.imperial
+        ? UnitUtils.kgToLbs(val)
+        : val;
   }
 
   // Weather display preference

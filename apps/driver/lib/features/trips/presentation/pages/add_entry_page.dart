@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
@@ -20,6 +21,14 @@ import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/prediction_service.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
+// import 'package:milow/core/widgets/document_capture_button.dart'; // Removed
+
+import 'package:milow/core/widgets/load_details_section.dart';
+import 'package:milow/core/widgets/split_save_button.dart';
+import 'package:milow/core/widgets/m3_spring_button.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:intl/intl.dart';
 
 class AddEntryPage extends StatefulWidget {
   final Map<String, dynamic>? initialData;
@@ -119,6 +128,22 @@ class _AddEntryPageState extends State<AddEntryPage>
   final _truckFocusNode = FocusNode(); // For Fuel
   final _locationFocusNode = FocusNode(); // For Fuel
 
+  // Pending documents to upload when trip is saved
+  final Map<int, List<({File file, TripDocumentType type})>>
+  _pendingPickupDocs = {};
+  final Map<int, List<({File file, TripDocumentType type})>>
+  _pendingDeliveryDocs = {};
+
+  // Load details (owner-operator features)
+  final _commodityController = TextEditingController();
+  final _weightController = TextEditingController();
+  final _piecesController = TextEditingController();
+  final List<TextEditingController> _referenceNumberControllers = [
+    TextEditingController(),
+  ];
+  String _weightUnit = 'lbs';
+  DriverType? _currentDriverType;
+
   // Vehicles
   List<Vehicle> _vehicles = [];
 
@@ -129,18 +154,26 @@ class _AddEntryPageState extends State<AddEntryPage>
   // State for fetched trip (either passed in or fetched dynamically)
   Trip? _fetchedTrip;
 
+  // Templates
+  List<TripTemplate> _templates = [];
+
   @override
   void initState() {
     super.initState();
     _fetchedTrip = widget.editingTrip;
     // ... rest of initState
     _loadVehicles();
+    _loadDriverType();
+    _loadTemplates();
 
     _tabController = TabController(
       length: 2,
       vsync: this,
       initialIndex: widget.editingFuel != null ? 1 : widget.initialTab,
     );
+    _tabController.addListener(() {
+      if (!_tabController.indexIsChanging) setState(() {});
+    });
 
     // Initialize header animation
     _headerAnimationController = AnimationController(
@@ -270,6 +303,64 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
+  Future<void> _loadDriverType() async {
+    try {
+      final profileMap = await ProfileService.getProfile();
+      if (mounted && profileMap != null) {
+        final profile = UserProfile.fromJson(profileMap);
+        setState(() {
+          _currentDriverType = profile.driverType;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading driver type: $e');
+    }
+  }
+
+  Future<void> _loadTemplates() async {
+    // Loading state removed
+
+    try {
+      final res = await Supabase.instance.client
+          .from('trip_templates')
+          .select()
+          .order('name', ascending: true);
+
+      if (mounted) {
+        setState(() {
+          _templates = (res as List)
+              .map((e) => TripTemplate.fromJson(e))
+              .toList();
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading templates: $e');
+      // finally block removed
+    }
+  }
+
+  Future<void> _applyTemplate(TripTemplate template) async {
+    // Show success immediately? Or after?
+    // Let's do initial setup
+    final t = template.templateData;
+
+    // Use existing prefill logic (handles its own setState for async parts)
+    await _prefillTripData(t);
+
+    if (mounted) {
+      setState(() {
+        // Override specific fields that shouldn't be template-bound
+        _tripDateController.text = _formatDateTime(DateTime.now());
+
+        // Clear trip number as templates shouldn't enforce a specific trip number
+        if (t.tripNumber.isEmpty) {
+          _tripNumberController.clear();
+        }
+      });
+      AppDialogs.showSuccess(context, 'Template "${template.name}" applied');
+    }
+  }
+
   Future<void> _loadVehicles() async {
     setState(() => _isLoadingVehicles = true);
     try {
@@ -286,16 +377,22 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
-  void _prefillTripData(Trip trip) {
+  Future<void> _prefillTripData(Trip trip) async {
     _tripNumberController.text = trip.tripNumber;
     _tripTruckNumberController.text = trip.truckNumber;
-    _selectedTripVehicleId = trip.vehicleId;
-    if (_selectedTripVehicleId == null && _vehicles.isNotEmpty) {
-      final v = _vehicles.cast<Vehicle?>().firstWhere(
-        (v) => v?.truckNumber == trip.truckNumber,
-        orElse: () => null,
-      );
-      if (v != null) _selectedTripVehicleId = v.id;
+    // State variable update
+    if (mounted) {
+      setState(() {
+        _selectedTripVehicleId = trip.vehicleId;
+        if (_selectedTripVehicleId == null && _vehicles.isNotEmpty) {
+          final v = _vehicles.cast<Vehicle?>().firstWhere(
+            (v) => v?.truckNumber == trip.truckNumber,
+            orElse: () => null,
+          );
+          if (v != null) _selectedTripVehicleId = v.id;
+        }
+        _selectedBorderCrossing = trip.borderCrossing;
+      });
     }
 
     _borderCrossingController.text = trip.borderCrossing ?? '';
@@ -383,14 +480,20 @@ class _AddEntryPageState extends State<AddEntryPage>
       }
     }
 
-    // Fill odometer readings
+    // Fill odometer readings (localized)
     if (trip.startOdometer != null) {
-      _tripStartOdometerController.text = trip.startOdometer!.toStringAsFixed(
-        0,
+      final startOdo = await PreferencesService.localizeDistance(
+        trip.startOdometer!,
       );
+      if (mounted) {
+        _tripStartOdometerController.text = startOdo.toStringAsFixed(0);
+      }
     }
     if (trip.endOdometer != null) {
-      _tripEndOdometerController.text = trip.endOdometer!.toStringAsFixed(0);
+      final endOdo = await PreferencesService.localizeDistance(
+        trip.endOdometer!,
+      );
+      if (mounted) _tripEndOdometerController.text = endOdo.toStringAsFixed(0);
     }
 
     // Fill notes
@@ -398,12 +501,41 @@ class _AddEntryPageState extends State<AddEntryPage>
       _tripNotesController.text = trip.notes!;
     }
 
-    // Set distance unit
-    _distanceUnit = trip.distanceUnit;
-    _isEmptyLeg = trip.isEmptyLeg;
+    // Set distance unit (from preferences, not DB)
+    // Set distance unit (from preferences, not DB)
+    final distUnit = await PreferencesService.getDistanceUnit();
+    if (mounted) {
+      setState(() {
+        _distanceUnit = distUnit;
+        _isEmptyLeg = trip.isEmptyLeg;
+      });
+    }
+
+    // Load details (owner-operator features)
+    if (_currentDriverType?.showOwnerOpFeatures ?? true) {
+      _commodityController.text = trip.commodity ?? '';
+      // Localize weight
+      if (trip.weight != null) {
+        final weightVal = await PreferencesService.localizeWeight(trip.weight!);
+        if (mounted) {
+          _weightController.text = weightVal.toString().replaceAll('.0', '');
+        }
+      }
+      // Set weight unit (from preferences)
+      _weightUnit = await PreferencesService.getWeightUnit();
+      _piecesController.text = trip.pieces?.toString() ?? '';
+
+      // Clear and populate reference numbers
+      if (trip.referenceNumbers.isNotEmpty) {
+        _referenceNumberControllers.clear();
+        for (final ref in trip.referenceNumbers) {
+          _referenceNumberControllers.add(TextEditingController(text: ref));
+        }
+      }
+    }
   }
 
-  void _prefillFuelData(FuelEntry fuel) {
+  Future<void> _prefillFuelData(FuelEntry fuel) async {
     _fuelDateController.text = _formatDateTime(fuel.fuelDate);
     _isReeferFuel = fuel.isReeferFuel;
 
@@ -437,28 +569,45 @@ class _AddEntryPageState extends State<AddEntryPage>
       _odometerController.text = fuel.reeferHours!.toStringAsFixed(1);
     }
 
-    // Fill fuel quantity and price
-    _fuelQuantityController.text = fuel.fuelQuantity.toStringAsFixed(2);
+    // Fill fuel quantity and price (Localized)
+    // Fill fuel quantity and price (Localized)
+    final volVal = await PreferencesService.localizeVolume(fuel.fuelQuantity);
+    if (mounted) _fuelQuantityController.text = volVal.toStringAsFixed(2);
+
     _fuelPriceController.text = fuel.pricePerUnit.toStringAsFixed(3);
 
-    // Pre-fill DEF if editing
-    _defQuantityController.text = fuel.defQuantity > 0
-        ? fuel.defQuantity.toString()
-        : '';
-    _defPriceController.text = fuel.defPrice > 0
-        ? fuel.defPrice.toString()
-        : '';
-    _defFromYard = fuel.defFromYard;
+    // Set units from Prefs
+    final volUnit = await PreferencesService.getVolumeUnit();
+    final distUnit = await PreferencesService.getDistanceUnit();
 
-    // Set units
-    _fuelUnit = fuel.fuelUnit;
-    _distanceUnit = fuel.distanceUnit;
-    _currency = fuel.currency;
+    if (mounted) {
+      setState(() {
+        _fuelUnit = volUnit;
+        _distanceUnit = distUnit;
+        _currency = fuel.currency;
+        _selectedFuelVehicleId = fuel.vehicleId;
+        // Fallback matching logic moved to start of method but let's re-run or better:
+        // We set _selectedFuelVehicleId earlier in local var? No, it was instance var.
+        // We need to move the vehicle matching logic into setState or just assign it here.
+        // Let's trust the logic earlier was mostly finding ID.
+        // Re-injecting vehicle matching to ensure it sets state:
+        if (_selectedFuelVehicleId == null &&
+            _vehicles.isNotEmpty &&
+            _truckNumberController.text.isNotEmpty) {
+          final v = _vehicles.cast<Vehicle?>().firstWhere(
+            (v) => v?.truckNumber == _truckNumberController.text,
+            orElse: () => null,
+          );
+          if (v != null) _selectedFuelVehicleId = v.id;
+        }
+      });
+    }
   }
 
   Future<void> _loadUnitPreferences() async {
     final prefDistanceUnit = await PreferencesService.getDistanceUnit();
     final prefFuelUnit = await PreferencesService.getVolumeUnit();
+    final prefWeightUnit = await PreferencesService.getWeightUnit();
 
     // Get currency from user profile country
     final profile = await ProfileService.getProfile();
@@ -468,22 +617,25 @@ class _AddEntryPageState extends State<AddEntryPage>
     if (mounted) {
       setState(() {
         if (!_isEditMode) {
-          // New Entry: Sync units based on currency (not global preferences)
-          // USD → Imperial (gal, mi), CAD → Metric (L, km)
+          // New Entry: Set currency from profile, but allow override
           _currency = prefCurrency;
           if (prefCurrency == 'USD') {
             _fuelUnit = 'gal';
             _distanceUnit = 'mi';
+            _weightUnit = 'lb';
           } else if (prefCurrency == 'CAD') {
             _fuelUnit = 'L';
             _distanceUnit = 'km';
+            _weightUnit = 'kg';
           } else {
             // Fallback to preferences for other currencies
             _distanceUnit = prefDistanceUnit;
             _fuelUnit = prefFuelUnit;
+            _weightUnit = prefWeightUnit;
           }
         } else {
           // Edit Mode: Convert units if they differ from preference
+          // (Data is already loaded, potentially we normally re-localize here if we wanted live switching)
           // Preserve currency for historical accuracy
 
           // 1. Convert Distance (mi <-> km)
@@ -750,6 +902,14 @@ class _AddEntryPageState extends State<AddEntryPage>
     _defQuantityController.dispose(); // [NEW]
     _defPriceController.dispose(); // [NEW]
 
+    // Dispose load detail controllers
+    _commodityController.dispose();
+    _weightController.dispose();
+    _piecesController.dispose();
+    for (final controller in _referenceNumberControllers) {
+      controller.dispose();
+    }
+
     // Dispose FocusNodes
     _tripTruckFocusNode.dispose();
     for (final node in _trailerFocusNodes) {
@@ -901,236 +1061,129 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     final actions = <Widget>[];
 
+    // Pickup Actions
     if (hasPickups) {
-      // Pickup Mode Actions
-      if (_pickupCompleted.isNotEmpty) {
-        final isPickedUp = _pickupCompleted[0];
-        actions.add(
-          FilterChip(
-            selected: isPickedUp,
-            showCheckmark: false,
-            label: Text(
-              isPickedUp ? 'Picked Up' : 'Picked Up Load',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+      for (int i = 0; i < _pickupControllers.length; i++) {
+        final controller = _pickupControllers[i];
+        if (controller.text.trim().isEmpty) continue;
+
+        if (i < _pickupCompleted.length) {
+          final isPickedUp = _pickupCompleted[i];
+          final label = _pickupControllers.length > 1
+              ? (isPickedUp ? 'P${i + 1} Done' : 'Pick Up ${i + 1}')
+              : (isPickedUp ? 'Picked Up' : 'Picked Up Load');
+
+          actions.add(
+            FilterChip(
+              selected: isPickedUp,
+              showCheckmark: false,
+              label: Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: isPickedUp
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.primary,
+                ),
+              ),
+              avatar: Icon(
+                isPickedUp ? Icons.check_circle : Icons.check_circle_outline,
+                size: 18,
                 color: isPickedUp
                     ? Theme.of(context).colorScheme.onPrimary
                     : Theme.of(context).colorScheme.primary,
               ),
-            ),
-            avatar: Icon(
-              isPickedUp ? Icons.check_circle : Icons.check_circle_outline,
-              size: 18,
-              color: isPickedUp
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-            selectedColor: Theme.of(context).colorScheme.primary,
-            side: BorderSide(
-              color: isPickedUp
-                  ? Colors.transparent
-                  : Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            onSelected: (selected) {
-              setState(() {
-                _pickupCompleted[0] = selected;
-              });
-              if (selected) {
-                // If checking "Picked Up", validation or snackbar
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Marked as Picked Up. Save to persist.',
-                    ),
-                    behavior: SnackBarBehavior.floating,
-                    backgroundColor: Theme.of(context).colorScheme.primary,
-                  ),
-                );
-              }
-            },
-          ),
-        );
-      }
-
-      if (_pickupTimes.isNotEmpty) {
-        final hasTime = _pickupTimes[0] != null;
-        actions.add(
-          FilterChip(
-            selected: hasTime,
-            showCheckmark: false,
-            label: Text(
-              hasTime
-                  ? 'Time: ${_formatTime(_pickupTimes[0]!)}'
-                  : 'Add Pickup Time',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: hasTime
-                    ? Theme.of(context).colorScheme.onSecondaryContainer
-                    : Theme.of(context).colorScheme.tertiary,
+              backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
+              selectedColor: Theme.of(context).colorScheme.primary,
+              side: BorderSide(
+                color: isPickedUp
+                    ? Colors.transparent
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
               ),
-            ),
-            avatar: Icon(
-              Icons.access_time_rounded,
-              size: 18,
-              color: hasTime
-                  ? Theme.of(context).colorScheme.onSecondaryContainer
-                  : Theme.of(context).colorScheme.tertiary,
-            ),
-            backgroundColor: Theme.of(context).colorScheme.surfaceContainer,
-            selectedColor: Theme.of(context).colorScheme.secondaryContainer,
-            side: BorderSide(
-              color: hasTime
-                  ? Colors.transparent
-                  : Theme.of(
-                      context,
-                    ).colorScheme.tertiary.withValues(alpha: 0.5),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            onSelected: (selected) async {
-              if (selected) {
-                // Pick time if not clearing (FilterChip toggle behavior usually implies 'on' = set)
-                // But simplified: tapping always opens time picker to refine/set
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                if (time != null) {
-                  final now = DateTime.now();
-                  setState(() {
-                    _pickupTimes[0] = DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                      time.hour,
-                      time.minute,
-                    );
-                  });
-                }
-              } else {
-                // Clearing time
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              onSelected: (selected) {
                 setState(() {
-                  _pickupTimes[0] = null;
+                  _pickupCompleted[i] = selected;
                 });
-              }
-            },
-          ),
-        );
+                if (selected) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Marked Stop ${i + 1} as Picked Up.'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+            ),
+          );
+        }
       }
     }
 
+    // Delivery Actions
     if (hasDeliveries) {
-      // Delivery Mode Actions
-      if (_deliveryCompleted.isNotEmpty) {
-        actions.add(
-          FilterChip(
-            selected: _deliveryCompleted[0],
-            showCheckmark: false,
-            label: Text(
-              _deliveryCompleted[0] ? 'Delivered' : 'Delivery Done',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: _deliveryCompleted[0]
-                    ? Theme.of(context).colorScheme.onPrimary
-                    : context.tokens.textPrimary,
-              ),
-            ),
-            avatar: Icon(
-              _deliveryCompleted[0]
-                  ? Icons.check_circle
-                  : Icons.check_circle_outline,
-              size: 18,
-              color: _deliveryCompleted[0]
-                  ? Theme.of(context).colorScheme.onPrimary
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            backgroundColor: context.tokens.surfaceContainer,
-            selectedColor: Theme.of(context).colorScheme.primary,
-            side: BorderSide(
-              color: _deliveryCompleted[0]
-                  ? Colors.transparent
-                  : Theme.of(
-                      context,
-                    ).colorScheme.primary.withValues(alpha: 0.5),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            onSelected: (selected) {
-              setState(() {
-                _deliveryCompleted[0] = selected;
-              });
-            },
-          ),
-        );
-      }
+      for (int i = 0; i < _deliveryControllers.length; i++) {
+        final controller = _deliveryControllers[i];
+        if (controller.text.trim().isEmpty) continue;
 
-      if (_deliveryTimes.isNotEmpty) {
-        final hasTime = _deliveryTimes[0] != null;
-        actions.add(
-          FilterChip(
-            selected: hasTime,
-            showCheckmark: false,
-            label: Text(
-              hasTime
-                  ? 'Time: ${_formatTime(_deliveryTimes[0]!)}'
-                  : 'Add Delivery Time',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: hasTime
-                    ? Theme.of(context).colorScheme.onSecondaryContainer
-                    : context.tokens.textPrimary,
+        if (i < _deliveryCompleted.length) {
+          final isDelivered = _deliveryCompleted[i];
+          final label = _deliveryControllers.length > 1
+              ? (isDelivered ? 'D${i + 1} Done' : 'Deliver ${i + 1}')
+              : (isDelivered ? 'Delivered' : 'Delivery Done');
+
+          actions.add(
+            FilterChip(
+              selected: isDelivered,
+              showCheckmark: false,
+              label: Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  color: isDelivered
+                      ? Theme.of(context).colorScheme.onPrimary
+                      : Theme.of(context).colorScheme.primary,
+                ),
               ),
-            ),
-            avatar: Icon(
-              Icons.access_time_rounded,
-              size: 18,
-              color: hasTime
-                  ? Theme.of(context).colorScheme.onSecondaryContainer
-                  : Theme.of(context).colorScheme.tertiary,
-            ),
-            backgroundColor: context.tokens.surfaceContainer,
-            selectedColor: Theme.of(context).colorScheme.secondaryContainer,
-            side: BorderSide(
-              color: hasTime
-                  ? Colors.transparent
-                  : Theme.of(
-                      context,
-                    ).colorScheme.tertiary.withValues(alpha: 0.5),
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(20),
-            ),
-            onSelected: (selected) async {
-              if (selected) {
-                // Set to now, or pick time
-                final time = await showTimePicker(
-                  context: context,
-                  initialTime: TimeOfDay.now(),
-                );
-                if (time != null) {
-                  final now = DateTime.now();
-                  setState(() {
-                    _deliveryTimes[0] = DateTime(
-                      now.year,
-                      now.month,
-                      now.day,
-                      time.hour,
-                      time.minute,
-                    );
-                  });
-                }
-              } else {
+              avatar: Icon(
+                isDelivered ? Icons.check_circle : Icons.check_circle_outline,
+                size: 18,
+                color: isDelivered
+                    ? Theme.of(context).colorScheme.onPrimary
+                    : Theme.of(context).colorScheme.primary,
+              ),
+              backgroundColor: context.tokens.surfaceContainer,
+              selectedColor: Theme.of(context).colorScheme.primary,
+              side: BorderSide(
+                color: isDelivered
+                    ? Colors.transparent
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+              onSelected: (selected) {
                 setState(() {
-                  _deliveryTimes[0] = null;
+                  _deliveryCompleted[i] = selected;
                 });
-              }
-            },
-          ),
-        );
+                if (selected) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Marked Delivery ${i + 1} as Complete.'),
+                      behavior: SnackBarBehavior.floating,
+                      duration: const Duration(seconds: 1),
+                    ),
+                  );
+                }
+              },
+            ),
+          );
+        }
       }
     }
 
@@ -1159,76 +1212,107 @@ class _AddEntryPageState extends State<AddEntryPage>
       final isLast = i == _pickupControllers.length - 1;
       final canAdd = _pickupControllers.length < _maxLocations;
       final canRemove = _pickupControllers.length > 1;
+      // final pendingDocs removed
 
       fields.add(
         Padding(
           padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: CustomAutocompleteField(
-                  controller: _pickupControllers[i],
-                  focusNode: _pickupFocusNodes[i],
-                  label: i == 0 ? 'Pickup Location' : 'Pickup ${i + 1}',
-                  hint: i == 0 ? 'City, State' : 'City, State',
-                  prefixIcon: Icons.location_on,
-                  suffixIcon: Icons.my_location,
-                  onSuffixTap: () => _getLocationFor(_pickupControllers[i]),
-                  optionsBuilder:
-                      PredictionService.instance.getLocationSuggestions,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Per-stop completion toggle
+                  if (i < _pickupCompleted.length)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10, right: 8),
+                      child: IconButton(
+                        icon: Icon(
+                          _pickupCompleted[i]
+                              ? Icons.check_circle
+                              : Icons.check_circle_outline,
+                          color: _pickupCompleted[i]
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _pickupCompleted[i] = !_pickupCompleted[i];
+                          });
+                        },
+                        tooltip: 'Mark Stop ${i + 1} as Picked Up',
+                      ),
+                    ),
+                  Expanded(
+                    child: CustomAutocompleteField(
+                      controller: _pickupControllers[i],
+                      focusNode: _pickupFocusNodes[i],
+                      label: i == 0 ? 'Pickup Location' : 'Pickup ${i + 1}',
+                      hint: i == 0 ? 'City, State' : 'City, State',
+                      prefixIcon: Icons.location_on,
+                      suffixIcon: Icons.my_location,
+                      onSuffixTap: () => _getLocationFor(_pickupControllers[i]),
+                      optionsBuilder:
+                          PredictionService.instance.getLocationSuggestions,
+                    ),
+                  ),
+                  if (canRemove) ...[
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: InkWell(
+                        onTap: () => _removePickupLocation(i),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.remove,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (isLast && canAdd) ...[
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: InkWell(
+                        onTap: _addPickupLocation,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.tertiary,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.add,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.tertiary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              if (canRemove) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: InkWell(
-                    onTap: () => _removePickupLocation(i),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.remove,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (isLast && canAdd) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: InkWell(
-                    onTap: _addPickupLocation,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.tertiaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.tertiary,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+
+              // Document Capture removed per user request
             ],
           ),
         ),
@@ -1244,77 +1328,109 @@ class _AddEntryPageState extends State<AddEntryPage>
       final isLast = i == _deliveryControllers.length - 1;
       final canAdd = _deliveryControllers.length < _maxLocations;
       final canRemove = _deliveryControllers.length > 1;
+      // final pendingDocs removed
 
       fields.add(
         Padding(
           padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-          child: Row(
+          child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: CustomAutocompleteField(
-                  controller: _deliveryControllers[i],
-                  focusNode: _deliveryFocusNodes[i],
-                  textCapitalization: TextCapitalization.words,
-                  label: i == 0 ? 'Delivery Location' : 'Delivery ${i + 1}',
-                  hint: i == 0 ? 'City, State' : 'City, State',
-                  prefixIcon: Icons.location_on,
-                  suffixIcon: Icons.my_location,
-                  onSuffixTap: () => _getLocationFor(_deliveryControllers[i]),
-                  optionsBuilder:
-                      PredictionService.instance.getLocationSuggestions,
-                ),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Per-stop completion toggle
+                  if (i < _deliveryCompleted.length)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 10, right: 8),
+                      child: IconButton(
+                        icon: Icon(
+                          _deliveryCompleted[i]
+                              ? Icons.check_circle
+                              : Icons.check_circle_outline,
+                          color: _deliveryCompleted[i]
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _deliveryCompleted[i] = !_deliveryCompleted[i];
+                          });
+                        },
+                        tooltip: 'Mark Delivery ${i + 1} as Complete',
+                      ),
+                    ),
+                  Expanded(
+                    child: CustomAutocompleteField(
+                      controller: _deliveryControllers[i],
+                      focusNode: _deliveryFocusNodes[i],
+                      textCapitalization: TextCapitalization.words,
+                      label: i == 0 ? 'Delivery Location' : 'Delivery ${i + 1}',
+                      hint: i == 0 ? 'City, State' : 'City, State',
+                      prefixIcon: Icons.location_on,
+                      suffixIcon: Icons.my_location,
+                      onSuffixTap: () =>
+                          _getLocationFor(_deliveryControllers[i]),
+                      optionsBuilder:
+                          PredictionService.instance.getLocationSuggestions,
+                    ),
+                  ),
+                  if (canRemove) ...[
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: InkWell(
+                        onTap: () => _removeDeliveryLocation(i),
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.errorContainer,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.error,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.remove,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                  if (isLast && canAdd) ...[
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: InkWell(
+                        onTap: _addDeliveryLocation,
+                        borderRadius: BorderRadius.circular(8),
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Theme.of(
+                              context,
+                            ).colorScheme.tertiaryContainer,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: Theme.of(context).colorScheme.tertiary,
+                            ),
+                          ),
+                          child: Icon(
+                            Icons.add,
+                            size: 20,
+                            color: Theme.of(context).colorScheme.tertiary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              if (canRemove) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: InkWell(
-                    onTap: () => _removeDeliveryLocation(i),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.errorContainer,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.error,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.remove,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.error,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-              if (isLast && canAdd) ...[
-                const SizedBox(width: 8),
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: InkWell(
-                    onTap: _addDeliveryLocation,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.tertiaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.tertiary,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
+
+              // Document Capture removed per user request
             ],
           ),
         ),
@@ -1440,34 +1556,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
-  // [NEW] Fetch trip wrapper logic
-  void _fetchTripRecord(String tripNumber) async {
-    if (tripNumber.isEmpty) return;
-
-    setState(() => _isSaving = true);
-    try {
-      final trips = await TripRepository.searchTrips(tripNumber);
-      final match = trips.where((t) => t.tripNumber == tripNumber).firstOrNull;
-
-      if (mounted) {
-        setState(() => _isSaving = false);
-        if (match != null) {
-          _fetchedTrip = match;
-          _prefillTripData(match);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Loaded trip ${match.tripNumber}')),
-          );
-        } else {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Trip not found')));
-        }
-      }
-    } catch (e) {
-      if (mounted) setState(() => _isSaving = false);
-      debugPrint('Error fetching trip: $e');
-    }
-  }
+  // _fetchTripRecord removed per user request (refresh button removed)
 
   Future<Map<String, double>?> _getLocationFromIp() async {
     try {
@@ -1549,6 +1638,14 @@ class _AddEntryPageState extends State<AddEntryPage>
             for (var trailer in lastTrip.trailers) {
               _addTrailer(trailer);
             }
+          });
+        }
+
+        // Autofill Trip Number for Empty Leg
+        // Append "-LEG" to previous trip number
+        if (_isEmptyLeg && lastTrip.tripNumber.isNotEmpty) {
+          setState(() {
+            _tripNumberController.text = '${lastTrip.tripNumber}-LEG';
           });
         }
       }
@@ -1653,26 +1750,41 @@ class _AddEntryPageState extends State<AddEntryPage>
                           ),
                           Row(
                             children: [
-                              // Fetch Trip Logic
-                              IconButton(
-                                onPressed: () {
-                                  if (_tripNumberController.text.isNotEmpty) {
-                                    _fetchTripRecord(
-                                      _tripNumberController.text,
-                                    );
-                                  } else {
-                                    ScaffoldMessenger.of(context).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Enter trip number to fetch',
+                              // Template Dropdown
+                              if (_templates.isNotEmpty &&
+                                  _tabController.index == 0)
+                                Padding(
+                                  padding: const EdgeInsets.only(right: 8),
+                                  child: MenuAnchor(
+                                    builder: (context, controller, child) {
+                                      return IconButton(
+                                        onPressed: () {
+                                          if (controller.isOpen) {
+                                            controller.close();
+                                          } else {
+                                            controller.open();
+                                          }
+                                        },
+                                        icon: const Icon(
+                                          Icons.copy_all_outlined,
                                         ),
-                                      ),
-                                    );
-                                  }
-                                },
-                                icon: const Icon(Icons.refresh),
-                                tooltip: 'Fetch Trip Record',
-                              ),
+                                        tooltip: 'Use Template',
+                                      );
+                                    },
+                                    menuChildren: _templates.map((t) {
+                                      return MenuItemButton(
+                                        onPressed: () => _applyTemplate(t),
+                                        leadingIcon: const Icon(
+                                          Icons.description_outlined,
+                                        ),
+                                        child: Text(t.name),
+                                      );
+                                    }).toList(),
+                                  ),
+                                ),
+
+                              // Fetch Trip Logic
+                              /* Refresh removed */
                               IconButton(
                                 icon: Icon(
                                   Icons.close_rounded,
@@ -1691,42 +1803,56 @@ class _AddEntryPageState extends State<AddEntryPage>
                                 tooltip: 'Cancel',
                               ),
                               const SizedBox(width: 4),
-                              FilledButton(
-                                onPressed: _isSaving
-                                    ? null
-                                    : () {
-                                        if (_tabController.index == 0) {
-                                          _validateAndSaveTrip();
-                                        } else {
-                                          _validateAndSaveFuel();
-                                        }
-                                      },
-                                style: FilledButton.styleFrom(
-                                  // Style handled by theme
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24,
-                                    vertical: 8,
+                              if (_tabController.index == 0)
+                                SplitSaveButton(
+                                  onSave: _validateAndSaveTrip,
+                                  onSaveAsTemplate: _saveAsTemplate,
+                                  isLoading: _isSaving,
+                                )
+                              else
+                                M3SpringButton(
+                                  onTap: _isSaving
+                                      ? null
+                                      : _validateAndSaveFuel,
+                                  child: FilledButton(
+                                    onPressed: null,
+                                    style: FilledButton.styleFrom(
+                                      disabledBackgroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.primary,
+                                      disabledForegroundColor: Theme.of(
+                                        context,
+                                      ).colorScheme.onPrimary,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: context.tokens.spacingM,
+                                      ),
+                                      minimumSize: const Size(0, 36),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(
+                                          context.tokens.shapeFull,
+                                        ),
+                                      ),
+                                    ),
+                                    child: _isSaving
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              strokeCap: StrokeCap.round,
+                                            ),
+                                          )
+                                        : Text(
+                                            'Save Fuel',
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .labelMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                          ),
                                   ),
                                 ),
-                                child: _isSaving
-                                    ? const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                          strokeCap: StrokeCap.round,
-                                        ),
-                                      )
-                                    : Text(
-                                        'Save',
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .labelLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                      ),
-                              ),
                             ],
                           ),
                         ],
@@ -1925,6 +2051,28 @@ class _AddEntryPageState extends State<AddEntryPage>
               ..._buildDeliveryLocationFields(),
             ],
           ),
+          if (_currentDriverType?.showOwnerOpFeatures ?? false) ...[
+            const SizedBox(height: 16),
+            LoadDetailsSection(
+              commodityController: _commodityController,
+              weightController: _weightController,
+              piecesController: _piecesController,
+              referenceNumberControllers: _referenceNumberControllers,
+              weightUnit: _weightUnit,
+              onWeightUnitChanged: (unit) => setState(() => _weightUnit = unit),
+              onAddReferenceNumber: () => setState(
+                () => _referenceNumberControllers.add(TextEditingController()),
+              ),
+              onRemoveReferenceNumber: (index) {
+                if (_referenceNumberControllers.length > 1) {
+                  setState(() {
+                    _referenceNumberControllers[index].dispose();
+                    _referenceNumberControllers.removeAt(index);
+                  });
+                }
+              },
+            ),
+          ],
           _buildSectionCard(
             title: 'Operations',
             children: [
@@ -2046,13 +2194,27 @@ class _AddEntryPageState extends State<AddEntryPage>
         tripDate = DateTime.now();
       }
 
-      // Parse odometer values
-      final startOdometer = double.tryParse(
+      double? startOdometer = double.tryParse(
         _tripStartOdometerController.text.trim(),
       );
-      final endOdometer = _tripEndOdometerController.text.trim().isNotEmpty
+      if (startOdometer != null) {
+        startOdometer = await PreferencesService.standardizeDistance(
+          startOdometer,
+        );
+      }
+
+      double? endOdometer = _tripEndOdometerController.text.trim().isNotEmpty
           ? double.tryParse(_tripEndOdometerController.text.trim())
           : null;
+      if (endOdometer != null) {
+        endOdometer = await PreferencesService.standardizeDistance(endOdometer);
+      }
+
+      // Standardize weight
+      double? weight = double.tryParse(_weightController.text.trim());
+      if (weight != null) {
+        weight = await PreferencesService.standardizeWeight(weight);
+      }
 
       // [NEW] Resolve Vehicle ID from text input (to handle manual typing or correction)
       final truckText = _tripTruckNumberController.text.trim();
@@ -2130,21 +2292,43 @@ class _AddEntryPageState extends State<AddEntryPage>
             .toList(),
         startOdometer: startOdometer,
         endOdometer: endOdometer,
-        distanceUnit: _distanceUnit,
+        distanceUnit: 'km', // Force Metric Storage
         notes: _tripNotesController.text.trim().isNotEmpty
             ? _tripNotesController.text.trim()
             : null,
         isEmptyLeg: _isEmptyLeg,
+        // Load details (owner-operator features)
+        commodity: _commodityController.text.trim().isNotEmpty
+            ? _commodityController.text.trim()
+            : null,
+        weight: weight,
+        weightUnit: 'kg', // Force Metric Storage
+        pieces: int.tryParse(_piecesController.text.trim()),
+        referenceNumbers: _referenceNumberControllers
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
       );
+
+      String? savedTripId = trip.id;
 
       if (_isEditMode && widget.editingTrip != null) {
         await TripRepository.updateTrip(trip);
+        savedTripId = widget.editingTrip!.id;
       } else {
         // Get existing trips before creating new one
         final existingTrips = await TripRepository.getTrips();
 
         // Create the new trip (offline-first: saves locally, queues sync)
         await TripRepository.createTrip(trip);
+
+        // Try to get the trip ID from repository after creation
+        final updatedTrips = await TripRepository.getTrips();
+        final createdTrip = updatedTrips.firstWhere(
+          (t) => t.tripNumber == trip.tripNumber,
+          orElse: () => trip,
+        );
+        savedTripId = createdTrip.id;
 
         // Check if previous trip (before this one) is missing end odometer
         if (existingTrips.isNotEmpty) {
@@ -2166,6 +2350,12 @@ class _AddEntryPageState extends State<AddEntryPage>
             );
           }
         }
+      }
+
+      // Upload any pending documents
+      if (savedTripId != null &&
+          (_pendingPickupDocs.isNotEmpty || _pendingDeliveryDocs.isNotEmpty)) {
+        await _uploadPendingDocuments(savedTripId, trip.tripNumber);
       }
 
       if (mounted) {
@@ -2194,6 +2384,241 @@ class _AddEntryPageState extends State<AddEntryPage>
       if (mounted) {
         setState(() => _isSaving = false);
       }
+    }
+  }
+
+  Future<void> _saveAsTemplate() async {
+    // 1. Validate inputs (same as save trip) using simplified check
+    if (_tripNumberController.text.trim().isEmpty) {
+      AppDialogs.showWarning(context, 'Please enter a trip number');
+      return;
+    }
+
+    // 2. Ask for template name
+    final nameController = TextEditingController();
+    final descriptionController = TextEditingController();
+
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Save as Template'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: nameController,
+              decoration: const InputDecoration(
+                labelText: 'Template Name',
+                hintText: 'e.g., Weekly Produce Route',
+              ),
+              autofocus: true,
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: descriptionController,
+              decoration: const InputDecoration(
+                labelText: 'Description (Optional)',
+                hintText: 'Notes about this route...',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Save Template'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave != true || nameController.text.trim().isEmpty) return;
+
+    setState(() => _isSaving = true);
+
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      // 3. Create Trip object (snapshot)
+      final tripSnapshot = Trip(
+        id: const Uuid().v4(),
+        userId: userId,
+        tripNumber: _tripNumberController.text.trim(),
+        truckNumber: _tripTruckNumberController.text.trim(),
+        tripDate: DateTime.now(), // Placeholder
+        vehicleId: _selectedTripVehicleId,
+        trailers: _trailerControllers
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+        pickupLocations: _pickupControllers
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+        deliveryLocations: _deliveryControllers
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+        // Load details
+        commodity: _commodityController.text.trim().isNotEmpty
+            ? _commodityController.text.trim()
+            : null,
+        weight: double.tryParse(_weightController.text.trim()),
+        weightUnit: _weightUnit,
+        pieces: int.tryParse(_piecesController.text.trim()),
+        referenceNumbers: _referenceNumberControllers
+            .map((c) => c.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+        notes: _tripNotesController.text.trim().isNotEmpty
+            ? _tripNotesController.text.trim()
+            : null,
+        startOdometer: null,
+        endOdometer: null,
+      );
+
+      // 4. Create TripTemplate object
+      final template = TripTemplate(
+        id: const Uuid().v4(),
+        userId: userId,
+        name: nameController.text.trim(),
+        description: descriptionController.text.trim().isNotEmpty
+            ? descriptionController.text.trim()
+            : null,
+        templateData: tripSnapshot,
+      );
+
+      // 5. Save to Supabase
+      final data = template.toJson();
+      data.remove('id'); // Let DB generate ID
+      data.remove('created_at');
+      data.remove('updated_at');
+
+      await Supabase.instance.client.from('trip_templates').insert(data);
+
+      if (mounted) {
+        AppDialogs.showSuccess(context, 'Template saved successfully!');
+      }
+    } catch (e) {
+      debugPrint('Error saving template: $e');
+      if (mounted) {
+        AppDialogs.showError(context, 'Failed to save template: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSaving = false);
+      }
+      nameController.dispose();
+      descriptionController.dispose();
+    }
+  }
+
+  /// Upload pending documents attached during trip creation
+  Future<void> _uploadPendingDocuments(String tripId, String tripNumber) async {
+    final client = Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    final allPendingDocs =
+        <
+          ({File file, TripDocumentType type, StopType stopType, int stopIndex})
+        >[];
+
+    // Collect all pickup documents
+    for (final entry in _pendingPickupDocs.entries) {
+      for (final doc in entry.value) {
+        allPendingDocs.add((
+          file: doc.file,
+          type: doc.type,
+          stopType: StopType.pickup,
+          stopIndex: entry.key,
+        ));
+      }
+    }
+
+    // Collect all delivery documents
+    for (final entry in _pendingDeliveryDocs.entries) {
+      for (final doc in entry.value) {
+        allPendingDocs.add((
+          file: doc.file,
+          type: doc.type,
+          stopType: StopType.delivery,
+          stopIndex: entry.key,
+        ));
+      }
+    }
+
+    if (allPendingDocs.isEmpty) return;
+
+    for (final doc in allPendingDocs) {
+      try {
+        // Generate file name
+        final shortType = _getShortDocType(doc.type);
+        final stopLabel = doc.stopType == StopType.pickup ? 'P' : 'D';
+        final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
+        final uniqueId = const Uuid().v4().substring(0, 8);
+        final fileName =
+            '$shortType-$tripNumber-$stopLabel${doc.stopIndex + 1}-$dateStr-$uniqueId.jpg';
+        final storagePath = '$userId/$tripId/$fileName';
+
+        // Upload to storage
+        await client.storage
+            .from('trip_documents')
+            .upload(
+              storagePath,
+              doc.file,
+              fileOptions: const FileOptions(
+                contentType: 'image/jpeg',
+                upsert: false,
+              ),
+            );
+
+        // Insert record into trip_documents table
+        await client.from('trip_documents').insert({
+          'trip_id': tripId,
+          'user_id': userId,
+          'document_type': doc.type.value,
+          'file_path': storagePath,
+          'file_name': fileName,
+          'file_size': await doc.file.length(),
+          'mime_type': 'image/jpeg',
+          'stop_type': doc.stopType.value,
+          'stop_index': doc.stopIndex,
+        });
+
+        debugPrint('📎 Uploaded document: $fileName');
+      } catch (e) {
+        debugPrint('❌ Failed to upload document: $e');
+        // Continue with other documents even if one fails
+      }
+    }
+
+    // Clear pending documents after upload
+    _pendingPickupDocs.clear();
+    _pendingDeliveryDocs.clear();
+  }
+
+  String _getShortDocType(TripDocumentType type) {
+    switch (type) {
+      case TripDocumentType.billOfLading:
+        return 'BOL';
+      case TripDocumentType.proofOfDelivery:
+        return 'POD';
+      case TripDocumentType.proofOfPickup:
+        return 'POP';
+      case TripDocumentType.scaleTicket:
+        return 'SCL';
+      case TripDocumentType.commercialInvoice:
+        return 'INV';
+      case TripDocumentType.rateConfirmation:
+        return 'RC';
+      default:
+        return 'DOC';
     }
   }
 
@@ -2236,14 +2661,6 @@ class _AddEntryPageState extends State<AddEntryPage>
       'Dec': 12,
     };
     return months[month] ?? 1;
-  }
-
-  // Helper for formatting time
-  String _formatTime(DateTime dt) {
-    final hour = dt.hour == 0 || dt.hour == 12 ? 12 : dt.hour % 12;
-    final amPm = dt.hour < 12 ? 'AM' : 'PM';
-    final minute = dt.minute.toString().padLeft(2, '0');
-    return '$hour:$minute $amPm';
   }
 
   Widget _buildAddFuelTab() {
@@ -2643,23 +3060,66 @@ class _AddEntryPageState extends State<AddEntryPage>
       }
 
       // Parse values
-      final fuelQuantity =
+      final rawFuelQty =
           double.tryParse(_fuelQuantityController.text.trim()) ?? 0;
-      final pricePerUnit =
+      final rawFuelPrice =
           double.tryParse(_fuelPriceController.text.trim()) ?? 0;
-      final odometerReading = _odometerController.text.trim().isNotEmpty
+      final rawReading = _odometerController.text.trim().isNotEmpty
           ? double.tryParse(_odometerController.text.trim())
           : null;
 
       // Parse DEF values
-      double defQuantity = 0;
-      double defPrice = 0;
+      double rawDefQty = 0;
+      double rawDefPrice = 0;
       if (!_isReeferFuel) {
-        defQuantity = double.tryParse(_defQuantityController.text.trim()) ?? 0;
+        rawDefQty = double.tryParse(_defQuantityController.text.trim()) ?? 0;
         // If from yard, price is 0
-        defPrice = _defFromYard
+        rawDefPrice = _defFromYard
             ? 0
             : (double.tryParse(_defPriceController.text.trim()) ?? 0);
+      }
+
+      // Standardize to Metric (Liters, Kilometers)
+
+      // 1. Quantities & Prices
+      // If current unit is Imperial (Gal), convert to Liters.
+      // Price/Gal -> Price/L = Price/Gal / 3.785
+      final isImperial =
+          _fuelUnit ==
+          'gal'; // Or check PreferencesService.getVolumeUnit() if _fuelUnit potentially stale?
+      // safer to rely on _fuelUnit as it reflects what UI showed.
+
+      double fuelQty = rawFuelQty;
+      double fuelPrice = rawFuelPrice;
+      double defQty = rawDefQty;
+      double defPrice = rawDefPrice;
+
+      if (isImperial) {
+        // Gal -> L
+        fuelQty = UnitUtils.gallonsToLiters(rawFuelQty);
+        fuelPrice =
+            rawFuelPrice /
+            3.78541; // Approx factor or use UnitUtils.gallonsToLiters(1)
+
+        defQty = UnitUtils.gallonsToLiters(rawDefQty);
+        if (rawDefPrice > 0) {
+          defPrice = rawDefPrice / 3.78541;
+        }
+      }
+
+      // 2. Odometer (Truck only)
+      double? odometerReading;
+      double? reeferHours;
+
+      if (!_isReeferFuel) {
+        if (rawReading != null) {
+          odometerReading = await PreferencesService.standardizeDistance(
+            rawReading,
+          );
+        }
+      } else {
+        // Reefer hours are just hours, no conversion needed
+        reeferHours = rawReading;
       }
 
       // [NEW] Resolve Vehicle ID from text input
@@ -2688,14 +3148,14 @@ class _AddEntryPageState extends State<AddEntryPage>
         location: _locationController.text.trim().isNotEmpty
             ? _locationController.text.trim()
             : null,
-        odometerReading: !_isReeferFuel ? odometerReading : null,
-        reeferHours: _isReeferFuel ? odometerReading : null,
-        fuelQuantity: fuelQuantity,
-        pricePerUnit: pricePerUnit,
-        fuelUnit: _fuelUnit,
-        distanceUnit: _distanceUnit,
+        odometerReading: odometerReading,
+        reeferHours: reeferHours,
+        fuelQuantity: fuelQty,
+        pricePerUnit: fuelPrice,
+        fuelUnit: 'L', // Force Metric Storage
+        distanceUnit: 'km', // Force Metric Storage
         currency: _currency,
-        defQuantity: defQuantity,
+        defQuantity: defQty,
         defPrice: defPrice,
         defFromYard: _defFromYard,
       );

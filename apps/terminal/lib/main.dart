@@ -9,6 +9,13 @@ import 'package:milow_core/milow_core.dart';
 import 'package:window_manager/window_manager.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
+import 'dart:async';
+
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:firebase_performance/firebase_performance.dart';
+import 'firebase_options.dart';
 
 import 'core/providers/theme_provider.dart';
 import 'core/router/router_provider.dart';
@@ -21,57 +28,102 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'core/providers/shared_preferences_provider.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await windowManager.ensureInitialized();
+  runZonedGuarded<Future<void>>(
+    () async {
+      WidgetsFlutterBinding.ensureInitialized();
+      await windowManager.ensureInitialized();
 
-  // Initialize SharedPreferences
-  final prefs = await SharedPreferences.getInstance();
+      // Initialize Firebase
+      try {
+        await Firebase.initializeApp(
+          options: DefaultFirebaseOptions.currentPlatform,
+        );
 
-  try {
-    await dotenv.load(fileName: ".env");
+        // Pass all uncaught "fatal" errors from the framework to Crashlytics
+        FlutterError.onError =
+            FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-    final supabaseUrl = SupabaseConstants.supabaseUrl;
-    final supabaseAnonKey = SupabaseConstants.supabaseAnonKey;
+        // Initialize Remote Config & Performance (Safe for macOS/Mobile, skipped on Windows)
+        if (!Platform.isWindows) {
+          try {
+            // Remote Config
+            final remoteConfig = FirebaseRemoteConfig.instance;
+            await remoteConfig.setConfigSettings(
+              RemoteConfigSettings(
+                fetchTimeout: const Duration(minutes: 1),
+                minimumFetchInterval: const Duration(hours: 12),
+              ),
+            );
+            await remoteConfig.setDefaults(const {
+              "welcome_message": "Welcome to Milow Terminal",
+            });
+            // Fetch and activate (fire and forget to not block startup too long)
+            unawaited(remoteConfig.fetchAndActivate());
 
-    if (supabaseUrl.contains('your-project-id') ||
-        supabaseAnonKey.contains('your_anon_key')) {
+            // Performance Monitoring
+            FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+          } catch (e) {
+            debugPrint('Firebase Remote Config/Performance init failed: $e');
+          }
+        }
+      } catch (e) {
+        debugPrint('Firebase initialization failed: $e');
+        // Continue execution checking .env and other services
+      }
+
+      // Initialize SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+
+      try {
+        await dotenv.load(fileName: ".env");
+
+        final supabaseUrl = SupabaseConstants.supabaseUrl;
+        final supabaseAnonKey = SupabaseConstants.supabaseAnonKey;
+
+        if (supabaseUrl.contains('your-project-id') ||
+            supabaseAnonKey.contains('your_anon_key')) {
+          runApp(
+            const ConfigurationErrorApp(
+              error:
+                  'Please configure apps/terminal/.env with valid Supabase credentials.',
+            ),
+          );
+          return;
+        }
+
+        await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+
+        await AppLinksService().initialize();
+        await NotificationService().init();
+      } catch (e) {
+        runApp(ConfigurationErrorApp(error: 'Initialization failed: $e'));
+        return;
+      }
+
+      if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
+        WindowOptions windowOptions = const WindowOptions(
+          center: true,
+          backgroundColor: Colors.transparent,
+          skipTaskbar: false,
+          titleBarStyle: TitleBarStyle.hidden,
+        );
+        await windowManager.waitUntilReadyToShow(windowOptions, () async {
+          await windowManager.maximize();
+          await windowManager.show();
+          await windowManager.focus();
+        });
+      }
+
       runApp(
-        const ConfigurationErrorApp(
-          error:
-              'Please configure apps/terminal/.env with valid Supabase credentials.',
+        ProviderScope(
+          overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
+          child: const AdminApp(),
         ),
       );
-      return;
-    }
-
-    await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
-
-    await AppLinksService().initialize();
-    await NotificationService().init();
-  } catch (e) {
-    runApp(ConfigurationErrorApp(error: 'Initialization failed: $e'));
-    return;
-  }
-
-  if (Platform.isWindows || Platform.isMacOS || Platform.isLinux) {
-    WindowOptions windowOptions = const WindowOptions(
-      center: true,
-      backgroundColor: Colors.transparent,
-      skipTaskbar: false,
-      titleBarStyle: TitleBarStyle.hidden,
-    );
-    await windowManager.waitUntilReadyToShow(windowOptions, () async {
-      await windowManager.maximize();
-      await windowManager.show();
-      await windowManager.focus();
-    });
-  }
-
-  runApp(
-    ProviderScope(
-      overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-      child: const AdminApp(),
-    ),
+    },
+    (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    },
   );
 }
 
@@ -160,6 +212,7 @@ class AdminApp extends ConsumerWidget {
                     LogicalKeyboardKey.keyX,
                     meta: Platform.isMacOS,
                     control: !Platform.isMacOS,
+                    shift: true,
                   ),
                   onSelected: null,
                 ),
@@ -238,6 +291,10 @@ class AdminApp extends ConsumerWidget {
           label: 'Help',
           menus: [
             PlatformMenuItem(label: 'Milow Terminal Help', onSelected: () {}),
+            PlatformMenuItem(
+              label: 'Test Crash',
+              onSelected: () => FirebaseCrashlytics.instance.crash(),
+            ),
           ],
         ),
       ],

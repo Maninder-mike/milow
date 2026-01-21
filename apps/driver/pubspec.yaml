@@ -29,7 +29,7 @@ dependencies:
   cached_network_image: ^3.3.1
 
   # Backend
-  supabase_flutter: ^2.10.3
+  supabase_flutter: ^2.12.0
   flutter_dotenv: ^6.0.0
   firebase_core: ^4.3.0
   firebase_crashlytics: ^5.0.6
@@ -39,7 +39,10 @@ dependencies:
   # Security
   local_auth: ^3.0.0
   crypto: ^3.0.3
-  app_device_integrity: ^1.1.0
+  app_device_integrity:
+    git:
+      url: https://github.com/Maninder-mike/app_device_integrity.git
+      ref: master
 
   # Storage
   shared_preferences: ^2.5.3
@@ -97,9 +100,11 @@ dev_dependencies:
 flutter_launcher_icons:
   android: true
   ios: false
-  image_path: "assets/images/mipmap-xxxhdpi/milow_driver_icon.png"
-  adaptive_icon_background: "#007AFF"
-  adaptive_icon_foreground: "assets/images/milow_icon.png"
+  macos:
+    generate: true
+  image_path: "assets/images/milow_icon.png"
+  adaptive_icon_background: "#1976D2"
+  adaptive_icon_foreground: "assets/images/milow_icon_foreground.png"
 
 flutter:
   generate: true
