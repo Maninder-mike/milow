@@ -45,8 +45,8 @@ jobs:
           echo "version_number=$VERSION" >> $GITHUB_OUTPUT
           
           # Auto-incrementing version code with offset to prevent collision
-          # Offset 50 ensures we're safely above previous versions
-          VERSION_CODE=$(( $GITHUB_RUN_NUMBER + 50 ))
+          # Offset 100 ensures we're safely above previous versions (e.g. 75)
+          VERSION_CODE=$(( $GITHUB_RUN_NUMBER + 100 ))
           echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
           
           echo "📦 Building version: v$VERSION+$VERSION_CODE"

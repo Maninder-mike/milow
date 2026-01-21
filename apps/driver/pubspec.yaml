@@ -31,8 +31,8 @@ dependencies:
   # Backend
   supabase_flutter: ^2.12.0
   flutter_dotenv: ^6.0.0
-  firebase_core: ^4.3.0
-  firebase_crashlytics: ^5.0.6
+  firebase_core: ^4.4.0
+  firebase_crashlytics: ^5.0.7
   firebase_messaging: ^16.1.0
   flutter_local_notifications: ^19.5.0
 

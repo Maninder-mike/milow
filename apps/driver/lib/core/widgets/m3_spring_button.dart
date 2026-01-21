@@ -9,8 +9,8 @@ class M3SpringButton extends StatefulWidget {
   final double scaleDown;
 
   const M3SpringButton({
-    super.key,
     required this.child,
+    super.key,
     this.onTap,
     this.scaleDown = 0.95,
   });
