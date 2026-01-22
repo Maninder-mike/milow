@@ -24,8 +24,13 @@ import 'package:milow/core/services/local_profile_store.dart';
 import 'package:milow/core/services/local_trip_store.dart';
 import 'package:milow/core/services/local_fuel_store.dart';
 import 'package:milow/core/services/local_document_store.dart';
+import 'package:milow/core/services/local_expense_store.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/sync_queue_service.dart';
+import 'package:milow/core/services/geofence_service.dart';
+import 'package:milow/core/services/analytics_service.dart';
+import 'package:milow/core/services/remote_config_service.dart';
+import 'package:milow/core/services/performance_service.dart';
 import 'package:milow/core/models/sync_operation.dart';
 import 'package:milow/l10n/app_localizations.dart';
 
@@ -42,6 +47,9 @@ import 'package:milow/features/settings/presentation/pages/notifications_page.da
 import 'package:milow/features/settings/presentation/pages/language_page.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/features/trips/presentation/pages/scan_document_page.dart';
+import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
+import 'package:milow/features/expenses/presentation/pages/expenses_list_page.dart';
+import 'package:milow/features/expenses/presentation/pages/add_expense_page.dart';
 // Note: tab pages are hosted via TabsShell
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/core/widgets/tabs_shell.dart';
@@ -100,7 +108,14 @@ Future<void> main() async {
       authOptions: const FlutterAuthClientOptions(
         authFlowType: AuthFlowType.pkce,
       ),
-    ).then((_) => NotificationService.instance.init()),
+    ).then((_) async {
+      await NotificationService.instance.init();
+      await AnalyticsService.instance.init();
+      await RemoteConfigService.instance.init();
+      await PerformanceService.instance.init();
+      // Start geofence monitoring if user logged in with active trip
+      unawaited(GeofenceService.instance.startMonitoring());
+    }),
 
     Hive.initFlutter().then((_) async {
       Hive.registerAdapter(SyncOperationAdapter());
@@ -109,6 +124,7 @@ Future<void> main() async {
         LocalTripStore.init(),
         LocalFuelStore.init(),
         LocalDocumentStore.init(),
+        LocalExpenseStore.init(),
       ]);
       return syncQueueService.init();
     }),
@@ -315,6 +331,38 @@ final GoRouter _router = GoRouter(
         state,
         const AuthWrapper(child: FeedbackPage()),
       ),
+    ),
+    GoRoute(
+      path: '/records',
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: RecordsListPage()),
+      ),
+    ),
+    GoRoute(
+      path: '/expenses',
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: ExpensesListPage()),
+      ),
+    ),
+    GoRoute(
+      path: '/add-expense',
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>?;
+        return _buildTransitionPage(
+          context,
+          state,
+          AuthWrapper(
+            child: AddExpensePage(
+              existingExpense: extra?['expense'] as Expense?,
+              tripId: extra?['tripId'] as String?,
+            ),
+          ),
+        );
+      },
     ),
   ],
 );

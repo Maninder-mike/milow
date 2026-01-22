@@ -90,11 +90,20 @@ class NotificationService {
       importance: Importance.max,
     );
 
-    await _localNotifications
+    const AndroidNotificationChannel geofenceChannel =
+        AndroidNotificationChannel(
+          'geofence_channel',
+          'Arrival Alerts',
+          description: 'Notifications when arriving at trip locations.',
+          importance: Importance.high,
+        );
+
+    final androidPlugin = _localNotifications
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
-        >()
-        ?.createNotificationChannel(channel);
+        >();
+    await androidPlugin?.createNotificationChannel(channel);
+    await androidPlugin?.createNotificationChannel(geofenceChannel);
 
     // 3. Handle Foreground Messages
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
@@ -215,6 +224,35 @@ class NotificationService {
       );
       unawaited(refreshUnreadCount());
     }
+  }
+
+  /// Shows a local notification when driver arrives at a trip location
+  Future<void> showArrivalNotification({
+    required String locationType, // 'Pickup' or 'Delivery'
+    required String locationName,
+    required String tripNumber,
+  }) async {
+    const AndroidNotificationDetails androidDetails =
+        AndroidNotificationDetails(
+          'geofence_channel',
+          'Arrival Alerts',
+          channelDescription: 'Notifications when arriving at trip locations',
+          importance: Importance.high,
+          priority: Priority.high,
+          icon: '@mipmap/ic_launcher',
+        );
+
+    const NotificationDetails details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(),
+    );
+
+    await _localNotifications.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      'Arrived at $locationType',
+      '$locationName\nTrip #$tripNumber',
+      details,
+    );
   }
 
   NotificationType _parseType(String? type) {

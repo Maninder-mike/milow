@@ -10,11 +10,11 @@ part of 'tab_manager_provider.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(TabManager)
-const tabManagerProvider = TabManagerProvider._();
+final tabManagerProvider = TabManagerProvider._();
 
 final class TabManagerProvider
     extends $NotifierProvider<TabManager, TabManagerState> {
-  const TabManagerProvider._()
+  TabManagerProvider._()
     : super(
         from: null,
         argument: null,
@@ -48,7 +48,6 @@ abstract class _$TabManager extends $Notifier<TabManagerState> {
   @$mustCallSuper
   @override
   void runBuild() {
-    final created = build();
     final ref = this.ref as $Ref<TabManagerState, TabManagerState>;
     final element =
         ref.element
@@ -58,6 +57,6 @@ abstract class _$TabManager extends $Notifier<TabManagerState> {
               Object?,
               Object?
             >;
-    element.handleValue(ref, created);
+    element.handleCreate(ref, build);
   }
 }

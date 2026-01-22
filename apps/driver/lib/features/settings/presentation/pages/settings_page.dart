@@ -13,6 +13,7 @@ import 'package:milow/features/settings/presentation/pages/border_crossing_selec
 import 'package:milow/features/settings/presentation/pages/about_page.dart';
 
 import 'package:milow/core/services/trip_service.dart';
+import 'package:milow/core/services/geofence_service.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -30,12 +31,16 @@ class _SettingsPageState extends State<SettingsPage> {
   int _tripCount = 0;
   double _totalMiles = 0;
 
+  bool _geofenceEnabled = true;
+  int _geofenceRadius = 500;
+
   @override
   void initState() {
     super.initState();
     _loadProfile();
     _loadPreferences();
     _loadStats();
+    _loadGeofenceSettings();
   }
 
   Future<void> _loadStats() async {
@@ -68,6 +73,17 @@ class _SettingsPageState extends State<SettingsPage> {
     });
     // Reload stats after preference change to ensure correct units
     await _loadStats();
+  }
+
+  Future<void> _loadGeofenceSettings() async {
+    final enabled = await GeofenceService.instance.isEnabled;
+    final radius = await GeofenceService.instance.radiusMeters;
+    if (mounted) {
+      setState(() {
+        _geofenceEnabled = enabled;
+        _geofenceRadius = radius;
+      });
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -372,6 +388,8 @@ class _SettingsPageState extends State<SettingsPage> {
                 ),
                 _buildDivider(),
                 _buildUnitSystemItem(textColor),
+                _buildDivider(),
+                _buildGeofenceItem(textColor),
               ],
             ),
           ),
@@ -648,6 +666,104 @@ class _SettingsPageState extends State<SettingsPage> {
               ],
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGeofenceItem(Color textColor) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.tokens.spacingM,
+        vertical: context.tokens.spacingM - 4,
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.tertiaryContainer.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(context.tokens.shapeM),
+                ),
+                child: Icon(
+                  Icons.location_on_outlined,
+                  size: 22,
+                  color: Theme.of(context).colorScheme.tertiary,
+                ),
+              ),
+              SizedBox(width: context.tokens.spacingM),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Arrival Alerts',
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w500,
+                        color: textColor,
+                      ),
+                    ),
+                    Text(
+                      'Notify when arriving at trip locations',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: textColor.withValues(alpha: 0.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Switch.adaptive(
+                value: _geofenceEnabled,
+                onChanged: (value) async {
+                  await GeofenceService.instance.setEnabled(value);
+                  setState(() => _geofenceEnabled = value);
+                },
+              ),
+            ],
+          ),
+          if (_geofenceEnabled) ...[
+            SizedBox(height: context.tokens.spacingM),
+            Row(
+              children: [
+                Text(
+                  'Detection radius',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: textColor.withValues(alpha: 0.7),
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${_geofenceRadius}m',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+            SliderTheme(
+              data: SliderTheme.of(context).copyWith(
+                trackHeight: 4,
+                thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 8),
+              ),
+              child: Slider(
+                value: _geofenceRadius.toDouble(),
+                min: 100,
+                max: 1000,
+                divisions: 9,
+                onChanged: (value) {
+                  setState(() => _geofenceRadius = value.round());
+                },
+                onChangeEnd: (value) async {
+                  await GeofenceService.instance.setRadiusMeters(value.round());
+                },
+              ),
+            ),
+          ],
         ],
       ),
     );

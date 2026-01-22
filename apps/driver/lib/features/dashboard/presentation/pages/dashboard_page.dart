@@ -503,6 +503,12 @@ class _DashboardPageState extends State<DashboardPage>
               }),
               _buildGetStartedCard(
                 context,
+                'Expenses',
+                Icons.receipt_long_outlined,
+                () => context.push('/expenses'),
+              ),
+              _buildGetStartedCard(
+                context,
                 'Explore',
                 Icons.explore_outlined,
                 () => context.go('/explore'),

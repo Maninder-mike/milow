@@ -10,7 +10,7 @@ part of 'announcement_repository.dart';
 // ignore_for_file: type=lint, type=warning
 
 @ProviderFor(announcementRepository)
-const announcementRepositoryProvider = AnnouncementRepositoryProvider._();
+final announcementRepositoryProvider = AnnouncementRepositoryProvider._();
 
 final class AnnouncementRepositoryProvider
     extends
@@ -20,7 +20,7 @@ final class AnnouncementRepositoryProvider
           AnnouncementRepository
         >
     with $Provider<AnnouncementRepository> {
-  const AnnouncementRepositoryProvider._()
+  AnnouncementRepositoryProvider._()
     : super(
         from: null,
         argument: null,
@@ -58,7 +58,7 @@ String _$announcementRepositoryHash() =>
     r'884e4d7b95308d2f719a3f7acc2446e8782bcad5';
 
 @ProviderFor(announcements)
-const announcementsProvider = AnnouncementsProvider._();
+final announcementsProvider = AnnouncementsProvider._();
 
 final class AnnouncementsProvider
     extends
@@ -70,7 +70,7 @@ final class AnnouncementsProvider
     with
         $FutureModifier<List<Map<String, dynamic>>>,
         $StreamProvider<List<Map<String, dynamic>>> {
-  const AnnouncementsProvider._()
+  AnnouncementsProvider._()
     : super(
         from: null,
         argument: null,

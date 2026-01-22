@@ -2,6 +2,7 @@ export 'src/models/trip.dart';
 export 'src/models/trip_document.dart';
 export 'src/models/driver_location.dart';
 export 'src/models/fuel_entry.dart';
+export 'src/models/expense.dart';
 export 'src/models/vehicle.dart';
 export 'src/config/supabase_config.dart';
 export 'src/models/user_profile.dart';
