@@ -1,12 +1,19 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'add_vehicle_dialog.dart';
 import 'package:terminal/core/constants/app_elevation.dart';
 import '../../services/vehicle_service.dart';
+import '../../../fleet/domain/models/maintenance_record.dart';
+import '../../../fleet/domain/models/dvir_report.dart';
+import '../../../fleet/data/repositories/maintenance_repository.dart';
+import '../../../fleet/data/repositories/dvir_repository.dart';
+import '../../../fleet/presentation/widgets/add_maintenance_dialog.dart';
+import '../../../fleet/presentation/widgets/dvir_inspection_dialog.dart';
 
 class VehicleStatusPage extends ConsumerStatefulWidget {
   final Map<String, dynamic> vehicle;
@@ -301,6 +308,12 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
                   ),
                 ),
               ),
+              Tab(
+                key: const ValueKey('vehicle_tab_maintenance'),
+                text: const Text('Maintenance'),
+                icon: const Icon(FluentIcons.wrench_24_regular),
+                body: _buildMaintenanceTab(),
+              ),
             ],
             currentIndex: _selectedTabIndex,
             onChanged: (index) => setState(() => _selectedTabIndex = index),
@@ -377,6 +390,266 @@ class _VehicleStatusPageState extends ConsumerState<VehicleStatusPage> {
               ),
             ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMaintenanceTab() {
+    final vehicleId = _vehicle['id'] as String;
+    final currentOdometer = _vehicle['odometer'] as int?;
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Action Buttons
+          Row(
+            children: [
+              FilledButton(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(FluentIcons.add_16_regular, size: 16),
+                    SizedBox(width: 8),
+                    Text('Add Service'),
+                  ],
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AddMaintenanceDialog(
+                      vehicleId: vehicleId,
+                      onSaved: () => setState(() {}),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(width: 12),
+              Button(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Icon(FluentIcons.clipboard_checkmark_16_regular, size: 16),
+                    SizedBox(width: 8),
+                    Text('New DVIR'),
+                  ],
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => DVIRInspectionDialog(
+                      vehicleId: vehicleId,
+                      currentOdometer: currentOdometer,
+                      onSaved: () => setState(() {}),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+
+          // Service History Section
+          _buildSectionTitle('Service History'),
+          const SizedBox(height: 8),
+          _buildServiceHistory(vehicleId),
+
+          const SizedBox(height: 24),
+
+          // DVIR History Section
+          _buildSectionTitle('Recent DVIR Inspections'),
+          const SizedBox(height: 8),
+          _buildDVIRHistory(vehicleId),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String title) {
+    return Text(title, style: FluentTheme.of(context).typography.bodyStrong);
+  }
+
+  Widget _buildServiceHistory(String vehicleId) {
+    final asyncRecords = ref.watch(maintenanceRecordsProvider(vehicleId));
+
+    return asyncRecords.when(
+      loading: () => const Center(child: ProgressRing()),
+      error: (error, stack) => InfoBar(
+        title: const Text('Error loading service history'),
+        content: Text(error.toString()),
+        severity: InfoBarSeverity.error,
+      ),
+      data: (records) {
+        if (records.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: FluentTheme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    FluentIcons.wrench_24_regular,
+                    size: 48,
+                    color: FluentTheme.of(
+                      context,
+                    ).resources.textFillColorSecondary,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No service records yet',
+                    style: TextStyle(
+                      color: FluentTheme.of(
+                        context,
+                      ).resources.textFillColorSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: records.take(5).map((record) {
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: FluentTheme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: AppElevation.shadow2(context),
+              ),
+              child: ListTile(
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: FluentTheme.of(
+                      context,
+                    ).accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Icon(
+                    FluentIcons.wrench_24_regular,
+                    color: FluentTheme.of(context).accentColor,
+                  ),
+                ),
+                title: Text(record.serviceType.displayName),
+                subtitle: Text(
+                  '${DateFormat.yMMMd().format(record.performedAt)}'
+                  '${record.performedBy != null ? ' • ${record.performedBy}' : ''}'
+                  '${record.cost != null ? ' • \$${record.cost!.toStringAsFixed(2)}' : ''}',
+                ),
+                trailing: record.odometerAtService != null
+                    ? Text(
+                        '${NumberFormat('#,###').format(record.odometerAtService)} mi',
+                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      )
+                    : null,
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildDVIRHistory(String vehicleId) {
+    final asyncReports = ref.watch(dvirHistoryProvider(vehicleId));
+
+    return asyncReports.when(
+      loading: () => const Center(child: ProgressRing()),
+      error: (error, stack) => InfoBar(
+        title: const Text('Error loading DVIR history'),
+        content: Text(error.toString()),
+        severity: InfoBarSeverity.error,
+      ),
+      data: (reports) {
+        if (reports.isEmpty) {
+          return Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: FluentTheme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    FluentIcons.clipboard_checkmark_24_regular,
+                    size: 48,
+                    color: FluentTheme.of(
+                      context,
+                    ).resources.textFillColorSecondary,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'No DVIR inspections yet',
+                    style: TextStyle(
+                      color: FluentTheme.of(
+                        context,
+                      ).resources.textFillColorSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }
+
+        return Column(
+          children: reports.take(5).map((report) {
+            final hasDefects = report.defectsFound;
+            final isSafe = report.isSafeToOperate;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              decoration: BoxDecoration(
+                color: FluentTheme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: AppElevation.shadow2(context),
+                border: hasDefects && !isSafe
+                    ? Border.all(color: Colors.red.withValues(alpha: 0.5))
+                    : null,
+              ),
+              child: ListTile(
+                leading: Icon(
+                  hasDefects
+                      ? FluentIcons.warning_24_regular
+                      : FluentIcons.checkmark_circle_24_regular,
+                  color: hasDefects ? Colors.orange : Colors.green,
+                ),
+                title: Text('${report.inspectionType.displayName} Inspection'),
+                subtitle: Text(
+                  '${report.createdAt != null ? DateFormat.yMMMd().add_jm().format(report.createdAt!) : 'Unknown date'}'
+                  '${report.driverName != null ? ' • ${report.driverName}' : ''}',
+                ),
+                trailing: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isSafe
+                        ? Colors.green.withValues(alpha: 0.1)
+                        : Colors.red.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    isSafe ? 'OK' : 'DEFECTS',
+                    style: TextStyle(
+                      color: isSafe ? Colors.green : Colors.red,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
         );
       },
     );

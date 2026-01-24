@@ -54,15 +54,21 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
               ),
             ),
             // Right area with user header
+            // Right area with user header
             Expanded(
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  const NotificationBell(),
-                  const SizedBox(width: 16),
-                  const _UserHeader(),
-                  const SizedBox(width: 8),
-                ],
+              child: DragToMoveArea(
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const NotificationBell(),
+                    const SizedBox(width: 16),
+                    const _UserHeader(),
+                    // Padding at the end:
+                    // macOS: 0px (flush to corner)
+                    // Windows: 8px gap before the Window Controls (which are next)
+                    if (Platform.isWindows) const SizedBox(width: 8),
+                  ],
+                ),
               ),
             ),
             // Windows control buttons (fixed width, at the end)

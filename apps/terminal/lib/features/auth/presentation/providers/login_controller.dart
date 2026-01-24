@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/core/providers/biometric_provider.dart';
 import 'package:terminal/core/providers/supabase_provider.dart';
+import 'package:terminal/features/auth/data/auth_repository.dart';
 
 part 'login_controller.g.dart';
 
@@ -16,19 +17,29 @@ class LoginController extends _$LoginController {
   Future<void> loginWithPassword(String email, String password) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
-      final supabase = ref.read(supabaseClientProvider);
+      final authRepo = ref.read(authRepositoryProvider);
       final biometricService = ref.read(biometricServiceProvider);
 
-      await supabase.auth.signInWithPassword(email: email, password: password);
+      final result = await authRepo.signInWithPassword(email, password);
 
-      // Save credentials on successful login
-      try {
-        await biometricService.saveCredentials(email, password);
-      } catch (e) {
-        // Log the error but don't fail the login
-        // This is expected on macOS debug builds without proper entitlements
-        debugPrint('Warning: Failed to save credentials to secure storage: $e');
-      }
+      result.fold(
+        (failure) {
+          // Re-throw or set state to error?
+          // Since we are inside AsyncValue.guard, throwing will result in AsyncError state.
+          throw failure;
+        },
+        (_) async {
+          // Save credentials on successful login
+          try {
+            await biometricService.saveCredentials(email, password);
+          } catch (e) {
+            // Log the error but don't fail the login
+            debugPrint(
+              'Warning: Failed to save credentials to secure storage: $e',
+            );
+          }
+        },
+      );
     });
   }
 

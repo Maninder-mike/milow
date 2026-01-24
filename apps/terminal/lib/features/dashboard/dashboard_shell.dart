@@ -82,19 +82,19 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
       icon = FluentIcons.box_24_regular;
     } else if (location.startsWith('/deliver')) {
       title = 'Delivery';
-      icon = FluentIcons.vehicle_truck_24_regular;
+      icon = FluentIcons.building_retail_24_regular;
     } else if (location.startsWith('/vehicles')) {
       title = 'Fleet';
       icon = FluentIcons.vehicle_truck_24_regular;
     } else if (location.startsWith('/highway-dispatch')) {
       title = 'Loads';
-      icon = FluentIcons.document_text_24_regular;
+      icon = FluentIcons.box_24_regular;
     } else if (location.startsWith('/quotes')) {
       title = 'Quotes';
       icon = FluentIcons.document_copy_24_regular;
     } else if (location.startsWith('/invoices')) {
       title = 'Invoices';
-      icon = FluentIcons.money_24_regular;
+      icon = FluentIcons.receipt_24_regular;
     } else if (location.startsWith('/driver-hos')) {
       title = 'Driver HOS';
       icon = FluentIcons.clock_24_regular;
@@ -254,9 +254,15 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                         curve: Curves.easeInOutCubic,
                         width: _activeSidebarPane != null ? _sidebarWidth : 0,
                         child: ClipRect(
-                          child: _activeSidebarPane != null
-                              ? _buildSecondarySidebar(_activeSidebarPane!)
-                              : const SizedBox.shrink(),
+                          child: OverflowBox(
+                            // Force the child to be the target width even when container is animating
+                            minWidth: _sidebarWidth,
+                            maxWidth: _sidebarWidth,
+                            alignment: Alignment.topLeft,
+                            child: _activeSidebarPane != null
+                                ? _buildSecondarySidebar(_activeSidebarPane!)
+                                : const SizedBox.shrink(),
+                          ),
                         ),
                       ),
 

@@ -1,5 +1,8 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fpdart/fpdart.dart';
+
+import 'package:terminal/features/auth/domain/failures/auth_failure.dart';
 
 part 'auth_repository.g.dart';
 
@@ -22,8 +25,21 @@ class AuthRepository {
 
   User? get currentUser => _auth.currentUser;
 
-  Future<void> signInWithPassword(String email, String password) async {
-    await _auth.signInWithPassword(email: email, password: password);
+  Future<Either<AuthFailure, void>> signInWithPassword(
+    String email,
+    String password,
+  ) async {
+    try {
+      await _auth.signInWithPassword(email: email, password: password);
+      return const Right(null);
+    } on AuthException catch (e) {
+      if (e.message.contains('Invalid login credentials')) {
+        return const Left(InvalidCredentialsFailure());
+      }
+      return Left(AuthFailure(e.message));
+    } catch (e) {
+      return Left(AuthFailure(e.toString()));
+    }
   }
 
   Future<void> signUp(

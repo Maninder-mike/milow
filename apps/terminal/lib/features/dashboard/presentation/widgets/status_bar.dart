@@ -13,6 +13,7 @@ import '../providers/database_health_provider.dart';
 import 'package:terminal/core/constants/app_elevation.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/toast_notification.dart';
+import '../../../../core/providers/latency_provider.dart';
 
 class StatusBar extends ConsumerStatefulWidget {
   const StatusBar({super.key});
@@ -88,266 +89,329 @@ class _StatusBarState extends ConsumerState<StatusBar>
       ),
       child: Row(
         children: [
-          // 1. Connectivity Status
-          connectivityAsync.when(
-            data: (results) {
-              final isOffline = results.contains(ConnectivityResult.none);
-              return _buildStatusItem(
-                icon: Icon(
-                  isOffline
-                      ? FluentIcons.wifi_off_24_regular
-                      : FluentIcons.wifi_1_24_regular,
-                ),
-                label: isOffline ? 'Offline' : 'Online',
-                color: isOffline ? AppColors.error : AppColors.success,
-              );
-            },
-            loading: () => _buildStatusItem(
-              icon: const Icon(FluentIcons.wifi_warning_24_regular),
-              label: 'Checking...',
-              color: AppColors.neutral,
-            ),
-            error: (error, stack) => _buildStatusItem(
-              icon: const Icon(FluentIcons.wifi_off_24_regular),
-              label: 'Error',
-              color: AppColors.error,
-            ),
-          ),
+          // Left Group (Takes available space)
+          Expanded(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // 1. Connectivity Status
+                connectivityAsync.when(
+                  data: (results) {
+                    final isOffline = results.contains(ConnectivityResult.none);
 
-          _buildDivider(),
+                    // Latency (Only show when online)
+                    final latencyAsync = ref.watch(latencyProvider);
 
-          // 2. Database Status
-          _buildStatusItem(
-            icon: dbHealth.isSyncing
-                ? RotationTransition(
-                    turns: _syncAnimationController,
-                    child: const Icon(FluentIcons.arrow_sync_24_regular),
-                  )
-                : Icon(
-                    dbHealth.status == DatabaseStatus.connected
-                        ? FluentIcons.database_24_regular
-                        : FluentIcons.warning_24_regular,
-                  ),
-            label: dbHealth.isSyncing
-                ? 'Syncing...'
-                : _getDbStatusLabel(dbHealth.status),
-            color: dbHealth.isSyncing
-                ? theme.accentColor
-                : _getDbStatusColor(dbHealth.status),
-          ),
-          _buildDivider(),
-
-          // 3. Daily Load Completion (Wrap in Flexible to prevent overflow)
-          Flexible(
-            child: Builder(
-              builder: (context) {
-                final loadsAsync = ref.watch(loadsListProvider);
-                final now = DateTime.now();
-
-                return loadsAsync.maybeWhen(
-                  data: (rawLoads) {
-                    final totalLoads = rawLoads.length;
-                    if (totalLoads == 0) return const SizedBox.shrink();
-
-                    final completedCount = rawLoads
-                        .where((l) => l.status.toLowerCase() == 'delivered')
-                        .length;
-
-                    final delayedCount = rawLoads.where((l) {
-                      final s = l.status.toLowerCase();
-                      return s == 'pending' && l.pickup.date.isBefore(now);
-                    }).length;
-
-                    final activeCount = rawLoads.where((l) {
-                      final s = l.status.toLowerCase();
-                      return s == 'assigned' || s == 'in transit';
-                    }).length;
-
-                    return Tooltip(
-                      message:
-                          '$completedCount Completed\n$activeCount Active\n$delayedCount Delayed',
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(
-                            child: Text(
-                              'Loads:',
-                              style: GoogleFonts.outfit(
-                                fontSize: 11,
-                                color: theme.resources.textFillColorSecondary,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
+                    return Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _buildStatusItem(
+                          icon: Icon(
+                            isOffline
+                                ? FluentIcons.wifi_off_24_regular
+                                : FluentIcons.wifi_1_24_regular,
                           ),
+                          label: isOffline ? 'Offline' : 'Online',
+                          color: isOffline
+                              ? AppColors.error
+                              : AppColors.success,
+                        ),
+                        if (!isOffline) ...[
                           const SizedBox(width: 8),
-                          SizedBox(
-                            width: 60, // Reduce width for narrow screens
-                            height: 12,
-                            child: ProgressBar(
-                              value: (completedCount / totalLoads) * 100,
-                              backgroundColor: isLight
-                                  ? Colors.grey.withValues(alpha: 0.3)
-                                  : Colors.white.withValues(alpha: 0.1),
-                              activeColor: delayedCount > 0
-                                  ? AppColors.warning
-                                  : AppColors.success,
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Flexible(
-                            child: RichText(
-                              overflow: TextOverflow.ellipsis,
-                              text: TextSpan(
+                          latencyAsync.when(
+                            data: (latency) {
+                              if (latency == null) {
+                                return const SizedBox.shrink();
+                              }
+
+                              final status = ref.read(
+                                latencyStatusProvider(latency),
+                              );
+                              final color = switch (status) {
+                                LatencyStatus.good => AppColors.success,
+                                LatencyStatus.fair => AppColors.warning,
+                                LatencyStatus.poor ||
+                                LatencyStatus.error => AppColors.error,
+                              };
+
+                              return Text(
+                                '${latency}ms',
                                 style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  color: theme.resources.textFillColorPrimary,
+                                  fontSize: 10,
+                                  color: color,
+                                  fontWeight: FontWeight.bold,
                                 ),
-                                children: [
-                                  TextSpan(
-                                    text: '$completedCount/$totalLoads ',
-                                    style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  if (delayedCount > 0)
-                                    TextSpan(
-                                      text: 'Delayed',
-                                      style: TextStyle(
-                                        color: AppColors.warning,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                            ),
+                              );
+                            },
+                            loading: () => const SizedBox.shrink(),
+                            error: (error, stack) => const SizedBox.shrink(),
                           ),
                         ],
-                      ),
+                      ],
                     );
                   },
-                  orElse: () => const SizedBox.shrink(),
-                );
-              },
+                  loading: () => _buildStatusItem(
+                    icon: const Icon(FluentIcons.wifi_warning_24_regular),
+                    label: 'Checking...',
+                    color: AppColors.neutral,
+                  ),
+                  error: (error, stack) => _buildStatusItem(
+                    icon: const Icon(FluentIcons.wifi_off_24_regular),
+                    label: 'Error',
+                    color: AppColors.error,
+                  ),
+                ),
+
+                _buildDivider(),
+
+                // 2. Database Status
+                _buildStatusItem(
+                  icon: dbHealth.isSyncing
+                      ? RotationTransition(
+                          turns: _syncAnimationController,
+                          child: const Icon(FluentIcons.arrow_sync_24_regular),
+                        )
+                      : Icon(
+                          dbHealth.status == DatabaseStatus.connected
+                              ? FluentIcons.database_24_regular
+                              : FluentIcons.warning_24_regular,
+                        ),
+                  label: dbHealth.isSyncing
+                      ? 'Syncing...'
+                      : _getDbStatusLabel(dbHealth.status),
+                  color: dbHealth.isSyncing
+                      ? theme.accentColor
+                      : _getDbStatusColor(dbHealth.status),
+                ),
+                _buildDivider(),
+
+                // 3. Daily Load Completion (Wrap in Flexible to prevent overflow)
+                Flexible(
+                  child: Builder(
+                    builder: (context) {
+                      final loadsAsync = ref.watch(loadsListProvider);
+                      final now = DateTime.now();
+
+                      return loadsAsync.maybeWhen(
+                        data: (rawLoads) {
+                          final totalLoads = rawLoads.length;
+                          if (totalLoads == 0) return const SizedBox.shrink();
+
+                          final completedCount = rawLoads
+                              .where(
+                                (l) => l.status.toLowerCase() == 'delivered',
+                              )
+                              .length;
+
+                          final delayedCount = rawLoads.where((l) {
+                            final s = l.status.toLowerCase();
+                            return s == 'pending' &&
+                                l.pickup.date.isBefore(now);
+                          }).length;
+
+                          final activeCount = rawLoads.where((l) {
+                            final s = l.status.toLowerCase();
+                            return s == 'assigned' || s == 'in transit';
+                          }).length;
+
+                          return Tooltip(
+                            message:
+                                '$completedCount Completed\n$activeCount Active\n$delayedCount Delayed',
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    'Loads:',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      color: theme
+                                          .resources
+                                          .textFillColorSecondary,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                SizedBox(
+                                  width: 60, // Reduce width for narrow screens
+                                  height: 12,
+                                  child: ProgressBar(
+                                    value: (completedCount / totalLoads) * 100,
+                                    backgroundColor: isLight
+                                        ? Colors.grey.withValues(alpha: 0.3)
+                                        : Colors.white.withValues(alpha: 0.1),
+                                    activeColor: delayedCount > 0
+                                        ? AppColors.warning
+                                        : AppColors.success,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Flexible(
+                                  child: RichText(
+                                    overflow: TextOverflow.ellipsis,
+                                    text: TextSpan(
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 11,
+                                        color: theme
+                                            .resources
+                                            .textFillColorPrimary,
+                                      ),
+                                      children: [
+                                        TextSpan(
+                                          text: '$completedCount/$totalLoads ',
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        if (delayedCount > 0)
+                                          TextSpan(
+                                            text: 'Delayed',
+                                            style: TextStyle(
+                                              color: AppColors.warning,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                        orElse: () => const SizedBox.shrink(),
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
 
-          const Spacer(),
-
-          // 4. Sync Button with Animation + Last Sync Time
-          GestureDetector(
-            onTap: _performSync,
-            child: MouseRegion(
-              cursor: SystemMouseCursors.click,
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  RotationTransition(
-                    turns: _syncAnimationController,
-                    child: Icon(
-                      FluentIcons.arrow_sync_24_regular,
-                      size: 14,
-                      color: _isSyncing
-                          ? theme.accentColor
-                          : theme.resources.textFillColorSecondary.withValues(
-                              alpha: 0.6,
-                            ),
-                    ),
+          // Right Group (Layout at the end)
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // 4. Sync Button with Animation + Last Sync Time
+              GestureDetector(
+                onTap: _performSync,
+                child: MouseRegion(
+                  cursor: SystemMouseCursors.click,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      RotationTransition(
+                        turns: _syncAnimationController,
+                        child: Icon(
+                          FluentIcons.arrow_sync_24_regular,
+                          size: 14,
+                          color: _isSyncing
+                              ? theme.accentColor
+                              : theme.resources.textFillColorSecondary
+                                    .withValues(alpha: 0.6),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        _formatLastSyncTime(dbHealth.lastSyncTime),
+                        style: GoogleFonts.outfit(
+                          fontSize: 11,
+                          color: theme.resources.textFillColorSecondary,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    _formatLastSyncTime(dbHealth.lastSyncTime),
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      color: theme.resources.textFillColorSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          _buildDivider(),
-
-          // Notifications
-          FlyoutTarget(
-            controller: _flyoutController,
-            child: GestureDetector(
-              onTap: () {
-                _flyoutController.showFlyout(
-                  barrierColor: Colors.transparent,
-                  builder: (context) {
-                    final flyoutTheme = FluentTheme.of(context);
-                    final flyoutIsLight =
-                        flyoutTheme.brightness == Brightness.light;
-                    final flyoutBgColor = flyoutIsLight
-                        ? flyoutTheme
-                              .resources
-                              .solidBackgroundFillColorSecondary
-                        : flyoutTheme.resources.solidBackgroundFillColorBase;
-                    return FlyoutContent(
-                      constraints: const BoxConstraints(maxWidth: 350),
-                      padding: EdgeInsets.zero,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          color: flyoutBgColor,
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(
-                            color: flyoutTheme.resources.cardStrokeColorDefault,
-                          ),
-                          boxShadow: AppElevation.shadow8(context),
-                        ),
-                        child: _buildCombinedNotificationList(
-                          pendingUsersAsync,
-                          driverLeftAsync,
-                          companyInviteAsync,
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: Stack(
-                  alignment: Alignment.center,
-                  clipBehavior: Clip.none,
-                  children: [
-                    Icon(
-                      FluentIcons.alert_24_regular,
-                      size: 18,
-                      color: theme.resources.textFillColorPrimary.withValues(
-                        alpha: 0.7,
-                      ),
-                    ),
-                    if (totalNotificationCount > 0)
-                      Positioned(
-                        top: 2,
-                        right: 2,
-                        child: Container(
-                          width: 8,
-                          height: 8,
-                          decoration: BoxDecoration(
-                            color: AppColors.error,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isLight
-                                  ? theme
-                                        .resources
-                                        .solidBackgroundFillColorSecondary
-                                  : theme
-                                        .resources
-                                        .solidBackgroundFillColorBase,
-                              width: 1.5,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
                 ),
               ),
-            ),
+              _buildDivider(),
+
+              // Notifications
+              FlyoutTarget(
+                controller: _flyoutController,
+                child: GestureDetector(
+                  onTap: () {
+                    _flyoutController.showFlyout(
+                      barrierColor: Colors.transparent,
+                      builder: (context) {
+                        final flyoutTheme = FluentTheme.of(context);
+                        final flyoutIsLight =
+                            flyoutTheme.brightness == Brightness.light;
+                        final flyoutBgColor = flyoutIsLight
+                            ? flyoutTheme
+                                  .resources
+                                  .solidBackgroundFillColorSecondary
+                            : flyoutTheme
+                                  .resources
+                                  .solidBackgroundFillColorBase;
+                        return FlyoutContent(
+                          constraints: const BoxConstraints(maxWidth: 350),
+                          padding: EdgeInsets.zero,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              color: flyoutBgColor,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: flyoutTheme
+                                    .resources
+                                    .cardStrokeColorDefault,
+                              ),
+                              boxShadow: AppElevation.shadow8(context),
+                            ),
+                            child: _buildCombinedNotificationList(
+                              pendingUsersAsync,
+                              driverLeftAsync,
+                              companyInviteAsync,
+                            ),
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  child: SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      clipBehavior: Clip.none,
+                      children: [
+                        Icon(
+                          FluentIcons.alert_24_regular,
+                          size: 18,
+                          color: theme.resources.textFillColorPrimary
+                              .withValues(alpha: 0.7),
+                        ),
+                        if (totalNotificationCount > 0)
+                          Positioned(
+                            top: 2,
+                            right: 2,
+                            child: Container(
+                              width: 8,
+                              height: 8,
+                              decoration: BoxDecoration(
+                                color: AppColors.error,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isLight
+                                      ? theme
+                                            .resources
+                                            .solidBackgroundFillColorSecondary
+                                      : theme
+                                            .resources
+                                            .solidBackgroundFillColorBase,
+                                  width: 1.5,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
           ),
-          const SizedBox(width: 16),
         ],
       ),
     );

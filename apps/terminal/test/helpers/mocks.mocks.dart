@@ -7,11 +7,18 @@ import 'dart:async' as _i3;
 import 'dart:io' as _i7;
 import 'dart:typed_data' as _i8;
 
+import 'package:fpdart/fpdart.dart' as _i10;
 import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i5;
 import 'package:storage_client/src/fetch.dart' as _i4;
 import 'package:supabase/supabase.dart' as _i2;
+import 'package:terminal/features/auth/data/auth_repository.dart' as _i9;
+import 'package:terminal/features/auth/domain/failures/auth_failure.dart'
+    as _i11;
 import 'package:terminal/features/auth/services/biometric_service.dart' as _i6;
+import 'package:terminal/features/dispatch/data/repositories/load_repository.dart'
+    as _i12;
+import 'package:terminal/features/dispatch/domain/models/load.dart' as _i13;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -3162,4 +3169,119 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
             ),
           )
           as _i3.Future<List<_i2.FileObject>>);
+}
+
+/// A class which mocks [AuthRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockAuthRepository extends _i1.Mock implements _i9.AuthRepository {
+  MockAuthRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i3.Stream<_i2.AuthState> authStateChanges() =>
+      (super.noSuchMethod(
+            Invocation.method(#authStateChanges, []),
+            returnValue: _i3.Stream<_i2.AuthState>.empty(),
+          )
+          as _i3.Stream<_i2.AuthState>);
+
+  @override
+  _i3.Future<_i10.Either<_i11.AuthFailure, void>> signInWithPassword(
+    String? email,
+    String? password,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#signInWithPassword, [email, password]),
+            returnValue: _i3.Future<_i10.Either<_i11.AuthFailure, void>>.value(
+              _i5.dummyValue<_i10.Either<_i11.AuthFailure, void>>(
+                this,
+                Invocation.method(#signInWithPassword, [email, password]),
+              ),
+            ),
+          )
+          as _i3.Future<_i10.Either<_i11.AuthFailure, void>>);
+
+  @override
+  _i3.Future<void> signUp(
+    String? email,
+    String? password,
+    Map<String, dynamic>? data,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#signUp, [email, password, data]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> signOut() =>
+      (super.noSuchMethod(
+            Invocation.method(#signOut, []),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+}
+
+/// A class which mocks [LoadRepository].
+///
+/// See the documentation for Mockito's code generation for more information.
+class MockLoadRepository extends _i1.Mock implements _i12.LoadRepository {
+  MockLoadRepository() {
+    _i1.throwOnMissingStub(this);
+  }
+
+  @override
+  _i3.Future<List<_i13.Load>> fetchLoads({
+    int? page = 0,
+    int? pageSize = 20,
+    String? statusFilter,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchLoads, [], {
+              #page: page,
+              #pageSize: pageSize,
+              #statusFilter: statusFilter,
+            }),
+            returnValue: _i3.Future<List<_i13.Load>>.value(<_i13.Load>[]),
+          )
+          as _i3.Future<List<_i13.Load>>);
+
+  @override
+  _i3.Future<void> createLoad(_i13.Load? load) =>
+      (super.noSuchMethod(
+            Invocation.method(#createLoad, [load]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> updateLoad(_i13.Load? load) =>
+      (super.noSuchMethod(
+            Invocation.method(#updateLoad, [load]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<void> deleteLoad(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteLoad, [id]),
+            returnValue: _i3.Future<void>.value(),
+            returnValueForMissingStub: _i3.Future<void>.value(),
+          )
+          as _i3.Future<void>);
+
+  @override
+  _i3.Future<String?> getNextTripNumber() =>
+      (super.noSuchMethod(
+            Invocation.method(#getNextTripNumber, []),
+            returnValue: _i3.Future<String?>.value(),
+          )
+          as _i3.Future<String?>);
 }

@@ -273,12 +273,15 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                     color: subTextColor,
                   ),
                   const SizedBox(width: 4),
-                  Text(
-                    title,
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: subTextColor,
+                  Flexible(
+                    child: Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: subTextColor,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                   const Spacer(),

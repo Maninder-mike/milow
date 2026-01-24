@@ -23,6 +23,8 @@ import 'features/settings/widgets/custom_about_dialog.dart';
 import 'features/settings/utils/update_checker.dart';
 import 'core/services/app_links_service.dart';
 import 'core/services/notification_service.dart';
+import 'core/services/version_check_service.dart';
+import 'features/shared/widgets/update_dialog.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/providers/shared_preferences_provider.dart';
@@ -56,6 +58,11 @@ Future<void> main() async {
             );
             await remoteConfig.setDefaults(const {
               "welcome_message": "Welcome to Milow Terminal",
+              "terminal_min_version": "",
+              "terminal_latest_version": "",
+              "windows_store_url": "",
+              "macos_download_url":
+                  "https://github.com/Maninder-mike/milow/releases",
             });
             // Fetch and activate (fire and forget to not block startup too long)
             unawaited(remoteConfig.fetchAndActivate());
@@ -117,7 +124,11 @@ Future<void> main() async {
       runApp(
         ProviderScope(
           overrides: [sharedPreferencesProvider.overrideWithValue(prefs)],
-          child: const AdminApp(),
+          // Enable Root Restoration Scope for state restoration
+          child: const RootRestorationScope(
+            restorationId: 'milow_terminal_root',
+            child: AdminApp(),
+          ),
         ),
       );
     },
@@ -149,11 +160,54 @@ class ConfigurationErrorApp extends StatelessWidget {
   }
 }
 
-class AdminApp extends ConsumerWidget {
+class AdminApp extends ConsumerStatefulWidget {
   const AdminApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<AdminApp> createState() => _AdminAppState();
+}
+
+class _AdminAppState extends ConsumerState<AdminApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Check for updates on startup
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _checkVersion();
+    });
+  }
+
+  Future<void> _checkVersion() async {
+    try {
+      final remoteConfig = FirebaseRemoteConfig.instance;
+      // Ensure we have the latest config before checking
+      await remoteConfig.fetchAndActivate();
+
+      final versionService = VersionCheckService(remoteConfig);
+      final status = await versionService.checkUpdateStatus();
+
+      if (!mounted) return;
+
+      if (status == UpdateStatus.forceUpdate) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const UpdateDialog(isForceUpdate: true),
+        );
+      } else if (status == UpdateStatus.optionalUpdate) {
+        // Optional updates shouldn't block, so we don't await
+        showDialog(
+          context: context,
+          builder: (context) => const UpdateDialog(isForceUpdate: false),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error checking version: $e');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     // Initialize system notifications listener
     ref.watch(systemNotificationProvider);
 
@@ -315,6 +369,8 @@ class AdminApp extends ConsumerWidget {
         themeMode: themeMode,
         routerConfig: router,
         debugShowCheckedModeBanner: false,
+        // State Restoration ID for the app instance
+        restorationScopeId: 'terminal_app',
       ),
     );
   }

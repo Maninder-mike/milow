@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:terminal/core/providers/supabase_provider.dart';
 import 'package:terminal/core/providers/profile_provider.dart';
 import 'package:terminal/features/auth/presentation/pages/login_page.dart';
 import 'package:terminal/features/auth/presentation/pages/sign_up_page.dart';
@@ -44,6 +46,8 @@ final routerProvider = Provider<GoRouter>((ref) {
 
   return GoRouter(
     navigatorKey: _rootNavigatorKey,
+    debugLogDiagnostics: kDebugMode,
+    restorationScopeId: 'router',
     initialLocation: '/dashboard',
     refreshListenable: notifier,
     redirect: notifier.redirect,
@@ -202,7 +206,8 @@ class RouterNotifier extends ChangeNotifier {
 
   RouterNotifier(this._ref) {
     _ref.listen(profileProvider, (previous, next) => notifyListeners());
-    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+    final supabase = _ref.read(supabaseClientProvider);
+    supabase.auth.onAuthStateChange.listen((data) {
       final event = data.event;
       if (event == AuthChangeEvent.passwordRecovery) {
         _isPasswordRecovery = true;
@@ -217,7 +222,8 @@ class RouterNotifier extends ChangeNotifier {
   }
 
   String? redirect(BuildContext context, GoRouterState state) {
-    final session = Supabase.instance.client.auth.currentSession;
+    final supabase = _ref.read(supabaseClientProvider);
+    final session = supabase.auth.currentSession;
     final isLoggedIn = session != null;
     final location = state.matchedLocation;
 

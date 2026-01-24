@@ -14,17 +14,49 @@ class UserFormPage extends ConsumerStatefulWidget {
   ConsumerState<UserFormPage> createState() => _UserFormPageState();
 }
 
-class _UserFormPageState extends ConsumerState<UserFormPage> {
+class _UserFormPageState extends ConsumerState<UserFormPage>
+    with RestorationMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _emailController = TextEditingController();
-  final _phoneController = TextEditingController();
-  final _passwordController = TextEditingController();
 
+  late final RestorableTextEditingController _nameController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _emailController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _phoneController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _passwordController =
+      RestorableTextEditingController();
+
+  final RestorableBool _obscurePassword = RestorableBool(true);
+
+  // Note: Enum restoration would require a custom RestorableValue or string conversion
+  // For simplicity, we'll keep _selectedRole non-restorable for now or use RestorableString
   UserRole _selectedRole = UserRole.driver;
+
   XFile? _profileImage;
   bool _isLoading = false;
-  bool _obscurePassword = true;
+
+  @override
+  String? get restorationId => 'user_form_page';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_nameController, 'name_controller');
+    registerForRestoration(_emailController, 'email_controller');
+    registerForRestoration(_phoneController, 'phone_controller');
+    registerForRestoration(_passwordController, 'password_controller');
+    registerForRestoration(_obscurePassword, 'obscure_password');
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _emailController.dispose();
+    _phoneController.dispose();
+    _passwordController.dispose();
+    _obscurePassword.dispose();
+    super.dispose();
+  }
 
   Future<void> _pickImage() async {
     const XTypeGroup typeGroup = XTypeGroup(
@@ -53,10 +85,14 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
       await ref
           .read(userRepositoryProvider)
           .createUser(
-            email: _emailController.text.trim(),
-            password: _passwordController.text.trim(),
-            firstName: _nameController.text.trim().split(' ').first,
-            lastName: _nameController.text.trim().split(' ').skip(1).join(' '),
+            email: _emailController.value.text.trim(),
+            password: _passwordController.value.text.trim(),
+            firstName: _nameController.value.text.trim().split(' ').first,
+            lastName: _nameController.value.text
+                .trim()
+                .split(' ')
+                .skip(1)
+                .join(' '),
             role: _selectedRole,
           );
 
@@ -68,7 +104,9 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
         builder: (context, close) {
           return InfoBar(
             title: const Text('Success'),
-            content: Text('User ${_emailController.text} created successfully'),
+            content: Text(
+              'User ${_emailController.value.text} created successfully',
+            ),
             severity: InfoBarSeverity.success,
             action: IconButton(
               icon: const Icon(FluentIcons.dismiss_24_regular),
@@ -184,7 +222,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
 
                   _buildLabel('Full Name'),
                   TextFormBox(
-                    controller: _nameController,
+                    controller: _nameController.value,
                     placeholder: 'Enter full name',
                     validator: (v) => v?.isEmpty == true ? 'Required' : null,
                   ),
@@ -192,7 +230,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
 
                   _buildLabel('Email'),
                   TextFormBox(
-                    controller: _emailController,
+                    controller: _emailController.value,
                     placeholder: 'Enter email address',
                     validator: (v) {
                       if (v == null || v.isEmpty) return 'Required';
@@ -204,7 +242,7 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
 
                   _buildLabel('Phone Number'),
                   TextFormBox(
-                    controller: _phoneController,
+                    controller: _phoneController.value,
                     placeholder: 'Enter phone number',
                     validator: (v) => v?.isEmpty == true ? 'Required' : null,
                   ),
@@ -227,17 +265,18 @@ class _UserFormPageState extends ConsumerState<UserFormPage> {
 
                   _buildLabel('Password'),
                   TextFormBox(
-                    controller: _passwordController,
+                    controller: _passwordController.value,
                     placeholder: 'Set initial password',
-                    obscureText: _obscurePassword,
+                    obscureText: _obscurePassword.value,
                     suffix: IconButton(
                       icon: Icon(
-                        _obscurePassword
+                        _obscurePassword.value
                             ? FluentIcons.eye_24_regular
                             : FluentIcons.eye_off_24_regular,
                       ),
-                      onPressed: () =>
-                          setState(() => _obscurePassword = !_obscurePassword),
+                      onPressed: () => setState(
+                        () => _obscurePassword.value = !_obscurePassword.value,
+                      ),
                     ),
                     validator: (v) =>
                         v != null && v.length < 6 ? 'Min 6 chars' : null,

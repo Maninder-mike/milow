@@ -83,7 +83,7 @@ class PrimarySidebar extends ConsumerWidget {
                     // Loads (Recovered Dispatch)
                     _buildNavItem(
                       context,
-                      FluentIcons.document_text_24_regular,
+                      FluentIcons.box_24_regular,
                       label: 'Loads',
                       onTap: onLoadsTap,
                       isActive: currentLocation.startsWith('/highway-dispatch'),
@@ -93,7 +93,7 @@ class PrimarySidebar extends ConsumerWidget {
                     // Invoices
                     _buildNavItem(
                       context,
-                      FluentIcons.money_24_regular,
+                      FluentIcons.receipt_24_regular,
                       label: 'Invoices',
                       onTap: onInvoicesTap,
                       isActive: currentLocation.startsWith('/invoices'),
