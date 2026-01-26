@@ -97,8 +97,7 @@ app.*.symbols
 app.*.map.json
 *.dSYM/
 
-# === Firebase ===
-# firebase_options.dart (Removed to allow CI build)
+# firebase_options.dart
 **/firebase_app_id_file.json
 
 # === Supabase ===
