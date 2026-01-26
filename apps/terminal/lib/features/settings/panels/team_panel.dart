@@ -139,19 +139,21 @@ class _TeamPanelState extends State<TeamPanel> {
           .maybeSingle();
 
       if (response == null) {
-        if (mounted)
+        if (mounted) {
           showToast(
             context,
             title: 'Not Found',
             message: 'User not found.',
             type: ToastType.warning,
           );
+        }
         return;
       }
 
       if (response['is_verified'] == true) {
-        if (mounted)
+        if (mounted) {
           showToast(context, title: 'Info', message: 'User already verified.');
+        }
         return;
       }
 
@@ -181,13 +183,14 @@ class _TeamPanelState extends State<TeamPanel> {
         _emailController.clear();
       }
     } catch (e) {
-      if (mounted)
+      if (mounted) {
         showToast(
           context,
           title: 'Error',
           message: e.toString(),
           type: ToastType.error,
         );
+      }
     }
   }
 
