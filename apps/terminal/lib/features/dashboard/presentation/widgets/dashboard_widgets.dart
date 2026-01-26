@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../providers/dashboard_config_provider.dart';
+import 'sparkline_widget.dart';
 
 class DashboardCard extends StatelessWidget {
   final String label;
@@ -113,9 +114,9 @@ class DashboardCard extends StatelessWidget {
                     const Spacer(),
                     SizedBox(
                       height: 40,
-                      child: CustomPaint(
-                        size: Size.infinite,
-                        painter: _SparklinePainter(accentColor),
+                      child: SparklineWidget(
+                        data: const [12, 15, 13, 18, 14, 22, 19],
+                        color: accentColor,
                       ),
                     ),
                   ],
@@ -241,39 +242,4 @@ class WidgetGalleryDialog extends StatelessWidget {
         return FluentIcons.map_24_regular;
     }
   }
-}
-
-class _SparklinePainter extends CustomPainter {
-  final Color color;
-
-  _SparklinePainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.0
-      ..strokeCap = StrokeCap.round;
-
-    final path = Path();
-    final points = [
-      Offset(0, size.height * 0.8),
-      Offset(size.width * 0.2, size.height * 0.6),
-      Offset(size.width * 0.4, size.height * 0.9),
-      Offset(size.width * 0.6, size.height * 0.3),
-      Offset(size.width * 0.8, size.height * 0.5),
-      Offset(size.width, size.height * 0.1),
-    ];
-
-    path.moveTo(points[0].dx, points[0].dy);
-    for (var i = 1; i < points.length; i++) {
-      path.lineTo(points[i].dx, points[i].dy);
-    }
-
-    canvas.drawPath(path, paint);
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

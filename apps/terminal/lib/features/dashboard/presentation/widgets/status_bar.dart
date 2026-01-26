@@ -3,7 +3,11 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
 import '../../../dispatch/presentation/providers/load_providers.dart';
+import '../../../users/data/user_repository_provider.dart';
+import '../../../dispatch/domain/models/load.dart';
 
 import 'package:milow_core/milow_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -66,8 +70,15 @@ class _StatusBarState extends ConsumerState<StatusBar>
       data: (notifications) => notifications.length,
       orElse: () => 0,
     );
+
+    final delayedLoadsAsync = ref.watch(delayedLoadsProvider);
+    final delayedLoadsCount = delayedLoadsAsync.maybeWhen(
+      data: (loads) => loads.length,
+      orElse: () => 0,
+    );
+
     final totalNotificationCount =
-        pendingCount + driverLeftCount + companyInviteCount;
+        pendingCount + driverLeftCount + companyInviteCount + delayedLoadsCount;
 
     final connectivityAsync = ref.watch(connectivityProvider);
     final dbHealth = ref.watch(databaseHealthProvider);
@@ -190,7 +201,6 @@ class _StatusBarState extends ConsumerState<StatusBar>
                   child: Builder(
                     builder: (context) {
                       final loadsAsync = ref.watch(loadsListProvider);
-                      final now = DateTime.now();
 
                       return loadsAsync.maybeWhen(
                         data: (rawLoads) {
@@ -203,11 +213,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
                               )
                               .length;
 
-                          final delayedCount = rawLoads.where((l) {
-                            final s = l.status.toLowerCase();
-                            return s == 'pending' &&
-                                l.pickup.date.isBefore(now);
-                          }).length;
+                          final delayedCount = rawLoads
+                              .where((l) => l.isDelayed)
+                              .length;
 
                           final activeCount = rawLoads.where((l) {
                             final s = l.status.toLowerCase();
@@ -362,6 +370,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                               pendingUsersAsync,
                               driverLeftAsync,
                               companyInviteAsync,
+                              delayedLoadsAsync,
                             ),
                           ),
                         );
@@ -610,6 +619,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                     ref.read(pendingUsersProvider),
                     ref.read(driverLeftNotificationsProvider),
                     ref.read(companyInviteNotificationsProvider),
+                    ref.read(delayedLoadsProvider),
                   ),
                 ),
               );
@@ -666,6 +676,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
     AsyncValue<List<UserProfile>> pendingUsersAsync,
     AsyncValue<List<Map<String, dynamic>>> driverLeftAsync,
     AsyncValue<List<Map<String, dynamic>>> companyInviteAsync,
+    AsyncValue<List<Load>> delayedLoadsAsync,
   ) {
     final pendingUsers = pendingUsersAsync.maybeWhen(
       data: (users) => users,
@@ -679,13 +690,18 @@ class _StatusBarState extends ConsumerState<StatusBar>
       data: (notifs) => notifs,
       orElse: () => <Map<String, dynamic>>[],
     );
+    final delayedLoads = delayedLoadsAsync.maybeWhen(
+      data: (loads) => loads,
+      orElse: () => <Load>[],
+    );
 
     final theme = FluentTheme.of(context);
 
     final isEmpty =
         pendingUsers.isEmpty &&
         driverLeftNotifs.isEmpty &&
-        companyInviteNotifs.isEmpty;
+        companyInviteNotifs.isEmpty &&
+        delayedLoads.isEmpty;
 
     if (isEmpty) {
       return Container(
@@ -895,6 +911,75 @@ class _StatusBarState extends ConsumerState<StatusBar>
                     ref
                         .read(notificationActionsProvider)
                         .dismissNotification(notif['id']);
+                  },
+                ),
+              );
+            }),
+          ],
+          if (delayedLoads.isNotEmpty) ...[
+            if (pendingUsers.isNotEmpty ||
+                driverLeftNotifs.isNotEmpty ||
+                companyInviteNotifs.isNotEmpty)
+              const Divider(),
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
+              child: Text(
+                'DELAYED LOADS',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 10,
+                  letterSpacing: 0.5,
+                  color: AppColors.error,
+                ),
+              ),
+            ),
+            ...delayedLoads.map((load) {
+              final usersAsync = ref.watch(usersProvider);
+              final driverName = usersAsync.maybeWhen(
+                data: (users) {
+                  final driver = users.firstWhere(
+                    (u) => u.id == load.assignedDriverId,
+                    orElse: () => const UserProfile(
+                      id: '',
+                      role: UserRole.driver,
+                      fullName: 'Unassigned',
+                    ),
+                  );
+                  return driver.fullName ?? 'Unknown';
+                },
+                orElse: () => 'Unassigned',
+              );
+
+              return ListTile(
+                title: Text(
+                  'Trip #${load.tripNumber}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Driver: $driverName'),
+                    Text(
+                      'Late since: ${DateFormat('MM/dd HH:mm').format(load.delivery.date)}',
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.error,
+                      ),
+                    ),
+                  ],
+                ),
+                onPressed: () {
+                  Navigator.of(context).pop(); // Close flyout
+                  ref.read(loadDraftProvider.notifier).update((_) => load);
+                  ref.read(isCreatingLoadProvider.notifier).toggle(true);
+                  context.go('/highway-dispatch');
+                },
+                trailing: IconButton(
+                  icon: const Icon(FluentIcons.dismiss_20_regular),
+                  onPressed: () {
+                    ref
+                        .read(dismissedDelayedLoadIdsProvider.notifier)
+                        .dismiss(load.id);
                   },
                 ),
               );

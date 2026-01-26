@@ -1,47 +1,54 @@
+import 'package:milow_core/milow_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../core/providers/supabase_provider.dart';
+import '../../../../core/providers/network_provider.dart';
 import '../../domain/models/dvir_report.dart';
 
 part 'dvir_repository.g.dart';
 
 /// Repository for DVIR (Driver Vehicle Inspection Reports)
 class DVIRRepository {
-  final SupabaseClient _client;
+  final CoreNetworkClient _client;
 
   DVIRRepository(this._client);
 
   /// Fetch all DVIR reports for a vehicle
-  Future<List<DVIRReport>> getInspections(String vehicleId) async {
-    final data = await _client
-        .from('dvir_reports')
-        .select('*, profiles!driver_id(full_name)')
-        .eq('vehicle_id', vehicleId)
-        .order('created_at', ascending: false)
-        .limit(50);
+  Future<Result<List<DVIRReport>>> getInspections(String vehicleId) async {
+    return _client.query<List<DVIRReport>>(() async {
+      final data = await _client.supabase
+          .from('dvir_reports')
+          .select('*, profiles!driver_id(full_name)')
+          .eq('vehicle_id', vehicleId)
+          .order('created_at', ascending: false)
+          .limit(50);
 
-    return data.map((e) {
-      // Flatten the joined profile data
-      final profile = e['profiles'] as Map<String, dynamic>?;
-      return DVIRReport.fromJson({...e, 'driver_name': profile?['full_name']});
-    }).toList();
+      return data.map((e) {
+        // Flatten the joined profile data
+        final profile = e['profiles'] as Map<String, dynamic>?;
+        return DVIRReport.fromJson({
+          ...e,
+          'driver_name': profile?['full_name'],
+        });
+      }).toList();
+    }, operationName: 'getInspections');
   }
 
   /// Get the most recent DVIR for a vehicle
-  Future<DVIRReport?> getLatestInspection(String vehicleId) async {
-    final data = await _client
-        .from('dvir_reports')
-        .select()
-        .eq('vehicle_id', vehicleId)
-        .order('created_at', ascending: false)
-        .limit(1)
-        .maybeSingle();
+  Future<Result<DVIRReport?>> getLatestInspection(String vehicleId) async {
+    return _client.query<DVIRReport?>(() async {
+      final data = await _client.supabase
+          .from('dvir_reports')
+          .select()
+          .eq('vehicle_id', vehicleId)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
 
-    return data != null ? DVIRReport.fromJson(data) : null;
+      return data != null ? DVIRReport.fromJson(data) : null;
+    }, operationName: 'getLatestInspection');
   }
 
   /// Create a new DVIR inspection report
-  Future<DVIRReport> createInspection({
+  Future<Result<DVIRReport>> createInspection({
     required String vehicleId,
     required DVIRInspectionType inspectionType,
     required bool isSafeToOperate,
@@ -50,79 +57,90 @@ class DVIRRepository {
     String? notes,
     String? driverSignature,
   }) async {
-    final currentUser = _client.auth.currentUser;
+    return _client.query<DVIRReport>(() async {
+      final currentUser = _client.supabase.auth.currentUser;
 
-    final data = await _client
-        .from('dvir_reports')
-        .insert({
-          'vehicle_id': vehicleId,
-          'driver_id': currentUser?.id,
-          'inspection_type': inspectionType == DVIRInspectionType.preTrip
-              ? 'pre_trip'
-              : 'post_trip',
-          'odometer': odometer,
-          'defects_found': defects.isNotEmpty,
-          'defects': defects.map((d) => d.toJson()).toList(),
-          'is_safe_to_operate': isSafeToOperate,
-          'driver_signature': driverSignature,
-          'notes': notes,
-        })
-        .select()
-        .single();
+      final data = await _client.supabase
+          .from('dvir_reports')
+          .insert({
+            'vehicle_id': vehicleId,
+            'driver_id': currentUser?.id,
+            'inspection_type': inspectionType == DVIRInspectionType.preTrip
+                ? 'pre_trip'
+                : 'post_trip',
+            'odometer': odometer,
+            'defects_found': defects.isNotEmpty,
+            'defects': defects.map((d) => d.toJson()).toList(),
+            'is_safe_to_operate': isSafeToOperate,
+            'driver_signature': driverSignature,
+            'notes': notes,
+          })
+          .select()
+          .single();
 
-    return DVIRReport.fromJson(data);
+      return DVIRReport.fromJson(data);
+    }, operationName: 'createInspection');
   }
 
   /// Mark defects as corrected (mechanic sign-off)
-  Future<void> markDefectCorrected({
+  Future<Result<void>> markDefectCorrected({
     required String reportId,
     String? mechanicSignature,
   }) async {
-    await _client
-        .from('dvir_reports')
-        .update({
-          'corrected_at': DateTime.now().toIso8601String(),
-          'mechanic_signature': mechanicSignature,
-        })
-        .eq('id', reportId);
+    return _client.query<void>(() async {
+      await _client.supabase
+          .from('dvir_reports')
+          .update({
+            'corrected_at': DateTime.now().toIso8601String(),
+            'mechanic_signature': mechanicSignature,
+          })
+          .eq('id', reportId);
+    }, operationName: 'markDefectCorrected');
   }
 
   /// Get all reports with uncorrected critical defects (fleet-wide)
-  Future<List<({DVIRReport report, String vehicleNumber})>>
+  Future<Result<List<({DVIRReport report, String vehicleNumber})>>>
   getUncorrectedDefects() async {
-    final data = await _client
-        .from('dvir_reports')
-        .select('*, vehicles!inner(truck_number)')
-        .eq('defects_found', true)
-        .eq('is_safe_to_operate', false)
-        .isFilter('corrected_at', null)
-        .order('created_at', ascending: false);
+    return _client.query<List<({DVIRReport report, String vehicleNumber})>>(
+      () async {
+        final data = await _client.supabase
+            .from('dvir_reports')
+            .select('*, vehicles!inner(truck_number)')
+            .eq('defects_found', true)
+            .eq('is_safe_to_operate', false)
+            .isFilter('corrected_at', null)
+            .order('created_at', ascending: false);
 
-    return data.map((e) {
-      final vehicle = e['vehicles'] as Map<String, dynamic>;
-      return (
-        report: DVIRReport.fromJson(e),
-        vehicleNumber: vehicle['truck_number'] as String? ?? 'Unknown',
-      );
-    }).toList();
+        return data.map((e) {
+          final vehicle = e['vehicles'] as Map<String, dynamic>;
+          return (
+            report: DVIRReport.fromJson(e),
+            vehicleNumber: vehicle['truck_number'] as String? ?? 'Unknown',
+          );
+        }).toList();
+      },
+      operationName: 'getUncorrectedDefects',
+    );
   }
 }
 
 @riverpod
 DVIRRepository dvirRepository(Ref ref) {
-  return DVIRRepository(ref.read(supabaseClientProvider));
+  return DVIRRepository(ref.watch(coreNetworkClientProvider));
 }
 
 @riverpod
 Future<List<DVIRReport>> dvirHistory(Ref ref, String vehicleId) async {
   final repo = ref.watch(dvirRepositoryProvider);
-  return repo.getInspections(vehicleId);
+  final result = await repo.getInspections(vehicleId);
+  return result.fold((failure) => throw failure, (data) => data);
 }
 
 @riverpod
 Future<DVIRReport?> latestDvir(Ref ref, String vehicleId) async {
   final repo = ref.watch(dvirRepositoryProvider);
-  return repo.getLatestInspection(vehicleId);
+  final result = await repo.getLatestInspection(vehicleId);
+  return result.fold((failure) => throw failure, (data) => data);
 }
 
 @riverpod
@@ -130,5 +148,6 @@ Future<List<({DVIRReport report, String vehicleNumber})>> uncorrectedDefects(
   Ref ref,
 ) async {
   final repo = ref.watch(dvirRepositoryProvider);
-  return repo.getUncorrectedDefects();
+  final result = await repo.getUncorrectedDefects();
+  return result.fold((failure) => throw failure, (data) => data);
 }

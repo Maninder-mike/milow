@@ -1,36 +1,36 @@
-import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow_core/milow_core.dart';
 import '../../domain/models/invoice.dart';
 
 class InvoiceRepository {
-  final SupabaseClient _supabase;
+  final CoreNetworkClient _client;
 
-  InvoiceRepository(this._supabase);
+  InvoiceRepository(this._client);
 
   /// Fetch invoices from the database
-  Future<List<Invoice>> fetchInvoices({
+  Future<Result<List<Invoice>>> fetchInvoices({
     int page = 0,
     int pageSize = 20,
     String? statusFilter,
   }) async {
-    final start = page * pageSize;
-    final end = start + pageSize - 1;
+    return _client.query<List<Invoice>>(() async {
+      final start = page * pageSize;
+      final end = start + pageSize - 1;
 
-    debugPrint('Fetching invoices...');
-    debugPrint('Current User ID: ${_supabase.auth.currentUser?.id}');
-    try {
+      AppLogger.debug('Fetching invoices...');
+      AppLogger.debug(
+        'Current User ID: ${_client.supabase.auth.currentUser?.id}',
+      );
+
       // 1. Fetch invoices with basic load details + IDs for pickups/receivers
-      // removing the deep nested 'pickups(...)' and 'receivers(...)' to avoid failure
-      // adding pickup_id and receiver_id relative to loads
-      var query = _supabase.from('invoices').select('''
-            *,
-            customers(id, name, address_line1, city, state_province, postal_code),
-            loads(
-              id, load_reference, po_number, goods, weight, weight_unit, pickup_date, delivery_date,
-              pickup_id, receiver_id,
-              customer:customers!loads_broker_id_fkey(id, name, address_line1, city, state_province, postal_code)
-            )
-          ''');
+      var query = _client.supabase.from('invoices').select('''
+              *,
+              customers(id, name, address_line1, city, state_province, postal_code),
+              loads(
+                id, load_reference, po_number, goods, weight, weight_unit, pickup_date, delivery_date,
+                pickup_id, receiver_id,
+                customer:customers!loads_broker_id_fkey(id, name, address_line1, city, state_province, postal_code)
+              )
+            ''');
 
       if (statusFilter != null && statusFilter != 'All') {
         query = query.eq('status', statusFilter);
@@ -40,7 +40,9 @@ class InvoiceRepository {
           .order('created_at', ascending: false)
           .range(start, end);
 
-      debugPrint('Raw invoices response count: ${(response as List).length}');
+      AppLogger.debug(
+        'Raw invoices response count: ${(response as List).length}',
+      );
 
       // 2. Identify required Pickup/Receiver IDs
       final dataList = List<Map<String, dynamic>>.from(response);
@@ -58,8 +60,8 @@ class InvoiceRepository {
       // 3. Explicitly Fetch Pickups in Batch
       Map<String, dynamic> pickupsMap = {};
       if (pickupIds.isNotEmpty) {
-        debugPrint('Fetching ${pickupIds.length} pickups manually');
-        final pickups = await _supabase
+        AppLogger.debug('Fetching ${pickupIds.length} pickups manually');
+        final pickups = await _client.supabase
             .from('pickups')
             .select('*')
             .filter('id', 'in', pickupIds.toList());
@@ -71,8 +73,8 @@ class InvoiceRepository {
       // 4. Explicitly Fetch Receivers in Batch
       Map<String, dynamic> receiversMap = {};
       if (receiverIds.isNotEmpty) {
-        debugPrint('Fetching ${receiverIds.length} receivers manually');
-        final receivers = await _supabase
+        AppLogger.debug('Fetching ${receiverIds.length} receivers manually');
+        final receivers = await _client.supabase
             .from('receivers')
             .select('*')
             .filter('id', 'in', receiverIds.toList());
@@ -99,15 +101,12 @@ class InvoiceRepository {
       }
 
       return dataList.map((json) => Invoice.fromJson(json)).toList();
-    } catch (e) {
-      debugPrint('Error fetching invoices: $e');
-      rethrow;
-    }
+    }, operationName: 'fetchInvoices');
   }
 
   /// Create a new invoice
-  Future<void> createInvoice(Invoice invoice) async {
-    try {
+  Future<Result<void>> createInvoice(Invoice invoice) async {
+    return _client.query<void>(() async {
       final data = invoice.toJson();
       // Remove ID to let DB generate it if it's empty
       if (invoice.id.isEmpty) {
@@ -120,69 +119,64 @@ class InvoiceRepository {
         data['load_id'] = null;
       }
 
-      await _supabase.from('invoices').insert(data);
-    } catch (e) {
-      debugPrint('Error creating invoice: $e');
-      rethrow;
-    }
+      await _client.supabase.from('invoices').insert(data);
+    }, operationName: 'createInvoice');
   }
 
   /// Update an existing invoice
-  Future<void> updateInvoice(Invoice invoice) async {
-    try {
+  Future<Result<void>> updateInvoice(Invoice invoice) async {
+    return _client.query<void>(() async {
       final data = invoice.toJson();
       data.remove('id');
-      await _supabase.from('invoices').update(data).eq('id', invoice.id);
-    } catch (e) {
-      debugPrint('Error updating invoice: $e');
-      rethrow;
-    }
+      await _client.supabase.from('invoices').update(data).eq('id', invoice.id);
+    }, operationName: 'updateInvoice');
   }
 
   /// Update invoice status
-  Future<void> updateStatus(String id, String status) async {
-    try {
-      await _supabase
+  Future<Result<void>> updateStatus(String id, String status) async {
+    return _client.query<void>(() async {
+      await _client.supabase
           .from('invoices')
           .update({
             'status': status,
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', id);
-    } catch (e) {
-      debugPrint('Error updating invoice status: $e');
-      rethrow;
-    }
+    }, operationName: 'updateStatus');
   }
 
   /// Delete an invoice
-  Future<void> deleteInvoice(String id) async {
-    await _supabase.from('invoices').delete().eq('id', id);
+  Future<Result<void>> deleteInvoice(String id) async {
+    return _client.query<void>(() async {
+      await _client.supabase.from('invoices').delete().eq('id', id);
+    }, operationName: 'deleteInvoice');
   }
 
   /// Get next invoice number (simple sequential for now)
-  Future<String> getNextInvoiceNumber() async {
-    try {
-      final response = await _supabase
-          .from('invoices')
-          .select('invoice_number')
-          .order('created_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
+  Future<Result<String>> getNextInvoiceNumber() async {
+    return _client.query<String>(
+      () async {
+        final response = await _client.supabase
+            .from('invoices')
+            .select('invoice_number')
+            .order('created_at', ascending: false)
+            .limit(1)
+            .maybeSingle();
 
-      if (response != null && response['invoice_number'] != null) {
-        final lastNum = response['invoice_number'] as String;
-        // Basic parsing: INV-1001 -> 1002
-        final match = RegExp(r'\d+').firstMatch(lastNum);
-        if (match != null) {
-          final val = int.parse(match.group(0)!);
-          return 'INV-${(val + 1).toString().padLeft(4, '0')}';
+        if (response != null && response['invoice_number'] != null) {
+          final lastNum = response['invoice_number'] as String;
+          // Basic parsing: INV-1001 -> 1002
+          final match = RegExp(r'\d+').firstMatch(lastNum);
+          if (match != null) {
+            final val = int.parse(match.group(0)!);
+            return 'INV-${(val + 1).toString().padLeft(4, '0')}';
+          }
         }
-      }
-      return 'INV-1001';
-    } catch (e) {
-      debugPrint('Error getting next invoice number: $e');
-      return 'INV-1001';
-    }
+        return 'INV-1001';
+      },
+      operationName: 'getNextInvoiceNumber',
+      // If it fails, default to sensible starting point?
+      // Result type handles error, controller can decide fallback.
+    );
   }
 }

@@ -131,7 +131,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
               _toggleSection(item);
             } else if (item is UserProfile) {
               ref.read(selectedDriverProvider.notifier).select(item);
-              context.go('/drivers');
+              context.go('/drivers/${item.id}');
             }
           }
         });
@@ -795,7 +795,8 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
           .from('trips')
           .select('trip_number, pickup_locations, delivery_locations')
           .eq('user_id', driverId)
-          .eq('delivery_completed', false)
+          // delivery_completed is an array in the DB, comparing with false is invalid postgrest
+          // .eq('delivery_completed', false)
           .isFilter('deleted_at', null)
           .order('trip_date', ascending: false)
           .limit(1)

@@ -40,11 +40,16 @@ class _InvoiceBuilderDialogState extends ConsumerState<InvoiceBuilderDialog> {
 
   Future<void> _fetchNextInvoiceNumber() async {
     final repository = ref.read(invoiceRepositoryProvider);
-    final nextNum = await repository.getNextInvoiceNumber();
+    final result = await repository.getNextInvoiceNumber();
     if (mounted) {
-      setState(() {
-        _invoiceNumberController.text = nextNum;
-      });
+      result.fold(
+        (failure) {}, // Ignore failures for auto-gen number
+        (nextNum) {
+          setState(() {
+            _invoiceNumberController.text = nextNum;
+          });
+        },
+      );
     }
   }
 

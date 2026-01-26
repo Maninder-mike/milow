@@ -4,22 +4,23 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import '../providers/load_providers.dart';
-import '../providers/quote_providers.dart';
 import 'package:milow_core/milow_core.dart';
-import '../../../../features/users/data/user_repository_provider.dart';
-import '../../../../features/dashboard/services/vehicle_service.dart';
-import '../../domain/models/load.dart';
-import '../../domain/models/quote.dart';
-import '../widgets/load_entry_form.dart';
-import '../widgets/broker_entry_dialog.dart';
-import '../../domain/models/broker.dart';
-import '../../../../core/constants/app_colors.dart';
-import '../widgets/dispatch_stat_card.dart';
-import '../widgets/load_assignment_dialog.dart';
-import '../widgets/load_quote_dialog.dart' hide QuoteLineItem;
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../../features/billing/presentation/widgets/invoice_builder_dialog.dart';
+import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
+import 'package:terminal/features/dispatch/presentation/providers/quote_providers.dart';
+import 'package:terminal/features/users/data/user_repository_provider.dart';
+import 'package:terminal/features/dashboard/services/vehicle_service.dart';
+import 'package:terminal/features/dispatch/domain/models/load.dart';
+import 'package:terminal/features/dispatch/domain/models/quote.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/load_entry_form.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/broker_entry_dialog.dart';
+import 'package:terminal/features/dispatch/domain/models/broker.dart';
+import 'package:terminal/core/constants/app_colors.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/dispatch_stat_card.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/load_assignment_dialog.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/load_quote_dialog.dart'
+    hide QuoteLineItem;
+import 'package:terminal/features/billing/presentation/widgets/invoice_builder_dialog.dart';
 
 class LoadsPage extends ConsumerStatefulWidget {
   const LoadsPage({super.key});
@@ -58,47 +59,44 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     }).toList();
   }
 
-  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+  KeyEventResult _handleKeyEvent(
+    FocusNode node,
+    KeyEvent event,
+    List<Load> currentLoads,
+  ) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
 
     if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
-      ref.read(loadsListProvider).whenData((rawLoads) {
-        final loads = _filterLoads(rawLoads);
-        if (loads.isEmpty) return;
+      if (currentLoads.isEmpty) return KeyEventResult.ignored;
 
-        setState(() {
-          if (_focusedIndex == null || _focusedIndex! >= loads.length - 1) {
-            _focusedIndex = 0;
-          } else {
-            _focusedIndex = _focusedIndex! + 1;
-          }
-        });
-        _scrollToFocused();
+      setState(() {
+        if (_focusedIndex == null ||
+            _focusedIndex! >= currentLoads.length - 1) {
+          _focusedIndex = 0;
+        } else {
+          _focusedIndex = _focusedIndex! + 1;
+        }
       });
+      _scrollToFocused();
       return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
-      ref.read(loadsListProvider).whenData((rawLoads) {
-        final loads = _filterLoads(rawLoads);
-        if (loads.isEmpty) return;
+      if (currentLoads.isEmpty) return KeyEventResult.ignored;
 
-        setState(() {
-          if (_focusedIndex == null || _focusedIndex! <= 0) {
-            _focusedIndex = loads.length - 1;
-          } else {
-            _focusedIndex = _focusedIndex! - 1;
-          }
-        });
-        _scrollToFocused();
+      setState(() {
+        if (_focusedIndex == null || _focusedIndex! <= 0) {
+          _focusedIndex = currentLoads.length - 1;
+        } else {
+          _focusedIndex = _focusedIndex! - 1;
+        }
+        // _focusedIndex = (_focusedIndex == null || _focusedIndex! <= 0)
+        //     ? currentLoads.length - 1
+        //     : _focusedIndex! - 1;
       });
+      _scrollToFocused();
       return KeyEventResult.handled;
     } else if (event.logicalKey == LogicalKeyboardKey.enter) {
-      if (_focusedIndex != null) {
-        ref.read(loadsListProvider).whenData((rawLoads) {
-          final loads = _filterLoads(rawLoads);
-          if (_focusedIndex! < loads.length) {
-            _onEditLoad(loads[_focusedIndex!]);
-          }
-        });
+      if (_focusedIndex != null && _focusedIndex! < currentLoads.length) {
+        _onEditLoad(currentLoads[_focusedIndex!]);
       }
       return KeyEventResult.handled;
     }
@@ -197,10 +195,9 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                       return s == 'assigned' || s == 'in transit';
                     }).length;
 
-                    final delayedCount = rawLoads.where((l) {
-                      final s = l.status.toLowerCase();
-                      return s == 'pending' && l.pickup.date.isBefore(now);
-                    }).length;
+                    final delayedCount = rawLoads
+                        .where((l) => l.isDelayed)
+                        .length;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -269,20 +266,15 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                                 child: TextBox(
                                   placeholder:
                                       'Search by shipper, city or reference...',
-                                  decoration: WidgetStateProperty.all(
-                                    BoxDecoration(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
+                                  onChanged: (value) {
+                                    setState(() => _searchText = value);
+                                  },
                                   prefix: const Padding(
                                     padding: EdgeInsets.symmetric(
                                       horizontal: 12.0,
                                     ),
                                     child: Icon(FluentIcons.search_16_regular),
                                   ),
-                                  onChanged: (value) {
-                                    setState(() => _searchText = value);
-                                  },
                                 ),
                               ),
                               const SizedBox(width: 16),
@@ -638,7 +630,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
           Expanded(
             child: Focus(
               focusNode: _listFocusNode,
-              onKeyEvent: _handleKeyEvent,
+              onKeyEvent: (node, event) => _handleKeyEvent(node, event, loads),
               child: ListView.separated(
                 controller: _scrollController,
                 itemCount: loads.length,
@@ -872,6 +864,30 @@ class _LoadRowItemState extends State<_LoadRowItem> {
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
+                            if (widget.load.stops.length > 2)
+                              Padding(
+                                padding: const EdgeInsets.only(top: 2),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 4,
+                                    vertical: 1,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: widget.theme.accentColor.withValues(
+                                      alpha: 0.1,
+                                    ),
+                                    borderRadius: BorderRadius.circular(2),
+                                  ),
+                                  child: Text(
+                                    '+${widget.load.stops.length - 2} Stops',
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: widget.theme.accentColor,
+                                    ),
+                                  ),
+                                ),
+                              ),
                           ],
                         ),
                       ),
@@ -1037,7 +1053,7 @@ class _LoadRowItemState extends State<_LoadRowItem> {
                         flex: 2,
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: _buildStatusChip(widget.load.status),
+                          child: _buildStatusChip(widget.load),
                         ),
                       ),
                       // Assigned To
@@ -1141,31 +1157,37 @@ class _LoadRowItemState extends State<_LoadRowItem> {
     );
   }
 
-  Widget _buildStatusChip(String status) {
+  Widget _buildStatusChip(Load load) {
     Color color;
+    String status = load.status;
     String label = status.toUpperCase();
 
-    switch (status.toLowerCase()) {
-      case 'pending':
-      case 'scheduled':
-        color = AppColors.info;
-        label = 'SCHEDULED';
-        break;
-      case 'assigned':
-        color = const Color(0xFF0288D1);
-        break;
-      case 'picked up':
-        color = AppColors.success;
-        label = 'PICKED UP';
-        break;
-      case 'in transit':
-        color = AppColors.purple;
-        break;
-      case 'delivered':
-        color = AppColors.success;
-        break;
-      default:
-        color = AppColors.neutral;
+    if (load.isDelayed) {
+      color = AppColors.error;
+      label = 'DELAYED';
+    } else {
+      switch (status.toLowerCase()) {
+        case 'pending':
+        case 'scheduled':
+          color = AppColors.info;
+          label = 'SCHEDULED';
+          break;
+        case 'assigned':
+          color = const Color(0xFF0288D1);
+          break;
+        case 'picked up':
+          color = AppColors.success;
+          label = 'PICKED UP';
+          break;
+        case 'in transit':
+          color = AppColors.purple;
+          break;
+        case 'delivered':
+          color = AppColors.success;
+          break;
+        default:
+          color = AppColors.neutral;
+      }
     }
 
     return Container(

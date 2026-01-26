@@ -17,11 +17,18 @@ dependencies:
   supabase_flutter: ^2.12.0
   url_launcher: ^6.3.2
 
+  # Phase 1: Foundation
+  fpdart: ^1.1.0 # Result/Either pattern
+  retry: ^3.1.2 # Exponential backoff for network calls
+  firebase_crashlytics: ^5.0.7 # Logging sink
+
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  mockito: ^5.6.3
+  build_runner: ^2.10.5
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

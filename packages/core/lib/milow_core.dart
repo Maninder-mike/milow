@@ -13,3 +13,8 @@ export 'src/repositories/vehicle_repository.dart';
 export 'src/models/company.dart';
 export 'src/repositories/company_repository.dart';
 export 'src/models/trip_template.dart';
+
+// Phase 1: Foundation
+export 'src/utils/failure.dart';
+export 'src/services/app_logger.dart';
+export 'src/services/core_network_client.dart';

@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:mockito/mockito.dart';
 import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
 import 'package:terminal/features/dispatch/domain/models/load.dart';
+import 'package:milow_core/milow_core.dart';
 
 import '../../helpers/mocks.mocks.dart';
 
@@ -16,10 +18,13 @@ void main() {
       overrides: [loadRepositoryProvider.overrideWithValue(mockRepository)],
     );
 
-    // Mock createLoad to return void
-    when(mockRepository.createLoad(any)).thenAnswer((_) async {});
-    when(mockRepository.updateLoad(any)).thenAnswer((_) async {});
-    when(mockRepository.deleteLoad(any)).thenAnswer((_) async {});
+    // Provide dummy value for Result types (Either<Failure, void>)
+    provideDummy<Either<Failure, void>>(right(null));
+
+    // Mock repository methods to return successful Result types
+    when(mockRepository.createLoad(any)).thenAnswer((_) async => right(null));
+    when(mockRepository.updateLoad(any)).thenAnswer((_) async => right(null));
+    when(mockRepository.deleteLoad(any)).thenAnswer((_) async => right(null));
   });
 
   tearDown(() {

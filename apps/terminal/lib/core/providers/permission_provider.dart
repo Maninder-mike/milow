@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_provider.dart';
 
 part 'permission_provider.g.dart';
 
@@ -73,7 +73,7 @@ class UserPermissions {
 /// Fetches and caches user permissions from Supabase
 @riverpod
 Future<UserPermissions> userPermissions(Ref ref) async {
-  final supabase = Supabase.instance.client;
+  final supabase = ref.watch(supabaseClientProvider);
   final userId = supabase.auth.currentUser?.id;
 
   if (userId == null) {
@@ -179,7 +179,7 @@ Future<void> clearPermissionCache() async {
 /// Provider for the current user's role details
 @riverpod
 Future<Map<String, dynamic>?> currentUserRole(Ref ref) async {
-  final supabase = Supabase.instance.client;
+  final supabase = ref.watch(supabaseClientProvider);
   final userId = supabase.auth.currentUser?.id;
 
   if (userId == null) return null;

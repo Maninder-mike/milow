@@ -1,46 +1,64 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../domain/models/driver_pay_config.dart';
 import '../../domain/models/driver_settlement.dart';
 import '../../domain/models/settlement_item.dart';
 import '../../data/repositories/settlement_repository.dart';
+import '../../../../core/providers/network_provider.dart';
 
 part 'settlement_providers.g.dart';
 
 @riverpod
 SettlementRepository settlementRepository(Ref ref) {
-  return SettlementRepository(Supabase.instance.client);
+  return SettlementRepository(ref.watch(coreNetworkClientProvider));
 }
 
 @riverpod
-Future<DriverPayConfig?> driverPayConfig(Ref ref, String driverId) {
-  return ref.watch(settlementRepositoryProvider).getPayConfig(driverId);
+Future<DriverPayConfig?> driverPayConfig(Ref ref, String driverId) async {
+  final result = await ref
+      .watch(settlementRepositoryProvider)
+      .getPayConfig(driverId);
+  return result.fold((failure) => throw failure, (config) => config);
 }
 
 @riverpod
-Future<List<DriverSettlement>> driverSettlements(Ref ref, String driverId) {
-  return ref.watch(settlementRepositoryProvider).fetchSettlements(driverId);
+Future<List<DriverSettlement>> driverSettlements(
+  Ref ref,
+  String driverId,
+) async {
+  final result = await ref
+      .watch(settlementRepositoryProvider)
+      .fetchSettlements(driverId);
+  return result.fold((failure) => throw failure, (list) => list);
 }
 
 @riverpod
-Future<DriverSettlement> settlementDetails(Ref ref, String settlementId) {
-  return ref
+Future<DriverSettlement> settlementDetails(Ref ref, String settlementId) async {
+  final result = await ref
       .watch(settlementRepositoryProvider)
       .getSettlementDetails(settlementId);
+  return result.fold((failure) => throw failure, (details) => details);
 }
 
 @riverpod
-Future<List<Map<String, dynamic>>> unsettledLoads(Ref ref, String driverId) {
-  return ref
+Future<List<Map<String, dynamic>>> unsettledLoads(
+  Ref ref,
+  String driverId,
+) async {
+  final result = await ref
       .watch(settlementRepositoryProvider)
       .discoverUnsettledLoads(driverId);
+  return result.fold((failure) => throw failure, (list) => list);
 }
 
 @riverpod
-Future<List<Map<String, dynamic>>> unsettledFuel(Ref ref, String driverId) {
-  return ref
+Future<List<Map<String, dynamic>>> unsettledFuel(
+  Ref ref,
+  String driverId,
+) async {
+  final result = await ref
       .watch(settlementRepositoryProvider)
       .discoverUnsettledFuel(driverId);
+  return result.fold((failure) => throw failure, (list) => list);
 }
 
 @riverpod
@@ -82,10 +100,19 @@ class SettlementController extends _$SettlementController {
         notes: notes,
       );
 
-      final id = await repository.createSettlement(settlement, items);
-      ref.invalidate(driverSettlementsProvider(driverId));
-      state = const AsyncValue.data(null);
-      return id;
+      final result = await repository.createSettlement(settlement, items);
+
+      return result.fold(
+        (failure) {
+          state = AsyncValue.error(failure, StackTrace.current);
+          throw failure;
+        },
+        (id) {
+          ref.invalidate(driverSettlementsProvider(driverId));
+          state = const AsyncValue.data(null);
+          return id;
+        },
+      );
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;
@@ -99,12 +126,21 @@ class SettlementController extends _$SettlementController {
   ) async {
     state = const AsyncValue.loading();
     try {
-      await ref
+      final result = await ref
           .read(settlementRepositoryProvider)
           .updateSettlementStatus(settlementId, status);
-      ref.invalidate(driverSettlementsProvider(driverId));
-      ref.invalidate(settlementDetailsProvider(settlementId));
-      state = const AsyncValue.data(null);
+
+      result.fold(
+        (failure) {
+          state = AsyncValue.error(failure, StackTrace.current);
+          throw failure;
+        },
+        (_) {
+          ref.invalidate(driverSettlementsProvider(driverId));
+          ref.invalidate(settlementDetailsProvider(settlementId));
+          state = const AsyncValue.data(null);
+        },
+      );
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;

@@ -3,12 +3,13 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/repositories/invoice_repository.dart';
 import '../../domain/models/invoice.dart';
+import '../../../../core/providers/network_provider.dart';
 
 part 'invoice_providers.g.dart';
 
 @riverpod
 InvoiceRepository invoiceRepository(Ref ref) {
-  return InvoiceRepository(Supabase.instance.client);
+  return InvoiceRepository(ref.watch(coreNetworkClientProvider));
 }
 
 @riverpod
@@ -16,6 +17,7 @@ Stream<int> invoicesChangeSignal(Ref ref) {
   final controller = StreamController<int>();
   int counter = 0;
 
+  // Use the singleton for realtime as it's separate from API requests
   final channel = Supabase.instance.client.channel('public:invoices');
 
   channel
@@ -45,7 +47,8 @@ Stream<int> invoicesChangeSignal(Ref ref) {
 Future<List<Invoice>> invoicesList(Ref ref, {String? statusFilter}) async {
   ref.watch(invoicesChangeSignalProvider);
   final repository = ref.watch(invoiceRepositoryProvider);
-  return repository.fetchInvoices(statusFilter: statusFilter);
+  final result = await repository.fetchInvoices(statusFilter: statusFilter);
+  return result.fold((failure) => throw failure, (list) => list);
 }
 
 @Riverpod(keepAlive: true)
@@ -57,8 +60,11 @@ class InvoiceController extends _$InvoiceController {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(invoiceRepositoryProvider);
-      await repository.createInvoice(invoice);
-      ref.invalidate(invoicesListProvider);
+      final result = await repository.createInvoice(invoice);
+      return result.fold(
+        (failure) => throw failure,
+        (_) => ref.invalidate(invoicesListProvider),
+      );
     });
     if (state.hasError) {
       throw state.error!;
@@ -69,8 +75,11 @@ class InvoiceController extends _$InvoiceController {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(invoiceRepositoryProvider);
-      await repository.updateInvoice(invoice);
-      ref.invalidate(invoicesListProvider);
+      final result = await repository.updateInvoice(invoice);
+      return result.fold(
+        (failure) => throw failure,
+        (_) => ref.invalidate(invoicesListProvider),
+      );
     });
   }
 
@@ -78,8 +87,11 @@ class InvoiceController extends _$InvoiceController {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(invoiceRepositoryProvider);
-      await repository.deleteInvoice(id);
-      ref.invalidate(invoicesListProvider);
+      final result = await repository.deleteInvoice(id);
+      return result.fold(
+        (failure) => throw failure,
+        (_) => ref.invalidate(invoicesListProvider),
+      );
     });
   }
 
@@ -87,8 +99,11 @@ class InvoiceController extends _$InvoiceController {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       final repository = ref.read(invoiceRepositoryProvider);
-      await repository.updateStatus(id, status);
-      ref.invalidate(invoicesListProvider);
+      final result = await repository.updateStatus(id, status);
+      return result.fold(
+        (failure) => throw failure,
+        (_) => ref.invalidate(invoicesListProvider),
+      );
     });
   }
 }

@@ -180,6 +180,20 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
       const SingleActivator(LogicalKeyboardKey.keyP, control: true): () {
         _searchFocusNode.requestFocus();
       },
+      const SingleActivator(
+        LogicalKeyboardKey.keyP,
+        meta: true,
+        shift: true,
+      ): () {
+        _searchFocusNode.requestFocus();
+      },
+      const SingleActivator(
+        LogicalKeyboardKey.keyP,
+        control: true,
+        shift: true,
+      ): () {
+        _searchFocusNode.requestFocus();
+      },
       const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
         if (tabs.isNotEmpty) {
           ref.read(tabManagerProvider.notifier).removeTab(selectedIndex);

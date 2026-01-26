@@ -7,11 +7,20 @@ import '../../helpers/mocks.mocks.dart';
 
 void main() {
   late AuthRepository repository;
+  late MockCoreNetworkClient mockClient;
+  late MockSupabaseClient mockSupabase;
   late MockGoTrueClient mockAuth;
 
   setUp(() {
+    mockClient = MockCoreNetworkClient();
+    mockSupabase = MockSupabaseClient();
     mockAuth = MockGoTrueClient();
-    repository = AuthRepository(mockAuth);
+
+    // Chain mocks
+    when(mockClient.supabase).thenReturn(mockSupabase);
+    when(mockSupabase.auth).thenReturn(mockAuth);
+
+    repository = AuthRepository(mockClient);
   });
 
   group('AuthRepository', () {
@@ -30,7 +39,11 @@ void main() {
       verify(
         mockAuth.signInWithPassword(email: email, password: password),
       ).called(1);
-      expect(result.isRight(), true);
+
+      result.fold(
+        (failure) => fail('Expected success but got failure: $failure'),
+        (_) => null,
+      );
     });
 
     test('signOut calls GoTrueClient.signOut', () async {

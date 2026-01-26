@@ -10,7 +10,10 @@ import '../../../settings/utils/update_checker.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/providers/theme_provider.dart';
-import 'notification_bell.dart';
+import 'package:terminal/features/dashboard/domain/models/search_result.dart';
+import 'package:terminal/features/dashboard/presentation/providers/global_search_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:terminal/features/shared/widgets/shortcuts_reference_dialog.dart';
 
 class CustomTitleBar extends StatefulWidget {
   final FocusNode? searchFocusNode;
@@ -29,52 +32,72 @@ class _CustomTitleBarState extends State<CustomTitleBar> {
     final foregroundColor = theme.resources.textFillColorPrimary;
 
     return Mica(
-      child: SizedBox(
-        height: 38,
-        child: Row(
-          children: [
-            // Windows Menu Bar (only show on Windows)
-            if (Platform.isWindows) ...[
-              const SizedBox(width: 8),
-              _WindowsMenuBar(foregroundColor: foregroundColor),
-            ],
-            // Left drag area
-            const Expanded(
-              child: DragToMoveArea(child: SizedBox(height: double.infinity)),
-            ),
-            // Center search bar (constrained but flexible)
-            Flexible(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 468),
-                child: _WindowsSearchBar(
-                  focusNode: widget.searchFocusNode,
-                  foregroundColor: foregroundColor,
-                  isLight: isLight,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isSmall = constraints.maxWidth < 650;
+          final isMedium = constraints.maxWidth < 900;
+
+          return SizedBox(
+            height: 44,
+            child: Stack(
+              children: [
+                // 1. Full drag area background
+                const Positioned.fill(
+                  child: DragToMoveArea(child: SizedBox.expand()),
                 ),
-              ),
-            ),
-            // Right area with user header
-            // Right area with user header
-            Expanded(
-              child: DragToMoveArea(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
+
+                // 2. Left and Right Content
+                Row(
                   children: [
-                    const NotificationBell(),
-                    const SizedBox(width: 16),
-                    const _UserHeader(),
-                    // Padding at the end:
-                    // macOS: 0px (flush to corner)
-                    // Windows: 8px gap before the Window Controls (which are next)
-                    if (Platform.isWindows) const SizedBox(width: 8),
+                    // Windows Menu Bar (only show on Windows)
+                    if (Platform.isWindows && !isSmall) ...[
+                      const SizedBox(width: 8),
+                      _WindowsMenuBar(foregroundColor: foregroundColor),
+                    ],
+
+                    // Spacer to push content to the edges
+                    const Spacer(),
+
+                    // Right area with actions
+                    _ActionsRow(
+                      foregroundColor: foregroundColor,
+                      isCompact: isMedium,
+                    ),
+
+                    // Windows control buttons
+                    if (Platform.isWindows) ...[
+                      const SizedBox(width: 8),
+                      _WindowControlButtons(isLight: isLight),
+                    ] else ...[
+                      // Right padding for macOS to not hug the edge too tight
+                      const SizedBox(width: 16),
+                    ],
                   ],
                 ),
-              ),
+
+                // 3. Centered search bar
+                // We use Align to center it perfectly in the window
+                Align(
+                  alignment: Alignment.center,
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: 600,
+                      minWidth: isSmall ? 150 : 300,
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 6),
+                      child: _WindowsSearchBar(
+                        focusNode: widget.searchFocusNode,
+                        foregroundColor: foregroundColor,
+                        isLight: isLight,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ),
-            // Windows control buttons (fixed width, at the end)
-            if (Platform.isWindows) _WindowControlButtons(isLight: isLight),
-          ],
-        ),
+          );
+        },
       ),
     );
   }
@@ -203,7 +226,7 @@ class _WindowButtonState extends State<_WindowButton> {
 }
 
 /// Windows 11-style search bar using fluent_ui
-class _WindowsSearchBar extends StatefulWidget {
+class _WindowsSearchBar extends ConsumerStatefulWidget {
   final FocusNode? focusNode;
   final Color foregroundColor;
   final bool isLight;
@@ -215,10 +238,10 @@ class _WindowsSearchBar extends StatefulWidget {
   });
 
   @override
-  State<_WindowsSearchBar> createState() => _WindowsSearchBarState();
+  ConsumerState<_WindowsSearchBar> createState() => _WindowsSearchBarState();
 }
 
-class _WindowsSearchBarState extends State<_WindowsSearchBar> {
+class _WindowsSearchBarState extends ConsumerState<_WindowsSearchBar> {
   final TextEditingController _controller = TextEditingController();
   bool _isFocused = false;
 
@@ -231,68 +254,141 @@ class _WindowsSearchBarState extends State<_WindowsSearchBar> {
   @override
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
+    final resultsAsync = ref.watch(searchResultsProvider);
+    final query = ref.watch(searchQueryProvider);
 
-    // Windows 11 style colors
-    final bgColor = theme.resources.cardBackgroundFillColorDefault;
-    final borderColor = theme.resources.dividerStrokeColorDefault;
-    final focusBorderColor = theme.accentColor;
-    final placeholderColor = theme.resources.textFillColorSecondary;
+    // Sync controller with provider if changed externally (e.g. cleared)
+    if (_controller.text != query && !_isFocused) {
+      _controller.text = query;
+    }
 
-    return Container(
-      width: 468, // Intrinsic target width
-      height: 32,
-      constraints: const BoxConstraints(maxWidth: 468, minWidth: 200),
-      decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: _isFocused ? focusBorderColor : borderColor,
-          width: _isFocused ? 1.5 : 1,
-        ),
-      ),
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxWidth: 468, maxHeight: 32),
       child: Focus(
-        onFocusChange: (focused) => setState(() => _isFocused = focused),
-        child: Row(
-          children: [
-            Expanded(
-              child: TextBox(
-                controller: _controller,
-                focusNode: widget.focusNode,
-                placeholder: 'Search loads, drivers, and more',
-                placeholderStyle: TextStyle(
-                  color: placeholderColor,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w400,
-                ),
-                style: TextStyle(color: widget.foregroundColor, fontSize: 13),
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
-                ),
-                decoration: WidgetStateProperty.all(
-                  const BoxDecoration(
-                    color: Colors.transparent,
-                    border: Border.fromBorderSide(BorderSide.none),
+        onFocusChange: (focused) {
+          setState(() => _isFocused = focused);
+        },
+        child: AutoSuggestBox<SearchResult>(
+          controller: _controller,
+          focusNode: widget.focusNode,
+          items: resultsAsync.maybeWhen(
+            data: (results) => results
+                .map(
+                  (r) => AutoSuggestBoxItem<SearchResult>(
+                    value: r,
+                    label: r.title,
+                    child: Row(
+                      children: [
+                        if (r.icon != null) ...[
+                          Icon(
+                            r.icon,
+                            size: 16,
+                            color: theme.resources.textFillColorSecondary,
+                          ),
+                          const SizedBox(width: 12),
+                        ],
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                r.title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              Text(
+                                r.subtitle.replaceAll('\n', ' '),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  height: 1.1,
+                                  color: theme.resources.textFillColorSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+                .toList(),
+            orElse: () => [],
+          ),
+          placeholder: 'Search loads, drivers (Cmd+P)',
+          onChanged: (value, reason) {
+            ref.read(searchQueryProvider.notifier).update(value);
+          },
+          onSelected: (item) {
+            final result = item.value;
+            if (result == null) return;
+
+            if (result.route != null) {
+              context.go(result.route!);
+            } else if (result.data is String) {
+              // Handle special command actions
+              final command = result.data as String;
+              switch (command) {
+                case 'open_shortcuts':
+                  showDialog(
+                    context: context,
+                    builder: (context) => const ShortcutsReferenceDialog(),
+                  );
+                  break;
+                case 'open_report_issue':
+                  launchUrl(
+                    Uri.parse('https://github.com/Maninder-mike/milow/issues'),
+                  );
+                  break;
+                case 'open_help':
+                  launchUrl(
+                    Uri.parse('https://github.com/Maninder-mike/milow/wiki'),
+                  );
+                  break;
+              }
+            }
+
+            // Clear query after selection if it was a navigation action
+            if (result.type == SearchResultType.action) {
+              ref.read(searchQueryProvider.notifier).update('');
+              _controller.clear();
+            }
+          },
+          trailingIcon: query.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(FluentIcons.dismiss_24_regular, size: 14),
+                  onPressed: () {
+                    _controller.clear();
+                    ref.read(searchQueryProvider.notifier).update('');
+                  },
+                )
+              : Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Icon(
+                    FluentIcons.search_24_regular,
+                    size: 16,
+                    color: theme.resources.textFillColorSecondary,
                   ),
                 ),
-                unfocusedColor: Colors.transparent,
-                highlightColor: Colors.transparent,
-                onSubmitted: (value) {
-                  if (value.isNotEmpty) {
-                    debugPrint('Search: $value');
-                  }
-                },
+          decoration: WidgetStateProperty.all(
+            BoxDecoration(
+              color: theme.resources.cardBackgroundFillColorDefault,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: _isFocused
+                    ? theme.accentColor
+                    : theme.resources.dividerStrokeColorDefault,
+                width: _isFocused ? 1.5 : 1,
               ),
             ),
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Icon(
-                FluentIcons.search_24_regular,
-                size: 16,
-                color: placeholderColor,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
@@ -602,11 +698,54 @@ class _MenuBarItemState extends State<_MenuBarItem> {
   }
 }
 
-class _UserHeader extends StatelessWidget {
-  const _UserHeader();
+class _ActionsRow extends StatelessWidget {
+  final Color foregroundColor;
+  final bool isCompact;
+
+  const _ActionsRow({required this.foregroundColor, required this.isCompact});
 
   @override
   Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Settings Action
+        IconButton(
+          icon: Icon(
+            FluentIcons.settings_24_regular,
+            size: 20,
+            color: foregroundColor,
+          ),
+          onPressed: () {
+            context.go('/settings');
+          },
+        ),
+        const SizedBox(width: 12),
+        // Divider
+        if (!isCompact) ...[
+          Container(
+            height: 16,
+            width: 1,
+            color: theme.resources.dividerStrokeColorDefault,
+          ),
+          const SizedBox(width: 12),
+        ],
+        // User Profile
+        _UserHeader(isCompact: isCompact),
+      ],
+    );
+  }
+}
+
+class _UserHeader extends StatelessWidget {
+  final bool isCompact;
+  const _UserHeader({this.isCompact = false});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
     final userId = Supabase.instance.client.auth.currentUser?.id;
 
     if (userId == null) return const SizedBox();
@@ -653,35 +792,34 @@ class _UserHeader extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
+                if (!isCompact) ...[
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        role.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                          color: theme.resources.textFillColorSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 12),
+                ],
                 Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: FluentTheme.of(context).cardColor,
-                    borderRadius: BorderRadius.circular(4),
-                    border: Border.all(
-                      color: FluentTheme.of(
-                        context,
-                      ).resources.dividerStrokeColorDefault,
-                    ),
-                  ),
-                  child: Text(
-                    role.toUpperCase(),
-                    style: const TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Container(
-                  width: 24,
-                  height: 24,
+                  width: 32,
+                  height: 32,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: AppColors.neutral,
+                    border: Border.all(
+                      color: theme.resources.cardStrokeColorDefault,
+                      width: 1.5,
+                    ),
                     image: effectiveUrl != null
                         ? DecorationImage(
                             image: NetworkImage(effectiveUrl),
@@ -695,7 +833,7 @@ class _UserHeader extends StatelessWidget {
                           initials,
                           style: const TextStyle(
                             color: Colors.white,
-                            fontSize: 12,
+                            fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
                         )

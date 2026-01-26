@@ -187,129 +187,174 @@ class _AddressInputFormState extends State<AddressInputForm> {
     final theme = FluentTheme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF181818) : theme.cardColor,
-        borderRadius: BorderRadius.circular(4),
-        border: Border.all(
-          color: isDark
-              ? const Color(0xFF333333)
-              : theme.resources.dividerStrokeColorDefault,
-        ),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (widget.title.isNotEmpty) ...[
-            Text(
-              widget.title,
-              style: FluentTheme.of(
-                context,
-              ).typography.subtitle?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-          ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 450;
 
-          InfoLabel(
-            label: 'Date & Time (${widget.location.date.timeZoneName})',
-            child: Row(
-              children: [
-                Expanded(
-                  child: DatePicker(
-                    selected: widget.location.date,
-                    onChanged: (v) =>
-                        widget.onChanged(widget.location.copyWith(date: v)),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TimePicker(
-                    selected: widget.location.date,
-                    hourFormat: HourFormat.HH,
-                    onChanged: (v) =>
-                        widget.onChanged(widget.location.copyWith(date: v)),
-                  ),
-                ),
-              ],
+        return Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF181818) : theme.cardColor,
+            borderRadius: BorderRadius.circular(4),
+            border: Border.all(
+              color: isDark
+                  ? const Color(0xFF333333)
+                  : theme.resources.dividerStrokeColorDefault,
             ),
           ),
-          const SizedBox(height: 12),
-
-          InfoLabel(
-            label: 'Company Name',
-            child: widget.suggestions != null && widget.suggestions!.isNotEmpty
-                ? AutoSuggestBox<Map<String, dynamic>>(
-                    controller: _companyController,
-                    placeholder: 'Business/Facility Name',
-                    decoration: WidgetStateProperty.all(
-                      BoxDecoration(borderRadius: BorderRadius.circular(4)),
-                    ),
-                    items: _getSuggestions(),
-                    onSelected: (item) {
-                      if (item.value != null) {
-                        _onSuggestionSelected(item.value!);
-                      }
-                    },
-                    onChanged: (text, reason) {
-                      if (reason == TextChangedReason.userInput) {
-                        widget.onChanged(
-                          widget.location.copyWith(companyName: text, id: null),
-                        );
-                        setState(() {});
-                      }
-                    },
-                  )
-                : TextBox(
-                    placeholder: 'Business/Facility Name',
-                    decoration: WidgetStateProperty.all(
-                      BoxDecoration(borderRadius: BorderRadius.circular(4)),
-                    ),
-                    controller: _companyController,
-                    onChanged: (v) => widget.onChanged(
-                      widget.location.copyWith(companyName: v, id: null),
-                    ),
-                  ),
-          ),
-          const SizedBox(height: 12),
-
-          InfoLabel(
-            label: 'Address',
-            child: TextBox(
-              placeholder: 'Street Address',
-              decoration: WidgetStateProperty.all(
-                BoxDecoration(borderRadius: BorderRadius.circular(4)),
-              ),
-              controller: _addressController,
-              onChanged: (v) => widget.onChanged(
-                widget.location.copyWith(address: v, id: null),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          Row(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                flex: 2,
-                child: InfoLabel(
-                  label: 'Province / State',
-                  child: TextBox(
-                    placeholder: 'ON',
-                    decoration: WidgetStateProperty.all(
-                      BoxDecoration(borderRadius: BorderRadius.circular(4)),
-                    ),
-                    controller: _stateController,
-                    onChanged: (v) => widget.onChanged(
-                      widget.location.copyWith(state: v, id: null),
-                    ),
+              if (widget.title.isNotEmpty) ...[
+                Text(
+                  widget.title,
+                  style: FluentTheme.of(
+                    context,
+                  ).typography.subtitle?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 12),
+              ],
+
+              InfoLabel(
+                label: 'Date & Time (${widget.location.date.timeZoneName})',
+                child: isNarrow
+                    ? Column(
+                        children: [
+                          DatePicker(
+                            selected: widget.location.date,
+                            onChanged: (v) {
+                              final combined = DateTime(
+                                v.year,
+                                v.month,
+                                v.day,
+                                widget.location.date.hour,
+                                widget.location.date.minute,
+                              );
+                              widget.onChanged(
+                                widget.location.copyWith(date: combined),
+                              );
+                            },
+                          ),
+                          const SizedBox(height: 8),
+                          TimePicker(
+                            selected: widget.location.date,
+                            hourFormat: HourFormat.HH,
+                            onChanged: (v) {
+                              final combined = DateTime(
+                                widget.location.date.year,
+                                widget.location.date.month,
+                                widget.location.date.day,
+                                v.hour,
+                                v.minute,
+                              );
+                              widget.onChanged(
+                                widget.location.copyWith(date: combined),
+                              );
+                            },
+                          ),
+                        ],
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: DatePicker(
+                              selected: widget.location.date,
+                              onChanged: (v) {
+                                final combined = DateTime(
+                                  v.year,
+                                  v.month,
+                                  v.day,
+                                  widget.location.date.hour,
+                                  widget.location.date.minute,
+                                );
+                                widget.onChanged(
+                                  widget.location.copyWith(date: combined),
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TimePicker(
+                              selected: widget.location.date,
+                              hourFormat: HourFormat.HH,
+                              onChanged: (v) {
+                                final combined = DateTime(
+                                  widget.location.date.year,
+                                  widget.location.date.month,
+                                  widget.location.date.day,
+                                  v.hour,
+                                  v.minute,
+                                );
+                                widget.onChanged(
+                                  widget.location.copyWith(date: combined),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+              ),
+              const SizedBox(height: 12),
+
+              InfoLabel(
+                label: 'Company Name',
+                child:
+                    widget.suggestions != null && widget.suggestions!.isNotEmpty
+                    ? AutoSuggestBox<Map<String, dynamic>>(
+                        controller: _companyController,
+                        placeholder: 'Business/Facility Name',
+                        decoration: WidgetStateProperty.all(
+                          BoxDecoration(borderRadius: BorderRadius.circular(4)),
+                        ),
+                        items: _getSuggestions(),
+                        onSelected: (item) {
+                          if (item.value != null) {
+                            _onSuggestionSelected(item.value!);
+                          }
+                        },
+                        onChanged: (text, reason) {
+                          if (reason == TextChangedReason.userInput) {
+                            widget.onChanged(
+                              widget.location.copyWith(
+                                companyName: text,
+                                id: null,
+                              ),
+                            );
+                            setState(() {});
+                          }
+                        },
+                      )
+                    : TextBox(
+                        placeholder: 'Business/Facility Name',
+                        decoration: WidgetStateProperty.all(
+                          BoxDecoration(borderRadius: BorderRadius.circular(4)),
+                        ),
+                        controller: _companyController,
+                        onChanged: (v) => widget.onChanged(
+                          widget.location.copyWith(companyName: v, id: null),
+                        ),
+                      ),
+              ),
+              const SizedBox(height: 12),
+
+              InfoLabel(
+                label: 'Address',
+                child: TextBox(
+                  placeholder: 'Street Address',
+                  decoration: WidgetStateProperty.all(
+                    BoxDecoration(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  controller: _addressController,
+                  onChanged: (v) => widget.onChanged(
+                    widget.location.copyWith(address: v, id: null),
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 3,
-                child: InfoLabel(
+              const SizedBox(height: 12),
+
+              if (isNarrow) ...[
+                InfoLabel(
                   label: 'City',
                   child: TextBox(
                     placeholder: 'Toronto',
@@ -322,47 +367,126 @@ class _AddressInputFormState extends State<AddressInputForm> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 2,
-                child: InfoLabel(
-                  label: 'Postal / Zip Code',
-                  child: TextBox(
-                    placeholder: 'M5V 2H1',
-                    decoration: WidgetStateProperty.all(
-                      BoxDecoration(borderRadius: BorderRadius.circular(4)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Province / State',
+                        child: TextBox(
+                          placeholder: 'ON',
+                          decoration: WidgetStateProperty.all(
+                            BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          controller: _stateController,
+                          onChanged: (v) => widget.onChanged(
+                            widget.location.copyWith(state: v, id: null),
+                          ),
+                        ),
+                      ),
                     ),
-                    controller: _zipController,
-                    onChanged: (v) => widget.onChanged(
-                      widget.location.copyWith(zipCode: v, id: null),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Postal / Zip Code',
+                        child: TextBox(
+                          placeholder: 'M5V 2H1',
+                          decoration: WidgetStateProperty.all(
+                            BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          controller: _zipController,
+                          onChanged: (v) => widget.onChanged(
+                            widget.location.copyWith(zipCode: v, id: null),
+                          ),
+                        ),
+                      ),
                     ),
+                  ],
+                ),
+              ] else
+                Row(
+                  children: [
+                    Expanded(
+                      flex: 3,
+                      child: InfoLabel(
+                        label: 'City',
+                        child: TextBox(
+                          placeholder: 'Toronto',
+                          decoration: WidgetStateProperty.all(
+                            BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          controller: _cityController,
+                          onChanged: (v) => widget.onChanged(
+                            widget.location.copyWith(city: v, id: null),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: InfoLabel(
+                        label: 'Province / State',
+                        child: TextBox(
+                          placeholder: 'ON',
+                          decoration: WidgetStateProperty.all(
+                            BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          controller: _stateController,
+                          onChanged: (v) => widget.onChanged(
+                            widget.location.copyWith(state: v, id: null),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      flex: 2,
+                      child: InfoLabel(
+                        label: 'Postal / Zip Code',
+                        child: TextBox(
+                          placeholder: 'M5V 2H1',
+                          decoration: WidgetStateProperty.all(
+                            BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          controller: _zipController,
+                          onChanged: (v) => widget.onChanged(
+                            widget.location.copyWith(zipCode: v, id: null),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              const SizedBox(height: 12),
+
+              InfoLabel(
+                label: 'Contact',
+                child: TextBox(
+                  placeholder: 'Contact Name',
+                  decoration: WidgetStateProperty.all(
+                    BoxDecoration(borderRadius: BorderRadius.circular(4)),
+                  ),
+                  controller: _contactNameController,
+                  onChanged: (v) => widget.onChanged(
+                    widget.location.copyWith(contactName: v, id: null),
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
+              const SizedBox(height: 12),
 
-          InfoLabel(
-            label: 'Contact',
-            child: TextBox(
-              placeholder: 'Contact Name',
-              decoration: WidgetStateProperty.all(
-                BoxDecoration(borderRadius: BorderRadius.circular(4)),
-              ),
-              controller: _contactNameController,
-              onChanged: (v) => widget.onChanged(
-                widget.location.copyWith(contactName: v, id: null),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          Row(
-            children: [
-              Expanded(
-                child: InfoLabel(
+              if (isNarrow) ...[
+                InfoLabel(
                   label: 'Phone',
                   child: TextBox(
                     placeholder: '(555) 123-4567',
@@ -375,10 +499,8 @@ class _AddressInputFormState extends State<AddressInputForm> {
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: InfoLabel(
+                const SizedBox(height: 8),
+                InfoLabel(
                   label: 'Fax',
                   child: TextBox(
                     placeholder: 'Optional',
@@ -391,11 +513,50 @@ class _AddressInputFormState extends State<AddressInputForm> {
                     ),
                   ),
                 ),
-              ),
+              ] else
+                Row(
+                  children: [
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Phone',
+                        child: TextBox(
+                          placeholder: '(555) 123-4567',
+                          decoration: WidgetStateProperty.all(
+                            BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          controller: _phoneController,
+                          onChanged: (v) => widget.onChanged(
+                            widget.location.copyWith(contactPhone: v, id: null),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: InfoLabel(
+                        label: 'Fax',
+                        child: TextBox(
+                          placeholder: 'Optional',
+                          decoration: WidgetStateProperty.all(
+                            BoxDecoration(
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                          ),
+                          controller: _faxController,
+                          onChanged: (v) => widget.onChanged(
+                            widget.location.copyWith(contactFax: v, id: null),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }

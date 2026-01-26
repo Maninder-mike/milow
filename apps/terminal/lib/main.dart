@@ -19,6 +19,8 @@ import 'firebase_options.dart';
 
 import 'core/providers/theme_provider.dart';
 import 'core/router/router_provider.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'features/shared/widgets/shortcuts_reference_dialog.dart';
 import 'features/settings/widgets/custom_about_dialog.dart';
 import 'features/settings/utils/update_checker.dart';
 import 'core/services/app_links_service.dart';
@@ -45,36 +47,37 @@ Future<void> main() async {
         FlutterError.onError =
             FirebaseCrashlytics.instance.recordFlutterFatalError;
 
-        // Initialize Remote Config & Performance (Safe for macOS/Mobile, skipped on Windows)
-        if (!Platform.isWindows) {
-          try {
-            // Remote Config
-            final remoteConfig = FirebaseRemoteConfig.instance;
-            await remoteConfig.setConfigSettings(
-              RemoteConfigSettings(
-                fetchTimeout: const Duration(minutes: 1),
-                minimumFetchInterval: const Duration(hours: 12),
-              ),
-            );
-            await remoteConfig.setDefaults(const {
-              "welcome_message": "Welcome to Milow Terminal",
-              "terminal_min_version": "",
-              "terminal_latest_version": "",
-              "windows_store_url": "",
-              "macos_download_url":
-                  "https://github.com/Maninder-mike/milow/releases",
-            });
-            // Fetch and activate (fire and forget to not block startup too long)
-            unawaited(remoteConfig.fetchAndActivate());
+        // Initialize Remote Config & Performance (all platforms)
+        try {
+          // Remote Config
+          final remoteConfig = FirebaseRemoteConfig.instance;
+          await remoteConfig.setConfigSettings(
+            RemoteConfigSettings(
+              fetchTimeout: const Duration(minutes: 1),
+              minimumFetchInterval: const Duration(hours: 12),
+            ),
+          );
+          await remoteConfig.setDefaults(const {
+            "welcome_message": "Welcome to Milow Terminal",
+            "terminal_min_version": "",
+            "terminal_latest_version": "",
+            "windows_store_url": "",
+            "macos_download_url":
+                "https://github.com/Maninder-mike/milow/releases",
+          });
+          // Fetch and activate (fire and forget to not block startup too long)
+          unawaited(remoteConfig.fetchAndActivate());
 
-            // Performance Monitoring
-            FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
-          } catch (e) {
-            debugPrint('Firebase Remote Config/Performance init failed: $e');
-          }
+          // Performance Monitoring
+          FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+        } catch (e) {
+          AppLogger.warning(
+            'Firebase Remote Config/Performance init failed',
+            context: {'error': e.toString()},
+          );
         }
       } catch (e) {
-        debugPrint('Firebase initialization failed: $e');
+        AppLogger.error('Firebase initialization failed', error: e);
         // Continue execution checking .env and other services
       }
 
@@ -100,9 +103,14 @@ Future<void> main() async {
 
         await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
 
+        // Initialize AppLogger with context
+        AppLogger.initialize(appVersion: '0.0.3+27');
+        AppLogger.info('Supabase initialized successfully.');
+
         await AppLinksService().initialize();
         await NotificationService().init();
       } catch (e) {
+        AppLogger.fatal('Initialization failed', error: e);
         runApp(ConfigurationErrorApp(error: 'Initialization failed: $e'));
         return;
       }
@@ -344,7 +352,48 @@ class _AdminAppState extends ConsumerState<AdminApp> {
         PlatformMenu(
           label: 'Help',
           menus: [
-            PlatformMenuItem(label: 'Milow Terminal Help', onSelected: () {}),
+            PlatformMenuItem(
+              label: 'Milow Terminal Help',
+              onSelected: () {
+                launchUrl(
+                  Uri.parse('https://github.com/Maninder-mike/milow/wiki'),
+                );
+              },
+            ),
+            PlatformMenuItem(
+              label: 'Keyboard Shortcuts Reference',
+              shortcut: const CharacterActivator('k', meta: true),
+              onSelected: () {
+                final context =
+                    router.routerDelegate.navigatorKey.currentContext;
+                if (context != null) {
+                  showDialog(
+                    context: context,
+                    builder: (context) => const ShortcutsReferenceDialog(),
+                  );
+                }
+              },
+            ),
+            const PlatformMenuItemGroup(
+              members: [
+                PlatformMenuItem(
+                  label: 'View License',
+                  onSelected: null, // TODO: Implement license view
+                ),
+                PlatformMenuItem(
+                  label: 'Privacy Statement',
+                  onSelected: null, // TODO: Implement privacy statement view
+                ),
+              ],
+            ),
+            PlatformMenuItem(
+              label: 'Report Issue',
+              onSelected: () {
+                launchUrl(
+                  Uri.parse('https://github.com/Maninder-mike/milow/issues'),
+                );
+              },
+            ),
             PlatformMenuItem(
               label: 'Test Crash',
               onSelected: () => FirebaseCrashlytics.instance.crash(),

@@ -3,11 +3,15 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'panels/compliance_panel.dart';
 import 'panels/general_panel.dart';
 import 'panels/integration_panel.dart';
 import 'panels/notification_panel.dart';
 import 'panels/security_panel.dart';
+import 'panels/organization_panel.dart';
+import 'panels/team_panel.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -18,6 +22,33 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   int _currentIndex = 0;
+  bool _isAdmin = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAdmin();
+  }
+
+  Future<void> _checkAdmin() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user != null) {
+      final profile = await Supabase.instance.client
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle(); // Use maybeSingle to be safe
+
+      final role = profile?['role'] as String? ?? '';
+      if (mounted) {
+        setState(() {
+          _isAdmin =
+              role.toLowerCase() == 'admin' ||
+              (user.email?.contains('admin') ?? false);
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -59,6 +90,20 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text('Integrations'),
             body: const IntegrationPanel(),
           ),
+          if (_isAdmin) ...[
+            PaneItemSeparator(),
+            PaneItemHeader(header: const Text('Administration')),
+            PaneItem(
+              icon: const Icon(FluentIcons.building_24_regular),
+              title: const Text('Organization'),
+              body: const OrganizationPanel(),
+            ),
+            PaneItem(
+              icon: const Icon(FluentIcons.people_team_24_regular),
+              title: const Text('Team'),
+              body: const TeamPanel(),
+            ),
+          ],
         ],
       ),
     );

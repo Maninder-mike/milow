@@ -1,14 +1,20 @@
-import 'package:flutter/foundation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:fpdart/fpdart.dart';
+import 'package:milow_core/milow_core.dart';
+// Needed for Postgrest updates
+
 import '../../domain/models/load.dart';
 
+/// Repository for Load operations.
+///
+/// Uses [CoreNetworkClient] for resilient network calls and returns
+/// [Result] types for structured error handling.
 class LoadRepository {
-  final SupabaseClient _supabase;
+  final CoreNetworkClient _client;
 
-  LoadRepository(this._supabase);
+  LoadRepository(this._client);
 
-  /// Fetch loads with related data (broker, pickup, receiver)
-  Future<List<Load>> fetchLoads({
+  /// Fetch loads with related data (broker, stops).
+  Future<Result<List<Load>>> fetchLoads({
     int page = 0,
     int pageSize = 20,
     String? statusFilter,
@@ -16,98 +22,201 @@ class LoadRepository {
     final start = page * pageSize;
     final end = start + pageSize - 1;
 
-    var query = _supabase.from('loads').select('''
+    return _client.query<List<Load>>(() async {
+      var query = _client.supabase.from('loads').select('''
           *,
           customers(name),
+          stops(*),
           pickups(*),
           receivers(*)
-        ''');
+        '''); // Fetching legacy pickups/receivers for backward compatibility
 
-    if (statusFilter != null && statusFilter != 'All') {
-      query = query.eq('status', statusFilter);
-    }
+      if (statusFilter != null && statusFilter != 'All') {
+        query = query.eq('status', statusFilter);
+      }
 
-    final response = await query
-        .order('created_at', ascending: false)
-        .range(start, end);
+      final response = await query
+          .order('created_at', ascending: false)
+          .range(start, end);
 
-    return (response as List<dynamic>)
-        .map((json) => Load.fromJson(json as Map<String, dynamic>))
-        .toList();
+      return (response as List<dynamic>)
+          .map((json) => Load.fromJson(json as Map<String, dynamic>))
+          .toList();
+    }, operationName: 'fetchLoads');
   }
 
   /// Create a new load.
-  /// Handles creating related entities (Broker, Pickup, Receiver) if they don't exist.
-  Future<void> createLoad(Load load) async {
-    try {
+  /// Handles creating related entities (Broker) and Stops.
+  Future<Result<void>> createLoad(Load load) async {
+    // Validate required fields
+    if (load.brokerName.isEmpty &&
+        (load.brokerId == null || load.brokerId!.isEmpty)) {
+      return left(const ValidationFailure('Broker name is required.'));
+    }
+    if (load.stops.isEmpty) {
+      // Enforce at least 1 stop or relies on legacy?
+      // Phase 4: Enforce Sequence.
+      return left(const ValidationFailure('At least one stop is required.'));
+    }
+
+    return _client.query<void>(() async {
+      AppLogger.debug('Creating load...');
+
+      final companyId = await _getMyCompanyId();
       final brokerId = await _ensureBrokerExists(
         load.brokerId,
         load.brokerName,
       );
-      final pickupId = await _ensurePickupExists(load.pickup);
-      final receiverId = await _ensureReceiverExists(load.delivery);
 
       final loadData = load.toJson();
       loadData['broker_id'] = brokerId;
-      loadData['pickup_id'] = pickupId;
-      loadData['receiver_id'] = receiverId;
+      loadData['company_id'] = companyId;
+
+      // Phase 4: Do NOT populate legacy pickup_id/receiver_id for new loads.
+      // They are nullable.
+      loadData.remove('pickup_id');
+      loadData.remove('receiver_id');
 
       // Remove ID to let DB generate it
       loadData.remove('id');
-
-      // Ensure timestamps are handled by DB or set here
-      // DB defaults created_at to now(), updated_at via trigger.
+      // Ensure timestamps are handled by DB
       loadData.remove('created_at');
       loadData.remove('updated_at');
 
-      await _supabase.from('loads').insert(loadData);
-    } catch (e) {
-      debugPrint('Error creating load: $e');
-      rethrow;
-    }
+      // Insert Load and get ID
+      final response = await _client.supabase
+          .from('loads')
+          .insert(loadData)
+          .select('id')
+          .single();
+
+      final newLoadId = response['id'] as String;
+
+      // Insert Stops
+      if (load.stops.isNotEmpty) {
+        final stopsData = load.stops.map((stop) {
+          final map = stop.toJson();
+          map['load_id'] = newLoadId; // Link to new load
+          map.remove('id'); // Generate new IDs
+          return map;
+        }).toList();
+
+        await _client.supabase.from('stops').insert(stopsData);
+      }
+
+      AppLogger.info('Load created successfully ($newLoadId).');
+    }, operationName: 'createLoad');
   }
 
   /// Update an existing load.
-  /// Handles creating related entities if they changed to new ones.
-  Future<void> updateLoad(Load load) async {
-    try {
-      debugPrint('LoadRepository: Updating load ${load.id}...');
+  Future<Result<void>> updateLoad(Load load) async {
+    if (load.id.isEmpty) {
+      return left(const ValidationFailure('Load ID is required for update.'));
+    }
+
+    return _client.query<void>(() async {
+      AppLogger.debug('Updating load ${load.id}...');
+
       final brokerId = await _ensureBrokerExists(
         load.brokerId,
         load.brokerName,
       );
-      debugPrint('LoadRepository: Broker ensured ($brokerId)');
-      final pickupId = await _ensurePickupExists(load.pickup);
-      debugPrint('LoadRepository: Pickup ensured ($pickupId)');
-      final receiverId = await _ensureReceiverExists(load.delivery);
-      debugPrint('LoadRepository: Receiver ensured ($receiverId)');
 
       final loadData = load.toJson();
       loadData['broker_id'] = brokerId;
-      loadData['pickup_id'] = pickupId;
-      loadData['receiver_id'] = receiverId;
+      loadData['company_id'] = await _getMyCompanyId();
 
-      // Remove fields that shouldn't be updated manually or are managed
+      // Keep legacy fields null/untouched if they aren't in toJson?
+      // toJson sends them if ID present.
+      // We should probably explicitly remove them to enforce Stop usage if we want migration.
+      // But if we want to maintain legacy pointers, we'd need to update them.
+      // For Phase 4.1: Ignore legacy columns during update.
+      loadData.remove('pickup_id');
+      loadData.remove('receiver_id');
+
       loadData.remove('id');
       loadData.remove('created_at');
       loadData.remove('updated_at');
 
-      debugPrint('LoadRepository: Performing update query...');
-      await _supabase.from('loads').update(loadData).eq('id', load.id);
-      debugPrint('LoadRepository: Update complete');
-    } catch (e) {
-      debugPrint('Error updating load: $e');
-      rethrow;
-    }
+      AppLogger.debug('Updating load ${load.id} with data: $loadData');
+
+      final updateRes = await _client.supabase
+          .from('loads')
+          .update(loadData)
+          .eq('id', load.id)
+          .select();
+      AppLogger.debug('Load update result: $updateRes');
+
+      // Update Stops: Replace All Strategy
+      // 1. Delete all stops for this load
+      AppLogger.debug('Deleting existing stops for load ${load.id}');
+      await _client.supabase.from('stops').delete().eq('load_id', load.id);
+
+      // 2. Insert current stops
+      if (load.stops.isNotEmpty) {
+        final stopsData = load.stops.map((stop) {
+          final map = stop.toJson();
+          map['load_id'] = load.id;
+          map.remove('id'); // Generate new IDs ensures clean slate
+          return map;
+        }).toList();
+
+        AppLogger.debug(
+          'Inserting ${stopsData.length} stops for load ${load.id}',
+        );
+        final insertRes = await _client.supabase
+            .from('stops')
+            .insert(stopsData)
+            .select();
+        AppLogger.debug('Stops insert result: $insertRes');
+      }
+
+      AppLogger.info('Load ${load.id} updated successfully.');
+    }, operationName: 'updateLoad');
   }
 
-  /// Helper to get or create a broker
+  /// Delete a load by ID.
+  Future<Result<void>> deleteLoad(String id) async {
+    if (id.isEmpty) {
+      return left(const ValidationFailure('Load ID is required for deletion.'));
+    }
+
+    return _client.query<void>(() async {
+      // Cascade delete handles stops if defined in DB schema (ON DELETE CASCADE)
+      await _client.supabase.from('loads').delete().eq('id', id);
+      AppLogger.info('Load $id deleted successfully.');
+    }, operationName: 'deleteLoad');
+  }
+
+  /// Fetches the most recent trip number and increments it if it's numeric.
+  Future<Result<String?>> getNextTripNumber() async {
+    return _client.query<String?>(() async {
+      final response = await _client.supabase
+          .from('loads')
+          .select('trip_number')
+          .not('trip_number', 'is', null)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response != null && response['trip_number'] != null) {
+        final lastTrip = response['trip_number'] as String;
+        final val = int.tryParse(lastTrip);
+        if (val != null) {
+          return (val + 1).toString();
+        }
+      }
+      return null;
+    }, operationName: 'getNextTripNumber');
+  }
+
+  // --- Private Helpers ---
+
+  /// Helper to get or create a broker.
   Future<String> _ensureBrokerExists(String? id, String name) async {
     if (id != null && id.isNotEmpty) return id;
-    if (name.isEmpty) throw Exception('Broker name is required');
 
-    // Check if exists by name to avoid duplicates
-    final existing = await _supabase
+    final existing = await _client.supabase
         .from('customers')
         .select('id')
         .eq('name', name)
@@ -118,18 +227,16 @@ class LoadRepository {
       return existing['id'] as String;
     }
 
-    // Create new broker
-    final response = await _supabase
+    final response = await _client.supabase
         .from('customers')
         .insert({
           'name': name,
           'customer_type': 'Broker',
-          // Defaults for other fields
           'address': '',
           'city': '',
           'state_province': '',
           'postal_code': '',
-          'country': 'USA', // Default
+          'country': 'USA',
         })
         .select('id')
         .single();
@@ -137,85 +244,17 @@ class LoadRepository {
     return response['id'] as String;
   }
 
-  /// Helper to get or create a pickup location
-  Future<String> _ensurePickupExists(LoadLocation location) async {
-    if (location.id != null && location.id!.isNotEmpty) return location.id!;
-    if (location.companyName.isEmpty) {
-      throw Exception('Pickup company name is required');
-    }
+  /// Helper to get the current user's company ID.
+  Future<String?> _getMyCompanyId() async {
+    final user = _client.supabase.auth.currentUser;
+    if (user == null) return null;
 
-    // Create new pickup
-    final response = await _supabase
-        .from('pickups')
-        .insert({
-          'shipper_name': location.companyName,
-          'address': location.address,
-          'city': location.city,
-          'state_province': location.state,
-          'postal_code': location.zipCode,
-          'contact_person': location.contactName,
-          'phone': location.contactPhone,
-          'fax': location.contactFax,
-        })
-        .select('id')
-        .single();
+    final response = await _client.supabase
+        .from('profiles')
+        .select('company_id')
+        .eq('id', user.id)
+        .maybeSingle();
 
-    return response['id'] as String;
-  }
-
-  /// Helper to get or create a receiver
-  Future<String> _ensureReceiverExists(LoadLocation location) async {
-    if (location.id != null && location.id!.isNotEmpty) return location.id!;
-    if (location.companyName.isEmpty) {
-      throw Exception('Receiver company name is required');
-    }
-
-    // Create new receiver
-    final response = await _supabase
-        .from('receivers')
-        .insert({
-          'receiver_name': location.companyName,
-          'address': location.address,
-          'city': location.city,
-          'state_province': location.state,
-          'postal_code': location.zipCode,
-          'contact_person': location.contactName,
-          'phone': location.contactPhone,
-          'fax': location.contactFax,
-        })
-        .select('id')
-        .single();
-
-    return response['id'] as String;
-  }
-
-  Future<void> deleteLoad(String id) async {
-    await _supabase.from('loads').delete().eq('id', id);
-  }
-
-  /// Fetches the most recent trip number and increments it if it's numeric.
-  Future<String?> getNextTripNumber() async {
-    try {
-      final response = await _supabase
-          .from('loads')
-          .select('trip_number')
-          .not('trip_number', 'is', null)
-          .order('created_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
-      if (response != null && response['trip_number'] != null) {
-        final lastTrip = response['trip_number'] as String;
-        // Try to parse as int and increment
-        final val = int.tryParse(lastTrip);
-        if (val != null) {
-          return (val + 1).toString();
-        }
-      }
-      return null;
-    } catch (e) {
-      debugPrint('Error fetching next trip number: $e');
-      return null;
-    }
+    return response?['company_id'] as String?;
   }
 }

@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
+import '../../../../core/providers/network_provider.dart';
 import 'user_repository.dart';
 
 final userRepositoryProvider = Provider<UserRepository>((ref) {
-  return UserRepository(Supabase.instance.client);
+  return UserRepository(ref.watch(coreNetworkClientProvider));
 });
 
 /// Provider that listens to real-time changes on the profiles table.
@@ -39,11 +40,16 @@ class UsersController extends AsyncNotifier<List<UserProfile>> {
 
   Future<List<UserProfile>> _fetch() async {
     final repository = ref.read(userRepositoryProvider);
-    return repository.fetchUsers(
+    final result = await repository.fetchUsers(
       page: _page,
       pageSize: _pageSize,
       searchQuery: _searchQuery,
     );
+
+    return result.fold((failure) {
+      AppLogger.error('Failed to fetch users: ${failure.message}');
+      throw failure;
+    }, (users) => users);
   }
 
   Future<void> setPage(int page) async {
@@ -67,7 +73,4 @@ class UsersController extends AsyncNotifier<List<UserProfile>> {
   int get page => _page;
   int get pageSize => _pageSize;
   bool get hasFilter => _searchQuery != null && _searchQuery!.isNotEmpty;
-
-  // Helper to get total count if needed?
-  // For now, infinite scroll / next page logic usually just checks if items < pageSize.
 }

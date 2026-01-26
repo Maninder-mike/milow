@@ -61,6 +61,7 @@ trigger: always_on
 - **Focus**: Information density, keyboard shortcuts, native feel
 - **Libs**: `fluent_ui`, `window_manager`, `flutter_riverpod`, `go_router`
 - **Context Menus**: Always use native context menus.
+- **must add company_id and restrict access whenever any table add in database
 
 ---
 
@@ -230,6 +231,19 @@ trigger: always_on
 
 ---
 
+## 15. Enterprise Standards (Phase 4+)
+
+### A. Dispatch Architecture
+
+- **Multi-Stop Mandate**: All Loads MUST support `List<Stop>`. Do not use singular `pickup`/`receiver` fields.
+- **Stop Sequence**: Stops must have a `sequence_id` (1-indexed) to enforce order.
+
+### B. Integrations
+
+- **Secrets**: All API keys (Samsara, QuickBooks) must reside in Supabase Edge Functions. Never in the Flutter app.
+
+---
+
 ## 25. Golden Path Snippets
 
 **Use these patterns as the absolute source of truth.**
@@ -267,14 +281,17 @@ result.fold(
 );
 ```
 
-### C. Network Resilience
+### C. Network Resilience (CoreNetworkClient)
 
 ```dart
-// core/network/network_client.dart
-Future<Response> get(String path) async {
-  return RetryOptions(maxAttempts: 3).retry(
-    () => _dio.get(path),
-    retryIf: (e) => e is DioException && e.type != DioExceptionType.cancel,
+// features/dispatch/data/repositories/load_repository.dart
+Future<Result<List<Load>>> fetchLoads() async {
+  return _client.query<List<Load>>(
+    () async {
+      final response = await _client.supabase.from('loads').select();
+      return (response as List).map((json) => Load.fromJson(json)).toList();
+    },
+    operationName: 'fetchLoads',
   );
 }
 ```

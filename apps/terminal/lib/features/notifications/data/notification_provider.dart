@@ -1,10 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../core/providers/supabase_provider.dart';
 
 /// Provider that streams a list of pending (unverified) users.
 final pendingUsersProvider = StreamProvider<List<UserProfile>>((ref) {
-  final supabase = Supabase.instance.client;
+  final supabase = ref.watch(supabaseClientProvider);
   final currentUserEmail = supabase.auth.currentUser?.email;
 
   if (currentUserEmail == null) return Stream.value([]);
@@ -49,7 +50,7 @@ final pendingUsersProvider = StreamProvider<List<UserProfile>>((ref) {
 /// These notifications are created when a driver leaves a company.
 final driverLeftNotificationsProvider =
     StreamProvider<List<Map<String, dynamic>>>((ref) {
-      final supabase = Supabase.instance.client;
+      final supabase = ref.watch(supabaseClientProvider);
       final userId = supabase.auth.currentUser?.id;
 
       if (userId == null) return Stream.value([]);
@@ -74,7 +75,7 @@ final driverLeftNotificationsProvider =
 /// These include "Verification Accepted" and "Verification Declined" from drivers.
 final companyInviteNotificationsProvider =
     StreamProvider<List<Map<String, dynamic>>>((ref) {
-      final supabase = Supabase.instance.client;
+      final supabase = ref.watch(supabaseClientProvider);
       final userId = supabase.auth.currentUser?.id;
 
       if (userId == null) return Stream.value([]);
@@ -96,12 +97,15 @@ final companyInviteNotificationsProvider =
     });
 
 /// Provider for notification actions
-final notificationActionsProvider = Provider((ref) => NotificationActions());
+final notificationActionsProvider = Provider(
+  (ref) => NotificationActions(ref.watch(supabaseClientProvider)),
+);
 
 class NotificationActions {
-  NotificationActions();
+  final SupabaseClient _client;
+  NotificationActions(this._client);
   Future<void> approveUser(String userId, UserRole role) async {
-    final client = Supabase.instance.client;
+    final client = _client;
     final adminId = client.auth.currentUser?.id;
 
     String? companyId;
@@ -141,7 +145,7 @@ class NotificationActions {
     // Actually, update status to 'pending' (no change) just dismisses notifications?
     // User requested "Reject".
     // Let's implement DELETE for now as it removes them from the pending queue.
-    await Supabase.instance.client.from('profiles').delete().eq('id', userId);
+    await _client.from('profiles').delete().eq('id', userId);
 
     // Note: This only deletes the profile. The Auth user remains but has no profile data.
     // In a real app we'd want a specialized Edge Function to delete the Auth User too.
@@ -150,7 +154,7 @@ class NotificationActions {
 
   /// Mark a notification as read/dismissed
   Future<void> dismissNotification(String notificationId) async {
-    await Supabase.instance.client
+    await _client
         .from('notifications')
         .update({'is_read': true})
         .eq('id', notificationId);

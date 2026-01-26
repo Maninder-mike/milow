@@ -1,0 +1,310 @@
+Resolving dependencies in `/Users/maninder/Developer/projects near edge/milow`...
+Downloading packages...
+  _fe_analyzer_shared 91.0.0 (93.0.0 available)
+  analyzer 8.4.0 (10.0.1 available)
+  analyzer_buffer 0.1.11 (0.3.0 available)
+  app_links 6.4.1 (7.0.0 available)
+  characters 1.4.0 (1.4.1 available)
+  dart_style 3.1.3 (3.1.4 available)
+  flutter_riverpod 3.1.0 (3.2.0 available)
+  freezed 3.2.3 (3.2.4 available)
+  geocoding_platform_interface 3.2.0 (5.0.0 available)
+  get_it 8.3.0 (9.2.0 available)
+  google_fonts 7.1.0 (8.0.0 available)
+  hive_ce 2.19.0 (2.19.1 available)
+  hive_ce_generator 1.10.0 (1.11.1 available)
+  image 4.5.4 (4.7.2 available)
+  image_picker_android 0.8.13+11 (0.8.13+12 available)
+  isolate_channel 0.3.0 (0.4.1 available)
+  json_serializable 6.11.2 (6.11.4 available)
+  matcher 0.12.17 (0.12.18 available)
+  material_color_utilities 0.11.1 (0.13.0 available)
+  math_expressions 2.7.0 (3.1.0 available)
+  meta 1.17.0 (1.18.0 available)
+  mgrs_dart 2.0.0 (3.0.0 available)
+  msix 3.16.12 (3.16.13 available)
+  objective_c 9.2.3 (9.2.4 available)
+  petitparser 6.1.0 (7.0.1 available)
+  proj4dart 2.1.0 (3.0.0 available)
+  quantity 3.0.2 (4.0.0 available)
+  riverpod 3.1.0 (3.2.0 available)
+  riverpod_analyzer_utils 1.0.0-dev.8 (1.0.0-dev.9 available)
+  riverpod_annotation 4.0.0 (4.0.1 available)
+  riverpod_generator 4.0.0+1 (4.0.2 available)
+  source_helper 1.3.8 (1.3.10 available)
+  test 1.26.3 (1.29.0 available)
+  test_api 0.7.7 (0.7.9 available)
+  test_core 0.6.12 (0.6.15 available)
+  timezone 0.10.1 (0.11.0 available)
+  unicode 0.3.1 (1.1.9 available)
+  xml 6.5.0 (6.6.1 available)
+Got dependencies in `/Users/maninder/Developer/projects near edge/milow`!
+38 packages have newer versions incompatible with dependency constraints.
+Try `flutter pub outdated` for more information.
+00:00 +0: loading /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart                                                                            00:01 +0: loading /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart                                                                            00:01 +0: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart: AuthRepository signInWithPassword calls GoTrueClient.signInWithPassword           00:01 +1: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart: AuthRepository signInWithPassword calls GoTrueClient.signInWithPassword           00:01 +1: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart: AuthRepository signOut calls GoTrueClient.signOut                                 00:01 +2: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart: AuthRepository signOut calls GoTrueClient.signOut                                 00:01 +2: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart: AuthRepository currentUser returns correct user                                   00:01 +3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/auth/auth_repository_test.dart: AuthRepository currentUser returns correct user                                   00:01 +3: loading /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart                                                                        00:01 +3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart: LoadController createLoad calls repository.createLoad                         00:01 +3 -1: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart: LoadController createLoad calls repository.createLoad [E]                  
+  MissingDummyValueError: Either<Failure, void>
+  
+  This means Mockito was not smart enough to generate a dummy value of type
+  'Either<Failure, void>'. Please consider using either 'provideDummy' or 'provideDummyBuilder'
+  functions to give Mockito a proper dummy value.
+  
+  Please note that due to implementation details Mockito sometimes needs users
+  to provide dummy values for some types, even if they plan to explicitly stub
+  all the called methods.
+  
+  package:mockito/src/dummies.dart 160:3              dummyValue
+  test/helpers/mocks.mocks.dart 3354:19               MockLoadRepository.createLoad
+  test/unit/dispatch/load_controller_test.dart 21:25  main.<fn>
+  
+
+To run this test again: /opt/homebrew/Caskroom/flutter/3.32.5/flutter/bin/cache/dart-sdk/bin/dart test /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart -p vm --plain-name 'LoadController createLoad calls repository.createLoad'
+00:01 +3 -1: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart: LoadController updateLoad calls repository.updateLoad                      00:01 +3 -2: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart: LoadController updateLoad calls repository.updateLoad [E]                  
+  MissingDummyValueError: Either<Failure, void>
+  
+  This means Mockito was not smart enough to generate a dummy value of type
+  'Either<Failure, void>'. Please consider using either 'provideDummy' or 'provideDummyBuilder'
+  functions to give Mockito a proper dummy value.
+  
+  Please note that due to implementation details Mockito sometimes needs users
+  to provide dummy values for some types, even if they plan to explicitly stub
+  all the called methods.
+  
+  package:mockito/src/dummies.dart 160:3              dummyValue
+  test/helpers/mocks.mocks.dart 3354:19               MockLoadRepository.createLoad
+  test/unit/dispatch/load_controller_test.dart 21:25  main.<fn>
+  
+
+To run this test again: /opt/homebrew/Caskroom/flutter/3.32.5/flutter/bin/cache/dart-sdk/bin/dart test /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart -p vm --plain-name 'LoadController updateLoad calls repository.updateLoad'
+00:01 +3 -2: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart: LoadController deleteLoad calls repository.deleteLoad                      00:01 +3 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart: LoadController deleteLoad calls repository.deleteLoad [E]                  
+  MissingDummyValueError: Either<Failure, void>
+  
+  This means Mockito was not smart enough to generate a dummy value of type
+  'Either<Failure, void>'. Please consider using either 'provideDummy' or 'provideDummyBuilder'
+  functions to give Mockito a proper dummy value.
+  
+  Please note that due to implementation details Mockito sometimes needs users
+  to provide dummy values for some types, even if they plan to explicitly stub
+  all the called methods.
+  
+  package:mockito/src/dummies.dart 160:3              dummyValue
+  test/helpers/mocks.mocks.dart 3354:19               MockLoadRepository.createLoad
+  test/unit/dispatch/load_controller_test.dart 21:25  main.<fn>
+  
+
+To run this test again: /opt/homebrew/Caskroom/flutter/3.32.5/flutter/bin/cache/dart-sdk/bin/dart test /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/dispatch/load_controller_test.dart -p vm --plain-name 'LoadController deleteLoad calls repository.deleteLoad'
+00:01 +3 -3: loading /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/profile_provider_test.dart                                                                             00:01 +3 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/profile_provider_test.dart: ProfileNotifier initial state is loading then data                                 00:01 +4 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/profile_provider_test.dart: ProfileNotifier initial state is loading then data                                 00:01 +4 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/profile_provider_test.dart: ProfileNotifier returns null when no user is logged in                             00:01 +5 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/profile_provider_test.dart: ProfileNotifier returns null when no user is logged in                             00:01 +5 -3: loading /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart                                                                          00:01 +5 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions empty() returns permissions with no access                      00:01 +6 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions empty() returns permissions with no access                      00:01 +6 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions empty() all returns empty set                                   00:01 +7 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions empty() all returns empty set                                   00:01 +7 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions admin() returns permissions with full access                    00:01 +8 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions admin() returns permissions with full access                    00:01 +8 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions admin() all returns wildcard set                                00:01 +9 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions admin() all returns wildcard set                                00:01 +9 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions fromJson() deserializes permissions correctly                   00:01 +10 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions fromJson() deserializes permissions correctly                  00:01 +10 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions fromJson() deserializes admin correctly                        00:01 +11 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions fromJson() deserializes admin correctly                        00:01 +11 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions fromJson() handles null permissions list                       00:01 +12 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions fromJson() handles null permissions list                       00:01 +12 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toJson() serializes permissions correctly                      00:01 +13 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toJson() serializes permissions correctly                      00:01 +13 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toJson() serializes admin correctly                            00:01 +14 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toJson() serializes admin correctly                            00:01 +14 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks has() returns true for existing permissions  00:01 +15 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks has() returns true for existing permissions  00:01 +15 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks has() returns false for missing permissions  00:01 +16 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks has() returns false for missing permissions  00:01 +16 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canRead() checks resource.read permission    00:01 +17 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canRead() checks resource.read permission    00:01 +17 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canWrite() checks resource.write permission  00:01 +18 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canWrite() checks resource.write permission  00:01 +18 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canDelete() checks resource.delete permission00:01 +19 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canDelete() checks resource.delete permission00:01 +19 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canManage() requires both read and write     00:01 +20 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions permission checks canManage() requires both read and write     00:01 +20 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toString() returns admin string for admin permissions          00:01 +21 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toString() returns admin string for admin permissions          00:01 +21 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toString() returns permissions set for regular permissions     00:01 +22 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/permission_provider_test.dart: UserPermissions toString() returns permissions set for regular permissions     00:01 +22 -3: loading /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart                                                                             00:01 +22 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart: vehiclesListProvider returns list of vehicles when service fetching succeeds       00:01 +23 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart: vehiclesListProvider returns list of vehicles when service fetching succeeds       00:01 +23 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart: vehiclesListProvider returns empty list when service returns no vehicles           00:01 +24 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart: vehiclesListProvider returns empty list when service returns no vehicles           00:01 +24 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart: vehiclesListProvider throws exception when service fails                           00:01 +24 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart: vehiclesListProvider throws exception when service fails                           
+  Skip: Persistent timeout in test environment
+00:01 +24 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/unit/vehicle_service_test.dart: vehiclesListProvider throws exception when service fails                        00:01 +24 ~1 -3: loading /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/window_control_buttons_test.dart                                                                 00:01 +24 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/window_control_buttons_test.dart: Window Control Buttons renders minimize, maximize, and close buttons   00:02 +24 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/window_control_buttons_test.dart: Window Control Buttons renders minimize, maximize, and close buttons   00:02 +25 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/users_roles_groups_page_test.dart: Users, Roles, Groups Page renders TabView with three tabs             00:02 +26 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/users_roles_groups_page_test.dart: Users, Roles, Groups Page renders TabView with three tabs             00:02 +27 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/users_roles_groups_page_test.dart: Users, Roles, Groups Page renders TabView with three tabs             00:02 +28 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/users_roles_groups_page_test.dart: Users, Roles, Groups Page renders TabView with three tabs             00:02 +29 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/users_roles_groups_page_test.dart: Users, Roles, Groups Page renders TabView with three tabs             00:02 +30 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/users_roles_groups_page_test.dart: Users, Roles, Groups Page renders TabView with three tabs             00:02 +31 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/users_roles_groups_page_test.dart: Users, Roles, Groups Page renders TabView with three tabs             00:02 +32 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/delivery_page_test.dart: DeliveryPage Widget Tests renders all logistics flags correctly                 00:02 +32 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/dashboard_page_test.dart: (setUpAll)                                                                     
+supabase.supabase_flutter: INFO: ***** Supabase init completed ***** 
+00:02 +32 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/delivery_page_test.dart: DeliveryPage Widget Tests renders all logistics flags correctly                 00:02 +33 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/delivery_page_test.dart: DeliveryPage Widget Tests renders all logistics flags correctly                 00:02 +34 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/delivery_page_test.dart: DeliveryPage Widget Tests renders all logistics flags correctly                 00:02 +35 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/delivery_page_test.dart: DeliveryPage Widget Tests renders all logistics flags correctly                 00:03 +35 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/delivery_page_test.dart: DeliveryPage Widget Tests renders all logistics flags correctly                 00:03 +36 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/delivery_page_test.dart: DeliveryPage Widget Tests renders all logistics flags correctly                 00:03 +37 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/dashboard_page_test.dart: OverviewPage loads and shows enterprise dashboard                              00:03 +38 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/dashboard_page_test.dart: OverviewPage loads and shows enterprise dashboard                              00:03 +39 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/dashboard_page_test.dart: OverviewPage loads and shows enterprise dashboard                              00:03 +40 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/dashboard_page_test.dart: OverviewPage loads and shows enterprise dashboard                              00:03 +41 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/pickup_page_test.dart: PickUpPage Widget Tests renders all logistics flags correctly                     00:03 +42 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/pickup_page_test.dart: PickUpPage Widget Tests renders all logistics flags correctly                     00:03 +43 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/pickup_page_test.dart: PickUpPage Widget Tests renders all logistics flags correctly                     00:03 +44 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/pickup_page_test.dart: PickUpPage Widget Tests renders all logistics flags correctly                     00:03 +45 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/login_page_test.dart: LoginPage shows email and password fields and login button                         00:04 +45 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/login_page_test.dart: LoginPage shows email and password fields and login button                         00:04 +46 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/login_page_test.dart: LoginPage shows email and password fields and login button                         00:04 +47 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/fleet_sidebar_test.dart: FleetSidebar Widget Test renders sidebar with header and vehicle list           00:04 +47 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/login_page_test.dart: Inputting credentials and clicking login calls Supabase Auth                       
+LOGIN ERROR: ProviderException: Tried to use a provider that is in error state.
+
+A provider threw the following exception:
+'package:supabase_flutter/src/supabase.dart': Failed assertion: line 45 pos 7: '_instance._isInitialized': You must initialize the supabase instance before calling Supabase.instance
+
+The stack trace of the exception:
+#0      _AssertionError._doThrowNew (dart:core-patch/errors_patch.dart:67:4)
+#1      _AssertionError._throwNew (dart:core-patch/errors_patch.dart:49:5)
+#2      Supabase.instance (package:supabase_flutter/src/supabase.dart:45:7)
+#3      coreNetworkClient (package:terminal/core/providers/network_provider.dart:9:37)
+#4      CoreNetworkClientProvider.create (package:terminal/core/providers/network_provider.g.dart:45:12)
+#5      $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:32)
+#6      ProviderElement.buildState (package:riverpod/src/core/element.dart:674:28)
+#7      ProviderElement.mount (package:riverpod/src/core/element.dart:528:7)
+#8      ProviderElement.flush (package:riverpod/src/core/element.dart:631:7)
+#9      $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#10     ProviderElement.listen (package:riverpod/src/core/element.dart:910:28)
+#11     Ref.watch (package:riverpod/src/core/ref.dart:639:20)
+#12     authRepository (package:terminal/features/auth/data/auth_repository.dart:15:29)
+#13     AuthRepositoryProvider.create (package:terminal/features/auth/data/auth_repository.g.dart:39:12)
+#14     $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:32)
+#15     ProviderElement.buildState (package:riverpod/src/core/element.dart:674:28)
+#16     ProviderElement.mount (package:riverpod/src/core/element.dart:528:7)
+#17     ProviderElement.flush (package:riverpod/src/core/element.dart:631:7)
+#18     $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#19     ProviderContainer.listen (package:riverpod/src/core/provider_container.dart:960:26)
+#20     ProviderContainer.read (package:riverpod/src/core/provider_container.dart:917:17)
+#21     Ref.read (package:riverpod/src/core/ref.dart:524:30)
+#22     LoginController.loginWithPassword.<anonymous closure> (package:terminal/features/auth/presentation/providers/login_controller.dart:20:28)
+#23     AsyncValue.guard (package:riverpod/src/core/async_value.dart:523:42)
+#24     LoginController.loginWithPassword (package:terminal/features/auth/presentation/providers/login_controller.dart:19:30)
+#25     _LoginPageState._login (package:terminal/features/auth/presentation/pages/login_page.dart:76:10)
+#26     GestureRecognizer.invokeCallback (package:flutter/src/gestures/recognizer.dart:345:24)
+#27     TapGestureRecognizer.handleTapUp (package:flutter/src/gestures/tap.dart:758:11)
+#28     BaseTapGestureRecognizer._checkUp (package:flutter/src/gestures/tap.dart:383:5)
+#29     BaseTapGestureRecognizer.handlePrimaryPointer (package:flutter/src/gestures/tap.dart:314:7)
+#30     PrimaryPointerGestureRecognizer.handleEvent (package:flutter/src/gestures/recognizer.dart:721:9)
+#31     PointerRouter._dispatch (package:flutter/src/gestures/pointer_router.dart:97:12)
+#32     PointerRouter._dispatchEventToRoutes.<anonymous closure> (package:flutter/src/gestures/pointer_router.dart:142:9)
+#33     _LinkedHashMapMixin.forEach (dart:_compact_hash:765:13)
+#34     PointerRouter._dispatchEventToRoutes (package:flutter/src/gestures/pointer_router.dart:140:18)
+#35     PointerRouter.route (package:flutter/src/gestures/pointer_router.dart:130:7)
+#36     GestureBinding.handleEvent (package:flutter/src/gestures/binding.dart:528:19)
+#37     GestureBinding.dispatchEvent (package:flutter/src/gestures/binding.dart:498:22)
+#38     RendererBinding.dispatchEvent (package:flutter/src/rendering/binding.dart:473:11)
+#39     GestureBinding._handlePointerEventImmediately (package:flutter/src/gestures/binding.dart:437:7)
+#40     GestureBinding.handlePointerEvent (package:flutter/src/gestures/binding.dart:394:5)
+#41     TestWidgetsFlutterBinding.handlePointerEventForSource.<anonymous closure> (package:flutter_test/src/binding.dart:678:42)
+#42     TestWidgetsFlutterBinding.withPointerEventSource (package:flutter_test/src/binding.dart:688:11)
+#43     TestWidgetsFlutterBinding.handlePointerEventForSource (package:flutter_test/src/binding.dart:678:5)
+#44     WidgetTester.sendEventToBinding.<anonymous closure> (package:flutter_test/src/widget_tester.dart:869:15)
+#45     _rootRun (dart:async/zone.dart:1525:13)
+#46     _CustomZone.run (dart:async/zone.dart:1422:19)
+#47     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#48     WidgetTester.sendEventToBinding (package:flutter_test/src/widget_tester.dart:868:27)
+#49     TestGesture.up.<anonymous closure> (package:flutter_test/src/test_pointer.dart:538:26)
+#50     _rootRun (dart:async/zone.dart:1525:13)
+#51     _CustomZone.run (dart:async/zone.dart:1422:19)
+#52     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#53     TestGesture.up (package:flutter_test/src/test_pointer.dart:531:27)
+#54     WidgetController.tapAt.<anonymous closure> (package:flutter_test/src/controller.dart:1117:21)
+<asynchronous suspension>
+#55     TestAsyncUtils.guard.<anonymous closure> (package:flutter_test/src/test_async_utils.dart:130:27)
+<asynchronous suspension>
+#56     main.<anonymous closure> (file:///Users/maninder/Developer/projects%20near%20edge/milow/apps/terminal/test/widget/login_page_test.dart:119:5)
+<asynchronous suspension>
+#57     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#58     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+#59     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+
+
+And rethrown at:
+#0      throwProviderException (package:riverpod/src/common/stack_trace.dart:10:3)
+#1      $ResultError.valueOrProviderException (package:riverpod/src/common/result.dart:108:7)
+#2      Ref.watch (package:riverpod/src/core/ref.dart:646:27)
+#3      authRepository (package:terminal/features/auth/data/auth_repository.dart:15:29)
+#4      AuthRepositoryProvider.create (package:terminal/features/auth/data/auth_repository.g.dart:39:12)
+#5      $ProviderElement.create (package:riverpod/src/providers/provider.dart:343:32)
+#6      ProviderElement.buildState (package:riverpod/src/core/element.dart:674:28)
+#7      ProviderElement.mount (package:riverpod/src/core/element.dart:528:7)
+#8      ProviderElement.flush (package:riverpod/src/core/element.dart:631:7)
+#9      $ProviderBaseImpl._addListener (package:riverpod/src/core/provider/provider.dart:119:24)
+#10     ProviderContainer.listen (package:riverpod/src/core/provider_container.dart:960:26)
+#11     ProviderContainer.read (package:riverpod/src/core/provider_container.dart:917:17)
+#12     Ref.read (package:riverpod/src/core/ref.dart:524:30)
+#13     LoginController.loginWithPassword.<anonymous closure> (package:terminal/features/auth/presentation/providers/login_controller.dart:20:28)
+#14     AsyncValue.guard (package:riverpod/src/core/async_value.dart:523:42)
+#15     LoginController.loginWithPassword (package:terminal/features/auth/presentation/providers/login_controller.dart:19:30)
+#16     _LoginPageState._login (package:terminal/features/auth/presentation/pages/login_page.dart:76:10)
+#17     GestureRecognizer.invokeCallback (package:flutter/src/gestures/recognizer.dart:345:24)
+#18     TapGestureRecognizer.handleTapUp (package:flutter/src/gestures/tap.dart:758:11)
+#19     BaseTapGestureRecognizer._checkUp (package:flutter/src/gestures/tap.dart:383:5)
+#20     BaseTapGestureRecognizer.handlePrimaryPointer (package:flutter/src/gestures/tap.dart:314:7)
+#21     PrimaryPointerGestureRecognizer.handleEvent (package:flutter/src/gestures/recognizer.dart:721:9)
+#22     PointerRouter._dispatch (package:flutter/src/gestures/pointer_router.dart:97:12)
+#23     PointerRouter._dispatchEventToRoutes.<anonymous closure> (package:flutter/src/gestures/pointer_router.dart:142:9)
+#24     _LinkedHashMapMixin.forEach (dart:_compact_hash:765:13)
+#25     PointerRouter._dispatchEventToRoutes (package:flutter/src/gestures/pointer_router.dart:140:18)
+#26     PointerRouter.route (package:flutter/src/gestures/pointer_router.dart:130:7)
+#27     GestureBinding.handleEvent (package:flutter/src/gestures/binding.dart:528:19)
+#28     GestureBinding.dispatchEvent (package:flutter/src/gestures/binding.dart:498:22)
+#29     RendererBinding.dispatchEvent (package:flutter/src/rendering/binding.dart:473:11)
+#30     GestureBinding._handlePointerEventImmediately (package:flutter/src/gestures/binding.dart:437:7)
+#31     GestureBinding.handlePointerEvent (package:flutter/src/gestures/binding.dart:394:5)
+#32     TestWidgetsFlutterBinding.handlePointerEventForSource.<anonymous closure> (package:flutter_test/src/binding.dart:678:42)
+#33     TestWidgetsFlutterBinding.withPointerEventSource (package:flutter_test/src/binding.dart:688:11)
+#34     TestWidgetsFlutterBinding.handlePointerEventForSource (package:flutter_test/src/binding.dart:678:5)
+#35     WidgetTester.sendEventToBinding.<anonymous closure> (package:flutter_test/src/widget_tester.dart:869:15)
+#36     _rootRun (dart:async/zone.dart:1525:13)
+#37     _CustomZone.run (dart:async/zone.dart:1422:19)
+#38     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#39     WidgetTester.sendEventToBinding (package:flutter_test/src/widget_tester.dart:868:27)
+#40     TestGesture.up.<anonymous closure> (package:flutter_test/src/test_pointer.dart:538:26)
+#41     _rootRun (dart:async/zone.dart:1525:13)
+#42     _CustomZone.run (dart:async/zone.dart:1422:19)
+#43     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#44     TestGesture.up (package:flutter_test/src/test_pointer.dart:531:27)
+#45     WidgetController.tapAt.<anonymous closure> (package:flutter_test/src/controller.dart:1117:21)
+<asynchronous suspension>
+#46     TestAsyncUtils.guard.<anonymous closure> (package:flutter_test/src/test_async_utils.dart:130:27)
+<asynchronous suspension>
+#47     main.<anonymous closure> (file:///Users/maninder/Developer/projects%20near%20edge/milow/apps/terminal/test/widget/login_page_test.dart:119:5)
+<asynchronous suspension>
+#48     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#49     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+#50     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+
+LOGIN STACK: #0      throwProviderException (package:riverpod/src/common/stack_trace.dart:10:3)
+#1      $ResultError.valueOrProviderException (package:riverpod/src/common/result.dart:108:7)
+#2      ProviderContainer.read (package:riverpod/src/core/provider_container.dart:920:29)
+#3      Ref.read (package:riverpod/src/core/ref.dart:524:30)
+#4      LoginController.loginWithPassword.<anonymous closure> (package:terminal/features/auth/presentation/providers/login_controller.dart:20:28)
+#5      AsyncValue.guard (package:riverpod/src/core/async_value.dart:523:42)
+#6      LoginController.loginWithPassword (package:terminal/features/auth/presentation/providers/login_controller.dart:19:30)
+#7      _LoginPageState._login (package:terminal/features/auth/presentation/pages/login_page.dart:76:10)
+#8      GestureRecognizer.invokeCallback (package:flutter/src/gestures/recognizer.dart:345:24)
+#9      TapGestureRecognizer.handleTapUp (package:flutter/src/gestures/tap.dart:758:11)
+#10     BaseTapGestureRecognizer._checkUp (package:flutter/src/gestures/tap.dart:383:5)
+#11     BaseTapGestureRecognizer.handlePrimaryPointer (package:flutter/src/gestures/tap.dart:314:7)
+#12     PrimaryPointerGestureRecognizer.handleEvent (package:flutter/src/gestures/recognizer.dart:721:9)
+#13     PointerRouter._dispatch (package:flutter/src/gestures/pointer_router.dart:97:12)
+#14     PointerRouter._dispatchEventToRoutes.<anonymous closure> (package:flutter/src/gestures/pointer_router.dart:142:9)
+#15     _LinkedHashMapMixin.forEach (dart:_compact_hash:765:13)
+#16     PointerRouter._dispatchEventToRoutes (package:flutter/src/gestures/pointer_router.dart:140:18)
+#17     PointerRouter.route (package:flutter/src/gestures/pointer_router.dart:130:7)
+#18     GestureBinding.handleEvent (package:flutter/src/gestures/binding.dart:528:19)
+#19     GestureBinding.dispatchEvent (package:flutter/src/gestures/binding.dart:498:22)
+#20     RendererBinding.dispatchEvent (package:flutter/src/rendering/binding.dart:473:11)
+#21     GestureBinding._handlePointerEventImmediately (package:flutter/src/gestures/binding.dart:437:7)
+#22     GestureBinding.handlePointerEvent (package:flutter/src/gestures/binding.dart:394:5)
+#23     TestWidgetsFlutterBinding.handlePointerEventForSource.<anonymous closure> (package:flutter_test/src/binding.dart:678:42)
+#24     TestWidgetsFlutterBinding.withPointerEventSource (package:flutter_test/src/binding.dart:688:11)
+#25     TestWidgetsFlutterBinding.handlePointerEventForSource (package:flutter_test/src/binding.dart:678:5)
+#26     WidgetTester.sendEventToBinding.<anonymous closure> (package:flutter_test/src/widget_tester.dart:869:15)
+#27     _rootRun (dart:async/zone.dart:1525:13)
+#28     _CustomZone.run (dart:async/zone.dart:1422:19)
+#29     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#30     WidgetTester.sendEventToBinding (package:flutter_test/src/widget_tester.dart:868:27)
+#31     TestGesture.up.<anonymous closure> (package:flutter_test/src/test_pointer.dart:538:26)
+#32     _rootRun (dart:async/zone.dart:1525:13)
+#33     _CustomZone.run (dart:async/zone.dart:1422:19)
+#34     TestAsyncUtils.guard (package:flutter_test/src/test_async_utils.dart:74:41)
+#35     TestGesture.up (package:flutter_test/src/test_pointer.dart:531:27)
+#36     WidgetController.tapAt.<anonymous closure> (package:flutter_test/src/controller.dart:1117:21)
+<asynchronous suspension>
+#37     TestAsyncUtils.guard.<anonymous closure> (package:flutter_test/src/test_async_utils.dart:130:27)
+<asynchronous suspension>
+#38     main.<anonymous closure> (file:///Users/maninder/Developer/projects%20near%20edge/milow/apps/terminal/test/widget/login_page_test.dart:119:5)
+<asynchronous suspension>
+#39     testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#40     TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+#41     StackZoneSpecification._registerCallback.<anonymous closure> (package:stack_trace/src/stack_zone_specification.dart:114:42)
+<asynchronous suspension>
+
+00:04 +48 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/fleet_sidebar_test.dart: FleetSidebar Widget Test renders sidebar with header and vehicle list           00:04 +48 ~1 -3: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/login_page_test.dart: Inputting credentials and clicking login calls Supabase Auth                       
+══╡ EXCEPTION CAUGHT BY FLUTTER TEST FRAMEWORK ╞════════════════════════════════════════════════════
+The following TestFailure was thrown running a test:
+No matching calls (actually, no calls at all).
+(If you called `verify(...).called(0);`, please instead use `verifyNever(...);`.)
+
+When the exception was thrown, this was the stack:
+#0      fail (package:matcher/src/expect/expect.dart:149:31)
+#1      _VerifyCall._checkWith (package:mockito/src/mock.dart:853:7)
+#2      _makeVerify.<anonymous closure> (package:mockito/src/mock.dart:1153:18)
+#3      main.<anonymous closure> (file:///Users/maninder/Developer/projects%20near%20edge/milow/apps/terminal/test/widget/login_page_test.dart:126:11)
+<asynchronous suspension>
+#4      testWidgets.<anonymous closure>.<anonymous closure> (package:flutter_test/src/widget_tester.dart:192:15)
+<asynchronous suspension>
+#5      TestWidgetsFlutterBinding._runTestBody (package:flutter_test/src/binding.dart:1059:5)
+<asynchronous suspension>
+<asynchronous suspension>
+(elided one frame from package:stack_trace)
+
+The test description was:
+  Inputting credentials and clicking login calls Supabase Auth
+════════════════════════════════════════════════════════════════════════════════════════════════════
+00:04 +48 ~1 -4: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/login_page_test.dart: Inputting credentials and clicking login calls Supabase Auth [E]                   
+  Test failed. See exception logs above.
+  The test description was: Inputting credentials and clicking login calls Supabase Auth
+  
+
+To run this test again: /opt/homebrew/Caskroom/flutter/3.32.5/flutter/bin/cache/dart-sdk/bin/dart test /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/login_page_test.dart -p vm --plain-name 'Inputting credentials and clicking login calls Supabase Auth'
+00:04 +49 ~1 -4: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/fleet_sidebar_test.dart: FleetSidebar Widget Test renders sidebar with header and vehicle list           00:04 +49 ~1 -4: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/fleet_sidebar_test.dart: FleetSidebar Widget Test toggles section visibility                             00:04 +50 ~1 -4: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/fleet_sidebar_test.dart: FleetSidebar Widget Test toggles section visibility                             00:04 +50 ~1 -4: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/fleet_sidebar_test.dart: FleetSidebar Widget Test searches vehicles by number                            00:04 +51 ~1 -4: /Users/maninder/Developer/projects near edge/milow/apps/terminal/test/widget/fleet_sidebar_test.dart: FleetSidebar Widget Test searches vehicles by number                            00:04 +51 ~1 -4: Some tests failed.                                                                                                                                                                    

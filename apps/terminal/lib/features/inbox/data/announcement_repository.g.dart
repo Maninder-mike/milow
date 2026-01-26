@@ -55,7 +55,7 @@ final class AnnouncementRepositoryProvider
 }
 
 String _$announcementRepositoryHash() =>
-    r'884e4d7b95308d2f719a3f7acc2446e8782bcad5';
+    r'087b8cbc45a9d6a1abca5b8d7c6f9516213fe16b';
 
 @ProviderFor(announcements)
 final announcementsProvider = AnnouncementsProvider._();
