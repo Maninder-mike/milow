@@ -24,7 +24,7 @@ import 'package:milow/core/theme/m3_expressive_motion.dart';
 // import 'package:milow/core/widgets/document_capture_button.dart'; // Removed
 
 import 'package:milow/core/widgets/load_details_section.dart';
-import 'package:milow/core/widgets/split_save_button.dart';
+
 import 'package:milow/core/widgets/m3_spring_button.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
@@ -1223,27 +1223,6 @@ class _AddEntryPageState extends State<AddEntryPage>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Per-stop completion toggle
-                  if (i < _pickupCompleted.length)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10, right: 8),
-                      child: IconButton(
-                        icon: Icon(
-                          _pickupCompleted[i]
-                              ? Icons.check_circle
-                              : Icons.check_circle_outline,
-                          color: _pickupCompleted[i]
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.outline,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _pickupCompleted[i] = !_pickupCompleted[i];
-                          });
-                        },
-                        tooltip: 'Mark Stop ${i + 1} as Picked Up',
-                      ),
-                    ),
                   Expanded(
                     child: CustomAutocompleteField(
                       controller: _pickupControllers[i],
@@ -1339,27 +1318,6 @@ class _AddEntryPageState extends State<AddEntryPage>
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Per-stop completion toggle
-                  if (i < _deliveryCompleted.length)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 10, right: 8),
-                      child: IconButton(
-                        icon: Icon(
-                          _deliveryCompleted[i]
-                              ? Icons.check_circle
-                              : Icons.check_circle_outline,
-                          color: _deliveryCompleted[i]
-                              ? Theme.of(context).colorScheme.primary
-                              : Theme.of(context).colorScheme.outline,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _deliveryCompleted[i] = !_deliveryCompleted[i];
-                          });
-                        },
-                        tooltip: 'Mark Delivery ${i + 1} as Complete',
-                      ),
-                    ),
                   Expanded(
                     child: CustomAutocompleteField(
                       controller: _deliveryControllers[i],
@@ -1804,10 +1762,48 @@ class _AddEntryPageState extends State<AddEntryPage>
                               ),
                               const SizedBox(width: 4),
                               if (_tabController.index == 0)
-                                SplitSaveButton(
-                                  onSave: _validateAndSaveTrip,
-                                  onSaveAsTemplate: _saveAsTemplate,
-                                  isLoading: _isSaving,
+                                FilledButton(
+                                  onPressed: _isSaving
+                                      ? null
+                                      : _validateAndSaveTrip,
+                                  style: FilledButton.styleFrom(
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primary,
+                                    foregroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.onPrimary,
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: context.tokens.spacingM,
+                                    ),
+                                    minimumSize: const Size(0, 40),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(
+                                        context.tokens.shapeL,
+                                      ),
+                                    ),
+                                  ),
+                                  child: _isSaving
+                                      ? const SizedBox(
+                                          width: 16,
+                                          height: 16,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            strokeCap: StrokeCap.round,
+                                          ),
+                                        )
+                                      : Text(
+                                          'Save Trip',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelLarge
+                                              ?.copyWith(
+                                                fontWeight: FontWeight.w700,
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.onPrimary,
+                                              ),
+                                        ),
                                 )
                               else
                                 M3SpringButton(
@@ -2384,137 +2380,6 @@ class _AddEntryPageState extends State<AddEntryPage>
       if (mounted) {
         setState(() => _isSaving = false);
       }
-    }
-  }
-
-  Future<void> _saveAsTemplate() async {
-    // 1. Validate inputs (same as save trip) using simplified check
-    if (_tripNumberController.text.trim().isEmpty) {
-      AppDialogs.showWarning(context, 'Please enter a trip number');
-      return;
-    }
-
-    // 2. Ask for template name
-    final nameController = TextEditingController();
-    final descriptionController = TextEditingController();
-
-    final shouldSave = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Save as Template'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameController,
-              decoration: const InputDecoration(
-                labelText: 'Template Name',
-                hintText: 'e.g., Weekly Produce Route',
-              ),
-              autofocus: true,
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: descriptionController,
-              decoration: const InputDecoration(
-                labelText: 'Description (Optional)',
-                hintText: 'Notes about this route...',
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Save Template'),
-          ),
-        ],
-      ),
-    );
-
-    if (shouldSave != true || nameController.text.trim().isEmpty) return;
-
-    setState(() => _isSaving = true);
-
-    try {
-      final userId = Supabase.instance.client.auth.currentUser?.id;
-      if (userId == null) return;
-
-      // 3. Create Trip object (snapshot)
-      final tripSnapshot = Trip(
-        id: const Uuid().v4(),
-        userId: userId,
-        tripNumber: _tripNumberController.text.trim(),
-        truckNumber: _tripTruckNumberController.text.trim(),
-        tripDate: DateTime.now(), // Placeholder
-        vehicleId: _selectedTripVehicleId,
-        trailers: _trailerControllers
-            .map((c) => c.text.trim())
-            .where((t) => t.isNotEmpty)
-            .toList(),
-        pickupLocations: _pickupControllers
-            .map((c) => c.text.trim())
-            .where((t) => t.isNotEmpty)
-            .toList(),
-        deliveryLocations: _deliveryControllers
-            .map((c) => c.text.trim())
-            .where((t) => t.isNotEmpty)
-            .toList(),
-        // Load details
-        commodity: _commodityController.text.trim().isNotEmpty
-            ? _commodityController.text.trim()
-            : null,
-        weight: double.tryParse(_weightController.text.trim()),
-        weightUnit: _weightUnit,
-        pieces: int.tryParse(_piecesController.text.trim()),
-        referenceNumbers: _referenceNumberControllers
-            .map((c) => c.text.trim())
-            .where((t) => t.isNotEmpty)
-            .toList(),
-        notes: _tripNotesController.text.trim().isNotEmpty
-            ? _tripNotesController.text.trim()
-            : null,
-        startOdometer: null,
-        endOdometer: null,
-      );
-
-      // 4. Create TripTemplate object
-      final template = TripTemplate(
-        id: const Uuid().v4(),
-        userId: userId,
-        name: nameController.text.trim(),
-        description: descriptionController.text.trim().isNotEmpty
-            ? descriptionController.text.trim()
-            : null,
-        templateData: tripSnapshot,
-      );
-
-      // 5. Save to Supabase
-      final data = template.toJson();
-      data.remove('id'); // Let DB generate ID
-      data.remove('created_at');
-      data.remove('updated_at');
-
-      await Supabase.instance.client.from('trip_templates').insert(data);
-
-      if (mounted) {
-        AppDialogs.showSuccess(context, 'Template saved successfully!');
-      }
-    } catch (e) {
-      debugPrint('Error saving template: $e');
-      if (mounted) {
-        AppDialogs.showError(context, 'Failed to save template: $e');
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSaving = false);
-      }
-      nameController.dispose();
-      descriptionController.dispose();
     }
   }
 

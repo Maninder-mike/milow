@@ -18,7 +18,11 @@ import 'package:milow/core/services/fuel_service.dart';
 class FuelRepository {
   static const _uuid = Uuid();
   static SupabaseClient get _client => Supabase.instance.client;
-  static String? get _userId => _client.auth.currentUser?.id;
+  static String? get _userId => mockUserId ?? _client.auth.currentUser?.id;
+
+  /// Mock user ID for testing
+  @visibleForTesting
+  static String? mockUserId;
 
   /// Get all fuel entries for current user (local-first)
   static Future<List<FuelEntry>> getFuelEntries({bool refresh = true}) async {

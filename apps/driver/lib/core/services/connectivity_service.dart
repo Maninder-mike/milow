@@ -12,6 +12,10 @@ class ConnectivityService {
   factory ConnectivityService() => _instance;
   ConnectivityService._internal();
 
+  /// Allow subclassing for testing
+  @visibleForTesting
+  ConnectivityService.testing();
+
   /// Allow overriding the instance for tests
   @visibleForTesting
   static set instance(ConnectivityService mock) => _instance = mock;

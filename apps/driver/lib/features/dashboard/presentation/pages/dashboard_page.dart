@@ -42,7 +42,8 @@ class _DashboardPageState extends State<DashboardPage>
     with TickerProviderStateMixin {
   // Border wait times
   List<BorderWaitTime> _borderWaitTimes = [];
-  bool _isLoadingBorders = true;
+  bool _isLoadingBorders =
+      false; // Default to false so we don't show shimmer if disabled
   String? _borderError;
   Timer? _borderRefreshTimer;
 
@@ -244,29 +245,47 @@ class _DashboardPageState extends State<DashboardPage>
   }
 
   Future<void> _loadBorderWaitTimes({bool forceRefresh = false}) async {
-    final prefetch = DataPrefetchService.instance;
+    try {
+      // First check if user has ANY saved borders
+      final savedCrossings =
+          await BorderWaitTimeService.getSavedBorderCrossings();
 
-    // Try to use prefetched data first
-    if (!forceRefresh &&
-        prefetch.isPrefetchComplete &&
-        prefetch.cachedBorderWaitTimes != null) {
+      if (savedCrossings.isEmpty) {
+        // Correct logic: If no borders saved, don't show ANY loading or data
+        if (mounted) {
+          setState(() {
+            _borderWaitTimes = [];
+            _isLoadingBorders = false;
+            _borderError = null;
+          });
+        }
+        return;
+      }
+
+      // If we have saved crossings, THEN we can show loading/fetch
+      final prefetch = DataPrefetchService.instance;
+
+      // Try to use prefetched data first
+      if (!forceRefresh &&
+          prefetch.isPrefetchComplete &&
+          prefetch.cachedBorderWaitTimes != null) {
+        if (mounted) {
+          setState(() {
+            _borderWaitTimes = prefetch.cachedBorderWaitTimes!;
+            _isLoadingBorders = false;
+            _borderError = null;
+          });
+        }
+        return;
+      }
+
       if (mounted) {
         setState(() {
-          _borderWaitTimes = prefetch.cachedBorderWaitTimes!;
-          _isLoadingBorders = false;
+          _isLoadingBorders = true;
           _borderError = null;
         });
       }
-      return;
-    }
 
-    if (forceRefresh) {
-      setState(() {
-        _isLoadingBorders = true;
-        _borderError = null;
-      });
-    }
-    try {
       // Force refresh the API data first if requested
       if (forceRefresh) {
         await BorderWaitTimeService.fetchAllWaitTimes(forceRefresh: true);

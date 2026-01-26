@@ -19,6 +19,7 @@ import 'package:intl/intl.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
+import 'package:milow/features/dashboard/presentation/widgets/records_export_sheet.dart';
 
 class RecordsListPage extends StatefulWidget {
   const RecordsListPage({super.key});
@@ -31,6 +32,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
   final TextEditingController _searchController = TextEditingController();
   String _selectedFilter = 'All';
   String _searchQuery = '';
+  bool _isSearching = false; // Add search state
   DateTimeRange? _selectedDateRange;
 
   // Real data from Supabase
@@ -285,96 +287,6 @@ class _RecordsListPageState extends State<RecordsListPage> {
     super.dispose();
   }
 
-  void _showFilterBottomSheet() {
-    final tokens = context.tokens;
-    final textColor = tokens.textPrimary;
-    final cardColor = tokens.surfaceContainer;
-
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(tokens.shapeXL),
-        ),
-      ),
-      builder: (context) {
-        return Padding(
-          padding: EdgeInsets.all(tokens.spacingL),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: tokens.subtleBorderColor,
-                    borderRadius: BorderRadius.circular(2),
-                  ),
-                ),
-              ),
-              SizedBox(height: tokens.spacingL),
-              Text(
-                'Filter Records',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-              SizedBox(height: tokens.spacingM),
-              _buildFilterOption('All', textColor, context),
-              _buildFilterOption('Trips Only', textColor, context),
-              _buildFilterOption('Fuel Only', textColor, context),
-              _buildFilterOption('Short (<100 mi)', textColor, context),
-              _buildFilterOption('Medium (100-200 mi)', textColor, context),
-              _buildFilterOption('Long (>200 mi)', textColor, context),
-              SizedBox(height: tokens.spacingL),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildFilterOption(
-    String filter,
-    Color textColor,
-    BuildContext context,
-  ) {
-    final isSelected = _selectedFilter == filter;
-    return InkWell(
-      onTap: () {
-        setState(() {
-          _selectedFilter = filter;
-        });
-        Navigator.pop(context);
-      },
-      child: Padding(
-        padding: EdgeInsets.symmetric(vertical: context.tokens.spacingM),
-        child: Row(
-          children: [
-            Icon(
-              isSelected ? Icons.radio_button_checked : Icons.radio_button_off,
-              color: isSelected
-                  ? Theme.of(context).colorScheme.primary
-                  : Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            SizedBox(width: context.tokens.spacingM),
-            Text(
-              filter,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: textColor,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
@@ -388,166 +300,205 @@ class _RecordsListPageState extends State<RecordsListPage> {
       body: NestedScrollView(
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
-            // Main AppBar (always visible)
-            SliverAppBar(
-              backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-              elevation: 0,
-              floating: false,
-              pinned: true,
-              leading: IconButton(
-                icon: Icon(
-                  Icons.arrow_back_ios_new_rounded,
-                  color: Theme.of(context).colorScheme.onSurface,
-                  size: 20,
-                ),
-                onPressed: () => Navigator.pop(context),
-              ),
-              title: Text(
-                'All Records',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: textColor,
-                ),
-              ),
-              actions: [
-                IconButton(
-                  icon: Icon(
-                    Icons.download_rounded,
-                    color: Theme.of(context).colorScheme.onSurface,
-                  ),
-                  onPressed: () => _showDownloadBottomSheet(
-                    textColor,
-                    secondaryTextColor,
-                    cardColor,
-                    borderColor,
-                  ),
-                ),
-                IconButton(
-                  icon: Badge(
-                    isLabelVisible: _selectedFilter != 'All',
-                    child: Icon(
-                      Icons.tune_rounded,
-                      color: Theme.of(context).colorScheme.onSurface,
-                    ),
-                  ),
-                  onPressed: _showFilterBottomSheet,
-                ),
-              ],
-            ),
-            // Search bar (hides on scroll up)
+            // Main AppBar with Search Toggle
             SliverAppBar(
               backgroundColor: Theme.of(context).scaffoldBackgroundColor,
               elevation: 0,
               floating: true,
-              pinned: false,
-              toolbarHeight: 72,
-              automaticallyImplyLeading: false,
-              flexibleSpace: Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
-                child: TextField(
-                  controller: _searchController,
-                  onChanged: (value) {
-                    setState(() {
-                      _searchQuery = value;
-                    });
-                  },
-                  decoration: InputDecoration(
-                    hintText: 'Search by load ID or route...',
-                    hintStyle: Theme.of(
-                      context,
-                    ).textTheme.bodyLarge?.copyWith(color: secondaryTextColor),
-                    prefixIcon: Icon(
-                      Icons.search_rounded,
-                      color: secondaryTextColor,
+              pinned: true,
+              leading: _isSearching
+                  ? IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_rounded,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = false;
+                          _searchQuery = '';
+                          _searchController.clear();
+                        });
+                      },
+                    )
+                  : IconButton(
+                      icon: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Theme.of(context).colorScheme.onSurface,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.pop(context),
                     ),
-                    suffixIcon: _searchQuery.isNotEmpty
-                        ? IconButton(
-                            icon: Icon(
-                              Icons.close_rounded,
-                              color: secondaryTextColor,
-                            ),
-                            onPressed: () {
-                              setState(() {
-                                _searchController.clear();
-                                _searchQuery = '';
-                              });
-                            },
-                          )
-                        : null,
-                    filled: true,
-                    fillColor: Theme.of(
-                      context,
-                    ).colorScheme.surfaceContainerLow,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(tokens.shapeM),
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(tokens.shapeM),
-                      borderSide: BorderSide(color: borderColor),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(tokens.shapeM),
-                      borderSide: BorderSide(
-                        color: Theme.of(context).colorScheme.primary,
+              title: _isSearching
+                  ? TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Search...',
+                        border: InputBorder.none,
+                        hintStyle: Theme.of(context).textTheme.bodyLarge
+                            ?.copyWith(color: secondaryTextColor),
+                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.bodyLarge?.copyWith(color: textColor),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                    )
+                  : Text(
+                      'All Records',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: textColor,
                       ),
                     ),
-                    contentPadding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
+              actions: [
+                if (!_isSearching)
+                  IconButton(
+                    icon: Icon(
+                      Icons.search_rounded,
+                      color: Theme.of(context).colorScheme.onSurface,
                     ),
+                    onPressed: () {
+                      setState(() {
+                        _isSearching = true;
+                      });
+                    },
                   ),
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(color: textColor),
+
+                if (!_isSearching)
+                  IconButton(
+                    icon: Icon(
+                      Icons.download_rounded,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        showDragHandle: true,
+                        useSafeArea: true,
+                        backgroundColor: Theme.of(
+                          context,
+                        ).extension<DesignTokens>()!.surfaceContainer,
+                        builder: (context) => RecordsExportSheet(
+                          initialDateRange: _selectedDateRange,
+                          initialFilter: _selectedFilter,
+                          initialTripColumns: _selectedTripColumns,
+                          initialFuelColumns: _selectedFuelColumns,
+                          onDownloadCSV:
+                              (
+                                dateRange,
+                                filter,
+                                tripCols,
+                                fuelCols,
+                                includeSummary,
+                              ) {
+                                setState(() {
+                                  _selectedDateRange = dateRange;
+                                  _selectedFilter = filter;
+                                  _selectedTripColumns
+                                    ..clear()
+                                    ..addAll(tripCols);
+                                  _selectedFuelColumns
+                                    ..clear()
+                                    ..addAll(fuelCols);
+                                });
+                                _saveColumnPreferences();
+                                _downloadCSV(filter, dateRange);
+                              },
+                          onDownloadPDF:
+                              (
+                                dateRange,
+                                filter,
+                                tripCols,
+                                fuelCols,
+                                includeSummary,
+                              ) {
+                                setState(() {
+                                  _selectedDateRange = dateRange;
+                                  _selectedFilter = filter;
+                                  _selectedTripColumns
+                                    ..clear()
+                                    ..addAll(tripCols);
+                                  _selectedFuelColumns
+                                    ..clear()
+                                    ..addAll(fuelCols);
+                                });
+                                _saveColumnPreferences();
+                                _downloadPDF(
+                                  filter,
+                                  dateRange,
+                                  includeSummaryBanner: includeSummary,
+                                );
+                              },
+                          onSavePreferences: (tripCols, fuelCols) {
+                            setState(() {
+                              _selectedTripColumns
+                                ..clear()
+                                ..addAll(tripCols);
+                              _selectedFuelColumns
+                                ..clear()
+                                ..addAll(fuelCols);
+                            });
+                            _saveColumnPreferences();
+                          },
+                        ),
+                      );
+                    },
+                  ),
+
+                if (_isSearching && _searchQuery.isNotEmpty)
+                  IconButton(
+                    icon: Icon(
+                      Icons.close_rounded,
+                      color: Theme.of(context).colorScheme.onSurface,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _searchController.clear();
+                        _searchQuery = '';
+                      });
+                    },
+                  ),
+              ],
+            ),
+
+            // Filter Bar (Now separate SliverToBoxAdapter)
+            SliverToBoxAdapter(
+              child: SizedBox(
+                height: 48, // Comfort height for touch targets
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
+                  children: [
+                    _buildFilterChip('All'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Trips Only'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Fuel Only'),
+                    const SizedBox(width: 8),
+                    Container(
+                      height: 20,
+                      width: 1,
+                      color: tokens.subtleBorderColor,
+                      margin: const EdgeInsets.only(right: 8),
+                    ),
+                    _buildFilterChip('Short (<100 mi)'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Medium (100-200 mi)'),
+                    const SizedBox(width: 8),
+                    _buildFilterChip('Long (>200 mi)'),
+                  ],
                 ),
               ),
             ),
-            // Filter chip (shown when filter is active)
-            if (_selectedFilter != 'All')
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    children: [
-                      Chip(
-                        label: Text(
-                          _selectedFilter,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                        ),
-                        backgroundColor: Theme.of(
-                          context,
-                        ).colorScheme.primaryContainer,
-                        deleteIcon: Icon(
-                          Icons.close_rounded,
-                          size: 16,
-                          color: Theme.of(context).colorScheme.primary,
-                        ),
-                        onDeleted: () {
-                          setState(() {
-                            _selectedFilter = 'All';
-                          });
-                        },
-                        side: BorderSide.none,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(tokens.shapeXS),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${_filteredRecords.length} results',
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: secondaryTextColor,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            SliverToBoxAdapter(child: SizedBox(height: tokens.spacingS)),
+            // Removed extra SizedBox here for tighter layout
           ];
         },
         body: Container(
@@ -572,13 +523,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.inbox_rounded,
+                                Icons.filter_list_off_rounded,
                                 size: 64,
-                                color: secondaryTextColor,
+                                color: secondaryTextColor.withValues(
+                                  alpha: 0.5,
+                                ),
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No records found',
+                                'No matching records',
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       fontWeight: FontWeight.bold,
@@ -587,10 +540,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _searchQuery.isNotEmpty ||
-                                        _selectedFilter != 'All'
-                                    ? 'Try adjusting your search or filter'
-                                    : 'Add your first trip or fuel entry',
+                                _searchQuery.isNotEmpty
+                                    ? 'Try a different search term'
+                                    : 'Try selecting a different filter',
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: secondaryTextColor),
                               ),
@@ -600,340 +552,357 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       ),
                     ],
                   )
-                : ListView.separated(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.tokens.spacingM,
+                : ListView.builder(
+                    padding: EdgeInsets.fromLTRB(
+                      context.tokens.spacingM,
+                      0,
+                      context.tokens.spacingM,
+                      context.tokens.spacingL, // Reduced bottom padding
                     ),
                     itemCount: _filteredRecords.length,
-                    separatorBuilder: (context, index) =>
-                        SizedBox(height: context.tokens.spacingM),
                     itemBuilder: (context, index) {
                       final record = _filteredRecords[index];
-                      return Dismissible(
-                        key: Key('${record['type']}_${record['id']}'),
-                        background: Container(
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.circular(tokens.shapeM),
-                          ),
-                          alignment: Alignment.centerLeft,
-                          padding: const EdgeInsets.only(left: 20),
-                          child: Row(
-                            children: [
-                              const Icon(
-                                Icons.edit_rounded,
-                                color: Colors.white,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Modify',
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                              ),
-                            ],
-                          ),
+                      // Add spacing between items - Reduced to spacingXS (4) or spacingS (8)
+                      return Padding(
+                        padding: EdgeInsets.only(
+                          bottom: context.tokens.spacingS,
                         ),
-                        secondaryBackground: Container(
-                          decoration: BoxDecoration(
-                            color: tokens.error,
-                            borderRadius: BorderRadius.circular(tokens.shapeM),
-                          ),
-                          alignment: Alignment.centerRight,
-                          padding: const EdgeInsets.only(right: 20),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              Text(
-                                'Delete',
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.bold,
-                                    ),
+                        child: Dismissible(
+                          key: Key('${record['type']}_${record['id']}'),
+                          background: Container(
+                            decoration: BoxDecoration(
+                              color: Theme.of(context).colorScheme.primary,
+                              borderRadius: BorderRadius.circular(
+                                tokens.shapeM,
                               ),
-                              const SizedBox(width: 8),
-                              const Icon(
-                                Icons.delete_rounded,
-                                color: Colors.white,
-                              ),
-                            ],
+                            ),
+                            alignment: Alignment.centerLeft,
+                            padding: const EdgeInsets.only(left: 16),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.edit_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Modify',
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
-                        confirmDismiss: (direction) async {
-                          if (direction == DismissDirection.endToStart) {
-                            // Capture scaffold messenger before async gap
-                            final scaffoldMessenger = ScaffoldMessenger.of(
-                              context,
-                            );
-
-                            // Delete action - show beautiful confirmation dialog
-                            final confirmed = await showModalBottomSheet<bool>(
-                              context: context,
-                              backgroundColor: Colors.transparent,
-                              builder: (dialogContext) {
-                                final tokens = dialogContext.tokens;
-                                final dialogTextColor = tokens.textPrimary;
-                                final dialogSecondaryColor =
-                                    tokens.textSecondary;
-
-                                return Container(
-                                  margin: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    color: tokens.surfaceContainer,
-                                    borderRadius: BorderRadius.circular(
-                                      tokens.shapeXL,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withValues(
-                                          alpha: 0.1,
-                                        ),
-                                        blurRadius: 20,
-                                        offset: const Offset(0, -5),
+                          secondaryBackground: Container(
+                            decoration: BoxDecoration(
+                              color: tokens.error,
+                              borderRadius: BorderRadius.circular(
+                                tokens.shapeM,
+                              ),
+                            ),
+                            alignment: Alignment.centerRight,
+                            padding: const EdgeInsets.only(right: 16),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  'Delete',
+                                  style: Theme.of(context).textTheme.labelMedium
+                                      ?.copyWith(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.bold,
                                       ),
-                                    ],
-                                  ),
-                                  child: Column(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      const SizedBox(height: 12),
-                                      // Handle bar
-                                      Container(
-                                        width: 40,
-                                        height: 4,
-                                        decoration: BoxDecoration(
-                                          color: dialogSecondaryColor
-                                              .withValues(alpha: 0.3),
-                                          borderRadius: BorderRadius.circular(
-                                            2,
-                                          ),
-                                        ),
+                                ),
+                                const SizedBox(width: 8),
+                                const Icon(
+                                  Icons.delete_rounded,
+                                  color: Colors.white,
+                                  size: 20,
+                                ),
+                              ],
+                            ),
+                          ),
+                          confirmDismiss: (direction) async {
+                            if (direction == DismissDirection.endToStart) {
+                              // Capture scaffold messenger before async gap
+                              final scaffoldMessenger = ScaffoldMessenger.of(
+                                context,
+                              );
+
+                              // Delete action - show beautiful confirmation dialog
+                              final confirmed = await showModalBottomSheet<bool>(
+                                context: context,
+                                backgroundColor: Colors.transparent,
+                                builder: (dialogContext) {
+                                  final tokens = dialogContext.tokens;
+                                  final dialogTextColor = tokens.textPrimary;
+                                  final dialogSecondaryColor =
+                                      tokens.textSecondary;
+
+                                  return Container(
+                                    margin: const EdgeInsets.all(16),
+                                    decoration: BoxDecoration(
+                                      color: tokens.surfaceContainer,
+                                      borderRadius: BorderRadius.circular(
+                                        tokens.shapeXL,
                                       ),
-                                      const SizedBox(height: 24),
-                                      // Warning icon
-                                      Container(
-                                        width: 64,
-                                        height: 64,
-                                        decoration: BoxDecoration(
-                                          color: tokens.error.withValues(
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withValues(
                                             alpha: 0.1,
                                           ),
-                                          shape: BoxShape.circle,
+                                          blurRadius: 20,
+                                          offset: const Offset(0, -5),
                                         ),
-                                        child: Icon(
-                                          Icons.delete_outline_rounded,
-                                          color: tokens.error,
-                                          size: 32,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 20),
-                                      // Title
-                                      Text(
-                                        'Delete Record',
-                                        style: Theme.of(dialogContext)
-                                            .textTheme
-                                            .titleLarge
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.bold,
-                                              color: dialogTextColor,
+                                      ],
+                                    ),
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const SizedBox(height: 12),
+                                        // Handle bar
+                                        Container(
+                                          width: 40,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            color: dialogSecondaryColor
+                                                .withValues(alpha: 0.3),
+                                            borderRadius: BorderRadius.circular(
+                                              2,
                                             ),
-                                      ),
-                                      const SizedBox(height: 8),
-                                      // Message
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 24,
+                                          ),
                                         ),
-                                        child: Text(
-                                          'Are you sure you want to delete ${record['id']}? This action cannot be undone.',
-                                          textAlign: TextAlign.center,
+                                        const SizedBox(height: 24),
+                                        // Warning icon
+                                        Container(
+                                          width: 64,
+                                          height: 64,
+                                          decoration: BoxDecoration(
+                                            color: tokens.error.withValues(
+                                              alpha: 0.1,
+                                            ),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: Icon(
+                                            Icons.delete_outline_rounded,
+                                            color: tokens.error,
+                                            size: 32,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 20),
+                                        // Title
+                                        Text(
+                                          'Delete Record',
                                           style: Theme.of(dialogContext)
                                               .textTheme
-                                              .bodyMedium
+                                              .titleLarge
                                               ?.copyWith(
-                                                color: dialogSecondaryColor,
-                                                height: 1.5,
+                                                fontWeight: FontWeight.bold,
+                                                color: dialogTextColor,
                                               ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 28),
-                                      // Buttons
-                                      Padding(
-                                        padding: const EdgeInsets.symmetric(
-                                          horizontal: 16,
-                                        ),
-                                        child: Row(
-                                          children: [
-                                            // Cancel button
-                                            Expanded(
-                                              child: GestureDetector(
-                                                onTap: () => Navigator.pop(
-                                                  dialogContext,
-                                                  false,
+                                        const SizedBox(height: 8),
+                                        // Message
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 24,
+                                          ),
+                                          child: Text(
+                                            'Are you sure you want to delete ${record['id']}? This action cannot be undone.',
+                                            textAlign: TextAlign.center,
+                                            style: Theme.of(dialogContext)
+                                                .textTheme
+                                                .bodyMedium
+                                                ?.copyWith(
+                                                  color: dialogSecondaryColor,
+                                                  height: 1.5,
                                                 ),
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 14,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: Theme.of(dialogContext)
-                                                        .colorScheme
-                                                        .surfaceContainerHighest,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          tokens.shapeM,
-                                                        ),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 28),
+                                        // Buttons
+                                        Padding(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                          ),
+                                          child: Row(
+                                            children: [
+                                              // Cancel button
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () => Navigator.pop(
+                                                    dialogContext,
+                                                    false,
                                                   ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      'Cancel',
-                                                      style: Theme.of(dialogContext)
-                                                          .textTheme
-                                                          .labelLarge
-                                                          ?.copyWith(
-                                                            fontWeight:
-                                                                FontWeight.bold,
-                                                            color:
-                                                                dialogTextColor,
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          vertical: 14,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: Theme.of(dialogContext)
+                                                          .colorScheme
+                                                          .surfaceContainerHighest,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            tokens.shapeM,
                                                           ),
                                                     ),
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            const SizedBox(width: 12),
-                                            // Delete button
-                                            Expanded(
-                                              child: GestureDetector(
-                                                onTap: () => Navigator.pop(
-                                                  dialogContext,
-                                                  true,
-                                                ),
-                                                child: Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        vertical: 14,
+                                                    child: Center(
+                                                      child: Text(
+                                                        'Cancel',
+                                                        style:
+                                                            Theme.of(
+                                                                  dialogContext,
+                                                                )
+                                                                .textTheme
+                                                                .labelLarge
+                                                                ?.copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color:
+                                                                      dialogTextColor,
+                                                                ),
                                                       ),
-                                                  decoration: BoxDecoration(
-                                                    color: tokens.error,
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          tokens.shapeM,
-                                                        ),
-                                                    boxShadow: [
-                                                      BoxShadow(
-                                                        color: tokens.error
-                                                            .withValues(
-                                                              alpha: 0.2,
-                                                            ),
-                                                        blurRadius: 8,
-                                                        offset: const Offset(
-                                                          0,
-                                                          4,
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  child: Center(
-                                                    child: Text(
-                                                      'Delete',
-                                                      style:
-                                                          Theme.of(
-                                                                dialogContext,
-                                                              )
-                                                              .textTheme
-                                                              .labelLarge
-                                                              ?.copyWith(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
                                                     ),
                                                   ),
                                                 ),
                                               ),
-                                            ),
-                                          ],
+                                              const SizedBox(width: 12),
+                                              // Delete button
+                                              Expanded(
+                                                child: GestureDetector(
+                                                  onTap: () => Navigator.pop(
+                                                    dialogContext,
+                                                    true,
+                                                  ),
+                                                  child: Container(
+                                                    padding:
+                                                        const EdgeInsets.symmetric(
+                                                          vertical: 14,
+                                                        ),
+                                                    decoration: BoxDecoration(
+                                                      color: tokens.error,
+                                                      borderRadius:
+                                                          BorderRadius.circular(
+                                                            tokens.shapeM,
+                                                          ),
+                                                      boxShadow: [
+                                                        BoxShadow(
+                                                          color: tokens.error
+                                                              .withValues(
+                                                                alpha: 0.2,
+                                                              ),
+                                                          blurRadius: 8,
+                                                          offset: const Offset(
+                                                            0,
+                                                            4,
+                                                          ),
+                                                        ),
+                                                      ],
+                                                    ),
+                                                    child: Center(
+                                                      child: Text(
+                                                        'Delete',
+                                                        style:
+                                                            Theme.of(
+                                                                  dialogContext,
+                                                                )
+                                                                .textTheme
+                                                                .labelLarge
+                                                                ?.copyWith(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  color: Colors
+                                                                      .white,
+                                                                ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(height: 24),
-                                    ],
-                                  ),
-                                );
-                              },
-                            );
-
-                            if (confirmed == true) {
-                              // Delete from Supabase
-                              try {
-                                final isTrip = record['type'] == 'trip';
-                                final data = record['data'];
-
-                                if (isTrip) {
-                                  final trip = data as Trip;
-                                  if (trip.id != null) {
-                                    await TripRepository.deleteTrip(trip.id!);
-                                  }
-                                } else {
-                                  final fuel = data as FuelEntry;
-                                  if (fuel.id != null) {
-                                    await FuelRepository.deleteFuelEntry(
-                                      fuel.id!,
-                                    );
-                                  }
-                                }
-
-                                // Remove from local list
-                                setState(() {
-                                  _allRecords.removeWhere(
-                                    (r) =>
-                                        r['type'] == record['type'] &&
-                                        r['id'] == record['id'],
+                                        const SizedBox(height: 24),
+                                      ],
+                                    ),
                                   );
-                                });
+                                },
+                              );
 
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text('${record['id']} deleted'),
-                                    backgroundColor: tokens.success,
-                                  ),
-                                );
-                                return false; // Don't auto-dismiss, we already removed it
-                              } catch (e) {
-                                scaffoldMessenger.showSnackBar(
-                                  SnackBar(
-                                    content: Text('Failed to delete: $e'),
-                                    backgroundColor: tokens.error,
-                                  ),
-                                );
-                                return false;
+                              if (confirmed == true) {
+                                // Delete from Supabase
+                                try {
+                                  final isTrip = record['type'] == 'trip';
+                                  final data = record['data'];
+
+                                  if (isTrip) {
+                                    final trip = data as Trip;
+                                    if (trip.id != null) {
+                                      await TripRepository.deleteTrip(trip.id!);
+                                    }
+                                  } else {
+                                    final fuel = data as FuelEntry;
+                                    if (fuel.id != null) {
+                                      await FuelRepository.deleteFuelEntry(
+                                        fuel.id!,
+                                      );
+                                    }
+                                  }
+
+                                  // Remove from local list
+                                  setState(() {
+                                    _allRecords.removeWhere(
+                                      (r) =>
+                                          r['type'] == record['type'] &&
+                                          r['id'] == record['id'],
+                                    );
+                                  });
+
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('${record['id']} deleted'),
+                                      backgroundColor: tokens.success,
+                                    ),
+                                  );
+                                  return false; // Don't auto-dismiss, we already removed it
+                                } catch (e) {
+                                  scaffoldMessenger.showSnackBar(
+                                    SnackBar(
+                                      content: Text('Failed to delete: $e'),
+                                      backgroundColor: tokens.error,
+                                    ),
+                                  );
+                                  return false;
+                                }
                               }
+                              return false;
+                            } else {
+                              // Modify action - show bottom sheet
+                              _showModifyBottomSheet(
+                                record,
+                                textColor,
+                                secondaryTextColor,
+                                cardColor,
+                                borderColor,
+                              );
+                              return false;
                             }
-                            return false;
-                          } else {
-                            // Modify action - show bottom sheet
-                            _showModifyBottomSheet(
-                              record,
-                              textColor,
-                              secondaryTextColor,
-                              cardColor,
-                              borderColor,
-                            );
-                            return false;
-                          }
-                        },
-                        child: _buildExpandableCard(
-                          record,
-                          cardColor,
-                          borderColor,
-                          textColor,
-                          secondaryTextColor,
+                          },
+                          child: _buildExpandableCard(
+                            record,
+                            cardColor,
+                            borderColor,
+                            textColor,
+                            secondaryTextColor,
+                          ),
                         ),
                       );
                     },
@@ -941,6 +910,45 @@ class _RecordsListPageState extends State<RecordsListPage> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildFilterChip(String label) {
+    final isSelected = _selectedFilter == label;
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return FilterChip(
+      label: Text(label),
+      selected: isSelected,
+      onSelected: (bool selected) {
+        if (selected) {
+          setState(() {
+            _selectedFilter = label;
+          });
+        }
+      },
+      // Styling to match M3 aesthetics
+      labelStyle: TextStyle(
+        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+        color: isSelected
+            ? colorScheme.onPrimaryContainer
+            : colorScheme.onSurfaceVariant,
+        fontSize: 13, // Slightly smaller
+      ),
+      selectedColor: colorScheme.primaryContainer,
+      backgroundColor: colorScheme.surfaceContainerLow,
+      side: BorderSide(
+        color: isSelected
+            ? Colors.transparent
+            : context.tokens.subtleBorderColor,
+      ),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(context.tokens.shapeFull),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
+      visualDensity: VisualDensity.compact,
+      showCheckmark: false, // Cleaner look without checkmark
     );
   }
 
@@ -957,6 +965,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
     final isTrip = record['type'] == 'trip';
     final data = record['data'];
 
+    // Premium Design Logic
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final tertiaryColor = theme.colorScheme.tertiary;
+
+    final iconColor = isTrip ? primaryColor : tertiaryColor;
+    final containerColor = theme.colorScheme.surfaceContainerLow;
+
     return GestureDetector(
       onTap: () {
         setState(() {
@@ -970,119 +986,191 @@ class _RecordsListPageState extends State<RecordsListPage> {
       child: AnimatedContainer(
         duration: M3ExpressiveMotion.durationMedium,
         curve: M3ExpressiveMotion.standard,
-        padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Theme.of(context).cardColor,
-          borderRadius: BorderRadius.circular(tokens.shapeM),
-          border: Border.all(color: borderColor),
+          color: containerColor,
+          borderRadius: BorderRadius.circular(
+            tokens.shapeM,
+          ), // Reduced radius slightly
+          // Remove border, use subtle shadow for expanded state or flat for collapsed
+          boxShadow: isExpanded
+              ? [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ]
+              : null,
+          // Subtle border for definition
+          border: Border.all(
+            color: isExpanded
+                ? primaryColor.withValues(alpha: 0.3)
+                : borderColor.withValues(alpha: 0.5),
+            width: 1,
+          ),
         ),
+        clipBehavior: Clip.antiAlias, // Ensure child inkwells don't bleed
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min, // shrink wrap
           children: [
-            // Main card content
-            Row(
-              children: [
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color:
-                        (isTrip
-                                ? Theme.of(context).colorScheme.primary
-                                : tokens.warning)
-                            .withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(tokens.shapeM),
+            // Main card content area
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 12,
+              ), // Reduced padding
+              child: Row(
+                crossAxisAlignment:
+                    CrossAxisAlignment.center, // Center align for cleaner look
+                children: [
+                  // Leading Icon/Avatar
+                  Container(
+                    width: 40, // Reduced size
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: iconColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(
+                        tokens.shapeS,
+                      ), // Matching radius
+                    ),
+                    child: Icon(
+                      isTrip
+                          ? Icons.route_rounded
+                          : Icons.local_gas_station_rounded,
+                      color: iconColor,
+                      size: 20, // Reduced icon
+                    ),
                   ),
-                  child: Icon(
-                    isTrip ? Icons.local_shipping : Icons.local_gas_station,
-                    color: isTrip
-                        ? Theme.of(context).colorScheme.primary
-                        : tokens.warning,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    children: [
-                      // Top row: ID left, Value right
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            record['id'] as String? ?? '',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
+                  const SizedBox(width: 12), // Reduced spacing
+                  // Content
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Header Row (ID and Badge)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                record['id'] as String? ?? '',
+                                style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: textColor,
+                                  fontSize: 15, // Adjusted size
                                 ),
-                          ),
-                          Text(
-                            record['value'] as String? ?? '',
-                            style: Theme.of(context).textTheme.bodyLarge
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: Theme.of(context).colorScheme.primary,
-                                ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      // Bottom row: Description left, Date right
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Expanded(
-                            child: Text(
-                              record['description'] as String? ?? '',
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: secondaryTextColor),
-                              overflow: TextOverflow.ellipsis,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                record['date'] as String? ?? '',
-                                style: Theme.of(context).textTheme.bodySmall
-                                    ?.copyWith(color: secondaryTextColor),
+                            const SizedBox(width: 8),
+                            // Compact Value Badge
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
                               ),
-                              const SizedBox(width: 4),
-                              AnimatedRotation(
-                                turns: isExpanded ? 0.5 : 0,
-                                duration: M3ExpressiveMotion.durationMedium,
-                                curve: M3ExpressiveMotion.standard,
-                                child: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  size: 16,
-                                  color: secondaryTextColor,
+                              decoration: BoxDecoration(
+                                color: theme.colorScheme.surface,
+                                borderRadius: BorderRadius.circular(
+                                  tokens.shapeXS,
+                                ),
+                                border: Border.all(
+                                  color: borderColor.withValues(alpha: 0.5),
                                 ),
                               ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ],
+                              child: Text(
+                                record['value'] as String? ?? '',
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: iconColor,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 2), // Tighter spacing
+                        // Description Row (Description + Date)
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                record['description'] as String? ?? '',
+                                style: theme.textTheme.bodyMedium?.copyWith(
+                                  color: secondaryTextColor,
+                                  fontSize: 13,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              record['date'] as String? ?? '',
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: secondaryTextColor,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
+
             // Expanded details
-            if (isExpanded) ...[
-              const SizedBox(height: 16),
-              Container(width: double.infinity, height: 1, color: borderColor),
-              const SizedBox(height: 16),
-              if (isTrip)
-                _buildTripDetails(data as Trip, textColor, secondaryTextColor)
-              else
-                _buildFuelDetails(
-                  data as FuelEntry,
-                  textColor,
-                  secondaryTextColor,
-                ),
-            ],
+            AnimatedCrossFade(
+              firstChild: const SizedBox.shrink(),
+              secondChild: Column(
+                children: [
+                  Divider(
+                    height: 1,
+                    thickness: 0.5,
+                    color: borderColor.withValues(alpha: 0.5),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(
+                      12,
+                      12,
+                      12,
+                      4,
+                    ), // Adjusted padding
+                    child: isTrip
+                        ? _buildTripDetails(
+                            data as Trip,
+                            textColor,
+                            secondaryTextColor,
+                          )
+                        : _buildFuelDetails(
+                            data as FuelEntry,
+                            textColor,
+                            secondaryTextColor,
+                          ),
+                  ),
+                  // Collapse handle area - reduced height
+                  Container(
+                    width: double.infinity,
+                    alignment: Alignment.center,
+                    child: Icon(
+                      Icons.keyboard_arrow_up_rounded,
+                      size: 18,
+                      color: secondaryTextColor.withValues(alpha: 0.5),
+                    ),
+                  ),
+                ],
+              ),
+              crossFadeState: isExpanded
+                  ? CrossFadeState.showSecond
+                  : CrossFadeState.showFirst,
+              duration: M3ExpressiveMotion.durationShort,
+            ),
           ],
         ),
       ),
@@ -1352,958 +1440,6 @@ class _RecordsListPageState extends State<RecordsListPage> {
     // Refresh records if update was successful
     if (result == true) {
       await _loadRecords();
-    }
-  }
-
-  void _showDownloadBottomSheet(
-    Color textColor,
-    Color secondaryTextColor,
-    Color cardColor,
-    Color borderColor,
-  ) {
-    final tokens = context.tokens;
-    DateTimeRange? tempDateRange = _selectedDateRange;
-    String selectedExportFilter = _selectedFilter;
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    bool includeSummaryBanner = true;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: tokens.surfaceContainer,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(tokens.shapeXL),
-        ),
-      ),
-      builder: (context) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
-            // Calculate export count based on current selections
-            final exportCount = _getExportRecords(
-              selectedExportFilter,
-              tempDateRange,
-            ).length;
-
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: MediaQuery.of(context).size.height * 0.85,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: Container(
-                          width: 40,
-                          height: 4,
-                          decoration: BoxDecoration(
-                            color: tokens.subtleBorderColor,
-                            borderRadius: BorderRadius.circular(2),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(
-                                tokens.shapeM,
-                              ),
-                            ),
-                            child: Icon(
-                              Icons.flag_rounded,
-                              color: Theme.of(context).colorScheme.primary,
-                              size: 20,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Export Records',
-                                  style: Theme.of(context).textTheme.titleLarge
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.bold,
-                                        color: textColor,
-                                      ),
-                                ),
-                                Text(
-                                  'Download as PDF or CSV',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(color: secondaryTextColor),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Date Range Section
-                      Text(
-                        'Date Range',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          // Start Date
-                          Expanded(
-                            child: _buildDatePickerField(
-                              label: 'From',
-                              date: tempDateRange?.start,
-                              textColor: textColor,
-                              secondaryTextColor: secondaryTextColor,
-                              cardColor: cardColor,
-                              borderColor: borderColor,
-                              isDark: isDark,
-                              onTap: () async {
-                                final picked = await _showCustomDatePicker(
-                                  context,
-                                  initialDate:
-                                      tempDateRange?.start ??
-                                      DateTime.now().subtract(
-                                        const Duration(days: 30),
-                                      ),
-                                  firstDate: DateTime(2020),
-                                  lastDate:
-                                      tempDateRange?.end ?? DateTime.now(),
-                                  isDark: isDark,
-                                );
-                                if (picked != null) {
-                                  setModalState(() {
-                                    tempDateRange = DateTimeRange(
-                                      start: picked,
-                                      end: tempDateRange?.end ?? DateTime.now(),
-                                    );
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: Icon(
-                              Icons.arrow_forward,
-                              color: secondaryTextColor,
-                              size: 20,
-                            ),
-                          ),
-                          // End Date
-                          Expanded(
-                            child: _buildDatePickerField(
-                              label: 'To',
-                              date: tempDateRange?.end,
-                              textColor: textColor,
-                              secondaryTextColor: secondaryTextColor,
-                              cardColor: cardColor,
-                              borderColor: borderColor,
-                              isDark: isDark,
-                              onTap: () async {
-                                final picked = await _showCustomDatePicker(
-                                  context,
-                                  initialDate:
-                                      tempDateRange?.end ?? DateTime.now(),
-                                  firstDate:
-                                      tempDateRange?.start ?? DateTime(2020),
-                                  lastDate: DateTime.now(),
-                                  isDark: isDark,
-                                );
-                                if (picked != null) {
-                                  setModalState(() {
-                                    tempDateRange = DateTimeRange(
-                                      start:
-                                          tempDateRange?.start ??
-                                          DateTime.now().subtract(
-                                            const Duration(days: 30),
-                                          ),
-                                      end: picked,
-                                    );
-                                  });
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      // Quick date range options
-                      SingleChildScrollView(
-                        scrollDirection: Axis.horizontal,
-                        child: Row(
-                          children: [
-                            _buildQuickDateChip(
-                              'Last 7 days',
-                              () {
-                                setModalState(() {
-                                  tempDateRange = DateTimeRange(
-                                    start: DateTime.now().subtract(
-                                      const Duration(days: 7),
-                                    ),
-                                    end: DateTime.now(),
-                                  );
-                                });
-                              },
-                              secondaryTextColor,
-                              cardColor,
-                              borderColor,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildQuickDateChip(
-                              'Biweekly',
-                              () {
-                                setModalState(() {
-                                  tempDateRange = DateTimeRange(
-                                    start: DateTime.now().subtract(
-                                      const Duration(days: 14),
-                                    ),
-                                    end: DateTime.now(),
-                                  );
-                                });
-                              },
-                              secondaryTextColor,
-                              cardColor,
-                              borderColor,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildQuickDateChip(
-                              'Last 30 days',
-                              () {
-                                setModalState(() {
-                                  tempDateRange = DateTimeRange(
-                                    start: DateTime.now().subtract(
-                                      const Duration(days: 30),
-                                    ),
-                                    end: DateTime.now(),
-                                  );
-                                });
-                              },
-                              secondaryTextColor,
-                              cardColor,
-                              borderColor,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildQuickDateChip(
-                              'This month',
-                              () {
-                                setModalState(() {
-                                  final now = DateTime.now();
-                                  tempDateRange = DateTimeRange(
-                                    start: DateTime(now.year, now.month, 1),
-                                    end: DateTime.now(),
-                                  );
-                                });
-                              },
-                              secondaryTextColor,
-                              cardColor,
-                              borderColor,
-                            ),
-                            const SizedBox(width: 8),
-                            _buildQuickDateChip(
-                              'All time',
-                              () {
-                                setModalState(() {
-                                  tempDateRange = null;
-                                });
-                              },
-                              secondaryTextColor,
-                              cardColor,
-                              borderColor,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // Filter Selection
-                      Text(
-                        'Record Type',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      DropdownMenu<String>(
-                        width:
-                            double.infinity, // Expand to width of parent/column
-                        initialSelection: selectedExportFilter,
-                        inputDecorationTheme: InputDecorationTheme(
-                          filled: true,
-                          fillColor: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLow,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(tokens.shapeM),
-                            borderSide: BorderSide(
-                              color: tokens.subtleBorderColor,
-                            ),
-                          ),
-                          enabledBorder: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(tokens.shapeM),
-                            borderSide: BorderSide(
-                              color: tokens.subtleBorderColor,
-                            ),
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical:
-                                12, // slightly adjusted from 4 because this is input content padding
-                          ),
-                        ),
-                        dropdownMenuEntries:
-                            [
-                                  'All',
-                                  'Trips Only',
-                                  'Fuel Only',
-                                  'Short (<100 mi)',
-                                  'Medium (100-200 mi)',
-                                  'Long (>200 mi)',
-                                ]
-                                .map(
-                                  (filter) => DropdownMenuEntry<String>(
-                                    value: filter,
-                                    label: filter,
-                                    leadingIcon: Icon(
-                                      _getFilterIcon(filter),
-                                      size: 18,
-                                      color: secondaryTextColor,
-                                    ),
-                                  ),
-                                )
-                                .toList(),
-                        onSelected: (value) {
-                          if (value != null) {
-                            setModalState(() {
-                              selectedExportFilter = value;
-                            });
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Record count preview
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          color: exportCount > 0
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.primary.withValues(alpha: 0.1)
-                              : tokens.error.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(tokens.shapeM),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: exportCount > 0
-                                    ? Theme.of(context).colorScheme.primary
-                                          .withValues(alpha: 0.2)
-                                    : tokens.error.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(
-                                  tokens.shapeS,
-                                ),
-                              ),
-                              child: Icon(
-                                exportCount > 0
-                                    ? Icons.description_outlined
-                                    : Icons.error_outline,
-                                color: exportCount > 0
-                                    ? Theme.of(context).colorScheme.primary
-                                    : tokens.error,
-                                size: 24,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    exportCount > 0
-                                        ? '$exportCount Records found'
-                                        : 'No records found',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodyMedium
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.bold,
-                                          color: textColor,
-                                        ),
-                                  ),
-                                  Text(
-                                    exportCount > 0
-                                        ? 'Ready to export'
-                                        : 'Adjust filters',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(color: secondaryTextColor),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Column Selection for Trips
-                      if (selectedExportFilter != 'Fuel Only') ...[
-                        Text(
-                          'Trip Columns',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
-                        ),
-                        Text(
-                          'Drag to reorder • Tap to toggle',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: secondaryTextColor),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: List.generate(_selectedTripColumns.length, (
-                            index,
-                          ) {
-                            final key = _selectedTripColumns[index];
-                            final label = tripColumnLabels[key] ?? key;
-                            return LongPressDraggable<int>(
-                              data: index,
-                              feedback: Material(
-                                elevation: 4,
-                                borderRadius: BorderRadius.circular(
-                                  tokens.shapeM,
-                                ),
-                                child: FilterChip(
-                                  label: Text(
-                                    label,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onPrimary,
-                                        ),
-                                  ),
-                                  selected: true,
-                                  onSelected: (_) {},
-                                  selectedColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                  checkmarkColor: Theme.of(
-                                    context,
-                                  ).colorScheme.onPrimary,
-                                ),
-                              ),
-                              childWhenDragging: Opacity(
-                                opacity: 0.4,
-                                child: FilterChip(
-                                  label: Text(label),
-                                  selected: true,
-                                  onSelected: (_) {},
-                                  selectedColor: Theme.of(
-                                    context,
-                                  ).colorScheme.primary,
-                                ),
-                              ),
-                              child: DragTarget<int>(
-                                onAcceptWithDetails: (details) {
-                                  final fromIndex = details.data;
-                                  if (fromIndex != index) {
-                                    setModalState(() {
-                                      final item = _selectedTripColumns
-                                          .removeAt(fromIndex);
-                                      _selectedTripColumns.insert(
-                                        fromIndex < index ? index - 1 : index,
-                                        item,
-                                      );
-                                    });
-                                    _saveColumnPreferences();
-                                  }
-                                },
-                                builder:
-                                    (context, candidateData, rejectedData) {
-                                      return FilterChip(
-                                        label: Text(
-                                          label,
-                                          style: Theme.of(context)
-                                              .textTheme
-                                              .labelSmall
-                                              ?.copyWith(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.onPrimary,
-                                              ),
-                                        ),
-                                        selected: true,
-                                        onSelected: (selected) {
-                                          if (!selected &&
-                                              _selectedTripColumns.length > 1) {
-                                            setModalState(() {
-                                              _selectedTripColumns.remove(key);
-                                            });
-                                            _saveColumnPreferences();
-                                          }
-                                        },
-                                        selectedColor: candidateData.isNotEmpty
-                                            ? Theme.of(
-                                                context,
-                                              ).colorScheme.primaryContainer
-                                            : Theme.of(
-                                                context,
-                                              ).colorScheme.primary,
-                                        checkmarkColor: Theme.of(
-                                          context,
-                                        ).colorScheme.onPrimary,
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(
-                                            tokens.shapeS,
-                                          ),
-                                          side: BorderSide(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                              ),
-                            );
-                          }),
-                        ),
-                        const SizedBox(height: 8),
-                        // Unselected trip columns
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: tripColumnLabels.entries
-                              .where(
-                                (e) => !_selectedTripColumns.contains(e.key),
-                              )
-                              .map(
-                                (entry) => FilterChip(
-                                  label: Text(
-                                    entry.value,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .labelSmall
-                                        ?.copyWith(color: textColor),
-                                  ),
-                                  selected: false,
-                                  onSelected: (selected) {
-                                    if (selected) {
-                                      setModalState(() {
-                                        _selectedTripColumns.add(entry.key);
-                                      });
-                                      _saveColumnPreferences();
-                                    }
-                                  },
-                                  backgroundColor: Theme.of(
-                                    context,
-                                  ).colorScheme.surfaceContainerLow,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      tokens.shapeS,
-                                    ),
-                                    side: BorderSide(
-                                      color: tokens.subtleBorderColor,
-                                    ),
-                                  ),
-                                ),
-                              )
-                              .toList(),
-                        ),
-                        const SizedBox(height: 20),
-                      ],
-
-                      // Column Selection for Fuel
-                      if (selectedExportFilter != 'Trips Only' &&
-                          !selectedExportFilter.contains('mi)')) ...[
-                        Text(
-                          'Fuel Columns',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: textColor,
-                              ),
-                        ),
-                        const SizedBox(height: 12),
-                        Wrap(
-                          spacing: 8,
-                          runSpacing: 8,
-                          children: fuelColumnLabels.entries.map((entry) {
-                            final isSelected = _selectedFuelColumns.contains(
-                              entry.key,
-                            );
-                            return FilterChip(
-                              label: Text(
-                                entry.value,
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(
-                                      color: isSelected
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onSecondary
-                                          : textColor,
-                                    ),
-                              ),
-                              selected: isSelected,
-                              onSelected: (selected) {
-                                setModalState(() {
-                                  if (selected) {
-                                    _selectedFuelColumns.add(entry.key);
-                                  } else {
-                                    // Ensure at least one column is selected
-                                    if (_selectedFuelColumns.length > 1) {
-                                      _selectedFuelColumns.remove(entry.key);
-                                    }
-                                  }
-                                });
-                                _saveColumnPreferences();
-                              },
-                              selectedColor: Theme.of(
-                                context,
-                              ).colorScheme.secondary,
-                              checkmarkColor: Theme.of(
-                                context,
-                              ).colorScheme.onSecondary,
-                              backgroundColor: Theme.of(
-                                context,
-                              ).colorScheme.surfaceContainerLow,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  tokens.shapeS,
-                                ),
-                                side: BorderSide(
-                                  color: isSelected
-                                      ? Theme.of(context).colorScheme.secondary
-                                      : tokens.subtleBorderColor,
-                                ),
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 24),
-                      ],
-                      // PDF Options
-                      Text(
-                        'PDF Options',
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: textColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
-                        decoration: BoxDecoration(
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerLow,
-                          borderRadius: BorderRadius.circular(tokens.shapeM),
-                          border: Border.all(color: tokens.subtleBorderColor),
-                        ),
-                        child: SwitchListTile(
-                          value: includeSummaryBanner,
-                          onChanged: (value) {
-                            setModalState(() {
-                              includeSummaryBanner = value;
-                            });
-                          },
-                          title: Text(
-                            'Include Summary Banner',
-                            style: Theme.of(
-                              context,
-                            ).textTheme.bodyMedium?.copyWith(color: textColor),
-                          ),
-                          subtitle: Text(
-                            'Shows total records, trips, fuel entries & miles',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: secondaryTextColor),
-                          ),
-                          secondary: Icon(
-                            Icons.dashboard_outlined,
-                            color: secondaryTextColor,
-                          ),
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                          ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(tokens.shapeM),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Download Button
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: exportCount > 0
-                                  ? () {
-                                      setState(() {
-                                        _selectedDateRange = tempDateRange;
-                                      });
-                                      Navigator.pop(context);
-                                      _downloadCSV(
-                                        selectedExportFilter,
-                                        tempDateRange,
-                                      );
-                                    }
-                                  : null,
-                              style: OutlinedButton.styleFrom(
-                                side: BorderSide(
-                                  color: tokens.subtleBorderColor,
-                                ),
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    tokens.shapeM,
-                                  ),
-                                ),
-                              ),
-                              child: Text(
-                                'Download CSV',
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: textColor,
-                                    ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: FilledButton(
-                              onPressed: exportCount > 0
-                                  ? () {
-                                      setState(() {
-                                        _selectedDateRange = tempDateRange;
-                                      });
-                                      Navigator.pop(context);
-                                      _downloadPDF(
-                                        selectedExportFilter,
-                                        tempDateRange,
-                                        includeSummaryBanner:
-                                            includeSummaryBanner,
-                                      );
-                                    }
-                                  : null,
-                              style: FilledButton.styleFrom(
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primary,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 16,
-                                ),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                    tokens.shapeM,
-                                  ),
-                                ),
-                              ),
-                              child: Text(
-                                'Download PDF',
-                                style: Theme.of(context).textTheme.labelLarge
-                                    ?.copyWith(
-                                      fontWeight: FontWeight.bold,
-                                      color: exportCount > 0
-                                          ? Theme.of(
-                                              context,
-                                            ).colorScheme.onPrimary
-                                          : Theme.of(
-                                              context,
-                                            ).colorScheme.onSurfaceVariant,
-                                    ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildDatePickerField({
-    required String label,
-    required DateTime? date,
-    required Color textColor,
-    required Color secondaryTextColor,
-    required Color cardColor,
-    required Color borderColor,
-    required bool isDark,
-    required VoidCallback onTap,
-  }) {
-    final tokens = context.tokens;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLow,
-          border: Border.all(color: tokens.subtleBorderColor),
-          borderRadius: BorderRadius.circular(tokens.shapeM),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: secondaryTextColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                Icon(
-                  Icons.calendar_today_rounded,
-                  size: 16,
-                  color: date != null
-                      ? Theme.of(context).colorScheme.primary
-                      : secondaryTextColor,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    date != null ? _formatDate(date) : 'Select',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: date != null ? textColor : secondaryTextColor,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQuickDateChip(
-    String label,
-    VoidCallback onTap,
-    Color secondaryTextColor,
-    Color cardColor,
-    Color borderColor,
-  ) {
-    final tokens = context.tokens;
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        decoration: BoxDecoration(
-          color: tokens.surfaceContainer,
-          border: Border.all(color: tokens.subtleBorderColor),
-          borderRadius: BorderRadius.circular(tokens.shapeFull),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(
-            color: tokens.textSecondary,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Future<DateTime?> _showCustomDatePicker(
-    BuildContext context, {
-    required DateTime initialDate,
-    required DateTime firstDate,
-    required DateTime lastDate,
-    required bool isDark,
-  }) async {
-    return showDatePicker(
-      context: context,
-      initialDate: initialDate,
-      firstDate: firstDate,
-      lastDate: lastDate,
-      builder: (context, child) {
-        final tokens = context.tokens;
-        return Theme(
-          data: Theme.of(context).copyWith(
-            colorScheme: isDark
-                ? ColorScheme.dark(
-                    primary: Theme.of(context).colorScheme.primary,
-                    onPrimary: Colors.white,
-                    surface: tokens.surfaceContainer,
-                    onSurface: tokens.textPrimary,
-                  )
-                : ColorScheme.light(
-                    primary: Theme.of(context).colorScheme.primary,
-                    onPrimary: Colors.white,
-                    surface: tokens.surfaceContainer,
-                    onSurface: tokens.textPrimary,
-                  ),
-            dialogTheme: DialogThemeData(
-              backgroundColor: tokens.surfaceContainer,
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: Theme.of(context).colorScheme.primary,
-              ),
-            ),
-          ),
-          child: child!,
-        );
-      },
-    );
-  }
-
-  IconData _getFilterIcon(String filter) {
-    switch (filter) {
-      case 'All':
-        return Icons.all_inclusive;
-      case 'Trips Only':
-        return Icons.local_shipping_outlined;
-      case 'Fuel Only':
-        return Icons.local_gas_station_outlined;
-      case 'Short (<100 mi)':
-        return Icons.straighten;
-      case 'Medium (100-200 mi)':
-        return Icons.swap_horiz;
-      case 'Long (>200 mi)':
-        return Icons.route;
-      default:
-        return Icons.filter_list;
     }
   }
 

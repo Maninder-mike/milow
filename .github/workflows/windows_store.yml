@@ -2,7 +2,7 @@ name: Windows Store Build and Release
 
 on:
   push:
-    branches: [ main ]
+    branches: [ beta ]
     paths:
       - "apps/terminal/pubspec.yaml"
       - "apps/terminal/lib/**"

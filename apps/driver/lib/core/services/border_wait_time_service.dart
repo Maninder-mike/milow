@@ -22,6 +22,7 @@ class BorderWaitTimeService {
   /// Returns cached data if less than 5 minutes old
   static Future<List<BorderWaitTime>> fetchAllWaitTimes({
     bool forceRefresh = false,
+    http.Client? client,
   }) async {
     // Check in-memory cache first
     if (!forceRefresh && _cachedData != null && _lastFetchTime != null) {
@@ -44,7 +45,9 @@ class BorderWaitTimeService {
     try {
       final uri = Uri.parse(_apiUrl);
 
-      final response = await http.get(uri).timeout(const Duration(seconds: 10));
+      final response = client != null
+          ? await client.get(uri)
+          : await http.get(uri).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final List<dynamic> jsonList = json.decode(response.body);

@@ -18,7 +18,11 @@ import 'package:milow/core/services/trip_service.dart';
 class TripRepository {
   static const _uuid = Uuid();
   static SupabaseClient get _client => Supabase.instance.client;
-  static String? get _userId => _client.auth.currentUser?.id;
+  static String? get _userId => mockUserId ?? _client.auth.currentUser?.id;
+
+  /// Mock user ID for testing
+  @visibleForTesting
+  static String? mockUserId;
 
   /// Get all trips for current user (local-first)
   ///
