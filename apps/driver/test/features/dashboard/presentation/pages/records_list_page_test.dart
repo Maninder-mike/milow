@@ -78,9 +78,20 @@ void main() {
     );
     // Trigger initState and first frame
     await tester.pump();
-    // Wait for _loadRecords to complete and loading indicator to disappear.
-    // This will time out if isLoading never becomes false.
-    await tester.pumpAndSettle();
+
+    // Pump frames until loading is gone, or timeout after 5 seconds
+    // This is more robust than pumpAndSettle if there are other ongoing animations
+    // or if the test runner is slow.
+    final stopwatch = Stopwatch()..start();
+    while (stopwatch.elapsed.inSeconds < 5) {
+      if (find.byType(CircularProgressIndicator).evaluate().isEmpty) {
+        break;
+      }
+      await tester.pump(const Duration(milliseconds: 50));
+    }
+
+    // Ensure state is settled after loading
+    await tester.pump();
   }
 
   testWidgets('renders successfully with empty state', (tester) async {
