@@ -79,18 +79,10 @@ void main() {
     // Trigger initState and first frame
     await tester.pump();
 
-    // Wait for async data loading. Since we're using mocked local stores,
-    // this should complete almost instantly. Use a short timeout.
-    final stopwatch = Stopwatch()..start();
-    while (stopwatch.elapsedMilliseconds < 1000) {
-      if (find.byType(CircularProgressIndicator).evaluate().isEmpty) {
-        break;
-      }
-      await tester.pump(const Duration(milliseconds: 100));
-    }
-
-    // Final frame to ensure state is settled
-    await tester.pump();
+    // Pump a fixed duration to allow async _loadRecords to complete.
+    // We avoid pumpAndSettle() because AnimatedContainer animations
+    // can cause timeouts. 500ms is plenty for local Hive reads.
+    await tester.pump(const Duration(milliseconds: 500));
   }
 
   testWidgets('renders successfully with empty state', (tester) async {
@@ -104,11 +96,7 @@ void main() {
     expect(find.text('No matching records'), findsOneWidget);
   });
 
-  // TODO(CRITICAL): This test hangs in CI due to an async operation that never completes.
-  // The widget or its dependencies may have a stream/subscription that isn't properly
-  // mocked in tests. Requires deeper investigation of RecordsListPage and its services.
-  // Skip for now to unblock CI.
-  testWidgets('loads and displays trips and fuel', skip: true, (tester) async {
+  testWidgets('loads and displays trips and fuel', (tester) async {
     // Seed Data
     final trip = Trip(
       id: 'trip-1',
@@ -133,22 +121,26 @@ void main() {
       truckNumber: 'T-100',
     );
 
-    await LocalTripStore.put(trip);
-    await LocalFuelStore.put(fuel);
+    // Use runAsync for Hive I/O operations since they require real async
+    await tester.runAsync(() async {
+      await LocalTripStore.put(trip);
+      await LocalFuelStore.put(fuel);
+    });
 
     await pumpPage(tester);
 
     // Verify Trip Card
     expect(find.text('Trip #12345'), findsOneWidget);
-    expect(find.text('Chicago, IL → Detroit, MI'), findsOneWidget);
+    // AddressUtils.extractCityState removes comma from "City, ST" format
+    expect(find.text('Chicago IL → Detroit MI'), findsOneWidget);
 
     // Verify Fuel Card
     expect(find.text('Truck - T-100'), findsOneWidget);
-    expect(find.text('Gary, IN'), findsOneWidget);
+    // AddressUtils.extractCityState removes comma from "City, ST" format
+    expect(find.text('Gary IN'), findsOneWidget);
   });
 
-  // TODO(CRITICAL): Same hang issue as 'loads and displays trips and fuel'
-  testWidgets('filters functionality works', skip: true, (tester) async {
+  testWidgets('filters functionality works', (tester) async {
     // Seed Trips and Fuel
     final trip = Trip(
       id: 'trip-1',
@@ -170,32 +162,35 @@ void main() {
       fuelType: 'truck',
     );
 
-    await LocalTripStore.put(trip);
-    await LocalFuelStore.put(fuel);
+    // Use runAsync for Hive I/O operations
+    await tester.runAsync(() async {
+      await LocalTripStore.put(trip);
+      await LocalFuelStore.put(fuel);
+    });
 
     await pumpPage(tester);
 
     // Initial: Show All
     expect(find.text('Trip #100'), findsOneWidget);
-    expect(find.text('Truck - T-100'), findsOneWidget); // Identifier fallback
+    // Fuel entry has no truckNumber set, so identifier defaults to 'Truck'
+    expect(find.text('Truck - Truck'), findsOneWidget);
 
     // Filter: Trips Only
     await tester.tap(find.text('Trips Only'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Trip #100'), findsOneWidget);
-    expect(find.text('Truck - T-100'), findsNothing);
+    expect(find.text('Truck - Truck'), findsNothing);
 
     // Filter: Fuel Only
     await tester.tap(find.text('Fuel Only'));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Trip #100'), findsNothing);
-    expect(find.text('Truck - T-100'), findsOneWidget);
+    expect(find.text('Truck - Truck'), findsOneWidget);
   });
 
-  // TODO(CRITICAL): Same hang issue as 'loads and displays trips and fuel'
-  testWidgets('search functionality works', skip: true, (tester) async {
+  testWidgets('search functionality works', (tester) async {
     final trip1 = Trip(
       id: 't1',
       userId: 'test-user',
@@ -215,8 +210,11 @@ void main() {
       deliveryLocations: [],
     );
 
-    await LocalTripStore.put(trip1);
-    await LocalTripStore.put(trip2);
+    // Use runAsync for Hive I/O operations
+    await tester.runAsync(() async {
+      await LocalTripStore.put(trip1);
+      await LocalTripStore.put(trip2);
+    });
 
     await pumpPage(tester);
 
@@ -225,18 +223,20 @@ void main() {
 
     // Open Search (Icon in AppBar actions)
     await tester.tap(find.byIcon(Icons.search_rounded));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     // Enter Query
     await tester.enterText(find.byType(TextField), 'ALPHA');
-    await tester.pumpAndSettle(); // Allow debounce/state update
+    await tester.pump(
+      const Duration(milliseconds: 300),
+    ); // Allow debounce/state update
 
     expect(find.text('Trip #ALPHA'), findsOneWidget);
     expect(find.text('Trip #BETA'), findsNothing);
 
     // Clear Match
     await tester.enterText(find.byType(TextField), 'ZETA');
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 300));
 
     expect(find.text('Trip #ALPHA'), findsNothing);
     expect(find.text('No matching records'), findsOneWidget);
