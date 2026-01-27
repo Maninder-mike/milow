@@ -78,10 +78,9 @@ void main() {
     );
     // Trigger initState and first frame
     await tester.pump();
-    // Allow futures in _loadRecords to complete
-    await tester.pump(const Duration(milliseconds: 100));
-    // Rebuild with new state
-    await tester.pump();
+    // Wait for _loadRecords to complete and loading indicator to disappear.
+    // This will time out if isLoading never becomes false.
+    await tester.pumpAndSettle();
   }
 
   testWidgets('renders successfully with empty state', (tester) async {
