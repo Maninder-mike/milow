@@ -11,7 +11,7 @@ class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onInvoicesTap;
   final VoidCallback onCrmTap;
   final VoidCallback onSettlementsTap;
-  final VoidCallback onSettingsTap;
+
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
   final String? activePane; // 'add_record', 'drivers', etc
@@ -26,7 +26,6 @@ class PrimarySidebar extends ConsumerWidget {
     required this.onInvoicesTap,
     required this.onCrmTap,
     required this.onSettlementsTap,
-    required this.onSettingsTap,
     required this.onProfileTap,
     required this.onDashboardTap,
     required this.currentLocation,
@@ -146,23 +145,9 @@ class PrimarySidebar extends ConsumerWidget {
                 ),
               ),
             ),
-
-            // Settings pinned at bottom
-            _buildSettingsIcon(context, ref),
-            const SizedBox(height: 12),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildSettingsIcon(BuildContext context, WidgetRef ref) {
-    return _buildNavItem(
-      context,
-      FluentIcons.settings_24_regular,
-      label: 'Settings',
-      onTap: onSettingsTap,
-      isActive: currentLocation.startsWith('/settings'),
     );
   }
 

@@ -6,6 +6,8 @@ import io.flutter.plugin.common.MethodChannel
 import android.content.Intent
 import android.os.Bundle
 
+import androidx.activity.enableEdgeToEdge
+
 class MainActivity: FlutterFragmentActivity() {
     private val CHANNEL = "maninder.co.in.milow/share"
     private var sharedText: String? = null
@@ -29,6 +31,7 @@ class MainActivity: FlutterFragmentActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         handleIntent(intent)
     }

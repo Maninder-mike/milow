@@ -188,7 +188,7 @@ class _DriverChatWidgetState extends ConsumerState<DriverChatWidget> {
                   itemBuilder: (context, index) {
                     final msg = messages[index];
                     final isMe = msg['sender_id'] == _currentUserId;
-                    final content = msg['content'] as String;
+                    final content = msg['content'] as String? ?? '';
                     final createdAt = DateTime.parse(msg['created_at']);
 
                     return _buildMessageBubble(

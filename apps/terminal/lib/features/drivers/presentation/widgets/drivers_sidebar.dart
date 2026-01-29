@@ -35,12 +35,14 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
   // Keyboard Navigation
   final FocusNode _listFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
+  final FlyoutController _flyoutController = FlyoutController();
   int? _focusedIndex;
 
   @override
   void dispose() {
     _listFocusNode.dispose();
     _scrollController.dispose();
+    _flyoutController.dispose();
     super.dispose();
   }
 
@@ -396,19 +398,36 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
 
     final isSelected = selectedDriver?.id == driver.id;
 
-    // We'll use a FutureBuilder to fetch the active trip for this driver
+    // We'll use a FutureBuilder to fetch the active assignment for this driver
     // This might be slightly expensive for a long list, but for a sidebar it's acceptable
     return FutureBuilder<Map<String, dynamic>?>(
       future: _fetchActiveTrip(driver.id),
       builder: (context, snapshot) {
-        final activeTrip = snapshot.data;
-        final tripNumber = activeTrip?['trip_number'] as String?;
-        final currentTrip = activeTrip != null
-            ? '${_extractCityState(activeTrip['pickup_locations'])} → ${_extractCityState(activeTrip['delivery_locations'])}'
-            : 'No active trip';
-        final statusColor = activeTrip != null
+        final data = snapshot.data;
+        final tripNumber = data?['trip_number'] as String?;
+        final assignedTruckNumber = data?['assigned_truck_number'] as String?;
+        final source = data?['source'] as String?;
+
+        // Build route display based on data source
+        String currentTrip;
+        if (source == 'load') {
+          // For loads: show shipper → receiver
+          final shipper = data?['shipper_name'] as String? ?? 'Unknown';
+          final receiver = data?['receiver_name'] as String? ?? 'Unknown';
+          currentTrip = '$shipper → $receiver';
+        } else if (data?['pickup_locations'] != null) {
+          // For trips: show city/state
+          currentTrip =
+              '${_extractCityState(data!['pickup_locations'])} → ${_extractCityState(data['delivery_locations'])}';
+        } else if (assignedTruckNumber != null) {
+          currentTrip = 'Assigned to Trk $assignedTruckNumber';
+        } else {
+          currentTrip = 'No active assignment';
+        }
+
+        final statusColor = (tripNumber != null || assignedTruckNumber != null)
             ? Colors.green
-            : Colors.grey; // Active if trip
+            : Colors.grey; // Active if assigned
 
         return HoverButton(
           onPressed: () {
@@ -431,115 +450,201 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                   ),
                 ),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Avatar with status indicator
-                  Stack(
+              child: FlyoutTarget(
+                controller: _flyoutController,
+                child: GestureDetector(
+                  onSecondaryTapUp: (details) {
+                    _showContextMenu(context, driver, details);
+                  },
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildAvatar(driver),
-                      Positioned(
-                        right: 0,
-                        bottom: 0,
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: isLight
-                                  ? Colors.white
-                                  : const Color(0xFF252526),
-                              width: 2,
+                      // Avatar with status indicator
+                      Stack(
+                        children: [
+                          _buildAvatar(driver),
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: Container(
+                              width: 10,
+                              height: 10,
+                              decoration: BoxDecoration(
+                                color: statusColor,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isLight
+                                      ? Colors.white
+                                      : const Color(0xFF252526),
+                                  width: 2,
+                                ),
+                              ),
                             ),
                           ),
-                        ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Name row
-                        Text(
-                          driver.fullName ?? 'Unknown',
-                          style: GoogleFonts.outfit(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                            color: textColor,
-                          ),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 4),
-                        // Trip info row
-                        Row(
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (tripNumber != null) ...[
-                              // Trip number badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 1,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: isLight
-                                      ? const Color(0xFFE0E0E0)
-                                      : const Color(0xFF4D4D4D),
-                                  borderRadius: BorderRadius.circular(3),
-                                ),
-                                child: Text(
-                                  tripNumber,
-                                  style: GoogleFonts.outfit(
-                                    fontSize: 10,
-                                    fontWeight: FontWeight.w600,
-                                    color: subTextColor,
+                            // Name row
+                            Text(
+                              driver.fullName ?? 'Unknown',
+                              style: GoogleFonts.outfit(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: textColor,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            const SizedBox(height: 4),
+                            // Trip info row
+                            Row(
+                              children: [
+                                if (tripNumber != null) ...[
+                                  // Trip number badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isLight
+                                          ? const Color(0xFFE0E0E0)
+                                          : const Color(0xFF4D4D4D),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      tripNumber,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: subTextColor,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                if (assignedTruckNumber != null) ...[
+                                  // Truck number badge
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: FluentTheme.of(
+                                        context,
+                                      ).accentColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(3),
+                                    ),
+                                    child: Text(
+                                      assignedTruckNumber,
+                                      style: GoogleFonts.outfit(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w600,
+                                        color: FluentTheme.of(
+                                          context,
+                                        ).accentColor,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                Expanded(
+                                  child: Text(
+                                    currentTrip,
+                                    style: GoogleFonts.outfit(
+                                      fontSize: 11,
+                                      color: subTextColor,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 6),
-                            ],
-                            Expanded(
-                              child: Text(
-                                currentTrip,
-                                style: GoogleFonts.outfit(
-                                  fontSize: 11,
-                                  color: subTextColor,
-                                ),
-                                overflow: TextOverflow.ellipsis,
-                              ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  ),
-                  // Assign button on hover
-                  if (states.isHovered)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 8),
-                      child: Tooltip(
-                        message: 'Assign Trip/Truck',
-                        child: IconButton(
-                          icon: Icon(
-                            FluentIcons.add,
-                            size: 18,
-                            color: FluentTheme.of(context).accentColor,
-                          ),
-                          onPressed: () {
-                            _showAssignDialog(context, driver);
-                          },
-                        ),
                       ),
-                    ),
-                ],
+                      // Assign button on hover
+                      if (states.isHovered)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: Tooltip(
+                            message: 'Assign Trip/Truck',
+                            child: IconButton(
+                              icon: Icon(
+                                FluentIcons.add,
+                                size: 18,
+                                color: FluentTheme.of(context).accentColor,
+                              ),
+                              onPressed: () {
+                                _showAssignDialog(context, driver);
+                              },
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             );
           },
         );
       },
+    );
+  }
+
+  void _showContextMenu(
+    BuildContext context,
+    UserProfile driver,
+    TapUpDetails details,
+  ) {
+    _flyoutController.showFlyout(
+      builder: (context) {
+        return MenuFlyout(
+          items: [
+            MenuFlyoutItem(
+              text: const Text('View Details'),
+              leading: const Icon(FluentIcons.contact),
+              onPressed: () {
+                _flyoutController.close();
+                ref.read(selectedDriverProvider.notifier).select(driver);
+                context.go('/drivers/${driver.id}');
+              },
+            ),
+            const MenuFlyoutSeparator(),
+            MenuFlyoutItem(
+              text: const Text('Assign Trip'),
+              leading: const Icon(FluentIcons.open_folder_horizontal),
+              onPressed: () {
+                _flyoutController.close();
+                _showTripSelectionDialog(context, driver);
+              },
+            ),
+            MenuFlyoutItem(
+              text: const Text('Assign Truck'),
+              leading: const Icon(FluentIcons.car),
+              onPressed: () {
+                _flyoutController.close();
+                _showTruckSelectionDialog(context, driver);
+              },
+            ),
+            // Potential future actions
+            // const MenuFlyoutSeparator(),
+            // MenuFlyoutItem(
+            //   text: const Text('Message'),
+            //   leading: const Icon(FluentIcons.chat),
+            //   onPressed: () {},
+            // ),
+          ],
+        );
+      },
+      dismissOnPointerMoveAway: false,
+      autoModeConfiguration: FlyoutAutoConfiguration(
+        preferredMode: FlyoutPlacementMode.bottomRight,
+      ),
     );
   }
 
@@ -698,28 +803,33 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                 itemCount: vehicles.length,
                 itemBuilder: (context, index) {
                   final vehicle = vehicles[index];
+                  final vehicleId = vehicle['id'] as String?;
+                  final truckNumber =
+                      vehicle['truck_number'] as String? ?? 'N/A';
+                  final vehicleType =
+                      vehicle['vehicle_type'] as String? ?? 'Unknown';
                   return ListTile(
                     leading: Icon(
                       FluentIcons.car,
                       color: FluentTheme.of(context).accentColor,
                     ),
-                    title: Text(
-                      '${vehicle['truck_number']} - ${vehicle['vehicle_type']}',
-                    ),
+                    title: Text('$truckNumber - $vehicleType'),
                     subtitle: Text(
                       'Plate: ${vehicle['license_plate'] ?? 'N/A'}',
                     ),
                     trailing: FilledButton(
                       child: const Text('Assign'),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await _assignVehicleToDriver(
-                          context,
-                          driver,
-                          vehicle['id'] as String,
-                          vehicle['truck_number'] as String,
-                        );
-                      },
+                      onPressed: vehicleId == null
+                          ? null
+                          : () async {
+                              Navigator.pop(context);
+                              await _assignVehicleToDriver(
+                                context,
+                                driver,
+                                vehicleId,
+                                truckNumber,
+                              );
+                            },
                     ),
                   );
                 },
@@ -791,17 +901,85 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
 
   Future<Map<String, dynamic>?> _fetchActiveTrip(String driverId) async {
     try {
-      final response = await Supabase.instance.client
+      final supabase = Supabase.instance.client;
+
+      // Fetch assigned load (higher priority than trips)
+      final loadResponse = await supabase
+          .from('loads')
+          .select('''
+            id, trip_number, assigned_truck_id, broker_name,
+            vehicles:assigned_truck_id(truck_number),
+            stops(sequence, type, company_name)
+          ''')
+          .eq('assigned_driver_id', driverId)
+          .isFilter('deleted_at', null)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      debugPrint('Load query for driver $driverId: $loadResponse');
+
+      // If we have an assigned load, use it
+      if (loadResponse != null) {
+        final vehicle = loadResponse['vehicles'] as Map<String, dynamic>?;
+        final stops = loadResponse['stops'] as List<dynamic>? ?? [];
+
+        // Find pickup (shipper) and delivery (receiver) from stops
+        String? shipperName;
+        String? receiverName;
+        for (final stop in stops) {
+          final stopMap = stop as Map<String, dynamic>;
+          final type = stopMap['type'] as String?;
+          final companyName = stopMap['company_name'] as String?;
+          if (type == 'pickup' && shipperName == null) {
+            shipperName = companyName;
+          } else if (type == 'delivery' && receiverName == null) {
+            receiverName = companyName;
+          }
+        }
+
+        return {
+          'trip_number': loadResponse['trip_number'] as String?,
+          'shipper_name': shipperName ?? loadResponse['broker_name'] as String?,
+          'receiver_name': receiverName,
+          'assigned_truck_number': vehicle?['truck_number'] as String?,
+          'source': 'load',
+        };
+      }
+
+      // Fallback: Fetch active trip
+      final tripResponse = await supabase
           .from('trips')
           .select('trip_number, pickup_locations, delivery_locations')
           .eq('user_id', driverId)
-          // delivery_completed is an array in the DB, comparing with false is invalid postgrest
-          // .eq('delivery_completed', false)
           .isFilter('deleted_at', null)
           .order('trip_date', ascending: false)
           .limit(1)
           .maybeSingle();
-      return response;
+
+      // Fetch assigned vehicle
+      final assignmentResponse = await supabase
+          .from('fleet_assignments')
+          .select('resource_id, vehicles:resource_id(truck_number)')
+          .eq('assignee_id', driverId)
+          .eq('type', 'driver_to_vehicle')
+          .isFilter('unassigned_at', null)
+          .maybeSingle();
+
+      // Combine results
+      final result = <String, dynamic>{};
+
+      if (tripResponse != null) {
+        result.addAll(tripResponse);
+        result['source'] = 'trip';
+      }
+
+      if (assignmentResponse != null) {
+        final vehicle = assignmentResponse['vehicles'] as Map<String, dynamic>?;
+        result['assigned_truck_number'] = vehicle?['truck_number'] as String?;
+      }
+
+      return result.isNotEmpty ? result : null;
     } catch (e) {
       debugPrint('Error fetching active trip for driver $driverId: $e');
       return null;

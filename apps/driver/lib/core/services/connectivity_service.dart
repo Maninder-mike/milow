@@ -65,6 +65,15 @@ class ConnectivityService {
     return _isOnline;
   }
 
+  /// Wait for connectivity to be restored.
+  ///
+  /// Returns immediately if already online,
+  /// otherwise waits until connectivity is restored.
+  Future<void> waitForConnectivity() async {
+    if (_isOnline) return;
+    await _controller.stream.firstWhere((online) => online);
+  }
+
   /// Dispose the service
   void dispose() {
     _subscription?.cancel();

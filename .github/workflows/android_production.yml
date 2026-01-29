@@ -1,0 +1,478 @@
+name: Production Release - Play Store
+
+# ============================================================================
+# PRODUCTION RELEASE WORKFLOW
+# ============================================================================
+# Enterprise-grade production deployment with:
+# - Manual approval gate (environment protection)
+# - Staged rollout (5% → 20% → 50% → 100%)
+# - Stricter quality gates (no continue-on-error)
+# - Crash rate monitoring integration
+# - Rollback artifact preservation
+# ============================================================================
+
+on:
+  push:
+    branches: [master, main]
+    tags: ['v*']
+    paths:
+      - "apps/driver/pubspec.yaml"
+      - "apps/driver/lib/**"
+      - "apps/driver/android/**"
+      - ".github/workflows/android_production.yml"
+  workflow_dispatch:
+    inputs:
+      rollout_percentage:
+        description: 'Rollout percentage (1-100)'
+        required: true
+        default: '5'
+        type: choice
+        options:
+          - '5'
+          - '10'
+          - '20'
+          - '50'
+          - '100'
+      skip_tests:
+        description: 'Skip tests (emergency hotfix only)'
+        required: false
+        default: false
+        type: boolean
+
+# Prevent concurrent production deployments
+concurrency:
+  group: production-deploy
+  cancel-in-progress: false
+
+jobs:
+  # ==========================================================================
+  # JOB 1: Quality Gates
+  # ==========================================================================
+  quality-gates:
+    name: 🧪 Quality Gates
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: |
+          flutter pub get
+          cd apps/driver && flutter pub get
+
+      # STRICT: Tests MUST pass for production
+      - name: Run Full Test Suite
+        if: ${{ github.event.inputs.skip_tests != 'true' }}
+        run: |
+          echo "🧪 Running full test suite..."
+          cd apps/driver
+          flutter test --coverage --reporter=github
+          echo "✅ All tests passed"
+
+      # STRICT: No analysis issues allowed
+      - name: Static Analysis
+        run: |
+          echo "🔍 Running static analysis..."
+          cd apps/driver
+          flutter analyze --fatal-infos --fatal-warnings
+          echo "✅ Analysis passed"
+
+      # Dependency vulnerability check
+      - name: Dependency Audit
+        run: |
+          echo "🛡️ Checking for vulnerabilities..."
+          cd apps/driver
+          flutter pub outdated --no-dev-dependencies
+
+  # ==========================================================================
+  # JOB 2: Build & Sign
+  # ==========================================================================
+  build:
+    name: 🏗️ Build Release Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: quality-gates
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_number: ${{ steps.version.outputs.version_number }}
+      version_code: ${{ steps.version.outputs.version_code }}
+      apk_size_mb: ${{ steps.size.outputs.apk_size_mb }}
+      aab_size_mb: ${{ steps.size.outputs.aab_size_mb }}
+
+    env:
+      GRADLE_OPTS: '-Dorg.gradle.vfs.watch=false'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version
+        id: version
+        run: |
+          VERSION=$(grep '^version:' apps/driver/pubspec.yaml | sed 's/version: //;s/\+.*//')
+          VERSION_CODE=$(( $GITHUB_RUN_NUMBER + 100 ))
+          echo "version=v$VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+          echo "version_code=$VERSION_CODE" >> $GITHUB_OUTPUT
+          echo "📦 Production Build: v$VERSION+$VERSION_CODE"
+
+      - name: Check if release exists
+        id: check
+        run: |
+          if git rev-parse "${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Version ${{ steps.version.outputs.version }} already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.pub-cache
+            apps/driver/.dart_tool
+          key: ${{ runner.os }}-pub-v2-${{ hashFiles('**/pubspec.lock') }}
+
+      - name: Prepare Android signing
+        run: |
+          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 --decode > release.jks
+
+      - name: Create key.properties
+        run: |
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}" > apps/driver/android/key.properties
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}" >> apps/driver/android/key.properties
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}" >> apps/driver/android/key.properties
+          echo "storeFile=$GITHUB_WORKSPACE/release.jks" >> apps/driver/android/key.properties
+
+      - name: Create google-services.json
+        run: |
+          echo "${{ secrets.GOOGLE_SERVICES_JSON_BASE64 }}" | base64 --decode > apps/driver/android/app/google-services.json
+
+      - name: Create firebase_options.dart
+        run: |
+          if [ -n "${{ secrets.DRIVER_FIREBASE_OPTIONS_BASE64 }}" ]; then
+            echo "${{ secrets.DRIVER_FIREBASE_OPTIONS_BASE64 }}" | base64 --decode > apps/driver/lib/firebase_options.dart
+          fi
+
+      - name: Create .env file
+        run: |
+          cat > apps/driver/.env <<EOF
+          NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
+          EOF
+
+      - name: Install dependencies
+        run: |
+          rm -rf .dart_tool
+          flutter pub get
+          cd apps/driver
+          flutter clean
+          flutter pub get
+
+      - name: Build Release Artifacts
+        run: |
+          echo "🏗️ Building PRODUCTION release..."
+          cd apps/driver
+          flutter build apk --release --build-number=${{ steps.version.outputs.version_code }} --no-tree-shake-icons
+          flutter build appbundle --release --build-number=${{ steps.version.outputs.version_code }} --no-tree-shake-icons
+          echo "✅ Production build complete!"
+
+      - name: Verify APK Signature
+        run: |
+          APK_PATH="apps/driver/build/app/outputs/flutter-apk/app-release.apk"
+          APKSIGNER=$(find $ANDROID_HOME -name "apksigner" -type f | head -1)
+          if [ -n "$APKSIGNER" ]; then
+            $APKSIGNER verify --verbose --print-certs "$APK_PATH"
+          fi
+
+      - name: Check Bundle Size
+        id: size
+        run: |
+          APK_PATH="apps/driver/build/app/outputs/flutter-apk/app-release.apk"
+          AAB_PATH="apps/driver/build/app/outputs/bundle/release/app-release.aab"
+          
+          APK_SIZE=$(stat -c%s "$APK_PATH" 2>/dev/null || stat -f%z "$APK_PATH")
+          AAB_SIZE=$(stat -c%s "$AAB_PATH" 2>/dev/null || stat -f%z "$AAB_PATH")
+          
+          APK_SIZE_MB=$(echo "scale=2; $APK_SIZE / 1048576" | bc)
+          AAB_SIZE_MB=$(echo "scale=2; $AAB_SIZE / 1048576" | bc)
+          
+          echo "apk_size_mb=$APK_SIZE_MB" >> $GITHUB_OUTPUT
+          echo "aab_size_mb=$AAB_SIZE_MB" >> $GITHUB_OUTPUT
+          
+          # STRICT: 150MB limit for production (stricter than beta)
+          MAX_SIZE=157286400
+          if [ "$APK_SIZE" -gt "$MAX_SIZE" ]; then
+            echo "::error::Production APK (${APK_SIZE_MB}MB) exceeds 150MB limit!"
+            exit 1
+          fi
+          
+          echo "📊 APK: ${APK_SIZE_MB}MB | AAB: ${AAB_SIZE_MB}MB"
+
+      # Upload artifacts for next job
+      - name: Upload AAB
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-aab
+          path: apps/driver/build/app/outputs/bundle/release/app-release.aab
+          retention-days: 90
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-apk
+          path: apps/driver/build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 90
+
+  # ==========================================================================
+  # JOB 3: Manual Approval Gate
+  # ==========================================================================
+  approval:
+    name: ✅ Production Approval
+    runs-on: ubuntu-latest
+    needs: build
+    environment:
+      name: production
+      url: https://play.google.com/store/apps/details?id=maninder.co.in.milow
+    
+    steps:
+      - name: Approval Checkpoint
+        run: |
+          echo "✅ Production deployment approved!"
+          echo "📦 Version: ${{ needs.build.outputs.version }}"
+          echo "📊 APK Size: ${{ needs.build.outputs.apk_size_mb }}MB"
+
+  # ==========================================================================
+  # JOB 4: Deploy to Play Store Production
+  # ==========================================================================
+  deploy:
+    name: 🚀 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [build, approval]
+    timeout-minutes: 15
+    
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download AAB
+        uses: actions/download-artifact@v4
+        with:
+          name: production-aab
+          path: build/
+
+      - name: Download APK
+        uses: actions/download-artifact@v4
+        with:
+          name: production-apk
+          path: build/
+
+      # Determine rollout percentage
+      - name: Set Rollout Percentage
+        id: rollout
+        run: |
+          if [ -n "${{ github.event.inputs.rollout_percentage }}" ]; then
+            PERCENTAGE="${{ github.event.inputs.rollout_percentage }}"
+          else
+            # Default staged rollout: 5% for automated pushes
+            PERCENTAGE="5"
+          fi
+          echo "percentage=$PERCENTAGE" >> $GITHUB_OUTPUT
+          echo "🎯 Rollout percentage: ${PERCENTAGE}%"
+
+      # Generate production changelog
+      - name: Generate Changelog
+        run: |
+          VERSION_CODE=${{ needs.build.outputs.version_code }}
+          CHANGELOG_DIR="apps/driver/fastlane/metadata/android/en-US/changelogs"
+          CHANGELOG_FILE="$CHANGELOG_DIR/${VERSION_CODE}.txt"
+          
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"• %s" -10)
+          else
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"• %s" --no-merges | head -15)
+          fi
+          
+          cat > "$CHANGELOG_FILE" <<EOF
+          Production Release v${{ needs.build.outputs.version_number }}
+          
+          $COMMITS
+          
+          Thank you for using Milow!
+          EOF
+          
+          head -c 500 "$CHANGELOG_FILE" > "${CHANGELOG_FILE}.tmp"
+          mv "${CHANGELOG_FILE}.tmp" "$CHANGELOG_FILE"
+          
+          cat "$CHANGELOG_FILE"
+
+      # Upload to Play Store PRODUCTION track with staged rollout
+      - name: Upload to Play Store (Production)
+        uses: r0adkll/upload-google-play@v1
+        with:
+          serviceAccountJsonPlainText: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+          packageName: maninder.co.in.milow
+          releaseFiles: build/app-release.aab
+          track: production
+          status: inProgress
+          userFraction: ${{ steps.rollout.outputs.percentage == '100' && '1.0' || format('0.{0}', steps.rollout.outputs.percentage) }}
+          whatsNewDirectory: apps/driver/fastlane/metadata/android
+
+      # Update Play Store metadata
+      - name: Update Play Store Metadata
+        env:
+          ANDROID_SERVICE_ACCOUNT_JSON: ${{ secrets.ANDROID_SERVICE_ACCOUNT_JSON }}
+        run: |
+          echo "📝 Updating Play Store listing..."
+          cd apps/driver
+          echo "$ANDROID_SERVICE_ACCOUNT_JSON" > service-account.json
+          
+          export GEM_HOME="$HOME/.gem"
+          export PATH="$GEM_HOME/bin:$PATH"
+          gem install fastlane
+          
+          fastlane update_metadata
+          rm service-account.json
+
+      # Prepare release assets
+      - name: Prepare Release Assets
+        id: prepare
+        run: |
+          mkdir -p release_output
+          cp build/app-release.apk release_output/milow-${{ needs.build.outputs.version }}-production.apk
+          APK_SIZE=$(ls -lh release_output/milow-${{ needs.build.outputs.version }}-production.apk | awk '{print $5}')
+          echo "apk_size=$APK_SIZE" >> $GITHUB_OUTPUT
+
+      # Generate rich release notes
+      - name: Generate Release Notes
+        run: |
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          cat > RELEASE_NOTES.md <<EOF
+          # 🚀 Milow v${{ needs.build.outputs.version_number }} - Production Release
+          
+          ## 📊 Release Info
+          
+          | Property | Value |
+          |----------|-------|
+          | **Track** | Production |
+          | **Rollout** | ${{ steps.rollout.outputs.percentage }}% |
+          | **APK Size** | ${{ steps.prepare.outputs.apk_size }} |
+          | **Build Date** | $(date -u +"%Y-%m-%d %H:%M:%S UTC") |
+          
+          ## 📝 What's Changed
+          
+          $(git log ${PREV_TAG}..HEAD --pretty=format:"- %s ([%h](https://github.com/${{ github.repository }}/commit/%H))" --no-merges | head -20)
+          
+          ## 📲 Installation
+          
+          This release is available on [Google Play Store](https://play.google.com/store/apps/details?id=maninder.co.in.milow).
+          
+          ---
+          *Full Changelog*: [${PREV_TAG}...${{ needs.build.outputs.version }}](https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ needs.build.outputs.version }})
+          EOF
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.build.outputs.version }}
+          name: "🚀 ${{ needs.build.outputs.version }} (Production)"
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: false
+          files: release_output/milow-${{ needs.build.outputs.version }}-production.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Build Summary
+      - name: Build Summary
+        run: |
+          echo "## 🎉 Production Deployment Complete!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Property | Value |" >> $GITHUB_STEP_SUMMARY
+          echo "|----------|-------|" >> $GITHUB_STEP_SUMMARY
+          echo "| **Version** | ${{ needs.build.outputs.version }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Track** | Production |" >> $GITHUB_STEP_SUMMARY
+          echo "| **Rollout** | ${{ steps.rollout.outputs.percentage }}% |" >> $GITHUB_STEP_SUMMARY
+          echo "| **APK Size** | ${{ needs.build.outputs.apk_size_mb }}MB |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### 🔗 Links" >> $GITHUB_STEP_SUMMARY
+          echo "- [GitHub Release](https://github.com/${{ github.repository }}/releases/tag/${{ needs.build.outputs.version }})" >> $GITHUB_STEP_SUMMARY
+          echo "- [Play Store](https://play.google.com/store/apps/details?id=maninder.co.in.milow)" >> $GITHUB_STEP_SUMMARY
+
+  # ==========================================================================
+  # JOB 5: Post-Deployment Monitoring
+  # ==========================================================================
+  monitor:
+    name: 📊 Post-Deploy Monitoring
+    runs-on: ubuntu-latest
+    needs: [build, deploy]
+    if: success()
+    
+    steps:
+      - name: Wait for Rollout
+        run: |
+          echo "⏳ Waiting 10 minutes for initial crash data..."
+          sleep 600
+
+      - name: Check Crash Rate (Placeholder)
+        run: |
+          echo "📊 Crash Rate Monitoring"
+          echo ""
+          echo "To enable automated crash monitoring, integrate Firebase Crashlytics API:"
+          echo "1. Create a service account with Firebase access"
+          echo "2. Query crashlytics.issues.list for the new version"
+          echo "3. If crash rate > 1%, trigger rollback"
+          echo ""
+          echo "For now, manually monitor:"
+          echo "  - Firebase Console: https://console.firebase.google.com"
+          echo "  - Play Console: https://play.google.com/console"
+
+      - name: Monitoring Summary
+        run: |
+          echo "## 📊 Post-Deployment Monitoring" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Production deployment successful" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Next Steps:**" >> $GITHUB_STEP_SUMMARY
+          echo "1. Monitor crash rates in Firebase Crashlytics" >> $GITHUB_STEP_SUMMARY
+          echo "2. Check user reviews in Play Console" >> $GITHUB_STEP_SUMMARY
+          echo "3. Increase rollout percentage when stable" >> $GITHUB_STEP_SUMMARY

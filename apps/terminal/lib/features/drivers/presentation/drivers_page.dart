@@ -951,27 +951,32 @@ class _OverviewTab extends StatelessWidget {
                 itemCount: vehicles.length,
                 itemBuilder: (context, index) {
                   final vehicle = vehicles[index];
+                  final vehicleId = vehicle['id'] as String?;
+                  final truckNumber =
+                      vehicle['truck_number'] as String? ?? 'N/A';
+                  final vehicleType =
+                      vehicle['vehicle_type'] as String? ?? 'Unknown';
                   return ListTile(
                     leading: Icon(
                       FluentIcons.car,
                       color: FluentTheme.of(context).accentColor,
                     ),
-                    title: Text(
-                      '${vehicle['truck_number']} - ${vehicle['vehicle_type']}',
-                    ),
+                    title: Text('$truckNumber - $vehicleType'),
                     subtitle: Text(
                       'Plate: ${vehicle['license_plate'] ?? 'N/A'}',
                     ),
                     trailing: FilledButton(
                       child: const Text('Assign'),
-                      onPressed: () async {
-                        Navigator.pop(context);
-                        await _assignVehicleToDriver(
-                          context,
-                          vehicle['id'] as String,
-                          vehicle['truck_number'] as String,
-                        );
-                      },
+                      onPressed: vehicleId == null
+                          ? null
+                          : () async {
+                              Navigator.pop(context);
+                              await _assignVehicleToDriver(
+                                context,
+                                vehicleId,
+                                truckNumber,
+                              );
+                            },
                     ),
                   );
                 },

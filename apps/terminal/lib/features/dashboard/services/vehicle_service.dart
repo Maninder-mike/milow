@@ -16,7 +16,7 @@ class VehicleService {
     await _client.from('vehicle_documents').delete().eq('id', id);
   }
 
-  /// Fetches vehicles from the database.
+  /// Fetches vehicles from the database with current assignment info.
   Future<List<Map<String, dynamic>>> getVehicles() async {
     try {
       final user = _client.auth.currentUser;
@@ -24,15 +24,61 @@ class VehicleService {
         return [];
       }
 
+      // Fetch vehicles with their active assignments
       final data = await _client
           .from('vehicles')
-          .select()
+          .select('''
+            *,
+            fleet_assignments!fleet_assignments_resource_id_fkey(
+              assignee_id,
+              trip_number,
+              type,
+              profiles:assignee_id(full_name)
+            )
+          ''')
           .order('created_at', ascending: false);
 
-      return List<Map<String, dynamic>>.from(data);
+      // Process to extract active assignment (filter for unassigned_at = null is done via FK)
+      final vehicles = List<Map<String, dynamic>>.from(data);
+
+      // Flatten the first active assignment for easier access in UI
+      for (final vehicle in vehicles) {
+        final assignments = vehicle['fleet_assignments'] as List? ?? [];
+        if (assignments.isNotEmpty) {
+          // Get the first trip_assignment or driver_to_vehicle
+          final tripAssignment = assignments.firstWhere(
+            (a) => a['type'] == 'trip_assignment',
+            orElse: () => null,
+          );
+          final driverAssignment = assignments.firstWhere(
+            (a) => a['type'] == 'driver_to_vehicle',
+            orElse: () => null,
+          );
+
+          // Prefer trip assignment for display
+          final activeAssignment = tripAssignment ?? driverAssignment;
+          if (activeAssignment != null) {
+            vehicle['assigned_driver_name'] =
+                activeAssignment['profiles']?['full_name'] as String?;
+            vehicle['assigned_trip_number'] =
+                activeAssignment['trip_number'] as String?;
+          }
+        }
+      }
+
+      return vehicles;
     } catch (e) {
-      // Fallback to dummy data if fetch fails (or table doesn't exist yet)
-      return getDummyVehicles();
+      // Fallback: Try basic query without joins if FK doesn't exist
+      try {
+        final data = await _client
+            .from('vehicles')
+            .select()
+            .order('created_at', ascending: false);
+        return List<Map<String, dynamic>>.from(data);
+      } catch (_) {
+        // Final fallback to dummy data if fetch fails
+        return getDummyVehicles();
+      }
     }
   }
 

@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/widgets/choreographed_entrance.dart';
+import '../../../../core/widgets/entrance_fader.dart';
 import '../presentation/providers/dashboard_config_provider.dart';
 import '../presentation/providers/dashboard_metrics_provider.dart';
 import '../presentation/widgets/dashboard_widgets.dart';
@@ -54,19 +54,26 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
       ),
       children: [
         metricsAsync.when(
-          data: (metrics) => ChoreographedEntrance(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _buildQuickActions(context),
-                const SizedBox(height: 24),
-                _buildReorderableGrid(metrics, config),
-                const SizedBox(height: 32),
-                _buildSectionHeader(context, 'Critical Exceptions'),
-                const SizedBox(height: 16),
-                _buildAlertList(metrics),
-              ],
-            ),
+          data: (metrics) => Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              EntranceFader(
+                delay: const Duration(milliseconds: 100),
+                child: _buildQuickActions(context),
+              ),
+              const SizedBox(height: 24),
+              _buildReorderableGrid(metrics, config),
+              const SizedBox(height: 32),
+              EntranceFader(
+                delay: const Duration(milliseconds: 400),
+                child: _buildSectionHeader(context, 'Critical Exceptions'),
+              ),
+              const SizedBox(height: 16),
+              EntranceFader(
+                delay: const Duration(milliseconds: 500),
+                child: _buildAlertList(metrics),
+              ),
+            ],
           ),
           loading: () => const Center(
             child: Padding(
@@ -204,7 +211,10 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
           itemCount: config.length,
           itemBuilder: (context, index) {
             final type = config[index];
-            return _buildDraggableWidget(type, metrics, index);
+            return EntranceFader(
+              delay: Duration(milliseconds: 200 + (index * 50)),
+              child: _buildDraggableWidget(type, metrics, index),
+            );
           },
         );
       },

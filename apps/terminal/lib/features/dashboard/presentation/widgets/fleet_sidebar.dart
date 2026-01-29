@@ -441,6 +441,34 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                         ],
                       ],
                     ),
+                    // Assignment Info (Driver + Trip)
+                    Builder(
+                      builder: (context) {
+                        final driverName =
+                            vehicle['assigned_driver_name'] as String?;
+                        final tripNumber =
+                            vehicle['assigned_trip_number'] as String?;
+
+                        if (driverName == null && tripNumber == null) {
+                          return const SizedBox.shrink();
+                        }
+
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            tripNumber != null
+                                ? '${driverName ?? 'Assigned'} • #$tripNumber'
+                                : driverName ?? '',
+                            style: GoogleFonts.outfit(
+                              fontSize: 10,
+                              color: theme.accentColor,
+                              fontWeight: FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

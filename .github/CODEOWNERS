@@ -1,0 +1,20 @@
+# .github/CODEOWNERS
+
+# This file defines who owns which parts of the codebase.
+# GitHub automatically requests reviews from these owners when a Pull Request touches these files.
+# This works in tandem with "Branch Protection > Require review from Code Owners".
+
+# Default owner for the entire repository
+*                   @maninder-mike
+
+# GitHub Workflows & Actions (CI/CD Security)
+/.github/           @maninder-mike
+
+# Android Driver App
+/apps/driver/       @maninder-mike
+
+# Terminal App
+/apps/terminal/     @maninder-mike
+
+# Backend / Data
+/packages/data/     @maninder-mike

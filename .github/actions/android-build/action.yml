@@ -1,0 +1,172 @@
+name: 'Android Build & Sign'
+description: 'Shared composite action for building and signing Android artifacts'
+
+inputs:
+  keystore_password:
+    description: 'Keystore password'
+    required: true
+  key_password:
+    description: 'Key password'
+    required: true
+  key_alias:
+    description: 'Key alias'
+    required: true
+  keystore_base64:
+    description: 'Base64-encoded keystore file'
+    required: true
+  google_services_json_base64:
+    description: 'Base64-encoded google-services.json'
+    required: true
+  firebase_options_base64:
+    description: 'Base64-encoded firebase_options.dart'
+    required: false
+  supabase_url:
+    description: 'Supabase URL'
+    required: true
+  supabase_anon_key:
+    description: 'Supabase anonymous key'
+    required: true
+  version_code:
+    description: 'Version code for the build'
+    required: true
+
+outputs:
+  apk_path:
+    description: 'Path to the built APK'
+    value: ${{ steps.build.outputs.apk_path }}
+  aab_path:
+    description: 'Path to the built AAB'
+    value: ${{ steps.build.outputs.aab_path }}
+  version:
+    description: 'Version string'
+    value: ${{ steps.version.outputs.version }}
+  version_number:
+    description: 'Version number without v prefix'
+    value: ${{ steps.version.outputs.version_number }}
+
+runs:
+  using: 'composite'
+  steps:
+    # Extract version from pubspec.yaml
+    - name: Read version
+      id: version
+      shell: bash
+      run: |
+        VERSION=$(grep '^version:' apps/driver/pubspec.yaml | sed 's/version: //;s/\+.*//')
+        echo "version=v$VERSION" >> $GITHUB_OUTPUT
+        echo "version_number=$VERSION" >> $GITHUB_OUTPUT
+        echo "📦 Version: v$VERSION"
+
+    # Setup Java
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'temurin'
+        java-version: '17'
+
+    # Setup Flutter
+    - name: Setup Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        channel: 'stable'
+        cache: true
+        cache-key: 'flutter-:os:-:channel:-:version:-:arch:'
+
+    # Cache Flutter dependencies
+    - name: Cache Flutter dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.pub-cache
+          apps/driver/.dart_tool
+        key: ${{ runner.os }}-pub-v2-${{ hashFiles('**/pubspec.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-pub-v2-
+
+    # Prepare Android signing
+    - name: Prepare Android signing
+      shell: bash
+      run: |
+        echo "🔐 Preparing Android keystore..."
+        echo "${{ inputs.keystore_base64 }}" | base64 --decode > release.jks
+        ls -lh release.jks
+
+    # Create key.properties
+    - name: Create key.properties
+      shell: bash
+      run: |
+        echo "📝 Creating key.properties..."
+        echo "storePassword=${{ inputs.keystore_password }}" > apps/driver/android/key.properties
+        echo "keyPassword=${{ inputs.key_password }}" >> apps/driver/android/key.properties
+        echo "keyAlias=${{ inputs.key_alias }}" >> apps/driver/android/key.properties
+        echo "storeFile=$GITHUB_WORKSPACE/release.jks" >> apps/driver/android/key.properties
+
+    # Create google-services.json
+    - name: Create google-services.json
+      shell: bash
+      run: |
+        echo "🔥 Creating google-services.json..."
+        echo "${{ inputs.google_services_json_base64 }}" | base64 --decode > apps/driver/android/app/google-services.json
+        echo "✅ google-services.json created"
+
+    # Create firebase_options.dart
+    - name: Create firebase_options.dart
+      shell: bash
+      run: |
+        echo "🔥 Creating firebase_options.dart..."
+        if [ -n "${{ inputs.firebase_options_base64 }}" ]; then
+          echo "${{ inputs.firebase_options_base64 }}" | base64 --decode > apps/driver/lib/firebase_options.dart
+        else
+          echo "::warning::firebase_options_base64 not set"
+        fi
+
+    # Create .env file
+    - name: Create .env file
+      shell: bash
+      run: |
+        echo "🔧 Creating .env file..."
+        cat > apps/driver/.env <<EOF
+        NEXT_PUBLIC_SUPABASE_URL=${{ inputs.supabase_url }}
+        NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ inputs.supabase_anon_key }}
+        EOF
+
+    # Install dependencies
+    - name: Install dependencies
+      shell: bash
+      run: |
+        echo "📦 Installing Flutter dependencies..."
+        rm -rf .dart_tool
+        flutter pub get
+        cd apps/driver
+        flutter clean
+        flutter pub get
+
+    # Build release artifacts
+    - name: Build Release Artifacts
+      id: build
+      shell: bash
+      run: |
+        echo "🏗️ Building release APK & App Bundle..."
+        cd apps/driver
+        flutter build apk --release --build-number=${{ inputs.version_code }} --no-tree-shake-icons
+        flutter build appbundle --release --build-number=${{ inputs.version_code }} --no-tree-shake-icons
+        
+        echo "apk_path=apps/driver/build/app/outputs/flutter-apk/app-release.apk" >> $GITHUB_OUTPUT
+        echo "aab_path=apps/driver/build/app/outputs/bundle/release/app-release.aab" >> $GITHUB_OUTPUT
+        echo "✅ Build complete!"
+
+    # Verify APK Signature
+    - name: Verify APK Signature
+      shell: bash
+      run: |
+        echo "🔐 Verifying APK signature..."
+        APK_PATH="apps/driver/build/app/outputs/flutter-apk/app-release.apk"
+        APKSIGNER=$(find $ANDROID_HOME -name "apksigner" -type f | head -1)
+        
+        if [ -z "$APKSIGNER" ]; then
+          echo "::warning::apksigner not found, skipping signature verification"
+          exit 0
+        fi
+        
+        $APKSIGNER verify --verbose --print-certs "$APK_PATH"
+        echo "✅ APK signature verified"

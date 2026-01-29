@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../utils/failure.dart';
 import 'app_logger.dart';
+import 'network_coalescer.dart';
 
 /// Configuration for the [CoreNetworkClient].
 class NetworkClientConfig {
@@ -50,6 +51,7 @@ enum CircuitState { closed, open, halfOpen }
 class CoreNetworkClient {
   final SupabaseClient _supabase;
   final NetworkClientConfig config;
+  final NetworkCoalescer _coalescer;
 
   // Circuit breaker state
   CircuitState _circuitState = CircuitState.closed;
@@ -59,7 +61,8 @@ class CoreNetworkClient {
   CoreNetworkClient(
     this._supabase, {
     this.config = const NetworkClientConfig(),
-  });
+    NetworkCoalescer? coalescer,
+  }) : _coalescer = coalescer ?? networkCoalescer;
 
   /// Access the underlying Supabase client (for advanced use cases).
   SupabaseClient get supabase => _supabase;
@@ -74,7 +77,22 @@ class CoreNetworkClient {
   Future<Result<T>> query<T>(
     Future<T> Function() operation, {
     String operationName = 'query',
+    String? coalesceKey,
   }) async {
+    // If a coalesce key is provided, wrap the operation
+    if (coalesceKey != null) {
+      return _coalescer.coalesce<Result<T>>(
+        coalesceKey,
+        () => _executeWithRetry(operation, operationName),
+      );
+    }
+    return _executeWithRetry(operation, operationName);
+  }
+
+  Future<Result<T>> _executeWithRetry<T>(
+    Future<T> Function() operation,
+    String operationName,
+  ) async {
     // Check circuit breaker
     if (_circuitState == CircuitState.open) {
       if (_shouldAttemptReset()) {

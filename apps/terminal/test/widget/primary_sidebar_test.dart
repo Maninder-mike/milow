@@ -18,7 +18,7 @@ void main() {
           onInvoicesTap: () {},
           onCrmTap: () {},
           onSettlementsTap: () {},
-          onSettingsTap: () {},
+
           onProfileTap: () {},
           onDashboardTap: () {},
           currentLocation: currentLocation,

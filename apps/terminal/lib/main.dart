@@ -27,6 +27,7 @@ import 'core/services/app_links_service.dart';
 import 'core/services/notification_service.dart';
 import 'core/services/version_check_service.dart';
 import 'features/shared/widgets/update_dialog.dart';
+import 'core/services/window_persistence_service.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'core/providers/shared_preferences_provider.dart';
@@ -122,8 +123,20 @@ Future<void> main() async {
           skipTaskbar: false,
           titleBarStyle: TitleBarStyle.hidden,
         );
+
         await windowManager.waitUntilReadyToShow(windowOptions, () async {
-          await windowManager.maximize();
+          // Initialize persistence service
+          final persistenceService = WindowPersistenceService(prefs);
+
+          // Restore saved state (or default to maximized if first run)
+          await persistenceService.restoreState();
+
+          // Fallback: Maximize on first run if no state saved
+          if (!prefs.containsKey('window_maximized') &&
+              !prefs.containsKey('window_width')) {
+            await windowManager.maximize();
+          }
+
           await windowManager.show();
           await windowManager.focus();
         });

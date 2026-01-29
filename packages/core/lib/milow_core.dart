@@ -18,3 +18,4 @@ export 'src/models/trip_template.dart';
 export 'src/utils/failure.dart';
 export 'src/services/app_logger.dart';
 export 'src/services/core_network_client.dart';
+export 'src/services/network_coalescer.dart';

@@ -13,6 +13,8 @@ import 'presentation/widgets/main_content_area.dart';
 import 'presentation/providers/tab_manager_provider.dart';
 
 import 'presentation/widgets/custom_title_bar.dart';
+import '../../../core/shortcuts/app_intents.dart';
+import '../../../core/shortcuts/app_shortcuts.dart';
 
 class DashboardShell extends ConsumerStatefulWidget {
   final Widget child;
@@ -169,45 +171,11 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
   @override
   Widget build(BuildContext context) {
     final tabState = ref.watch(tabManagerProvider);
-    final tabs = tabState.tabs;
-    final selectedIndex = tabState.selectedIndex;
+    final tabs = tabState.tabs; // Used for tab switching limits
 
-    // Define shortcuts map
-    final shortcuts = <ShortcutActivator, VoidCallback>{
-      const SingleActivator(LogicalKeyboardKey.keyP, meta: true): () {
-        _searchFocusNode.requestFocus();
-      },
-      const SingleActivator(LogicalKeyboardKey.keyP, control: true): () {
-        _searchFocusNode.requestFocus();
-      },
-      const SingleActivator(
-        LogicalKeyboardKey.keyP,
-        meta: true,
-        shift: true,
-      ): () {
-        _searchFocusNode.requestFocus();
-      },
-      const SingleActivator(
-        LogicalKeyboardKey.keyP,
-        control: true,
-        shift: true,
-      ): () {
-        _searchFocusNode.requestFocus();
-      },
-      const SingleActivator(LogicalKeyboardKey.keyW, meta: true): () {
-        if (tabs.isNotEmpty) {
-          ref.read(tabManagerProvider.notifier).removeTab(selectedIndex);
-        }
-      },
-      const SingleActivator(LogicalKeyboardKey.keyW, control: true): () {
-        if (tabs.isNotEmpty) {
-          ref.read(tabManagerProvider.notifier).removeTab(selectedIndex);
-        }
-      },
-    };
-
-    // Add Cmd+1 to Cmd+9
-    final numberKeys = [
+    // Generate dynamic shortcuts for tabs (Cmd+1 to Cmd+9)
+    final tabShortcuts = <ShortcutActivator, Intent>{};
+    final digitKeys = [
       LogicalKeyboardKey.digit1,
       LogicalKeyboardKey.digit2,
       LogicalKeyboardKey.digit3,
@@ -219,113 +187,132 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
       LogicalKeyboardKey.digit9,
     ];
 
-    for (int i = 0; i < numberKeys.length; i++) {
-      shortcuts[SingleActivator(numberKeys[i], meta: true)] = () {
-        if (i < tabs.length) {
-          _navigateTo(tabs[i].path ?? '/dashboard');
-        }
-      };
-      shortcuts[SingleActivator(numberKeys[i], control: true)] = () {
-        if (i < tabs.length) {
-          _navigateTo(tabs[i].path ?? '/dashboard');
-        }
-      };
+    for (int i = 0; i < digitKeys.length; i++) {
+      final intent = SwitchTabIntent(i);
+      tabShortcuts[SingleActivator(digitKeys[i], meta: true)] = intent;
+      tabShortcuts[SingleActivator(digitKeys[i], control: true)] = intent;
     }
 
-    return CallbackShortcuts(
-      bindings: shortcuts,
-      child: Focus(
-        autofocus: true,
-        child: Column(
-          children: [
-            CustomTitleBar(searchFocusNode: _searchFocusNode),
+    return Actions(
+      actions: {
+        NewLoadIntent: CallbackAction<NewLoadIntent>(
+          onInvoke: (_) => _navigateTo('/highway-dispatch'),
+        ),
+        GlobalSearchIntent: CallbackAction<GlobalSearchIntent>(
+          onInvoke: (_) => _searchFocusNode.requestFocus(),
+        ),
+        SettingsIntent: CallbackAction<SettingsIntent>(
+          onInvoke: (_) => _navigateTo('/settings'),
+        ),
+        RefreshDataIntent: CallbackAction<RefreshDataIntent>(
+          onInvoke: (_) {
+            // TODO: Implement refresh logic
+            debugPrint('Refresh triggered');
+            return null;
+          },
+        ),
+        SwitchTabIntent: CallbackAction<SwitchTabIntent>(
+          onInvoke: (intent) {
+            if (intent.index < tabs.length) {
+              _navigateTo(tabs[intent.index].path ?? '/dashboard');
+            }
+            return null;
+          },
+        ),
+      },
+      child: Shortcuts(
+        shortcuts: {...AppShortcuts.defaults, ...tabShortcuts},
+        child: Focus(
+          autofocus: true,
+          child: Column(
+            children: [
+              CustomTitleBar(searchFocusNode: _searchFocusNode),
 
-            Expanded(
-              child: Stack(
-                children: [
-                  Row(
-                    children: [
-                      PrimarySidebar(
-                        onAddRecordTap: () => _toggleSidebar('add_record'),
-                        onDriversTap: () => _toggleSidebar('drivers'),
-                        onFleetTap: () => _toggleSidebar('fleet'),
-                        onLoadsTap: () => _navigateTo('/highway-dispatch'),
-                        onInvoicesTap: () => _navigateTo('/invoices'),
-                        onCrmTap: () => _navigateTo('/crm'),
-                        onSettlementsTap: () => _navigateTo('/settlements'),
-                        onSettingsTap: () => _navigateTo('/settings'),
-                        onProfileTap: () => _navigateTo('/profile'),
-                        onDashboardTap: () => _navigateTo('/dashboard'),
-                        activePane: _activeSidebarPane,
-                        currentLocation: GoRouterState.of(
-                          context,
-                        ).matchedLocation,
-                      ),
+              Expanded(
+                child: Stack(
+                  children: [
+                    Row(
+                      children: [
+                        PrimarySidebar(
+                          onAddRecordTap: () => _toggleSidebar('add_record'),
+                          onDriversTap: () => _toggleSidebar('drivers'),
+                          onFleetTap: () => _toggleSidebar('fleet'),
+                          onLoadsTap: () => _navigateTo('/highway-dispatch'),
+                          onInvoicesTap: () => _navigateTo('/invoices'),
+                          onCrmTap: () => _navigateTo('/crm'),
+                          onSettlementsTap: () => _navigateTo('/settlements'),
 
-                      // Resizable Sidebar Area
-                      AnimatedContainer(
-                        duration: const Duration(milliseconds: 250),
-                        curve: Curves.easeInOutCubic,
-                        width: _activeSidebarPane != null ? _sidebarWidth : 0,
-                        child: ClipRect(
-                          child: OverflowBox(
-                            // Force the child to be the target width even when container is animating
-                            minWidth: _sidebarWidth,
-                            maxWidth: _sidebarWidth,
-                            alignment: Alignment.topLeft,
-                            child: _activeSidebarPane != null
-                                ? _buildSecondarySidebar(_activeSidebarPane!)
-                                : const SizedBox.shrink(),
+                          onProfileTap: () => _navigateTo('/profile'),
+                          onDashboardTap: () => _navigateTo('/dashboard'),
+                          activePane: _activeSidebarPane,
+                          currentLocation: GoRouterState.of(
+                            context,
+                          ).matchedLocation,
+                        ),
+
+                        // Resizable Sidebar Area
+                        AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          curve: Curves.easeInOutCubic,
+                          width: _activeSidebarPane != null ? _sidebarWidth : 0,
+                          child: ClipRect(
+                            child: OverflowBox(
+                              // Force the child to be the target width even when container is animating
+                              minWidth: _sidebarWidth,
+                              maxWidth: _sidebarWidth,
+                              alignment: Alignment.topLeft,
+                              child: _activeSidebarPane != null
+                                  ? _buildSecondarySidebar(_activeSidebarPane!)
+                                  : const SizedBox.shrink(),
+                            ),
+                          ),
+                        ),
+
+                        Expanded(
+                          child: Mica(
+                            child:
+                                _isFullPage(
+                                  GoRouterState.of(context).matchedLocation,
+                                )
+                                ? widget.child
+                                : const MainContentArea(),
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Overlay Drag Handle (positioned at right edge of sidebar)
+                    if (_activeSidebarPane != null)
+                      Positioned(
+                        left:
+                            72 +
+                            _sidebarWidth -
+                            4, // Primary sidebar width + secondary sidebar width - half handle width
+                        top: 0,
+                        bottom: 0,
+                        width: 8,
+                        child: MouseRegion(
+                          cursor: SystemMouseCursors.resizeColumn,
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.translucent,
+                            onHorizontalDragUpdate: (details) {
+                              setState(() {
+                                _sidebarWidth =
+                                    (_sidebarWidth + details.primaryDelta!)
+                                        .clamp(150.0, 600.0);
+                              });
+                            },
+                            child: Container(color: Colors.transparent),
                           ),
                         ),
                       ),
-
-                      Expanded(
-                        child: Mica(
-                          child:
-                              _isFullPage(
-                                GoRouterState.of(context).matchedLocation,
-                              )
-                              ? widget.child
-                              : const MainContentArea(),
-                        ),
-                      ),
-                    ],
-                  ),
-
-                  // Overlay Drag Handle (positioned at right edge of sidebar)
-                  if (_activeSidebarPane != null)
-                    Positioned(
-                      left:
-                          72 +
-                          _sidebarWidth -
-                          4, // Primary sidebar width + secondary sidebar width - half handle width
-                      top: 0,
-                      bottom: 0,
-                      width: 8,
-                      child: MouseRegion(
-                        cursor: SystemMouseCursors.resizeColumn,
-                        child: GestureDetector(
-                          behavior: HitTestBehavior.translucent,
-                          onHorizontalDragUpdate: (details) {
-                            setState(() {
-                              _sidebarWidth =
-                                  (_sidebarWidth + details.primaryDelta!).clamp(
-                                    150.0,
-                                    600.0,
-                                  );
-                            });
-                          },
-                          child: Container(color: Colors.transparent),
-                        ),
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
-            ),
 
-            const StatusBar(),
-          ],
+              const StatusBar(),
+            ],
+          ),
         ),
       ),
     );

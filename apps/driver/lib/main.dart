@@ -31,6 +31,7 @@ import 'package:milow/core/services/geofence_service.dart';
 import 'package:milow/core/services/analytics_service.dart';
 import 'package:milow/core/services/remote_config_service.dart';
 import 'package:milow/core/services/performance_service.dart';
+import 'package:milow/core/services/auth_resilience_service.dart';
 import 'package:milow/core/models/sync_operation.dart';
 import 'package:milow/l10n/app_localizations.dart';
 
@@ -76,6 +77,20 @@ Future<void> main() async {
         return true;
       }
 
+      // Classify transient network errors as NON-FATAL
+      // These are expected during offline/poor connectivity
+      final errorStr = error.toString().toLowerCase();
+      if (errorStr.contains('socketexception') ||
+          errorStr.contains('failed host lookup') ||
+          errorStr.contains('clientexception') ||
+          errorStr.contains('authretryablefetchexception') ||
+          errorStr.contains('connection refused') ||
+          errorStr.contains('network is unreachable')) {
+        debugPrint('📵 Transient network error (non-fatal): $error');
+        FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
+        return true;
+      }
+
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
@@ -115,6 +130,8 @@ Future<void> main() async {
       await PerformanceService.instance.init();
       // Start geofence monitoring if user logged in with active trip
       unawaited(GeofenceService.instance.startMonitoring());
+      // Initialize auth resilience for proactive token refresh
+      authResilienceService.init();
     }),
 
     Hive.initFlutter().then((_) async {

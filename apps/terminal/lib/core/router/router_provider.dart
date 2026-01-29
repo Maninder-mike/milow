@@ -58,9 +58,20 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/pending-verification',
-        builder: (context, state) => const PendingVerificationPage(),
+        pageBuilder: (context, state) => buildFluentPage(
+          context: context,
+          state: state,
+          child: const PendingVerificationPage(),
+        ),
       ),
-      GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
+      GoRoute(
+        path: '/login',
+        pageBuilder: (context, state) => buildFluentPage(
+          context: context,
+          state: state,
+          child: const LoginPage(),
+        ),
+      ),
       GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
       GoRoute(
         path: '/reset-password',
@@ -79,11 +90,19 @@ final routerProvider = Provider<GoRouter>((ref) {
         routes: [
           GoRoute(
             path: '/dashboard',
-            builder: (context, state) => const OverviewPage(),
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const OverviewPage(),
+            ),
           ),
           GoRoute(
             path: '/inbox',
-            builder: (context, state) => const InboxView(),
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const InboxView(),
+            ),
           ),
           GoRoute(
             path: '/users',
@@ -97,7 +116,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/settings',
-            builder: (context, state) => const SettingsPage(),
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const SettingsPage(),
+            ),
           ),
           GoRoute(
             path: '/settings/users-roles',
@@ -128,7 +151,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/vehicles',
-            builder: (context, state) => const VehiclesPage(),
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const VehiclesPage(),
+            ),
           ),
           GoRoute(
             path: '/vehicles/status',
@@ -139,7 +166,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/highway-dispatch',
-            builder: (context, state) => const LoadsPage(),
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const LoadsPage(),
+            ),
           ),
           GoRoute(
             path: '/quotes',
@@ -157,7 +188,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/drivers',
-            builder: (context, state) => const DriversPage(),
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const DriversPage(),
+            ),
           ),
           GoRoute(
             path: '/dispatch',
@@ -274,4 +309,38 @@ class RouterNotifier extends ChangeNotifier {
     }
     return null;
   }
+}
+
+Page<void> buildFluentPage({
+  required BuildContext context,
+  required GoRouterState state,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: state.pageKey,
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final curve = Curves.easeOutQuint;
+
+      // Scale: 95% -> 100%
+      final scaleTween = Tween<double>(
+        begin: 0.95,
+        end: 1.0,
+      ).chain(CurveTween(curve: curve));
+
+      // Opacity: 0% -> 100%
+      final opacityTween = Tween<double>(
+        begin: 0.0,
+        end: 1.0,
+      ).chain(CurveTween(curve: curve));
+
+      return FadeTransition(
+        opacity: animation.drive(opacityTween),
+        child: ScaleTransition(
+          scale: animation.drive(scaleTween),
+          child: child,
+        ),
+      );
+    },
+  );
 }
