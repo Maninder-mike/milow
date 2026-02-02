@@ -25,6 +25,11 @@ void main() {
   testWidgets('OverviewPage loads and shows enterprise dashboard', (
     tester,
   ) async {
+    // Set a large surface size to prevent overflow errors on "Desktop" widgets
+    tester.view.physicalSize = const fluent.Size(1920, 1080);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final mockMetricsData = DashboardMetrics(
       activeLoads: 12,
       awaitingDispatch: 4,
@@ -46,7 +51,12 @@ void main() {
     );
 
     // Initial load
-    await tester.pump();
+    // Initial load
+    // Initial load
+    await tester.pump(); // Start the build
+    // Wait for all EntranceFader delays (max 500ms + animation 400ms) = ~900ms
+    // We pump for 2 seconds to be safe and avoid "pumpAndSettle" timeouts from infinite animations
+    await tester.pump(const Duration(seconds: 2));
 
     // Verify Header
     expect(find.text('Dashboard Overview'), findsOneWidget);

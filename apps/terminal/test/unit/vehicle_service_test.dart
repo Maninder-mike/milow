@@ -45,7 +45,8 @@ void main() {
 
     test(
       'throws exception when service fails',
-      skip: 'Persistent timeout in test environment',
+      skip:
+          'Persistent timeout in test environment - needs deep dive into Riverpod AsyncValue error handling',
       () async {
         // Use a manual implementation to ensure complete control over the Future
         final failingService = _FailingVehicleService();
@@ -54,11 +55,13 @@ void main() {
           overrides: [vehicleServiceProvider.overrideWithValue(failingService)],
         );
 
-        // Simple try-catch verification to avoid potential expectLater hangs
+        // Verify that the future throws an exception
         try {
           await container.read(vehiclesListProvider.future);
+          fail('Should have thrown an exception');
         } catch (e) {
           expect(e, isA<Exception>());
+          expect((e as Exception).toString(), contains('Network error'));
         }
       },
     );
@@ -69,8 +72,8 @@ void main() {
 class _FailingVehicleService implements VehicleService {
   @override
   Future<List<Map<String, dynamic>>> getVehicles() async {
-    // Return a future that completes with an error immediately
-    return Future.error(Exception('Network error'));
+    // Throw immediately to avoid test timeouts
+    throw Exception('Network error');
   }
 
   @override
