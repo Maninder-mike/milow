@@ -74,6 +74,12 @@ jobs:
           cd apps/driver
           flutter pub outdated --no-dev-dependencies --transitive || echo "::warning::Found outdated dependencies"
 
+      - name: Generate Mocks
+        run: |
+          echo "🛠️ Generating Mocks..."
+          cd apps/driver
+          dart run build_runner build --delete-conflicting-outputs
+
       - name: Run Critical Tests
         run: |
           echo "🧪 Running critical tests..."
