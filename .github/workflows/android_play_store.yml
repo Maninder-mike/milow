@@ -249,13 +249,17 @@ jobs:
           echo "| APK | ${APK_SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
           echo "| AAB | ${AAB_SIZE_MB} MB |" >> $GITHUB_STEP_SUMMARY
 
+      - name: Stage Artifacts
+        run: |
+          mkdir -p staging
+          cp apps/driver/build/app/outputs/flutter-apk/app-release.apk staging/
+          cp apps/driver/build/app/outputs/bundle/release/app-release.aab staging/
+
       - name: Upload Build Artifacts
         uses: actions/upload-artifact@v4
         with:
             name: driver-build-artifacts
-            path: |
-                apps/driver/build/app/outputs/flutter-apk/app-release.apk
-                apps/driver/build/app/outputs/bundle/release/app-release.aab
+            path: staging/*
             retention-days: 1
 
 
