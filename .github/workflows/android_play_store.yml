@@ -269,7 +269,6 @@ jobs:
   release:
     name: 🚀 Release
     needs: build
-    if: needs.build.outputs.exists != 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:

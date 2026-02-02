@@ -195,7 +195,32 @@ jobs:
           name: milow-terminal-msix
           path: artifacts
 
-      # ... (Changelog step remains the same)
+      # 📝 Changelog
+      - name: Generate Changelog
+        id: changelog
+        shell: bash
+        run: |
+          echo "📝 Generating changelog..."
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          
+          if [ -z "$PREV_TAG" ]; then
+            COMMITS=$(git log --pretty=format:"%s|%h")
+          else
+            COMMITS=$(git log ${PREV_TAG}..HEAD --pretty=format:"%s|%h" --no-merges)
+          fi
+
+          # Simple changelog generation
+          echo "# What's New" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          while IFS='|' read -r MSG HASH; do
+             if [ -n "$MSG" ]; then
+               echo "- $MSG" >> RELEASE_NOTES.md
+             fi
+          done <<< "$COMMITS"
+          
+          cat RELEASE_NOTES.md
 
       # 📦 Publish to Store
       - name: Install Microsoft Store CLI
@@ -207,14 +232,27 @@ jobs:
         shell: pwsh
         run: |
           # Validation
-          # ... (Validation checks remain the same)
+          if (-not $env:WINDOWS_STORE_TENANT_ID) { Write-Error "WINDOWS_STORE_TENANT_ID is missing"; exit 1 }
+          if (-not $env:WINDOWS_STORE_CLIENT_ID) { Write-Error "WINDOWS_STORE_CLIENT_ID is missing"; exit 1 }
+          if (-not $env:WINDOWS_STORE_CLIENT_SECRET) { Write-Error "WINDOWS_STORE_CLIENT_SECRET is missing"; exit 1 }
+          if (-not $env:WINDOWS_STORE_SELLER_ID) { Write-Error "WINDOWS_STORE_SELLER_ID is missing"; exit 1 }
 
-          # ... (Reconfigure step remains the same)
+          Write-Host "Reconfiguring MSStore CLI..."
+          msstore reconfigure --tenantId $env:WINDOWS_STORE_TENANT_ID --clientId $env:WINDOWS_STORE_CLIENT_ID --clientSecret $env:WINDOWS_STORE_CLIENT_SECRET --sellerId $env:WINDOWS_STORE_SELLER_ID --verbose
+
+          if ($LASTEXITCODE -ne 0) { Write-Error "msstore reconfigure failed"; exit 1 }
+
+          Write-Host "Listing available apps..."
+          msstore apps list
 
           Write-Host "Publishing to Store..."
           msstore publish --inputDirectory artifacts --appId $env:WINDOWS_STORE_APP_ID --verbose
         env:
-          # ... (Env vars remain the same)
+          WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
+          WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
+          WINDOWS_STORE_CLIENT_SECRET: ${{ secrets.WINDOWS_STORE_CLIENT_SECRET }}
+          WINDOWS_STORE_SELLER_ID: ${{ secrets.WINDOWS_STORE_SELLER_ID }}
+          WINDOWS_STORE_APP_ID: ${{ secrets.WINDOWS_STORE_APP_ID }}
 
       # 🚀 GitHub Release
       - name: Create GitHub Release
@@ -222,5 +260,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # ...
+          tag_name: ${{ needs.build_windows.outputs.version }}
+          name: Release ${{ needs.build_windows.outputs.version }}
+          body_path: apps/terminal/RELEASE_NOTES.md
+          draft: false
+          prerelease: false
           files: artifacts/*.msix
