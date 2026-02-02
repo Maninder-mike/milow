@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'providers/driver_selection_provider.dart';
+import 'providers/driver_detail_provider.dart';
 import 'package:terminal/core/constants/app_elevation.dart';
 import '../../../core/widgets/choreographed_entrance.dart';
 
@@ -173,117 +174,136 @@ class _DriverDetailPanelState extends State<_DriverDetailPanel> {
   }
 }
 
-class _OverviewTab extends StatelessWidget {
+class _OverviewTab extends ConsumerWidget {
   final UserProfile driver;
   const _OverviewTab({super.key, required this.driver});
 
   @override
-  @override
-  Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          // 1. Profile Header
-          _buildProfileHeader(context),
-          const SizedBox(height: 24),
+  Widget build(BuildContext context, WidgetRef ref) {
+    final driverDetailAsync = ref.watch(driverDetailProvider(driver.id));
 
-          // 2. Alert for Inactive/Unverified
-          if (!driver.isVerified) ...[
-            Container(
-              margin: const EdgeInsets.only(bottom: 24),
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
-                border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Icon(FluentIcons.warning, color: Colors.red),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Driver Inactive',
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.red,
+    return driverDetailAsync.when(
+      loading: () => const Center(child: ProgressRing()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+      data: (driverDetail) => SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // 1. Profile Header
+            _buildProfileHeader(context),
+            const SizedBox(height: 24),
+
+            // 2. Alert for Inactive/Unverified
+            if (!driver.isVerified) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 24),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.1),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(FluentIcons.warning, color: Colors.red),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Driver Inactive',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.red,
+                            ),
                           ),
-                        ),
-                        Text(
-                          'This driver is no longer active. New data cannot be accessed, but all historical data is preserved.',
-                          style: TextStyle(color: Colors.red),
-                        ),
-                      ],
-                    ),
-                  ),
-                  FilledButton(
-                    onPressed: () => _sendRejoinRequest(context),
-                    style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.resolveWith(
-                        (states) => Colors.red,
+                          Text(
+                            'This driver is no longer active. New data cannot be accessed, but all historical data is preserved.',
+                            style: TextStyle(color: Colors.red),
+                          ),
+                        ],
                       ),
                     ),
-                    child: const Text('Send request to Join'),
-                  ),
-                ],
+                    FilledButton(
+                      onPressed: () => _sendRejoinRequest(context),
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.resolveWith(
+                          (states) => Colors.red,
+                        ),
+                      ),
+                      child: const Text('Send request to Join'),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
 
-          // 3. KPI Cards Row
-          _buildKPIRow(context),
-          const SizedBox(height: 24),
+            // 3. KPI Cards Row
+            _buildKPIRow(context, driverDetail.assignedVehicle),
+            const SizedBox(height: 24),
 
-          // 4. Main Content Grid (Activity Feed vs Details Sidebar)
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 1000;
+            // 4. Main Content Grid (Activity Feed vs Details Sidebar)
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 1000;
 
-              if (isNarrow) {
-                // Stack vertically on narrow screens
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                if (isNarrow) {
+                  // Stack vertically on narrow screens
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _buildDetailsPanel(context),
+                      const SizedBox(height: 24),
+                      _buildRecentActivityCard(
+                        context,
+                        driverDetail.recentTrips,
+                      ),
+                      const SizedBox(height: 24),
+                      _buildDriverStats(
+                        context,
+                        driverDetail.totalTrips,
+                        driverDetail.totalMiles,
+                      ),
+                    ],
+                  );
+                }
+
+                // 2-Column Grid
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildDetailsPanel(context),
-                    const SizedBox(height: 24),
-                    _buildRecentActivityCard(context),
-                    const SizedBox(height: 24),
-                    _buildDriverStats(context),
+                    // Main Column (Activity & Stats)
+                    Expanded(
+                      flex: 2, // 2/3 width
+                      child: Column(
+                        children: [
+                          _buildRecentActivityCard(
+                            context,
+                            driverDetail.recentTrips,
+                          ),
+                          const SizedBox(height: 24),
+                          _buildDriverStats(
+                            context,
+                            driverDetail.totalTrips,
+                            driverDetail.totalMiles,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 24),
+                    // Sidebar Column (Details)
+                    Expanded(
+                      flex: 1, // 1/3 width
+                      child: _buildDetailsPanel(context),
+                    ),
                   ],
                 );
-              }
-
-              // 2-Column Grid
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Main Column (Activity & Stats)
-                  Expanded(
-                    flex: 2, // 2/3 width
-                    child: Column(
-                      children: [
-                        _buildRecentActivityCard(context),
-                        const SizedBox(height: 24),
-                        _buildDriverStats(context),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 24),
-                  // Sidebar Column (Details)
-                  Expanded(
-                    flex: 1, // 1/3 width
-                    child: _buildDetailsPanel(context),
-                  ),
-                ],
-              );
-            },
-          ),
-        ],
+              },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -458,7 +478,7 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildKPIRow(BuildContext context) {
+  Widget _buildKPIRow(BuildContext context, Map<String, dynamic>? vehicle) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Use Grid or Wrap based on width
@@ -466,6 +486,11 @@ class _OverviewTab extends StatelessWidget {
         int columns = 4;
         if (width < 800) columns = 2;
         if (width < 500) columns = 1;
+
+        final vehicleText = vehicle != null
+            ? '${vehicle['truck_number']}'
+            : 'None';
+        final vehicleType = vehicle != null ? vehicle['vehicle_type'] : null;
 
         return Wrap(
           spacing: 16,
@@ -483,22 +508,13 @@ class _OverviewTab extends StatelessWidget {
             ),
             SizedBox(
               width: (width - (columns - 1) * 16) / columns,
-              child: FutureBuilder<Map<String, dynamic>?>(
-                future: _fetchAssignedVehicle(),
-                builder: (context, snapshot) {
-                  final vehicle = snapshot.data;
-                  final text = vehicle != null
-                      ? '${vehicle['truck_number']}'
-                      : 'None';
-                  return _buildKPIStatCard(
-                    context,
-                    'Vehicle',
-                    text,
-                    FluentIcons.delivery_truck,
-                    Colors.blue,
-                    caption: vehicle != null ? vehicle['vehicle_type'] : null,
-                  );
-                },
+              child: _buildKPIStatCard(
+                context,
+                'Vehicle',
+                vehicleText,
+                FluentIcons.delivery_truck,
+                Colors.blue,
+                caption: vehicleType,
               ),
             ),
             SizedBox(
@@ -625,34 +641,6 @@ class _OverviewTab extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  Future<Map<String, dynamic>?> _fetchAssignedVehicle() async {
-    try {
-      final assignment = await Supabase.instance.client
-          .from('fleet_assignments')
-          .select('resource_id')
-          .eq('assignee_id', driver.id)
-          .eq('type', 'driver_to_vehicle')
-          .isFilter('unassigned_at', null)
-          .maybeSingle();
-
-      if (assignment == null) return null;
-
-      final vehicleId = assignment['resource_id'] as String?;
-      if (vehicleId == null) return null;
-
-      final vehicle = await Supabase.instance.client
-          .from('vehicles')
-          .select('truck_number, vehicle_type')
-          .eq('id', vehicleId)
-          .maybeSingle();
-
-      return vehicle;
-    } catch (e) {
-      debugPrint('Error fetching assigned vehicle: $e');
-      return null;
-    }
   }
 
   Widget _buildDetailsPanel(BuildContext context) {
@@ -966,7 +954,6 @@ class _OverviewTab extends StatelessWidget {
                       'Plate: ${vehicle['license_plate'] ?? 'N/A'}',
                     ),
                     trailing: FilledButton(
-                      child: const Text('Assign'),
                       onPressed: vehicleId == null
                           ? null
                           : () async {
@@ -977,6 +964,7 @@ class _OverviewTab extends StatelessWidget {
                                 truckNumber,
                               );
                             },
+                      child: const Text('Assign'),
                     ),
                   );
                 },
@@ -1144,7 +1132,7 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentActivityCard(BuildContext context) {
+  Widget _buildRecentActivityCard(BuildContext context, List<dynamic> trips) {
     final theme = FluentTheme.of(context);
     return SizedBox(
       height: 400,
@@ -1173,27 +1161,8 @@ class _OverviewTab extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: FutureBuilder(
-                future: Supabase.instance.client
-                    .from('trips')
-                    .select()
-                    .eq('user_id', driver.id)
-                    .order('trip_date', ascending: false)
-                    .limit(5),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: ProgressRing());
-                  }
-                  if (snapshot.hasError) {
-                    return Center(
-                      child: Text(
-                        'Error loading activity',
-                        style: TextStyle(color: Colors.red),
-                      ),
-                    );
-                  }
-
-                  final trips = snapshot.data as List<dynamic>? ?? [];
+              child: Builder(
+                builder: (context) {
                   if (trips.isEmpty) {
                     return Center(
                       child: Column(
@@ -1293,71 +1262,56 @@ class _OverviewTab extends StatelessWidget {
     );
   }
 
-  Widget _buildDriverStats(BuildContext context) {
+  Widget _buildDriverStats(
+    BuildContext context,
+    int tripsCompleted,
+    double totalMiles,
+  ) {
     final theme = FluentTheme.of(context);
     final textColor = theme.resources.textFillColorPrimary;
 
-    return FutureBuilder(
-      future: Supabase.instance.client
-          .from('trips')
-          .select('total_distance')
-          .eq('user_id', driver.id),
-      builder: (context, snapshot) {
-        int tripsCompleted = 0;
-        double totalMiles = 0;
-
-        if (snapshot.hasData) {
-          final data = snapshot.data as List<dynamic>;
-          tripsCompleted = data.length;
-          for (var trip in data) {
-            totalMiles += (trip['total_distance'] as num?)?.toDouble() ?? 0;
-          }
-        }
-
-        return Card(
-          padding: const EdgeInsets.all(24),
-          borderRadius: BorderRadius.circular(12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+    return Card(
+      padding: const EdgeInsets.all(24),
+      borderRadius: BorderRadius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
             children: [
-              Row(
-                children: [
-                  Icon(FluentIcons.chart, color: theme.accentColor, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Performance & Earnings',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: textColor,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  _buildStatItem(
-                    'Trips Completed',
-                    tripsCompleted.toString(),
-                    FluentIcons.delivery_truck,
-                    textColor,
-                    Colors.blue,
-                  ),
-                  const SizedBox(width: 24),
-                  _buildStatItem(
-                    'Total Miles',
-                    '${totalMiles.toStringAsFixed(0)} mi',
-                    FluentIcons.map_layers,
-                    textColor,
-                    Colors.orange,
-                  ),
-                ],
+              Icon(FluentIcons.chart, color: theme.accentColor, size: 20),
+              const SizedBox(width: 8),
+              Text(
+                'Performance & Earnings',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
             ],
           ),
-        );
-      },
+          const SizedBox(height: 24),
+          Row(
+            children: [
+              _buildStatItem(
+                'Trips Completed',
+                tripsCompleted.toString(),
+                FluentIcons.delivery_truck,
+                textColor,
+                Colors.blue,
+              ),
+              const SizedBox(width: 24),
+              _buildStatItem(
+                'Total Miles',
+                '${totalMiles.toStringAsFixed(0)} mi',
+                FluentIcons.map_layers,
+                textColor,
+                Colors.orange,
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 

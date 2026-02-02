@@ -25,7 +25,7 @@ dependencies:
   # UI - Fluent Design
   fluent_ui: ^4.13.0
   fluentui_system_icons: ^1.1.273
-  google_fonts: ^7.1.0
+  google_fonts: ^8.0.0
   system_theme: ^3.1.2
 
   # Backend
@@ -47,7 +47,7 @@ dependencies:
   package_info_plus: ^9.0.0
   app_links: ^6.4.1
   shared_preferences: ^2.3.5
-  flutter_local_notifications: ^19.5.0
+  flutter_local_notifications: ^20.0.0
 
   # PDF & Printing
   pdf: ^3.11.0

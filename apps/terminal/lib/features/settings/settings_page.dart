@@ -3,7 +3,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
+import '../../../../core/providers/profile_provider.dart';
 
 import 'panels/compliance_panel.dart';
 import 'panels/general_panel.dart';
@@ -22,36 +22,15 @@ class SettingsPage extends ConsumerStatefulWidget {
 
 class _SettingsPageState extends ConsumerState<SettingsPage> {
   int _currentIndex = 0;
-  bool _isAdmin = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _checkAdmin();
-  }
-
-  Future<void> _checkAdmin() async {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      final profile = await Supabase.instance.client
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .maybeSingle(); // Use maybeSingle to be safe
-
-      final role = profile?['role'] as String? ?? '';
-      if (mounted) {
-        setState(() {
-          _isAdmin =
-              role.toLowerCase() == 'admin' ||
-              (user.email?.contains('admin') ?? false);
-        });
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
+    final profile = ref.watch(profileProvider).asData?.value;
+    final isAdmin =
+        profile != null &&
+        (profile['role'] == 'admin' ||
+            (profile['email']?.contains('admin') ?? false));
+
     return NavigationView(
       appBar: NavigationAppBar(
         automaticallyImplyLeading: false,
@@ -90,7 +69,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             title: const Text('Integrations'),
             body: const IntegrationPanel(),
           ),
-          if (_isAdmin) ...[
+          if (isAdmin) ...[
             PaneItemSeparator(),
             PaneItemHeader(header: const Text('Administration')),
             PaneItem(

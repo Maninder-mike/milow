@@ -1,83 +1,86 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:milow/core/widgets/glassy_card.dart';
+import 'package:provider/provider.dart';
+import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
 
 class StatsOverviewCard extends StatelessWidget {
-  final double totalMiles;
-  final double totalFuelCost;
-  final int tripCount;
-
-  const StatsOverviewCard({
-    required this.totalMiles,
-    required this.totalFuelCost,
-    required this.tripCount,
-    super.key,
-  });
+  const StatsOverviewCard({super.key});
 
   @override
   Widget build(BuildContext context) {
     final currencyFormat = NumberFormat.simpleCurrency(decimalDigits: 0);
     final numberFormat = NumberFormat.decimalPattern();
+    final colorScheme = Theme.of(context).colorScheme;
 
-    return GlassyCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'This Month',
-            style: Theme.of(
-              context,
-            ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+    return Consumer<ExploreProvider>(
+      builder: (context, provider, child) {
+        return Container(
+          margin: const EdgeInsets.symmetric(vertical: 24),
+          padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+          decoration: BoxDecoration(
+            color: colorScheme.surface.withValues(alpha: 0.5),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+            ),
           ),
-          const SizedBox(height: 16),
-          Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: _buildStatItem(
-                  context,
-                  icon: Icons.speed,
-                  label: 'Miles',
-                  value: numberFormat.format(totalMiles),
-                  color: Theme.of(context).colorScheme.primary,
+              Padding(
+                padding: const EdgeInsets.only(left: 12, bottom: 20),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: colorScheme.primary,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'MONTHLY PERFORMANCE',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.2,
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              VerticalDivider(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                thickness: 1,
-                width: 1,
-                indent: 8,
-                endIndent: 8,
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  context,
-                  icon: Icons.local_gas_station,
-                  label: 'Fuel Cost',
-                  value: currencyFormat.format(totalFuelCost),
-                  color: Theme.of(context).colorScheme.secondary,
-                ),
-              ),
-              VerticalDivider(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                thickness: 1,
-                width: 1,
-                indent: 8,
-                endIndent: 8,
-              ),
-              Expanded(
-                child: _buildStatItem(
-                  context,
-                  icon: Icons.local_shipping,
-                  label: 'Trips',
-                  value: '$tripCount',
-                  color: Theme.of(context).colorScheme.tertiary,
-                ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatItem(
+                    context,
+                    icon: Icons.speed_rounded,
+                    label: 'Miles',
+                    value: numberFormat.format(provider.statsTotalMiles),
+                    color: colorScheme.primary,
+                  ),
+                  _buildStatItem(
+                    context,
+                    icon: Icons.local_gas_station_rounded,
+                    label: 'Fuel Cost',
+                    value: currencyFormat.format(provider.statsFuelCost),
+                    color: colorScheme.secondary,
+                  ),
+                  _buildStatItem(
+                    context,
+                    icon: Icons.local_shipping_rounded,
+                    label: 'Trips',
+                    value: '${provider.statsTripCount}',
+                    color: colorScheme.tertiary,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 

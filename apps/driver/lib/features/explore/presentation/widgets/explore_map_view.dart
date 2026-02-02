@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
 import 'package:milow/features/explore/presentation/utils/explore_map_helper.dart';
-import 'package:milow/core/widgets/glassy_card.dart';
 
 class ExploreMapView extends StatefulWidget {
   final List<ExploreMapMarker> markers;
@@ -23,11 +22,24 @@ class _ExploreMapViewState extends State<ExploreMapView> {
 
     return SizedBox(
       height: 400,
-      child: GlassyCard(
-        padding: EdgeInsets.zero,
-        borderRadius: 16,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: Theme.of(
+              context,
+            ).colorScheme.outlineVariant.withValues(alpha: 0.5),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Theme.of(context).shadowColor.withValues(alpha: 0.05),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(24),
           child: Stack(
             children: [
               FlutterMap(

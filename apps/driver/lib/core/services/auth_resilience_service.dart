@@ -21,6 +21,13 @@ class AuthResilienceService {
 
   AuthResilienceService._();
 
+  SupabaseClient? _supabaseClient;
+  ConnectivityService? _connectivityService;
+
+  SupabaseClient get _client => _supabaseClient ?? Supabase.instance.client;
+  ConnectivityService get _connectivity =>
+      _connectivityService ?? connectivityService;
+
   Timer? _refreshTimer;
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<bool>? _connectivitySubscription;
@@ -36,24 +43,31 @@ class AuthResilienceService {
   DateTime? _lastRefreshAttempt;
 
   /// Initialize the service. Call after Supabase.initialize().
-  void init() {
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+  void init({
+    SupabaseClient? supabaseClient,
+    ConnectivityService? connectivityService,
+  }) {
+    _supabaseClient = supabaseClient;
+    _connectivityService = connectivityService;
+
+    _authSubscription = _client.auth.onAuthStateChange.listen(
       _onAuthStateChange,
       onError: _onAuthError,
     );
 
     // Listen for connectivity changes to retry pending refreshes
-    _connectivitySubscription = connectivityService.onConnectivityChanged
-        .listen((isOnline) {
-          if (isOnline && _pendingRefreshOnReconnect) {
-            debugPrint('🔄 Connectivity restored - retrying token refresh');
-            _pendingRefreshOnReconnect = false;
-            _refreshToken();
-          }
-        });
+    _connectivitySubscription = _connectivity.onConnectivityChanged.listen((
+      isOnline,
+    ) {
+      if (isOnline && _pendingRefreshOnReconnect) {
+        debugPrint('🔄 Connectivity restored - retrying token refresh');
+        _pendingRefreshOnReconnect = false;
+        _refreshToken();
+      }
+    });
 
     // Schedule refresh for existing session
-    final session = Supabase.instance.client.auth.currentSession;
+    final session = _client.auth.currentSession;
     if (session != null) {
       _scheduleRefresh(session);
     }
@@ -140,7 +154,7 @@ class AuthResilienceService {
     }
 
     // Check connectivity before attempting refresh
-    if (!connectivityService.isOnline) {
+    if (!_connectivity.isOnline) {
       debugPrint('📵 Offline - deferring token refresh');
       _pendingRefreshOnReconnect = true;
       return;
@@ -151,7 +165,7 @@ class AuthResilienceService {
 
     try {
       debugPrint('🔄 Refreshing auth token...');
-      await Supabase.instance.client.auth.refreshSession();
+      await _client.auth.refreshSession();
       debugPrint('✅ Token refreshed successfully');
       _pendingRefreshOnReconnect = false;
     } catch (e, stack) {
@@ -166,7 +180,7 @@ class AuthResilienceService {
       } else if (e is AuthException && e.code == 'refresh_token_already_used') {
         // Token was already used (concurrent refresh from another device)
         debugPrint('⚠️ Refresh token already used - signing out');
-        await Supabase.instance.client.auth.signOut();
+        await _client.auth.refreshSession();
       } else {
         // Log other errors but don't crash
         debugPrint('❌ Token refresh failed: $e');

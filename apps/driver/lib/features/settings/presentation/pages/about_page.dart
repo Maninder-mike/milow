@@ -67,94 +67,106 @@ class _AboutPageState extends State<AboutPage> {
           children: [
             // Logo Section
             Center(
-              child: Container(
-                width: 120,
-                height: 120,
-                padding: EdgeInsets.all(tokens.spacingXS),
-                decoration: BoxDecoration(
-                  color: tokens.surfaceContainer,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: colorScheme.outlineVariant),
-                ),
-                child: ClipOval(
-                  child: Image.asset(
-                    'assets/images/milow_icon.png',
-                    fit: BoxFit.cover,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  Container(
+                    width: 140,
+                    height: 140,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.05),
+                          blurRadius: 20,
+                          offset: const Offset(0, 10),
+                        ),
+                      ],
+                      border: Border.all(
+                        color: colorScheme.primary.withValues(alpha: 0.1),
+                        width: 1,
+                      ),
+                    ),
                   ),
-                ),
+                  Container(
+                    width: 120,
+                    height: 120,
+                    padding: const EdgeInsets.all(4),
+                    decoration: BoxDecoration(
+                      color: tokens.surfaceContainer,
+                      shape: BoxShape.circle,
+                    ),
+                    child: ClipOval(
+                      child: Image.asset(
+                        'assets/images/milow_icon.png',
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: tokens.spacingL),
+            SizedBox(height: tokens.spacingXL),
 
             // App Name & Version
             Text(
               _appName,
-              style: textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.bold,
+              style: textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w800,
                 color: tokens.textPrimary,
+                letterSpacing: -0.5,
               ),
             ),
-            SizedBox(height: tokens.spacingS),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: tokens.spacingM,
-                vertical: tokens.spacingS,
-              ),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(
-                  tokens.shapeL + tokens.spacingXS,
-                ),
-                border: Border.all(
-                  color: colorScheme.primary.withValues(alpha: 0.2),
-                ),
-              ),
-              child: Text(
-                'Version $_version ($_buildNumber)',
-                style: textTheme.bodyMedium?.copyWith(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w600,
-                ),
+            const SizedBox(height: 6),
+            Text(
+              'Version $_version ($_buildNumber)',
+              style: textTheme.bodyMedium?.copyWith(
+                color: tokens.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
             ),
             SizedBox(height: tokens.spacingXL + tokens.spacingM),
 
-            // Description Card
-            Container(
-              padding: EdgeInsets.all(tokens.spacingL),
-              decoration: BoxDecoration(
-                color: tokens.surfaceContainer,
-                borderRadius: BorderRadius.circular(
-                  tokens.shapeL + tokens.spacingXS,
-                ),
-                border: Border.all(color: colorScheme.outlineVariant),
-              ),
+            // Description
+            Padding(
+              padding: EdgeInsets.symmetric(horizontal: tokens.spacingL),
               child: Text(
                 'Milow is designed to help truck drivers manage their trips, track fuel expenses, and optimize their journey. With powerful tools and insights, we keep you moving forward.',
                 textAlign: TextAlign.center,
-                style: textTheme.bodyMedium?.copyWith(
+                style: textTheme.bodyLarge?.copyWith(
                   height: 1.6,
                   color: tokens.textSecondary,
+                  fontWeight: FontWeight.w400,
                 ),
               ),
             ),
-            SizedBox(height: tokens.spacingL),
+            SizedBox(height: tokens.spacingXL * 1.5),
 
-            // Info Rows
-            _buildInfoRow(context, 'Developer', 'Maninder Singh', Icons.code),
-            SizedBox(height: tokens.spacingM),
+            // Info Section
+            _buildSectionHeader('Application Info'),
+            _buildInfoRow(
+              context,
+              'Developer',
+              'Maninder Singh',
+              Icons.code_rounded,
+            ),
             _buildInfoRow(
               context,
               'Website',
-              'www.maninder.co.in',
-              Icons.language,
+              'maninder.co.in',
+              Icons.language_rounded,
             ),
-            SizedBox(height: tokens.spacingM),
             _buildInfoRow(
               context,
-              'Contact',
+              'Contact Support',
               'info@maninder.co.in',
-              Icons.mail_outline,
+              Icons.support_agent_rounded,
+            ),
+            _buildInfoRow(
+              context,
+              'Privacy Policy',
+              'View Details',
+              Icons.privacy_tip_outlined,
             ),
 
             SizedBox(height: tokens.spacingXL * 2 + tokens.spacingM),
@@ -165,6 +177,24 @@ class _AboutPageState extends State<AboutPage> {
               style: textTheme.labelSmall?.copyWith(color: tokens.textTertiary),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    final tokens = context.tokens;
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: EdgeInsets.only(bottom: tokens.spacingM, left: 4),
+        child: Text(
+          title.toUpperCase(),
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w800,
+            color: Theme.of(context).colorScheme.primary,
+            letterSpacing: 1.2,
+          ),
         ),
       ),
     );
@@ -181,26 +211,22 @@ class _AboutPageState extends State<AboutPage> {
     final tokens = context.tokens;
 
     return Container(
-      padding: EdgeInsets.all(tokens.spacingM),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        color: tokens.surfaceContainer,
-        borderRadius: BorderRadius.circular(tokens.shapeL + tokens.spacingXS),
-        border: Border.all(color: colorScheme.outlineVariant),
+        color: tokens.inputBackground,
+        borderRadius: BorderRadius.circular(tokens.shapeS),
+        border: Border.all(
+          color: colorScheme.outlineVariant.withValues(alpha: 0.8),
+        ),
       ),
       child: Row(
         children: [
-          Container(
-            padding: EdgeInsets.all(tokens.spacingS),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(tokens.shapeS + 2),
-            ),
-            child: Icon(icon, color: colorScheme.primary, size: 20),
-          ),
+          Icon(icon, color: colorScheme.primary, size: 20),
           SizedBox(width: tokens.spacingM),
           Text(
             label,
-            style: textTheme.bodyMedium?.copyWith(
+            style: textTheme.bodyLarge?.copyWith(
               fontWeight: FontWeight.w500,
               color: tokens.textSecondary,
             ),
@@ -208,7 +234,7 @@ class _AboutPageState extends State<AboutPage> {
           const Spacer(),
           Text(
             value,
-            style: textTheme.bodyMedium?.copyWith(
+            style: textTheme.bodyLarge?.copyWith(
               fontWeight: FontWeight.w600,
               color: tokens.textPrimary,
             ),

@@ -30,7 +30,7 @@ class ProfileRepository {
   }
 
   static Future<Map<String, dynamic>?> _refreshAndCache(String uid) async {
-    final remote = await ProfileService.getProfile();
+    final remote = await ProfileService.getProfile(coalesceKey: 'profile:$uid');
     if (remote != null) {
       await LocalProfileStore.put(uid, remote);
     }

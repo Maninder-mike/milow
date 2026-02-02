@@ -29,11 +29,14 @@ import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/sync_queue_service.dart';
 import 'package:milow/core/services/geofence_service.dart';
 import 'package:milow/core/services/analytics_service.dart';
-import 'package:milow/core/services/remote_config_service.dart';
+import 'package:milow/core/services/driver_remote_config_service.dart';
 import 'package:milow/core/services/performance_service.dart';
 import 'package:milow/core/services/auth_resilience_service.dart';
+import 'package:milow/core/services/secure_local_storage.dart';
 import 'package:milow/core/models/sync_operation.dart';
 import 'package:milow/l10n/app_localizations.dart';
+import 'package:milow/core/services/version_check_service.dart';
+import 'package:milow/core/presentation/pages/force_update_page.dart';
 
 // Placeholder imports - will be replaced with actual pages
 
@@ -51,6 +54,8 @@ import 'package:milow/features/trips/presentation/pages/scan_document_page.dart'
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/expenses/presentation/pages/expenses_list_page.dart';
 import 'package:milow/features/expenses/presentation/pages/add_expense_page.dart';
+import 'package:milow/features/settings/presentation/pages/units_settings_page.dart';
+import 'package:milow/features/dashboard/presentation/pages/driver_tools_page.dart';
 // Note: tab pages are hosted via TabsShell
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/core/widgets/tabs_shell.dart';
@@ -58,16 +63,34 @@ import 'package:milow/core/widgets/splash_screen.dart';
 import 'package:milow/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart';
+import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
 
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  // Keep native splash screen up until we're ready
+  widgetsBinding.deferFirstFrame();
 
-  // 1. Critical Base Services
+  // 2. Critical Base Services (Blocking)
   try {
-    await Firebase.initializeApp();
+    // 1. Initialize Firebase FIRST (PerformanceService depends on it)
+    debugPrint('🚀 [Init] Initializing Firebase...');
+    await Firebase.initializeApp().timeout(
+      const Duration(seconds: 10),
+      onTimeout: () {
+        debugPrint('⚠️ [Init] Firebase initialization timed out after 10s');
+        throw TimeoutException('Firebase initialization timed out');
+      },
+    );
+    debugPrint('✅ [Init] Firebase initialized');
+
+    // Start Cold Start Trace (after Firebase is ready)
+    await PerformanceService.instance.startColdStartTrace();
+    PerformanceService.instance.logStartupMilestone('app_launched');
+
     FlutterError.onError = (errorDetails) {
       FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
     };
+
     PlatformDispatcher.instance.onError = (error, stack) {
       // Handle "refresh_token_already_used" error to prevent crash loop
       if (error is AuthException &&
@@ -78,7 +101,6 @@ Future<void> main() async {
       }
 
       // Classify transient network errors as NON-FATAL
-      // These are expected during offline/poor connectivity
       final errorStr = error.toString().toLowerCase();
       if (errorStr.contains('socketexception') ||
           errorStr.contains('failed host lookup') ||
@@ -94,63 +116,107 @@ Future<void> main() async {
       FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
       return true;
     };
-  } catch (e) {
-    debugPrint('Failed to initialize Firebase: $e');
-  }
 
-  // 2. Load environment and UI settings
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      systemNavigationBarColor: Colors.transparent,
-    ),
-  );
-
-  await Future.wait([
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
-    dotenv.load(fileName: '.env'),
-    logger.init(),
-    localeService.loadLocale(),
-    connectivityService.init(),
-  ]);
-
-  // 3. Dependent Core Services
-  // Hive must start after logger/dotenv but can run in parallel with Supabase
-  await Future.wait([
-    Supabase.initialize(
-      url: SupabaseConstants.supabaseUrl,
-      anonKey: SupabaseConstants.supabaseAnonKey,
-      authOptions: const FlutterAuthClientOptions(
-        authFlowType: AuthFlowType.pkce,
+    // 3. Load environment and UI settings (Blocking)
+    SystemChrome.setSystemUIOverlayStyle(
+      const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        systemNavigationBarColor: Colors.transparent,
       ),
-    ).then((_) async {
-      await NotificationService.instance.init();
-      await AnalyticsService.instance.init();
-      await RemoteConfigService.instance.init();
-      await PerformanceService.instance.init();
-      // Start geofence monitoring if user logged in with active trip
-      unawaited(GeofenceService.instance.startMonitoring());
-      // Initialize auth resilience for proactive token refresh
-      authResilienceService.init();
-    }),
+    );
 
-    Hive.initFlutter().then((_) async {
-      Hive.registerAdapter(SyncOperationAdapter());
-      await Future.wait([
-        LocalProfileStore.init(),
-        LocalTripStore.init(),
-        LocalFuelStore.init(),
-        LocalDocumentStore.init(),
-        LocalExpenseStore.init(),
-      ]);
-      return syncQueueService.init();
-    }),
-  ]);
+    debugPrint('🚀 [Init] Loading environment and base services...');
+    await Future.wait([
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
+      dotenv
+          .load(fileName: '.env')
+          .then((_) => debugPrint('✅ [Init] .env loaded')),
+      logger.init().then((_) => debugPrint('✅ [Init] Logger initialized')),
+      localeService.loadLocale().then(
+        (_) => debugPrint('✅ [Init] Locale loaded'),
+      ),
+      connectivityService.init().then(
+        (_) => debugPrint('✅ [Init] Connectivity initialized'),
+      ),
+    ]).timeout(
+      const Duration(seconds: 15),
+      onTimeout: () {
+        debugPrint(
+          '⚠️ [Init] Base services initialization timed out after 15s',
+        );
+        return []; // Return empty list to satisfy type
+      },
+    );
 
-  // 4. Non-blocking tasks
-  unawaited(logger.cleanOldLogs());
+    PerformanceService.instance.logStartupMilestone('environment_loaded');
 
-  await logger.logLifecycle('App initialization complete');
+    // 4. Critical Dependencies (Supabase & Hive)
+    debugPrint('🚀 [Init] Initializing Supabase and Hive...');
+    await Future.wait([
+      Supabase.initialize(
+        url: SupabaseConstants.supabaseUrl,
+        anonKey: SupabaseConstants.supabaseAnonKey,
+        authOptions: FlutterAuthClientOptions(
+          authFlowType: AuthFlowType.pkce,
+          localStorage: SecureLocalStorage(),
+        ),
+      ).then((_) => debugPrint('✅ [Init] Supabase initialized')),
+      Hive.initFlutter().then((_) async {
+        debugPrint('🚀 [Init] Initializing Hive adapters and stores...');
+        Hive.registerAdapter(SyncOperationAdapter());
+        // Stores needed for dashboard/cached data
+        await Future.wait([
+          LocalProfileStore.init().then(
+            (_) => debugPrint('✅ [Init] LocalProfileStore ready'),
+          ),
+          LocalTripStore.init().then(
+            (_) => debugPrint('✅ [Init] LocalTripStore ready'),
+          ),
+          LocalFuelStore.init().then(
+            (_) => debugPrint('✅ [Init] LocalFuelStore ready'),
+          ),
+          LocalDocumentStore.init().then(
+            (_) => debugPrint('✅ [Init] LocalDocumentStore ready'),
+          ),
+          LocalExpenseStore.init().then(
+            (_) => debugPrint('✅ [Init] LocalExpenseStore ready'),
+          ),
+        ]);
+        debugPrint('✅ [Init] All Hive stores ready');
+        // Sync queue can init, but processing happens in background
+        return syncQueueService.init().then(
+          (_) => debugPrint('✅ [Init] SyncQueue initialized'),
+        );
+      }),
+    ]).timeout(
+      const Duration(seconds: 20),
+      onTimeout: () {
+        debugPrint(
+          '⚠️ [Init] Critical dependencies (Supabase/Hive) timed out after 20s',
+        );
+        return []; // Return empty list to satisfy type
+      },
+    );
+
+    PerformanceService.instance.logStartupMilestone('critical_services_ready');
+
+    // 5. Initialize background services (Non-blocking)
+    unawaited(_initBackgroundServices());
+
+    unawaited(logger.cleanOldLogs());
+    await logger.logLifecycle('App initialization complete');
+  } catch (e, stack) {
+    debugPrint('❌ [Init] Fatal error during initialization: $e');
+    debugPrint('Stack trace: $stack');
+    try {
+      FirebaseCrashlytics.instance.recordError(e, stack, fatal: true);
+    } catch (_) {}
+  } finally {
+    // ALWAYS allow the first frame and run the app, even if some services failed.
+    // This prevents a permanent blank screen.
+    debugPrint('🎬 [Init] Ensuring first frame is allowed...');
+    widgetsBinding.allowFirstFrame();
+  }
 
   runApp(
     MultiProvider(
@@ -158,14 +224,54 @@ Future<void> main() async {
         ChangeNotifierProvider(create: (_) => ThemeService()),
         ChangeNotifierProvider(create: (_) => ProfileProvider()),
         ChangeNotifierProvider.value(value: localeService),
+        ChangeNotifierProvider(create: (_) => ExploreProvider()),
       ],
       child: const MyApp(),
     ),
   );
 }
 
+/// Initialize non-critical services in the background
+Future<void> _initBackgroundServices() async {
+  try {
+    // Small delay to prioritize UI rendering
+    await Future.delayed(const Duration(seconds: 1));
+
+    PerformanceService.instance.logStartupMilestone(
+      'starting_background_services',
+    );
+
+    await Future.wait([
+      NotificationService.instance.init(),
+      AnalyticsService.instance.init(),
+      DriverRemoteConfigService.instance.init(),
+      PerformanceService.instance.init(),
+    ]);
+
+    // Start geofence monitoring if user logged in with active trip
+    unawaited(GeofenceService.instance.startMonitoring());
+
+    // Initialize auth resilience for proactive token refresh
+    authResilienceService.init();
+
+    debugPrint('✅ Background services initialized');
+  } catch (e, stack) {
+    debugPrint('❌ Failed to init background services: $e');
+    await FirebaseCrashlytics.instance.recordError(e, stack);
+  }
+}
+
 // Navigation helper function
-void _navigateAfterSplash(BuildContext context) {
+Future<void> _navigateAfterSplash(BuildContext context) async {
+  // Check for force update
+  final updateRequired = await VersionCheckService.instance.isUpdateRequired();
+  if (updateRequired && context.mounted) {
+    GoRouter.of(context).go('/force-update');
+    return;
+  }
+
+  if (!context.mounted) return;
+
   final session = Supabase.instance.client.auth.currentSession;
   if (session != null) {
     GoRouter.of(context).go('/dashboard');
@@ -214,8 +320,13 @@ final GoRouter _router = GoRouter(
   routes: [
     GoRoute(
       path: '/splash',
-      builder: (context, state) =>
-          SplashScreen(onComplete: () => _navigateAfterSplash(context)),
+      builder: (context, state) => SplashScreen(
+        onComplete: () => unawaited(_navigateAfterSplash(context)),
+      ),
+    ),
+    GoRoute(
+      path: '/force-update',
+      builder: (context, state) => const ForceUpdatePage(),
     ),
     GoRoute(path: '/login', builder: (context, state) => const LoginPage()),
     GoRoute(path: '/signup', builder: (context, state) => const SignUpPage()),
@@ -288,7 +399,22 @@ final GoRouter _router = GoRouter(
         const AuthWrapper(child: LanguagePage()),
       ),
     ),
-
+    GoRoute(
+      path: '/driver-tools',
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: DriverToolsPage()),
+      ),
+    ),
+    GoRoute(
+      path: '/units-settings',
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: UnitsSettingsPage()),
+      ),
+    ),
     GoRoute(
       path: '/add-entry',
       pageBuilder: (context, state) {
@@ -567,6 +693,7 @@ class _MyAppState extends State<MyApp> {
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           routerConfig: _router,
           debugShowCheckedModeBanner: false,
+          restorationScopeId: 'milow_driver_app',
         );
       },
     );

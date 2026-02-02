@@ -18,21 +18,38 @@ class LoadRepository {
     int page = 0,
     int pageSize = 20,
     String? statusFilter,
+    String? searchQuery,
   }) async {
     final start = page * pageSize;
     final end = start + pageSize - 1;
 
     return _client.query<List<Load>>(() async {
+      // Explicit field selection for performance
+      // Note: We need stops(*), pickups(*), receivers(*) to fully reconstruct the object
+      // until we have a dedicated LoadListItem DTO.
       var query = _client.supabase.from('loads').select('''
-          *,
+          id, status, load_reference, rate, currency, goods, weight, quantity, weight_unit,
+          load_notes, company_notes, assigned_driver_id, assigned_truck_id, assigned_trailer_id,
+          trip_number, po_number, created_at, updated_at, broker_id, pickup_date, delivery_date,
+          pickup_id, receiver_id,
           customers(name),
           stops(*),
           pickups(*),
           receivers(*)
-        '''); // Fetching legacy pickups/receivers for backward compatibility
+        ''');
 
       if (statusFilter != null && statusFilter != 'All') {
         query = query.eq('status', statusFilter);
+      }
+
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        // Search by Trip Number, Broker Name (via flattened customer?), or specialized logic.
+        // Supabase foreign table filtering is tricky.
+        // For now, simpler fuzzy search on trip_number or load_reference or customer name (if possible)
+        // Note: Filtering on foreign table columns like customers.name requires !inner join usually.
+        query = query.or(
+          'trip_number.ilike.%$searchQuery%, load_reference.ilike.%$searchQuery%',
+        );
       }
 
       final response = await query

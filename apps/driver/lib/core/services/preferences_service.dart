@@ -5,6 +5,9 @@ enum UnitSystem { metric, imperial }
 
 class PreferencesService {
   static const String _unitSystemKey = 'unit_system';
+  static const String _distanceUnitKey = 'distance_unit_pref';
+  static const String _volumeUnitKey = 'volume_unit_pref';
+  static const String _weightUnitKey = 'weight_unit_pref';
   static const String _hiddenTripsKey = 'hidden_trips';
 
   // Unit System preference (Metric/Imperial)
@@ -23,6 +26,26 @@ class PreferencesService {
       _unitSystemKey,
       system == UnitSystem.imperial ? 'imperial' : 'metric',
     );
+    // When changing global system, also set granular defaults to keep them in sync
+    await setDistanceUnit(system == UnitSystem.imperial ? 'mi' : 'km');
+    await setVolumeUnit(system == UnitSystem.imperial ? 'gal' : 'L');
+    await setWeightUnit(system == UnitSystem.imperial ? 'lb' : 'kg');
+  }
+
+  // Granular Unit setters
+  static Future<void> setDistanceUnit(String unit) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_distanceUnitKey, unit);
+  }
+
+  static Future<void> setVolumeUnit(String unit) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_volumeUnitKey, unit);
+  }
+
+  static Future<void> setWeightUnit(String unit) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_weightUnitKey, unit);
   }
 
   // Hidden Trips
@@ -42,16 +65,28 @@ class PreferencesService {
 
   // Helper methods for unit conversion
   static Future<String> getDistanceUnit() async {
+    final prefs = await SharedPreferences.getInstance();
+    final granular = prefs.getString(_distanceUnitKey);
+    if (granular != null) return granular;
+
     final system = await getUnitSystem();
     return system == UnitSystem.imperial ? 'mi' : 'km';
   }
 
   static Future<String> getWeightUnit() async {
+    final prefs = await SharedPreferences.getInstance();
+    final granular = prefs.getString(_weightUnitKey);
+    if (granular != null) return granular;
+
     final system = await getUnitSystem();
     return system == UnitSystem.imperial ? 'lb' : 'kg';
   }
 
   static Future<String> getVolumeUnit() async {
+    final prefs = await SharedPreferences.getInstance();
+    final granular = prefs.getString(_volumeUnitKey);
+    if (granular != null) return granular;
+
     final system = await getUnitSystem();
     return system == UnitSystem.imperial ? 'gal' : 'L';
   }

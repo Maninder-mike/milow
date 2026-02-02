@@ -818,7 +818,6 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                       'Plate: ${vehicle['license_plate'] ?? 'N/A'}',
                     ),
                     trailing: FilledButton(
-                      child: const Text('Assign'),
                       onPressed: vehicleId == null
                           ? null
                           : () async {
@@ -830,6 +829,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                                 truckNumber,
                               );
                             },
+                      child: const Text('Assign'),
                     ),
                   );
                 },

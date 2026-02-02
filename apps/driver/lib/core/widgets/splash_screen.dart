@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
+import 'package:milow/core/services/performance_service.dart';
 
 class SplashScreen extends StatefulWidget {
   final VoidCallback onComplete;
@@ -24,6 +25,11 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _initAnimations();
     _startAnimationSequence();
+
+    // Stop the cold start trace after the first frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      PerformanceService.instance.stopColdStartTrace();
+    });
   }
 
   void _initAnimations() {

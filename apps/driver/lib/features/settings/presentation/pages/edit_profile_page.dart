@@ -8,7 +8,9 @@ import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/models/country_code.dart';
 import 'package:milow/core/widgets/country_code_selector.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/utils/image_utils.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:milow/core/mixins/form_restoration_mixin.dart';
 
 class EditProfilePage extends StatefulWidget {
   const EditProfilePage({super.key});
@@ -17,29 +19,50 @@ class EditProfilePage extends StatefulWidget {
   State<EditProfilePage> createState() => _EditProfilePageState();
 }
 
-class _EditProfilePageState extends State<EditProfilePage> {
+class _EditProfilePageState extends State<EditProfilePage>
+    with RestorationMixin, FormRestorationMixin {
   final _formKey = GlobalKey<FormState>();
 
+  @override
+  String get restorationId => 'edit_profile_page';
+
   // Personal Info
-  late TextEditingController _nameController;
-  late TextEditingController _emailController;
-  late TextEditingController _phoneController;
+  late final RestorableTextEditingController _nameController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _emailController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _phoneController =
+      RestorableTextEditingController();
+  // We should also restore the country code ideally, but keeping it simple for now or using RestorableString
   CountryCode _selectedCountryCode = countryCodes[0];
 
   // Address Info
-  late TextEditingController _streetController;
-  late TextEditingController _cityController;
-  late TextEditingController _stateController;
-  late TextEditingController _zipController;
-  late TextEditingController _countryController;
+  late final RestorableTextEditingController _streetController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _cityController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _stateController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _zipController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _countryController =
+      RestorableTextEditingController();
 
   // Driver Info
-  late TextEditingController _licenseNumberController;
-  late TextEditingController _licenseTypeController;
-  late TextEditingController _fastIdController;
-  DateTime? _dob;
-  DateTime? _licenseExpiryDate;
+  late final RestorableTextEditingController _licenseNumberController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _licenseTypeController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _fastIdController =
+      RestorableTextEditingController();
+
+  final RestorableDateTimeN _dob = RestorableDateTimeN(null);
+  final RestorableDateTimeN _licenseExpiryDate = RestorableDateTimeN(null);
+
+  // For non-primitive types not easily restorable without custom classes,
+  // we might re-fetch or skip restoration.
   CountryCode? _citizenship;
+  // Enum restoration could be done with RestorableInt or similar, skipping for simplicity in this demo
   DriverType _driverType = DriverType.companyDriver;
 
   bool _isLoading = false;
@@ -47,26 +70,41 @@ class _EditProfilePageState extends State<EditProfilePage> {
   String? _avatarUrl;
 
   @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_nameController, 'name');
+    registerForRestoration(_emailController, 'email');
+    registerForRestoration(_phoneController, 'phone');
+
+    registerForRestoration(_streetController, 'street');
+    registerForRestoration(_cityController, 'city');
+    registerForRestoration(_stateController, 'state');
+    registerForRestoration(_zipController, 'zip');
+    registerForRestoration(_countryController, 'country');
+
+    registerForRestoration(_licenseNumberController, 'license_number');
+    registerForRestoration(_licenseTypeController, 'license_type');
+    registerForRestoration(_fastIdController, 'fast_id');
+
+    registerForRestoration(_dob, 'dob');
+    registerForRestoration(_licenseExpiryDate, 'license_expiry');
+  }
+
+  @override
   void initState() {
     super.initState();
-    _nameController = TextEditingController();
-    _emailController = TextEditingController();
-    _phoneController = TextEditingController();
-
-    _streetController = TextEditingController();
-    _cityController = TextEditingController();
-    _stateController = TextEditingController();
-    _zipController = TextEditingController();
-    _countryController = TextEditingController();
-
-    _licenseNumberController = TextEditingController();
-    _licenseTypeController = TextEditingController();
-    _fastIdController = TextEditingController();
-
+    // No need to instantiate controllers, they are final fields now.
     _loadProfile();
   }
 
   Future<void> _loadProfile() async {
+    // If we have restored state (e.g. name is not empty), we might prioritize it?
+    // But usually profile load should happen if we haven't edited?
+    // Simpler strategy: If distinctively restored (not implemented here), skip.
+    // For now, we load profile. If users had unsaved changes and app died, restoration
+    // restores them. Then _loadProfile runs.
+    // To prevent overwriting restored values with server values:
+    // We can check if controllers are empty before populating.
+
     setState(() => _isLoading = true);
     final data = await ProfileRepository.getCachedFirst(refresh: true);
     if (data != null) {
@@ -76,30 +114,57 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   void _populateFields(Map<String, dynamic> data) {
-    _nameController.text = data['full_name'] ?? '';
-    _emailController.text = data['email'] ?? '';
+    // Only overwrite if empty? Or always overwrite?
+    // If we strictly want to support "unsaved changes preservation", we should NOT overwrite if field is dirty.
+    // But tracking "dirty" is hard.
+    // Compromise: Overwrite only if controller is empty (fresh start behavior).
+    // This allows restoration to win if it has content.
+
+    if (_nameController.value.text.isEmpty) {
+      _nameController.value.text = data['full_name'] ?? '';
+    }
+    if (_emailController.value.text.isEmpty) {
+      _emailController.value.text = data['email'] ?? '';
+    }
 
     // Address
-    _streetController.text = data['street'] ?? '';
-    _cityController.text = data['city'] ?? '';
-    _stateController.text = data['state_province'] ?? '';
-    _zipController.text = data['postal_code'] ?? '';
-    _countryController.text = data['country'] ?? '';
+    if (_streetController.value.text.isEmpty) {
+      _streetController.value.text = data['street'] ?? '';
+    }
+    if (_cityController.value.text.isEmpty) {
+      _cityController.value.text = data['city'] ?? '';
+    }
+    if (_stateController.value.text.isEmpty) {
+      _stateController.value.text = data['state_province'] ?? '';
+    }
+    if (_zipController.value.text.isEmpty) {
+      _zipController.value.text = data['postal_code'] ?? '';
+    }
+    if (_countryController.value.text.isEmpty) {
+      _countryController.value.text = data['country'] ?? '';
+    }
 
     // Driver Info
-    _licenseNumberController.text = data['license_number'] ?? '';
-    _licenseTypeController.text = data['license_type'] ?? '';
-    _fastIdController.text = data['fast_id'] ?? '';
+    if (_licenseNumberController.value.text.isEmpty) {
+      _licenseNumberController.value.text = data['license_number'] ?? '';
+    }
+    if (_licenseTypeController.value.text.isEmpty) {
+      _licenseTypeController.value.text = data['license_type'] ?? '';
+    }
+    if (_fastIdController.value.text.isEmpty) {
+      _fastIdController.value.text = data['fast_id'] ?? '';
+    }
 
-    if (data['date_of_birth'] != null) {
+    if (data['date_of_birth'] != null && _dob.value == null) {
       try {
-        _dob = DateTime.parse(data['date_of_birth']);
+        _dob.value = DateTime.parse(data['date_of_birth']);
       } catch (_) {}
     }
 
-    if (data['license_expiry_date'] != null) {
+    if (data['license_expiry_date'] != null &&
+        _licenseExpiryDate.value == null) {
       try {
-        _licenseExpiryDate = DateTime.parse(data['license_expiry_date']);
+        _licenseExpiryDate.value = DateTime.parse(data['license_expiry_date']);
       } catch (_) {}
     }
 
@@ -129,11 +194,12 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     // Phone parsing
     final phoneNumber = data['phone'] as String? ?? '';
-    if (phoneNumber.isNotEmpty) {
+    if (phoneNumber.isNotEmpty && _phoneController.value.text.isEmpty) {
       final country = parsePhoneNumber(phoneNumber);
       if (country != null) {
         _selectedCountryCode = country;
-        _phoneController.text = extractPhoneNumber(phoneNumber, country) ?? '';
+        _phoneController.value.text =
+            extractPhoneNumber(phoneNumber, country) ?? '';
       }
     }
   }
@@ -151,6 +217,9 @@ class _EditProfilePageState extends State<EditProfilePage> {
     _licenseNumberController.dispose();
     _licenseTypeController.dispose();
     _fastIdController.dispose();
+    // RestorableDateTimeN doesn't need explicit dispose if not holding resources,
+    // but usually RestorableProperties are disposed by the Mixin if registered?
+    // No, standard practice says dispose controllers.
     super.dispose();
   }
 
@@ -183,22 +252,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
       }
 
       final fullPhone =
-          '${_selectedCountryCode.dialCode}${_phoneController.text.trim()}';
+          '${_selectedCountryCode.dialCode}${_phoneController.value.text.trim()}';
 
       final values = {
-        'full_name': _nameController.text.trim(),
+        'full_name': _nameController.value.text.trim(),
         'phone': fullPhone,
         'avatar_url': finalAvatarUrl,
-        'street': _streetController.text.trim(),
-        'city': _cityController.text.trim(),
-        'state_province': _stateController.text.trim(),
-        'postal_code': _zipController.text.trim(),
-        'country': _countryController.text.trim(),
-        'license_number': _licenseNumberController.text.trim(),
-        'license_type': _licenseTypeController.text.trim(),
-        'fast_id': _fastIdController.text.trim(),
-        'date_of_birth': _dob?.toIso8601String(),
-        'license_expiry_date': _licenseExpiryDate?.toIso8601String(),
+        'street': _streetController.value.text.trim(),
+        'city': _cityController.value.text.trim(),
+        'state_province': _stateController.value.text.trim(),
+        'postal_code': _zipController.value.text.trim(),
+        'country': _countryController.value.text.trim(),
+        'license_number': _licenseNumberController.value.text.trim(),
+        'license_type': _licenseTypeController.value.text.trim(),
+        'fast_id': _fastIdController.value.text.trim(),
+        'date_of_birth': _dob.value?.toIso8601String(),
+        'license_expiry_date': _licenseExpiryDate.value?.toIso8601String(),
         'citizenship': _citizenship?.code,
         'driver_type': _driverType.name,
       };
@@ -221,7 +290,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void _selectDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: _dob ?? DateTime(1990),
+      initialDate: _dob.value ?? DateTime(1990),
       firstDate: DateTime(1940),
       lastDate: DateTime.now(),
       builder: (context, child) {
@@ -236,7 +305,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
       },
     );
     if (picked != null) {
-      setState(() => _dob = picked);
+      setState(() => _dob.value = picked);
     }
   }
 
@@ -244,12 +313,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final picked = await showDatePicker(
       context: context,
       initialDate:
-          _licenseExpiryDate ?? DateTime.now().add(const Duration(days: 365)),
+          _licenseExpiryDate.value ??
+          DateTime.now().add(const Duration(days: 365)),
       firstDate: DateTime.now().subtract(const Duration(days: 365 * 10)),
       lastDate: DateTime.now().add(const Duration(days: 365 * 20)),
     );
     if (picked != null) {
-      setState(() => _licenseExpiryDate = picked);
+      setState(() => _licenseExpiryDate.value = picked);
     }
   }
 
@@ -324,175 +394,142 @@ class _EditProfilePageState extends State<EditProfilePage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     _buildAvatarSection(primaryColor, backgroundColor),
-                    SizedBox(height: tokens.spacingXL),
+                    _buildSectionHeader('Personal Information', first: true),
+                    _buildLabel('Full Name'),
+                    _buildTextField(
+                      controller: _nameController.value,
+                      hint: 'Enter your name',
+                      icon: Icons.person_outline,
+                    ),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('Email Address'),
+                    _buildTextField(
+                      controller: _emailController.value,
+                      hint: 'Email',
+                      icon: Icons.email_outlined,
+                      enabled: false,
+                    ),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('Phone Number'),
+                    _buildPhoneField(),
 
-                    _buildSectionCard(
-                      title: 'Personal Information',
+                    _buildSectionHeader('Address Information'),
+                    _buildLabel('Street Address'),
+                    _buildTextField(
+                      controller: _streetController.value,
+                      hint: '123 Trucker Way',
+                      icon: Icons.home_outlined,
+                    ),
+                    SizedBox(height: tokens.spacingM),
+                    Row(
                       children: [
-                        _buildLabel('Full Name'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildTextField(
-                          controller: _nameController,
-                          hint: 'Enter your name',
-                          icon: Icons.person_outline,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('City'),
+                              _buildTextField(
+                                controller: _cityController.value,
+                                hint: 'Toronto',
+                                icon: Icons.location_city_outlined,
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(height: tokens.spacingL),
-                        _buildLabel('Email Address'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildTextField(
-                          controller: _emailController,
-                          hint: 'Email',
-                          icon: Icons.email_outlined,
-                          enabled: false,
+                        SizedBox(width: tokens.spacingM),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('State / Province'),
+                              _buildTextField(
+                                controller: _stateController.value,
+                                hint: 'ON',
+                                icon: Icons.map_outlined,
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(height: tokens.spacingL),
-                        _buildLabel('Phone Number'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildPhoneField(),
                       ],
                     ),
-
-                    SizedBox(height: tokens.spacingL),
-
-                    _buildSectionCard(
-                      title: 'Address Information',
+                    SizedBox(height: tokens.spacingM),
+                    Row(
                       children: [
-                        _buildLabel('Street Address'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildTextField(
-                          controller: _streetController,
-                          hint: '123 Trucker Way',
-                          icon: Icons.home_outlined,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('Postal Code'),
+                              _buildTextField(
+                                controller: _zipController.value,
+                                hint: 'M1B 2C3',
+                                icon: Icons.pin_drop_outlined,
+                              ),
+                            ],
+                          ),
                         ),
-                        SizedBox(height: tokens.spacingM),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('City'),
-                                  SizedBox(height: tokens.spacingS),
-                                  _buildTextField(
-                                    controller: _cityController,
-                                    hint: 'Toronto',
-                                    icon: Icons.location_city_outlined,
-                                  ),
-                                ],
+                        SizedBox(width: tokens.spacingM),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              _buildLabel('Country'),
+                              _buildTextField(
+                                controller: _countryController.value,
+                                hint: 'Canada',
+                                icon: Icons.public_outlined,
                               ),
-                            ),
-                            SizedBox(width: tokens.spacingM),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('State / Province'),
-                                  SizedBox(height: tokens.spacingS),
-                                  _buildTextField(
-                                    controller: _stateController,
-                                    hint: 'ON',
-                                    icon: Icons.map_outlined,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                        SizedBox(height: tokens.spacingM),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('Postal Code'),
-                                  SizedBox(height: tokens.spacingS),
-                                  _buildTextField(
-                                    controller: _zipController,
-                                    hint: 'M1B 2C3',
-                                    icon: Icons.pin_drop_outlined,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            SizedBox(width: tokens.spacingM),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  _buildLabel('Country'),
-                                  SizedBox(height: tokens.spacingS),
-                                  _buildTextField(
-                                    controller: _countryController,
-                                    hint: 'Canada',
-                                    icon: Icons.public_outlined,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ],
                     ),
 
-                    SizedBox(height: tokens.spacingL),
-
-                    _buildSectionCard(
-                      title: 'Driver Documents',
-                      children: [
-                        _buildLabel('License Number'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildTextField(
-                          controller: _licenseNumberController,
-                          hint: 'A1234-56789-01234',
-                          icon: Icons.badge_outlined,
-                        ),
-                        SizedBox(height: tokens.spacingM),
-                        _buildLabel('License Expiry Date'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildClickableField(
-                          text: _licenseExpiryDate != null
-                              ? DateFormat.yMMMd().format(_licenseExpiryDate!)
-                              : 'Select Expiry Date',
-                          icon: Icons.event_available_outlined,
-                          onTap: _selectLicenseExpiry,
-                        ),
-                        SizedBox(height: tokens.spacingM),
-                        _buildLabel('License Type (Class)'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildTextField(
-                          controller: _licenseTypeController,
-                          hint: 'Class AZ',
-                          icon: Icons.category_outlined,
-                        ),
-                        SizedBox(height: tokens.spacingM),
-                        _buildLabel('FAST ID (Optional)'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildTextField(
-                          controller: _fastIdController,
-                          hint: '12345678',
-                          icon: Icons.security_outlined,
-                        ),
-                        SizedBox(height: tokens.spacingM),
-                        _buildLabel('Date of Birth'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildClickableField(
-                          text: _dob != null
-                              ? DateFormat.yMMMd().format(_dob!)
-                              : 'Select Date',
-                          icon: Icons.calendar_today_outlined,
-                          onTap: _selectDate,
-                        ),
-                        SizedBox(height: tokens.spacingM),
-                        _buildLabel('Citizenship'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildCitizenshipSelector(),
-                        SizedBox(height: tokens.spacingL),
-                        _buildLabel('Driver Type'),
-                        SizedBox(height: tokens.spacingS),
-                        _buildDriverTypeSelector(),
-                      ],
+                    _buildSectionHeader('Driver Documents'),
+                    _buildLabel('License Number'),
+                    _buildTextField(
+                      controller: _licenseNumberController.value,
+                      hint: 'A1234-56789-01234',
+                      icon: Icons.badge_outlined,
                     ),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('License Expiry Date'),
+                    _buildClickableField(
+                      text: _licenseExpiryDate.value != null
+                          ? DateFormat.yMMMd().format(_licenseExpiryDate.value!)
+                          : 'Select Expiry Date',
+                      icon: Icons.event_available_outlined,
+                      onTap: _selectLicenseExpiry,
+                    ),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('License Type (Class)'),
+                    _buildTextField(
+                      controller: _licenseTypeController.value,
+                      hint: 'Class AZ',
+                      icon: Icons.category_outlined,
+                    ),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('FAST ID (Optional)'),
+                    _buildTextField(
+                      controller: _fastIdController.value,
+                      hint: '12345678',
+                      icon: Icons.security_outlined,
+                    ),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('Date of Birth'),
+                    _buildClickableField(
+                      text: _dob.value != null
+                          ? DateFormat.yMMMd().format(_dob.value!)
+                          : 'Select Date',
+                      icon: Icons.calendar_today_outlined,
+                      onTap: _selectDate,
+                    ),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('Citizenship'),
+                    _buildCitizenshipSelector(),
+                    SizedBox(height: tokens.spacingM),
+                    _buildLabel('Driver Type'),
+                    _buildDriverTypeSelector(),
 
                     SizedBox(height: tokens.spacingXL),
                   ],
@@ -519,51 +556,74 @@ class _EditProfilePageState extends State<EditProfilePage> {
             height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.08),
+                  blurRadius: 15,
+                  offset: const Offset(0, 5),
+                ),
+              ],
               border: Border.all(
-                color: primaryColor.withValues(alpha: 0.2),
-                width: 4,
+                color: primaryColor.withValues(alpha: 0.15),
+                width: 1,
               ),
             ),
             child: ClipOval(
-              child: _imageFile != null
-                  ? Image.file(_imageFile!, fit: BoxFit.cover)
-                  : (_avatarUrl != null
-                        ? CachedNetworkImage(
-                            imageUrl: _avatarUrl!,
-                            fit: BoxFit.cover,
-                            memCacheHeight: 240,
-                            memCacheWidth: 240,
-                            placeholder: (context, url) => Center(
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: primaryColor.withValues(alpha: 0.3),
+              child: Container(
+                color: tokens.surfaceContainerHigh,
+                child: _imageFile != null
+                    ? Image.file(_imageFile!, fit: BoxFit.cover)
+                    : (_avatarUrl != null
+                          ? CachedNetworkImage(
+                              imageUrl: _avatarUrl!,
+                              fit: BoxFit.cover,
+                              memCacheHeight: ImageUtils.getCacheSize(
+                                120,
+                                context,
                               ),
-                            ),
-                            errorWidget: (context, url, error) =>
-                                Icon(Icons.person, size: 60, color: subtext),
-                          )
-                        : Icon(Icons.person, size: 60, color: subtext)),
+                              memCacheWidth: ImageUtils.getCacheSize(
+                                120,
+                                context,
+                              ),
+                              placeholder: (context, url) => Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: primaryColor.withValues(alpha: 0.3),
+                                ),
+                              ),
+                              errorWidget: (context, url, error) =>
+                                  Icon(Icons.person, size: 60, color: subtext),
+                            )
+                          : Icon(Icons.person, size: 60, color: subtext)),
+              ),
             ),
           ),
           Positioned(
-            bottom: 0,
-            right: 0,
+            bottom: 4,
+            right: 4,
             child: Semantics(
               label: 'Change profile picture',
               button: true,
               child: GestureDetector(
                 onTap: _pickImage,
                 child: Container(
-                  padding: EdgeInsets.all(tokens.spacingS),
+                  padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: primaryColor,
                     shape: BoxShape.circle,
-                    border: Border.all(color: backgroundColor, width: 2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.2),
+                        blurRadius: 10,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                    border: Border.all(color: backgroundColor, width: 2.5),
                   ),
                   child: Icon(
-                    Icons.camera_alt,
+                    Icons.camera_alt_rounded,
                     color: Theme.of(context).colorScheme.onPrimary,
-                    size: 20,
+                    size: 18,
                   ),
                 ),
               ),
@@ -574,42 +634,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
     );
   }
 
-  Widget _buildSectionCard({
-    required String title,
-    required List<Widget> children,
-  }) {
+  Widget _buildSectionHeader(String title, {bool first = false}) {
     final tokens = context.tokens;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(
-            left: tokens.spacingXS,
-            bottom: tokens.spacingS,
-          ),
-          child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w700,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-          ),
+    return Padding(
+      padding: EdgeInsets.only(
+        top: first ? tokens.spacingM : tokens.spacingXL,
+        bottom: tokens.spacingM,
+        left: tokens.spacingXS,
+      ),
+      child: Text(
+        title.toUpperCase(),
+        style: Theme.of(context).textTheme.labelMedium?.copyWith(
+          fontWeight: FontWeight.w800,
+          color: Theme.of(context).colorScheme.primary,
+          letterSpacing: 1.2,
         ),
-        Container(
-          padding: EdgeInsets.all(tokens.spacingM),
-          decoration: BoxDecoration(
-            color: tokens.surfaceContainer,
-            borderRadius: BorderRadius.circular(tokens.shapeL),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
@@ -619,11 +659,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
+          height: 56,
           decoration: BoxDecoration(
             color: tokens.inputBackground,
             borderRadius: BorderRadius.circular(tokens.shapeS),
             border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.8),
             ),
           ),
           child: CountryCodeSelector(
@@ -634,7 +677,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         SizedBox(width: tokens.spacingS),
         Expanded(
           child: _buildTextField(
-            controller: _phoneController,
+            controller: _phoneController.value,
             hint: 'Phone number',
             icon: Icons.phone_outlined,
             keyboardType: TextInputType.phone,
@@ -648,10 +691,15 @@ class _EditProfilePageState extends State<EditProfilePage> {
     final tokens = context.tokens;
     return Container(
       width: double.infinity,
+      height: 56,
       decoration: BoxDecoration(
         color: tokens.inputBackground,
         borderRadius: BorderRadius.circular(tokens.shapeS),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.8),
+        ),
       ),
       child: CountryCodeSelector(
         selectedCountry: _citizenship ?? countryCodes[0],
@@ -668,11 +716,16 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
     return Container(
       width: double.infinity,
+      height: 56,
       padding: EdgeInsets.symmetric(horizontal: tokens.spacingM),
       decoration: BoxDecoration(
         color: tokens.inputBackground,
         borderRadius: BorderRadius.circular(tokens.shapeS),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.8),
+        ),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<DriverType>(
@@ -718,11 +771,14 @@ class _EditProfilePageState extends State<EditProfilePage> {
   }
 
   Widget _buildLabel(String text) {
-    return Text(
-      text,
-      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-        fontWeight: FontWeight.w600,
-        color: context.tokens.textSecondary,
+    return Padding(
+      padding: const EdgeInsets.only(left: 4, bottom: 4),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+          fontWeight: FontWeight.w700,
+          color: context.tokens.textSecondary.withValues(alpha: 0.8),
+        ),
       ),
     );
   }
@@ -749,6 +805,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
         keyboardType: keyboardType,
         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
           color: enabled ? tokens.textPrimary : tokens.disabled,
+          fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           hintText: hint,
@@ -760,23 +817,34 @@ class _EditProfilePageState extends State<EditProfilePage> {
           fillColor: tokens.inputBackground,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(tokens.shapeS),
-            borderSide: BorderSide(color: tokens.inputBorder),
+            borderSide: BorderSide(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.8),
+            ),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(tokens.shapeS),
-            borderSide: BorderSide(color: tokens.inputBorder),
+            borderSide: BorderSide(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.8),
+            ),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(tokens.shapeS),
-            borderSide: BorderSide(color: tokens.inputFocusedBorder, width: 2),
+            borderSide: BorderSide(color: primaryColor, width: 1.5),
           ),
           disabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(tokens.shapeS),
             borderSide: BorderSide(
-              color: tokens.disabled.withValues(alpha: 0.5),
+              color: tokens.disabled.withValues(alpha: 0.2),
             ),
           ),
-          contentPadding: EdgeInsets.all(tokens.spacingM),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 16,
+          ),
         ),
       ),
     );
@@ -797,23 +865,33 @@ class _EditProfilePageState extends State<EditProfilePage> {
         onTap: onTap,
         borderRadius: BorderRadius.circular(tokens.shapeS),
         child: Container(
-          padding: EdgeInsets.all(tokens.spacingM),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
           decoration: BoxDecoration(
             color: tokens.inputBackground,
             borderRadius: BorderRadius.circular(tokens.shapeS),
-            border: Border.all(color: tokens.inputBorder),
+            border: Border.all(
+              color: Theme.of(
+                context,
+              ).colorScheme.outlineVariant.withValues(alpha: 0.8),
+            ),
           ),
           child: Row(
             children: [
               Icon(icon, color: primaryColor, size: 20),
-              SizedBox(width: tokens.spacingS),
+              SizedBox(width: tokens.spacingM),
               Expanded(
                 child: Text(
                   text,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(color: tokens.textPrimary),
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                    color: tokens.textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
+              ),
+              Icon(
+                Icons.calendar_today_rounded,
+                size: 16,
+                color: tokens.textTertiary,
               ),
             ],
           ),

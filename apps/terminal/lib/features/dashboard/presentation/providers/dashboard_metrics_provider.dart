@@ -23,7 +23,10 @@ class DashboardMetrics {
 
 @riverpod
 Future<DashboardMetrics> dashboardMetrics(Ref ref) async {
-  final loads = await ref.watch(loadsListProvider.future);
+  // Fetch data in parallel for performance
+  final loadsPaginationState = await ref.watch(paginatedLoadsProvider.future);
+  final loads = loadsPaginationState.loads;
+
   final vehicles = await ref.watch(vehiclesListProvider.future);
   final invoices = await ref.watch(
     invoicesListProvider(statusFilter: null).future,

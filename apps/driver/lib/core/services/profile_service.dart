@@ -1,6 +1,7 @@
 import 'dart:typed_data';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/logging_service.dart';
 
 class ProfileService {
@@ -8,32 +9,51 @@ class ProfileService {
   static const String _avatarsBucket = 'avatars';
 
   static SupabaseClient get _client => Supabase.instance.client;
+  static final _networkClient = CoreNetworkClient(Supabase.instance.client);
 
   static String? get currentUserId => _client.auth.currentUser?.id;
 
-  static Future<Map<String, dynamic>?> getProfile() async {
+  static Future<Map<String, dynamic>?> getProfile({String? coalesceKey}) async {
     final uid = currentUserId;
     if (uid == null) return null;
 
-    // Join with driver_profiles to get the separated details
-    final res = await _client
-        .from(_profilesTable)
-        .select('*, companies(*), driver_profiles(*)')
-        .eq('id', uid)
-        .maybeSingle();
+    final result = await _networkClient.query(
+      () async {
+        // Join with driver_profiles to get the separated details
+        final res = await _client
+            .from(_profilesTable)
+            .select('*, companies(*), driver_profiles(*)')
+            .eq('id', uid)
+            .maybeSingle();
 
-    if (res == null) return null;
+        if (res == null) return null;
 
-    // Flatten driver_profiles into the main map so the app doesn't break
-    if (res['driver_profiles'] != null) {
-      final driverData = res['driver_profiles'] as Map<String, dynamic>;
-      // We rely on the fact that driver_profiles has the latest data
-      // standard Map.addAll overwrites existing keys
-      res.addAll(driverData);
-      res.remove('driver_profiles');
-    }
+        // Flatten driver_profiles into the main map so the app doesn't break
+        if (res['driver_profiles'] != null) {
+          final driverData = res['driver_profiles'] as Map<String, dynamic>;
+          // We rely on the fact that driver_profiles has the latest data
+          // standard Map.addAll overwrites existing keys
+          res.addAll(driverData);
+          res.remove('driver_profiles');
+        }
 
-    return res;
+        return res;
+      },
+      operationName: 'getProfile',
+      coalesceKey: coalesceKey,
+      cachePolicy: CachePolicy.cacheFirst,
+      cacheKey: 'profile:get:$uid',
+      ttl: const Duration(minutes: 5), // Profile doesn't change often
+    );
+
+    return result.fold((failure) {
+      // Log error and return null to fallback to cache if available
+      logger.error(
+        'ProfileService',
+        'Failed to get profile: ${failure.message}',
+      );
+      return null;
+    }, (data) => data);
   }
 
   static Future<String?> uploadAvatar({

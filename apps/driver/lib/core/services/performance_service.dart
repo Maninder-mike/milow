@@ -1,3 +1,4 @@
+import 'package:flutter/widgets.dart';
 import 'package:firebase_performance/firebase_performance.dart';
 import 'package:flutter/foundation.dart';
 
@@ -9,7 +10,7 @@ import 'package:flutter/foundation.dart';
 /// - Screen rendering performance
 ///
 /// Custom traces can be added for specific code paths.
-class PerformanceService {
+class PerformanceService with WidgetsBindingObserver {
   static final PerformanceService instance = PerformanceService._internal();
   factory PerformanceService() => instance;
   PerformanceService._internal();
@@ -21,10 +22,63 @@ class PerformanceService {
   Future<void> init() async {
     if (_initialized) return;
 
+    // Register observer for memory pressure events
+    WidgetsBinding.instance.addObserver(this);
+
     // Disable in debug mode for cleaner logs
     await _performance.setPerformanceCollectionEnabled(!kDebugMode);
     _initialized = true;
     debugPrint('[Performance] Initialized');
+  }
+
+  @override
+  void didHaveMemoryPressure() {
+    debugPrint(
+      '[Performance] Memory pressure detected. Clearing image caches.',
+    );
+    try {
+      PaintingBinding.instance.imageCache.clear();
+      PaintingBinding.instance.imageCache.clearLiveImages();
+    } catch (e) {
+      debugPrint('[Performance] Failed to clear image cache: $e');
+    }
+  }
+
+  // ==================== STARTUP METRICS ====================
+
+  Trace? _coldStartTrace;
+
+  /// Start tracing app cold start time.
+  /// Should be called as early as possible in main().
+  Future<void> startColdStartTrace() async {
+    if (!kReleaseMode) return; // Only trace in release mode to avoid noise
+    try {
+      _coldStartTrace = await startTrace('cold_start');
+      debugPrint('[Performance] Cold start trace started');
+    } catch (e) {
+      debugPrint('[Performance] Failed to start cold start trace: $e');
+    }
+  }
+
+  /// Stop cold start trace.
+  /// Should be called when the first frame is rendered or home screen is ready.
+  Future<void> stopColdStartTrace() async {
+    if (_coldStartTrace != null) {
+      await _coldStartTrace!.stop();
+      _coldStartTrace = null;
+      debugPrint('[Performance] Cold start trace completed');
+    }
+  }
+
+  /// Log a specific milestone during startup
+  void logStartupMilestone(String milestone, {int? durationMs}) {
+    debugPrint(
+      '[Performance] Startup Milestone: $milestone ${durationMs != null ? "(${durationMs}ms)" : ""}',
+    );
+    _coldStartTrace?.putAttribute(
+      'milestone_${DateTime.now().millisecondsSinceEpoch}',
+      milestone,
+    );
   }
 
   // ==================== CUSTOM TRACES ====================

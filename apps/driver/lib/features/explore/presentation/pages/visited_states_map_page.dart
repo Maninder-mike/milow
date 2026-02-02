@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:countries_world_map/countries_world_map.dart';
 import 'package:intl/intl.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:milow/features/explore/presentation/utils/explore_utils.dart';
 import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:path_provider/path_provider.dart';
@@ -219,24 +220,16 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
 
   String? _extractRegionCode(String address) {
     if (address.isEmpty) return null;
-    final normalized = address.replaceAll('\n', ' ').toLowerCase();
 
-    // 1. Direct match with full names
+    // 1. Try using the shared utility first (handles ST, City ST ZIP, etc)
+    final code = ExploreUtils.extractStateCode(address);
+    if (code != null) return code.toLowerCase();
+
+    // 2. Fallback for full names
+    final normalized = address.toLowerCase();
     for (final entry in _nameToCode.entries) {
       if (normalized.contains(entry.key)) {
         return entry.value;
-      }
-    }
-
-    // 2. Check for 2-letter codes
-    final allCodes = {..._usCodes, ..._caCodes};
-    // Split by comma, space, period to isolate words
-    final parts = normalized.split(RegExp(r'[\s,\.]+'));
-
-    for (int i = parts.length - 1; i >= 0; i--) {
-      final part = parts[i];
-      if (allCodes.contains(part)) {
-        return part;
       }
     }
 
@@ -657,32 +650,44 @@ class _VisitedStatesMapPageState extends State<VisitedStatesMapPage> {
 
   Map<String, Color> _getMapColors(BuildContext context) {
     final Map<String, Color> colors = {};
+    final colorScheme = Theme.of(context).colorScheme;
+
     _stateStats.forEach((code, stats) {
-      Color color = Theme.of(context).colorScheme.primary;
+      Color color = colorScheme.primary;
       if (stats.visitCount > 5) {
-        color = Theme.of(context).colorScheme.primary;
+        color = colorScheme.primary;
       } else if (stats.visitCount > 2) {
-        color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.8);
+        color = colorScheme.primary.withValues(alpha: 0.85);
       } else {
-        color = Theme.of(context).colorScheme.primary.withValues(alpha: 0.6);
+        color = colorScheme.primary.withValues(alpha: 0.7);
       }
-      colors[code] = color;
-      colors['us-$code'] = color;
-      colors['ca-$code'] = color;
+
+      final lowerCode = code.toLowerCase();
+      final upperCode = code.toUpperCase();
+
+      // USA Variants
+      colors[lowerCode] = color;
+      colors[upperCode] = color;
+      colors['us-$lowerCode'] = color;
+      colors['us-$upperCode'] = color;
+      colors['US-$upperCode'] = color;
+
+      // Canada Variants
+      colors['ca-$lowerCode'] = color;
+      colors['ca-$upperCode'] = color;
+      colors['CA-$upperCode'] = color;
     });
     return colors;
   }
 
   void _handleRegionTap(String id, String defaultName) {
     // Map IDs usually come as 'us-ny' or 'ca-on'
-    String code = id;
+    String code = id.toLowerCase();
     if (code.startsWith('us-')) {
       code = code.substring(3);
     } else if (code.startsWith('ca-')) {
       code = code.substring(3);
     }
-
-    code = code.toLowerCase();
 
     final stats = _stateStats[code];
     // Only show sheet if we have stats or if it's a valid region tap

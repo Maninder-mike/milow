@@ -53,7 +53,9 @@ class TripRepository {
 
   static Future<List<Trip>> _refreshFromServer(String userId) async {
     try {
-      final serverTrips = await TripService.getTrips();
+      final serverTrips = await TripService.getTrips(
+        coalesceKey: 'trips:$userId',
+      );
 
       // Get pending sync operations to prevent overwriting/deleting unsynced data
       final pendingOps = syncQueueService.pendingOperations
@@ -112,7 +114,7 @@ class TripRepository {
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
-      return await TripService.getTripById(tripId);
+      return await TripService.getTripById(tripId, coalesceKey: 'trip:$tripId');
     }
 
     return null;

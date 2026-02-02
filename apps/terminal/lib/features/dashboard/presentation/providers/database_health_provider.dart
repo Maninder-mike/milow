@@ -66,8 +66,10 @@ class DatabaseHealthNotifier extends Notifier<DatabaseHealthState> {
     });
 
     // Initial kick off
-    checkConnection();
-    _startPeriodicCheck();
+    Future.microtask(() {
+      checkConnection();
+      _startPeriodicCheck();
+    });
 
     return const DatabaseHealthState(status: DatabaseStatus.checking);
   }
@@ -80,13 +82,18 @@ class DatabaseHealthNotifier extends Notifier<DatabaseHealthState> {
   }
 
   Future<void> checkConnection() async {
-    state = state.copyWith(isSyncing: true);
+    // Only set syncing if we are not already disconnected (to avoid UI flicker in offline mode)
+    if (state.status != DatabaseStatus.disconnected) {
+      state = state.copyWith(isSyncing: true);
+    }
+
     try {
       await Supabase.instance.client
           .from('profiles')
-          .select()
+          .select('id')
           .limit(1)
-          .maybeSingle();
+          .maybeSingle()
+          .timeout(const Duration(seconds: 5));
 
       state = state.copyWith(
         status: DatabaseStatus.connected,
@@ -94,7 +101,10 @@ class DatabaseHealthNotifier extends Notifier<DatabaseHealthState> {
         isSyncing: false,
       );
     } catch (e) {
-      state = state.copyWith(status: DatabaseStatus.error, isSyncing: false);
+      // If we are offline, don't override the disconnected status with error
+      if (state.status != DatabaseStatus.disconnected) {
+        state = state.copyWith(status: DatabaseStatus.error, isSyncing: false);
+      }
     }
   }
 }

@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:firebase_analytics/firebase_analytics.dart';
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 
 /// Service for tracking user events and journeys.
@@ -126,10 +129,19 @@ class AnalyticsService {
     required String screenName,
     String? screenClass,
   }) async {
+    // Analytics
     await _analytics.logScreenView(
       screenName: screenName,
       screenClass: screenClass,
     );
+
+    // Crashlytics Context
+    if (!kDebugMode) {
+      unawaited(
+        FirebaseCrashlytics.instance.setCustomKey('last_screen', screenName),
+      );
+      unawaited(FirebaseCrashlytics.instance.log('Screen View: $screenName'));
+    }
   }
 
   // ==================== FEATURES ====================
@@ -142,6 +154,48 @@ class AnalyticsService {
       name: 'feature_used',
       parameters: {'feature_name': featureName, ...?parameters},
     );
+  }
+
+  // ==================== FUNNELS & JOURNEYS ====================
+
+  /// Log a step in a multi-step funnel
+  Future<void> logFunnelStep({
+    required String funnelName,
+    required int step,
+    required String stepName,
+  }) async {
+    await _analytics.logEvent(
+      name: 'funnel_step',
+      parameters: {
+        'funnel_name': funnelName,
+        'step_number': step,
+        'step_name': stepName,
+      },
+    );
+  }
+
+  /// Start a user journey (marker event)
+  Future<void> logUserJourneyStart(String journeyName) async {
+    await _analytics.logEvent(
+      name: 'journey_start',
+      parameters: {'journey_name': journeyName},
+    );
+  }
+
+  /// Complete a user journey with duration
+  Future<void> logUserJourneyComplete({
+    required String journeyName,
+    Duration? duration,
+    bool success = true,
+  }) async {
+    final params = <String, Object>{
+      'journey_name': journeyName,
+      'success': success,
+    };
+    if (duration != null) {
+      params['duration_ms'] = duration.inMilliseconds;
+    }
+    await _analytics.logEvent(name: 'journey_complete', parameters: params);
   }
 
   // ==================== GENERIC ====================

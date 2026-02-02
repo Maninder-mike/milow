@@ -1,25 +1,20 @@
 import 'package:flutter/material.dart';
-import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
-// Tab shell provides nav; this page returns content only
 import 'package:milow_core/milow_core.dart';
-import 'package:milow/core/services/fuel_service.dart';
-import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
-import 'package:milow/features/explore/presentation/pages/visited_states_map_page.dart';
+import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
+import 'package:milow/features/explore/presentation/utils/explore_utils.dart';
 import 'package:milow/features/explore/presentation/widgets/explore_map_view.dart';
-import 'package:milow/features/explore/presentation/utils/explore_map_helper.dart';
 import 'package:milow/features/explore/presentation/widgets/stats_overview_card.dart';
 import 'package:milow/features/explore/presentation/widgets/state_collector_card.dart';
 import 'package:milow/features/explore/presentation/widgets/smart_suggestions_card.dart';
-
-import 'package:milow/core/services/geo_service.dart';
-
+import 'package:milow/features/explore/presentation/pages/visited_states_map_page.dart';
+import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
 class ExplorePage extends StatefulWidget {
@@ -30,699 +25,216 @@ class ExplorePage extends StatefulWidget {
 }
 
 class _ExplorePageState extends State<ExplorePage> {
-  List<Trip> _allTrips = [];
-  List<FuelEntry> _allFuelEntries = [];
-  bool _isLoading = true;
-  final String _selectedCategory = 'All Routes';
-
   @override
   void initState() {
     super.initState();
-    _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ExploreProvider>().loadData();
+    });
   }
 
-  /// Pull-to-refresh handler
   Future<void> _onRefresh() async {
-    DataPrefetchService.instance.invalidateCache();
-    await _loadData();
+    await context.read<ExploreProvider>().loadData(forceRefresh: true);
   }
 
-  /// Extract city and state/province from address
-  /// Returns format: "City ST" (e.g., "Vaughan ON" or "Irwindale CA")
-  String _extractCityState(String address) {
-    if (address.isEmpty) return address;
-
-    // Normalize: replace newlines with commas for easier parsing
-    final normalized = address
-        .replaceAll('\n', ', ')
-        .replaceAll(RegExp(r',\s*,'), ',');
-
-    // Pattern 1: Match "CITY STATE ZIP" at end of segment
-    // e.g., "IRWINDALE CA 91702" or "CHARLOTTETOWN PE C1E 0K4"
-    final dispatchPattern = RegExp(
-      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s+[A-Z0-9]{3,7}(?:\s*[A-Z0-9]{0,4})?\s*$',
-      caseSensitive: false,
-    );
-
-    final segments = normalized.split(',');
-    for (final segment in segments) {
-      final trimmed = segment.trim();
-      final dispatchMatch = dispatchPattern.firstMatch(trimmed.toUpperCase());
-      if (dispatchMatch != null) {
-        // Get the last word(s) before state - extract city from end
-        final rawCity = dispatchMatch.group(1)!.trim();
-        final city = _extractLastCity(rawCity);
-        final state = dispatchMatch.group(2)!.toUpperCase();
-        return '$city $state';
-      }
-    }
-
-    // Pattern 2: Match "CITY STATE" followed by ( or end (e.g., "VAUGHAN ON (Yard)")
-    final cityStateParenPattern = RegExp(
-      r'([A-Z][A-Z\s]*?)\s+([A-Z]{2})\s*(?:\(|$)',
-      caseSensitive: false,
-    );
-    for (final segment in segments) {
-      final trimmed = segment.trim();
-      final match = cityStateParenPattern.firstMatch(trimmed.toUpperCase());
-      if (match != null) {
-        final rawCity = match.group(1)!.trim();
-        final city = _extractLastCity(rawCity);
-        final state = match.group(2)!.toUpperCase();
-        return '$city $state';
-      }
-    }
-
-    // Pattern 3: Standard format "City, ST" or "City, ST ZIP"
-    final cityStatePattern = RegExp(
-      r'([A-Za-z][A-Za-z\s]+?),\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)',
-      caseSensitive: false,
-    );
-    final match = cityStatePattern.firstMatch(normalized);
-    if (match != null) {
-      final city = _toTitleCase(match.group(1)!.trim());
-      final state = match.group(2)!.toUpperCase();
-      return '$city $state';
-    }
-
-    // Fallback: just return first non-numeric part abbreviated
-    final parts = normalized.split(',');
-    for (final part in parts) {
-      final trimmed = part.trim();
-      if (!RegExp(r'^\d').hasMatch(trimmed) && trimmed.isNotEmpty) {
-        return trimmed.length > 20 ? '${trimmed.substring(0, 17)}...' : trimmed;
-      }
-    }
-
-    return address.length > 20 ? '${address.substring(0, 17)}...' : address;
-  }
-
-  /// Extract the actual city name from a string that might include street names
-  /// e.g., "COLD CREEK ROAD VAUGHAN" -> "Vaughan"
-  /// e.g., "QUEBEC CITY" -> "Quebec City"
-  String _extractLastCity(String raw) {
-    final words = raw.split(RegExp(r'\s+'));
-    if (words.isEmpty) return _toTitleCase(raw);
-
-    // Common street suffixes to skip
-    final streetSuffixes = {
-      'ROAD',
-      'RD',
-      'STREET',
-      'ST',
-      'AVENUE',
-      'AVE',
-      'BLVD',
-      'BOULEVARD',
-      'DRIVE',
-      'DR',
-      'LANE',
-      'LN',
-      'WAY',
-      'COURT',
-      'CT',
-      'PLACE',
-      'PL',
-      'CIRCLE',
-      'CIR',
-      'HIGHWAY',
-      'HWY',
-      'ROUTE',
-      'RTE',
-      'PARKWAY',
-      'PKWY',
-    };
-
-    // Find the last street suffix and take everything after it
-    int lastStreetIndex = -1;
-    for (int i = 0; i < words.length; i++) {
-      if (streetSuffixes.contains(words[i].toUpperCase())) {
-        lastStreetIndex = i;
-      }
-    }
-
-    if (lastStreetIndex >= 0 && lastStreetIndex < words.length - 1) {
-      // Take everything after the last street suffix
-      final cityWords = words.sublist(lastStreetIndex + 1);
-      return _toTitleCase(cityWords.join(' '));
-    }
-
-    // If no street suffix found, check if first word looks like a number (street address)
-    if (words.length > 1 && RegExp(r'^\d').hasMatch(words.first)) {
-      // Skip the street number and take the last 1-2 words as city
-      final cityWords = words.length > 2
-          ? words.sublist(words.length - 2)
-          : [words.last];
-      // But if second-to-last is a street suffix, just take last word
-      if (cityWords.length > 1 &&
-          streetSuffixes.contains(cityWords.first.toUpperCase())) {
-        return _toTitleCase(cityWords.last);
-      }
-      return _toTitleCase(cityWords.join(' '));
-    }
-
-    // Return the whole thing as city (e.g., "QUEBEC CITY")
-    return _toTitleCase(raw);
-  }
-
-  String _toTitleCase(String text) {
-    if (text.isEmpty) return text;
-    return text
-        .split(' ')
-        .map((word) {
-          if (word.isEmpty) return word;
-          return word[0].toUpperCase() + word.substring(1).toLowerCase();
-        })
-        .join(' ');
-  }
-
-  List<ExploreMapMarker> _mapMarkers = [];
-  bool _isMapLoading = true;
-
-  Future<void> _loadData() async {
-    try {
-      final prefetch = DataPrefetchService.instance;
-      List<Trip> trips;
-      List<FuelEntry> fuelEntries;
-
-      if (prefetch.isPrefetchComplete &&
-          prefetch.cachedTrips != null &&
-          prefetch.cachedFuelEntries != null) {
-        trips = prefetch.cachedTrips!;
-        fuelEntries = prefetch.cachedFuelEntries!;
-      } else {
-        trips = await TripService.getTrips();
-        fuelEntries = await FuelService.getFuelEntries();
-      }
-
-      if (mounted) {
-        setState(() {
-          _allTrips = trips;
-          _allFuelEntries = fuelEntries;
-          _isLoading = false;
-        });
-      }
-
-      // Generate map markers in background
-      await _generateMapMarkers();
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  static const Set<String> _usStateCodes = {
-    'AL',
-    'AK',
-    'AZ',
-    'AR',
-    'CA',
-    'CO',
-    'CT',
-    'DE',
-    'DC',
-    'FL',
-    'GA',
-    'HI',
-    'ID',
-    'IL',
-    'IN',
-    'IA',
-    'KS',
-    'KY',
-    'LA',
-    'ME',
-    'MD',
-    'MA',
-    'MI',
-    'MN',
-    'MS',
-    'MO',
-    'MT',
-    'NE',
-    'NV',
-    'NH',
-    'NJ',
-    'NM',
-    'NY',
-    'NC',
-    'ND',
-    'OH',
-    'OK',
-    'OR',
-    'PA',
-    'RI',
-    'SC',
-    'SD',
-    'TN',
-    'TX',
-    'UT',
-    'VT',
-    'VA',
-    'WA',
-    'WV',
-    'WI',
-    'WY',
-  };
-
-  Set<String> _visitedStates = {};
-
-  Future<void> _generateMapMarkers() async {
-    final markers = <ExploreMapMarker>[];
-    final states = <String>{};
-    // GeoService is static, no instance needed
-
-    // Process all trips
-    // final recentTrips = _allTrips.take(10).toList(); // OLD: limit 10
-    final trips = _allTrips; // NEW: use all
-    for (final trip in trips) {
-      if (trip.deliveryLocations.isNotEmpty) {
-        final loc =
-            trip.deliveryLocations.last; // Use last delivery as main point
-
-        // Extract state for collector
-        final mainLoc = _extractCityState(
-          loc,
-        ); // Normalize address for better geocoding success
-        final state = _extractStateCode(loc);
-        if (state != null && _usStateCodes.contains(state)) states.add(state);
-
-        final latLng = await GeoService.getCoordinates(mainLoc);
-        if (latLng != null) {
-          markers.add(
-            ExploreMapMarker(
-              id: trip.id ?? 'trip_${DateTime.now().millisecondsSinceEpoch}',
-              type: MapMarkerType.trip,
-              point: latLng,
-              title: 'Trip ${trip.tripNumber}',
-              subtitle: mainLoc,
-              date: trip.createdAt ?? DateTime.now(),
-              data: trip,
-            ),
-          );
-        }
-      }
-    }
-
-    // Process all fuel
-    // final recentFuel = _allFuelEntries.take(10).toList(); // OLD: limit 10
-    final fuelList = _allFuelEntries; // NEW: use all
-    for (final fuel in fuelList) {
-      if (fuel.location != null) {
-        // Extract state for collector
-        final mainLoc = _extractCityState(fuel.location!);
-        final state = _extractStateCode(fuel.location!);
-        if (state != null && _usStateCodes.contains(state)) states.add(state);
-
-        final latLng = await GeoService.getCoordinates(mainLoc);
-        if (latLng != null) {
-          markers.add(
-            ExploreMapMarker(
-              id: fuel.id ?? 'fuel_${DateTime.now().millisecondsSinceEpoch}',
-              type: MapMarkerType.fuel,
-              point: latLng,
-              title: fuel.isTruckFuel ? 'Truck Fuel' : 'Reefer Fuel',
-              subtitle:
-                  '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel} @ $mainLoc',
-              date: fuel.createdAt ?? DateTime.now(),
-              data: fuel,
-            ),
-          );
-        }
-      }
-    }
-
-    // Also scan all trips for states, not just the recent ones for markers
-    for (final trip in _allTrips) {
-      for (final loc in trip.deliveryLocations) {
-        final state = _extractStateCode(loc);
-        if (state != null && _usStateCodes.contains(state)) states.add(state);
-      }
-    }
-
-    if (mounted) {
-      setState(() {
-        _mapMarkers = markers;
-        _isMapLoading = false;
-        _visitedStates = states;
-      });
-      _calculateStats();
-    }
-  }
-
-  double _statsTotalMiles = 0;
-  double _statsFuelCost = 0;
-  int _statsTripCount = 0;
-
-  void _calculateStats() {
-    final now = DateTime.now();
-    final startOfMonth = DateTime(now.year, now.month, 1);
-
-    // Filter trips for this month
-    final monthTrips = _allTrips
-        .where((t) => t.tripDate.isAfter(startOfMonth))
-        .toList();
-
-    double miles = 0;
-    for (var trip in monthTrips) {
-      miles += trip.totalDistance ?? 0;
-    }
-
-    // Filter fuel for this month
-    final monthFuel = _allFuelEntries
-        .where((f) => f.fuelDate.isAfter(startOfMonth))
-        .toList();
-    double cost = 0;
-    for (var fuel in monthFuel) {
-      cost += fuel.totalCost;
-    }
-
-    if (mounted) {
-      setState(() {
-        _statsTotalMiles = miles;
-        _statsTripCount = monthTrips.length;
-        _statsFuelCost = cost;
-      });
-    }
-  }
-
-  String? _extractStateCode(String address) {
-    if (address.isEmpty) return null;
-
-    // Normalize
-    final normalized = address.replaceAll('\n', ', ').toUpperCase();
-
-    // Pattern for "City, ST" or "City, ST ZIP"
-    final statePattern = RegExp(r',\s*([A-Z]{2})(?:\s+[A-Z0-9\s-]+)?(?:,|$)');
-    final match = statePattern.firstMatch(normalized);
-    if (match != null) {
-      return match.group(1);
-    }
-
-    // Pattern for "City ST ZIP" (no comma)
-    final zipPattern = RegExp(r'\s+([A-Z]{2})\s+\d{5}');
-    final zipMatch = zipPattern.firstMatch(normalized);
-    if (zipMatch != null) {
-      return zipMatch.group(1);
-    }
-
-    // Basic fallback: Check last part if it looks like a state code
-    final parts = normalized.split(RegExp(r'[\s,]+'));
-    if (parts.isNotEmpty) {
-      // iterate backwards
-      for (var i = parts.length - 1; i >= 0; i--) {
-        final part = parts[i];
-        if (part.length == 2 && RegExp(r'^[A-Z]{2}$').hasMatch(part)) {
-          // Exclude common non-state 2-letter words like "RD", "ST", "DR"?
-          // Actually US state codes are specific.
-          // For now, assume it's a state if it's near the end.
-          return part;
-        }
-      }
-    }
-
-    return null;
-  }
-
-  List<Trip> get _filteredTrips {
-    switch (_selectedCategory) {
-      case 'Long Haul':
-        // Over 500 miles
-        return _allTrips.where((t) {
-          final distance = t.totalDistance ?? 0;
-          return distance > 500;
-        }).toList();
-      case 'Regional':
-        // 200 to 500 miles
-        return _allTrips.where((t) {
-          final distance = t.totalDistance ?? 0;
-          return distance >= 200 && distance <= 500;
-        }).toList();
-      case 'Local':
-        // Less than 200 miles
-        return _allTrips.where((t) {
-          final distance = t.totalDistance ?? 0;
-          return distance < 200 && distance > 0;
-        }).toList();
-      default:
-        return _allTrips;
-    }
-  }
-
-  /// Get popular destinations filtered by category
-  List<Map<String, dynamic>> get _filteredDestinations {
-    final trips = _filteredTrips;
-    final cityData = <String, Map<String, dynamic>>{};
-
-    for (final trip in trips) {
-      for (final loc in [...trip.pickupLocations, ...trip.deliveryLocations]) {
-        final city = _extractCityState(loc);
-        if (city.isNotEmpty) {
-          if (!cityData.containsKey(city)) {
-            cityData[city] = {
-              'city': city,
-              'count': 0,
-              'trips': <Trip>[],
-              'totalMiles': 0.0,
-            };
-          }
-          cityData[city]!['count'] = (cityData[city]!['count'] as int) + 1;
-          final tripsList = cityData[city]!['trips'] as List<Trip>;
-          if (!tripsList.contains(trip)) {
-            tripsList.add(trip);
-            if (trip.totalDistance != null) {
-              cityData[city]!['totalMiles'] =
-                  (cityData[city]!['totalMiles'] as double) +
-                  trip.totalDistance!;
-            }
-          }
-        }
-      }
-    }
-
-    final sortedCities = cityData.values.toList()
-      ..sort((a, b) => (b['count'] as int).compareTo(a['count'] as int));
-
-    return sortedCities.take(5).map((e) {
-      final count = e['count'] as int;
-      return {
-        'city': e['city'],
-        'count': count,
-        'description': '$count ${count == 1 ? 'trip' : 'trips'}',
-        'trips': e['trips'],
-        'totalMiles': e['totalMiles'],
-      };
-    }).toList();
-  }
-
-  /// Get recent activity filtered by category
-  List<Map<String, dynamic>> get _filteredActivity {
-    final trips = _filteredTrips;
-    final List<Map<String, dynamic>> activity = [];
-
-    for (final trip in trips.take(5)) {
-      final route =
-          trip.pickupLocations.isNotEmpty && trip.deliveryLocations.isNotEmpty
-          ? '${_extractCityState(trip.pickupLocations.first)} → ${_extractCityState(trip.deliveryLocations.last)}'
-          : 'Trip ${trip.tripNumber}';
-      activity.add({
-        'type': 'trip',
-        'title': 'Trip ${trip.tripNumber}',
-        'subtitle': route,
-        'date': trip.createdAt ?? trip.tripDate,
-        'icon': Icons.local_shipping,
-        'trip': trip, // Include full trip object
-      });
-    }
-
-    // Only include fuel entries when showing all routes
-    if (_selectedCategory == 'All Routes') {
-      for (final fuel in _allFuelEntries.take(5)) {
-        final location = fuel.location != null
-            ? _extractCityState(fuel.location!)
-            : 'Unknown location';
-        activity.add({
-          'type': 'fuel',
-          'title': fuel.isTruckFuel ? 'Truck Fuel' : 'Reefer Fuel',
-          'subtitle':
-              '$location • ${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}',
-          'date': fuel.createdAt ?? fuel.fuelDate,
-          'icon': Icons.local_gas_station,
-          'fuel': fuel, // Include full fuel object
-        });
-      }
-    }
-
-    activity.sort(
-      (a, b) => (b['date'] as DateTime).compareTo(a['date'] as DateTime),
-    );
-
-    return activity.take(5).toList();
-  }
+  // Methods moved to ExploreProvider:
+  // _loadData, _generateMapMarkers, _calculateStats, _filteredTrips, _filteredDestinations, _filteredActivity
+  // Methods moved to ExploreUtils:
+  // _extractCityState, _extractLastCity, _toTitleCase, _extractStateCode
 
   @override
   Widget build(BuildContext context) {
-    final tokens = context.tokens;
+    final exploreProvider = context.watch<ExploreProvider>();
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: colorScheme.onSurface,
+            size: 20,
+          ),
+          onPressed: () => context.go('/dashboard'),
+        ),
+        title: Text(
+          AppLocalizations.of(context)?.explore ?? 'Explore',
+          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: colorScheme.onSurface,
+          ),
+        ),
+        centerTitle: false,
+      ),
       body: Container(
-        color: Theme.of(context).scaffoldBackgroundColor,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [
+              colorScheme.surface,
+              colorScheme.surfaceContainerLow.withValues(alpha: 0.8),
+              colorScheme.surfaceContainerLowest,
+            ],
+          ),
+        ),
         child: RefreshIndicator(
           onRefresh: _onRefresh,
-          displacement: 60,
+          displacement: 20, // Reduced displacement since AppBar is fixed
           strokeWidth: 3.0,
-          color: Theme.of(context).colorScheme.primary,
-          backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+          color: colorScheme.primary,
+          backgroundColor: colorScheme.surface,
           child: CustomScrollView(
+            physics: const BouncingScrollPhysics(),
             slivers: [
-              SliverAppBar(
-                backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-                elevation: 0,
-                floating: true,
-                snap: true,
-                leading: IconButton(
-                  icon: Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: Theme.of(context).colorScheme.onSurface,
-                    size: 20,
-                  ),
-                  onPressed: () => context.go('/dashboard'),
-                ),
-                title: Text(
-                  AppLocalizations.of(context)?.explore ?? 'Explore',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              SliverToBoxAdapter(
-                child: _isLoading
-                    ? Padding(
-                        padding: EdgeInsets.all(tokens.spacingXL),
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3.0,
-                            color: Theme.of(context).colorScheme.primary,
-                          ),
-                        ),
-                      )
-                    : Padding(
-                        padding: EdgeInsets.all(tokens.spacingM),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Interactive Map Preview
+              const SliverPadding(padding: EdgeInsets.only(top: 8)),
 
-                            // Interactive Map Preview
-                            if (_selectedCategory == 'All Routes' ||
-                                _selectedCategory == 'Long Haul' ||
-                                _selectedCategory == 'Regional' ||
-                                _selectedCategory == 'Local') ...[
-                              const _SectionHeaderRow(title: 'Activity Map'),
-                              SizedBox(height: tokens.spacingM),
-                              if (_isMapLoading)
-                                const Center(child: CircularProgressIndicator())
-                              else
-                                ExploreMapView(
-                                  markers: _mapMarkers,
-                                  onMarkerTap: (marker) {
-                                    showDialog(
-                                      context: context,
-                                      builder: (context) => AlertDialog(
-                                        title: Text(marker.title),
-                                        content: Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(marker.subtitle),
-                                            const SizedBox(height: 8),
-                                            Text(
-                                              'Date: ${DateFormat.yMMMd().format(marker.date)}',
-                                              style: const TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.grey,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        actions: [
-                                          TextButton(
-                                            onPressed: () =>
-                                                Navigator.pop(context),
-                                            child: const Text('Close'),
+              if (exploreProvider.isLoading)
+                SliverFillRemaining(
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 3.0,
+                      color: colorScheme.primary,
+                    ),
+                  ),
+                )
+              else
+                SliverToBoxAdapter(
+                  child: M3StaggeredList(
+                    staggerDelay: const Duration(milliseconds: 100),
+                    children: [
+                      // Map Section - Immersive but framed
+                      if (exploreProvider.selectedCategory == 'All Routes' ||
+                          exploreProvider.selectedCategory == 'Long Haul' ||
+                          exploreProvider.selectedCategory == 'Regional' ||
+                          exploreProvider.selectedCategory == 'Local') ...[
+                        const _SectionHeaderRow(
+                          title: 'Activity Map',
+                          horizontalPadding: 20,
+                        ),
+                        const SizedBox(height: 12),
+                        if (exploreProvider.isMapLoading)
+                          const SizedBox(
+                            height: 300,
+                            child: Center(child: CircularProgressIndicator()),
+                          )
+                        else
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            child: ExploreMapView(
+                              markers: exploreProvider.mapMarkers,
+                              onMarkerTap: (marker) {
+                                showDialog(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: Text(marker.title),
+                                    content: Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(marker.subtitle),
+                                        const SizedBox(height: 8),
+                                        Text(
+                                          'Date: ${DateFormat.yMMMd().format(marker.date)}',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: colorScheme.onSurfaceVariant,
                                           ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                ),
-                            ],
-                            SizedBox(height: tokens.spacingL),
-                            StateCollectorCard(
-                              visitedStates: _visitedStates,
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => VisitedStatesMapPage(
-                                      trips: _allTrips,
-                                      fuelEntries: _allFuelEntries,
+                                        ),
+                                      ],
                                     ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Close'),
+                                      ),
+                                    ],
                                   ),
                                 );
                               },
                             ),
-                            SizedBox(height: tokens.spacingL),
+                          ),
+                        const SizedBox(height: 32),
+                      ],
 
-                            // Personal Stats & Insights
-                            StatsOverviewCard(
-                              totalMiles: _statsTotalMiles,
-                              totalFuelCost: _statsFuelCost,
-                              tripCount: _statsTripCount,
-                            ),
-                            SizedBox(height: tokens.spacingL),
+                      // Stats & Intelligence Strip
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: StatsOverviewCard(),
+                      ),
+                      const SizedBox(height: 8),
 
-                            SmartSuggestionsCard(
-                              trips: _allTrips,
-                              fuelEntries: _allFuelEntries,
-                            ),
-                            SizedBox(height: tokens.spacingL),
-
-                            _SectionHeaderRow(
-                              title: AppLocalizations.of(
-                                context,
-                              )!.popularDestinations,
-                              onAction: _filteredDestinations.isNotEmpty
-                                  ? () => _navigateToAllDestinations()
-                                  : null,
-                            ),
-                            SizedBox(height: tokens.spacingM),
-                            _buildDestinationsList(),
-                            SizedBox(height: tokens.spacingL),
-
-                            _SectionHeaderRow(
-                              title: AppLocalizations.of(
-                                context,
-                              )!.recentActivity,
-                              onAction: _filteredActivity.isNotEmpty
-                                  ? () => _navigateToAllActivity()
-                                  : null,
-                            ),
-                            SizedBox(height: tokens.spacingM),
-                            _buildActivityList(),
-                            // Dynamic bottom padding for system navigation bar
-                            SizedBox(
-                              height:
-                                  MediaQuery.of(context).padding.bottom + 24,
-                            ),
-                          ],
+                      // Achievement Progress
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: StateCollectorCard(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => VisitedStatesMapPage(
+                                  trips: exploreProvider.allTrips,
+                                  fuelEntries: exploreProvider.allFuelEntries,
+                                ),
+                              ),
+                            );
+                          },
                         ),
                       ),
-              ),
+                      const SizedBox(height: 24),
+
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: SmartSuggestionsCard(
+                          trips: exploreProvider.allTrips,
+                          fuelEntries: exploreProvider.allFuelEntries,
+                        ),
+                      ),
+                      const SizedBox(height: 40),
+
+                      // Trending Destinations
+                      _SectionHeaderRow(
+                        title: AppLocalizations.of(
+                          context,
+                        )!.popularDestinations,
+                        horizontalPadding: 20,
+                        onAction:
+                            exploreProvider.filteredDestinations.isNotEmpty
+                            ? () => _navigateToAllDestinations()
+                            : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildDestinationsList(exploreProvider),
+                      ),
+                      const SizedBox(height: 48),
+
+                      // History / Activity
+                      _SectionHeaderRow(
+                        title: AppLocalizations.of(context)!.recentActivity,
+                        horizontalPadding: 20,
+                        onAction: exploreProvider.filteredActivity.isNotEmpty
+                            ? () => _navigateToAllActivity()
+                            : null,
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: _buildActivityList(exploreProvider),
+                      ),
+
+                      // Dynamic bottom padding
+                      SizedBox(
+                        height: MediaQuery.of(context).padding.bottom + 60,
+                      ),
+                    ],
+                  ),
+                ),
             ],
           ),
         ),
@@ -730,62 +242,66 @@ class _ExplorePageState extends State<ExplorePage> {
     );
   }
 
-  Widget _buildDestinationsList() {
-    if (_filteredDestinations.isEmpty) {
+  Widget _buildDestinationsList(ExploreProvider exploreProvider) {
+    if (exploreProvider.filteredDestinations.isEmpty) {
       return const _EmptyStateCard(
         message: 'No recent destinations found.',
         icon: Icons.map,
       );
     }
     return Column(
-      children: _filteredDestinations.take(5).map((dest) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: context.tokens.spacingM),
-          child: _SimpleDestinationCard(destination: dest),
+      children: exploreProvider.filteredDestinations.map((dest) {
+        return _SimpleDestinationCard(
+          destination: dest,
+          onTap: () => _navigateToAllDestinations(),
         );
       }).toList(),
     );
   }
 
-  Widget _buildActivityList() {
-    if (_filteredActivity.isEmpty) {
+  Widget _buildActivityList(ExploreProvider provider) {
+    final activity = provider.filteredActivity;
+    if (activity.isEmpty) {
       return const _EmptyStateCard(
-        message: 'No recent activity.',
-        icon: Icons.history,
+        message: 'No recent activity matches your filter.',
+        icon: Icons.history_rounded,
       );
     }
+
     return Column(
-      children: _filteredActivity.take(5).map((activity) {
-        return Padding(
-          padding: EdgeInsets.only(bottom: context.tokens.spacingM),
-          child: _SimpleActivityCard(activity: activity),
+      children: activity.map((item) {
+        return _SimpleActivityCard(
+          activity: item,
+          onTap: () => _navigateToAllActivity(),
         );
       }).toList(),
     );
   }
 
   void _navigateToAllDestinations() {
+    final exploreProvider = context.read<ExploreProvider>();
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => _AllDestinationsPage(
-          destinations: _filteredDestinations,
-          categoryLabel: _selectedCategory,
-          extractCityState: _extractCityState,
+          destinations: exploreProvider.filteredDestinations,
+          categoryLabel: exploreProvider.selectedCategory,
         ),
       ),
     );
   }
 
   void _navigateToAllActivity() {
+    final exploreProvider = context.read<ExploreProvider>();
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => _AllActivityPage(
-          trips: _filteredTrips,
-          fuelEntries: _selectedCategory == 'All Routes' ? _allFuelEntries : [],
-          extractCityState: _extractCityState,
-          categoryLabel: _selectedCategory,
+          trips: exploreProvider.filteredTrips,
+          fuelEntries: exploreProvider.selectedCategory == 'All Routes'
+              ? exploreProvider.allFuelEntries
+              : [],
+          categoryLabel: exploreProvider.selectedCategory,
         ),
       ),
     );
@@ -797,30 +313,56 @@ class _ExplorePageState extends State<ExplorePage> {
 class _SectionHeaderRow extends StatelessWidget {
   final String title;
   final VoidCallback? onAction;
-  const _SectionHeaderRow({required this.title, this.onAction});
+  final double horizontalPadding;
+
+  const _SectionHeaderRow({
+    required this.title,
+    this.onAction,
+    this.horizontalPadding = 0,
+  });
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          title,
-          style: Theme.of(
-            context,
-          ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-        ),
-        if (onAction != null)
-          TextButton(
-            onPressed: onAction,
-            child: Text(
-              'See all',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Theme.of(context).colorScheme.primary,
-                fontWeight: FontWeight.bold,
-              ),
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            title,
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.2,
+              color: Theme.of(context).colorScheme.onSurface,
             ),
           ),
-      ],
+          if (onAction != null)
+            TextButton(
+              onPressed: onAction,
+              style: TextButton.styleFrom(
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'See all',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    size: 10,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
@@ -832,30 +374,117 @@ class _EmptyStateCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      elevation: 0,
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
+      decoration: BoxDecoration(
+        color: Theme.of(
+          context,
+        ).colorScheme.surfaceContainerLow.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: Theme.of(
+            context,
+          ).colorScheme.outlineVariant.withValues(alpha: 0.3),
+        ),
       ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surface,
+              shape: BoxShape.circle,
+            ),
+            child: Icon(
+              icon,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurfaceVariant.withValues(alpha: 0.5),
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 20),
+          Expanded(
+            child: Text(
+              message,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.4,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ============== Simple Cards for Explore Page ==============
+
+// ============== Flattened Components for Explore Page ==============
+
+class _ExploreListItem extends StatelessWidget {
+  final Widget leading;
+  final String title;
+  final String subtitle;
+  final String? trailing;
+  final VoidCallback? onTap;
+
+  const _ExploreListItem({
+    required this.leading,
+    required this.title,
+    required this.subtitle,
+    this.trailing,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
       child: Padding(
-        padding: const EdgeInsets.all(24.0),
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
         child: Row(
           children: [
-            Icon(
-              icon,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              size: 32,
-            ),
+            leading,
             const SizedBox(width: 16),
             Expanded(
-              child: Text(
-                message,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (trailing != null)
+              Text(
+                trailing!,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.w900,
+                  color: colorScheme.primary,
                 ),
               ),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: colorScheme.onSurfaceVariant.withValues(alpha: 0.3),
+              size: 18,
             ),
           ],
         ),
@@ -864,89 +493,44 @@ class _EmptyStateCard extends StatelessWidget {
   }
 }
 
-// ============== Simple Cards for Explore Page ==============
-
-class _GlassyCard extends StatelessWidget {
-  final Widget child;
-  final EdgeInsetsGeometry? padding;
-
-  const _GlassyCard({required this.child, this.padding});
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 0, // Flat M3 style
-      color: Theme.of(context).cardColor,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20), // Standard 20px
-        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Padding(padding: padding ?? EdgeInsets.zero, child: child),
-    );
-  }
-}
-
 class _SimpleDestinationCard extends StatelessWidget {
   final Map<String, dynamic> destination;
+  final VoidCallback? onTap;
 
-  const _SimpleDestinationCard({required this.destination});
+  const _SimpleDestinationCard({required this.destination, this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final city = destination['city'] as String;
     final description = destination['description'] as String;
+    final count = destination['count'] as int;
 
-    return _GlassyCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.orange.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(
-              Icons.location_city,
-              color: Colors.orange,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  city,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Icon(
-            Icons.chevron_right,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ],
+    return _ExploreListItem(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: Colors.orange.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: const Icon(
+          Icons.location_on_rounded,
+          color: Colors.orange,
+          size: 20,
+        ),
       ),
+      title: city,
+      subtitle: description,
+      trailing: '$count visits',
     );
   }
 }
 
 class _SimpleActivityCard extends StatelessWidget {
   final Map<String, dynamic> activity;
+  final VoidCallback? onTap;
 
-  const _SimpleActivityCard({required this.activity});
+  const _SimpleActivityCard({required this.activity, this.onTap});
 
   String _formatTimeAgo(DateTime date) {
     final diff = DateTime.now().difference(date);
@@ -968,57 +552,28 @@ class _SimpleActivityCard extends StatelessWidget {
     final title = activity['title'] as String;
     final subtitle = activity['subtitle'] as String;
     final date = activity['date'] as DateTime;
-    final icon = activity['icon'] as IconData;
+    final type = activity['type'] as String;
+    final isTrip = type == 'trip';
 
-    return _GlassyCard(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Icon(
-              icon,
-              color: Theme.of(context).colorScheme.primary,
-              size: 26,
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          Text(
-            _formatTimeAgo(date),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-          ),
-        ],
+    return _ExploreListItem(
+      onTap: onTap,
+      leading: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: (isTrip ? Colors.blue : Colors.green).withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(
+          isTrip
+              ? Icons.local_shipping_rounded
+              : Icons.local_gas_station_rounded,
+          color: isTrip ? Colors.blue : Colors.green,
+          size: 20,
+        ),
       ),
+      title: title,
+      subtitle: subtitle,
+      trailing: _formatTimeAgo(date),
     );
   }
 }
@@ -1027,12 +582,8 @@ class _SimpleActivityCard extends StatelessWidget {
 
 class _ExpandableRouteCard extends StatefulWidget {
   final Trip trip;
-  final String Function(String) extractCityState;
 
-  const _ExpandableRouteCard({
-    required this.trip,
-    required this.extractCityState,
-  });
+  const _ExpandableRouteCard({required this.trip});
 
   @override
   State<_ExpandableRouteCard> createState() => _ExpandableRouteCardState();
@@ -1064,7 +615,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
     final trip = widget.trip;
     final route =
         trip.pickupLocations.isNotEmpty && trip.deliveryLocations.isNotEmpty
-        ? '${widget.extractCityState(trip.pickupLocations.first)} → ${widget.extractCityState(trip.deliveryLocations.last)}'
+        ? '${ExploreUtils.extractCityState(trip.pickupLocations.first)} → ${ExploreUtils.extractCityState(trip.deliveryLocations.last)}'
         : 'No route';
     final distance = trip.totalDistance;
     final distanceColor = _getDistanceColor(context, distance);
@@ -1484,7 +1035,7 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
                 (loc) => Padding(
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
-                    widget.extractCityState(loc),
+                    ExploreUtils.extractCityState(loc),
                     style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -1507,12 +1058,8 @@ class _ExpandableRouteCardState extends State<_ExpandableRouteCard> {
 
 class _ExpandableDestinationCard extends StatefulWidget {
   final Map<String, dynamic> destination;
-  final String Function(String) extractCityState;
 
-  const _ExpandableDestinationCard({
-    required this.destination,
-    required this.extractCityState,
-  });
+  const _ExpandableDestinationCard({required this.destination});
 
   @override
   State<_ExpandableDestinationCard> createState() =>
@@ -1705,7 +1252,7 @@ class _ExpandableDestinationCardState
               final route =
                   trip.pickupLocations.isNotEmpty &&
                       trip.deliveryLocations.isNotEmpty
-                  ? '${widget.extractCityState(trip.pickupLocations.first)} → ${widget.extractCityState(trip.deliveryLocations.last)}'
+                  ? '${ExploreUtils.extractCityState(trip.pickupLocations.first)} → ${ExploreUtils.extractCityState(trip.deliveryLocations.last)}'
                   : 'Trip ${trip.tripNumber}';
               return Container(
                 margin: const EdgeInsets.only(bottom: 8),
@@ -1825,12 +1372,8 @@ class _ExpandableDestinationCardState
 
 class _ExpandableActivityCard extends StatefulWidget {
   final Map<String, dynamic> activity;
-  final String Function(String) extractCityState;
 
-  const _ExpandableActivityCard({
-    required this.activity,
-    required this.extractCityState,
-  });
+  const _ExpandableActivityCard({required this.activity});
 
   @override
   State<_ExpandableActivityCard> createState() =>
@@ -2381,7 +1924,7 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
                 (loc) => Padding(
                   padding: const EdgeInsets.only(bottom: 2),
                   child: Text(
-                    widget.extractCityState(loc),
+                    ExploreUtils.extractCityState(loc),
                     style: Theme.of(context).textTheme.bodySmall,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
@@ -2451,12 +1994,10 @@ class _ExpandableActivityCardState extends State<_ExpandableActivityCard> {
 class _AllDestinationsPage extends StatelessWidget {
   final List<Map<String, dynamic>> destinations;
   final String categoryLabel;
-  final String Function(String) extractCityState;
 
   const _AllDestinationsPage({
     required this.destinations,
     required this.categoryLabel,
-    required this.extractCityState,
   });
 
   @override
@@ -2488,10 +2029,7 @@ class _AllDestinationsPage extends StatelessWidget {
               itemCount: destinations.length,
               itemBuilder: (context, index) {
                 final dest = destinations[index];
-                return _ExpandableDestinationCard(
-                  destination: dest,
-                  extractCityState: extractCityState,
-                );
+                return _ExpandableDestinationCard(destination: dest);
               },
             ),
     );
@@ -2501,13 +2039,11 @@ class _AllDestinationsPage extends StatelessWidget {
 class _AllActivityPage extends StatefulWidget {
   final List<Trip> trips;
   final List<FuelEntry> fuelEntries;
-  final String Function(String) extractCityState;
   final String categoryLabel;
 
   const _AllActivityPage({
     required this.trips,
     required this.fuelEntries,
-    required this.extractCityState,
     required this.categoryLabel,
   });
 
@@ -2530,7 +2066,7 @@ class _AllActivityPageState extends State<_AllActivityPage> {
     for (final trip in widget.trips) {
       final route =
           trip.pickupLocations.isNotEmpty && trip.deliveryLocations.isNotEmpty
-          ? '${widget.extractCityState(trip.pickupLocations.first)} → ${widget.extractCityState(trip.deliveryLocations.last)}'
+          ? '${ExploreUtils.extractCityState(trip.pickupLocations.first)} → ${ExploreUtils.extractCityState(trip.deliveryLocations.last)}'
           : 'Trip ${trip.tripNumber}';
       _activity.add({
         'type': 'trip',
@@ -2544,7 +2080,7 @@ class _AllActivityPageState extends State<_AllActivityPage> {
 
     for (final fuel in widget.fuelEntries) {
       final location = fuel.location != null
-          ? widget.extractCityState(fuel.location!)
+          ? ExploreUtils.extractCityState(fuel.location!)
           : 'Unknown location';
       _activity.add({
         'type': 'fuel',
@@ -2753,10 +2289,7 @@ class _AllActivityPageState extends State<_AllActivityPage> {
                       return false;
                     }
                   },
-                  child: _ExpandableActivityCard(
-                    activity: item,
-                    extractCityState: widget.extractCityState,
-                  ),
+                  child: _ExpandableActivityCard(activity: item),
                 );
               },
             ),

@@ -2,13 +2,14 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:package_info_plus/package_info_plus.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/providers/theme_provider.dart';
 import '../../../../core/providers/permission_provider.dart';
 import '../../../../core/providers/user_preferences_provider.dart';
+import '../../../../core/providers/app_info_provider.dart';
 
 class GeneralPanel extends ConsumerStatefulWidget {
   const GeneralPanel({super.key});
@@ -18,28 +19,12 @@ class GeneralPanel extends ConsumerStatefulWidget {
 }
 
 class _GeneralPanelState extends ConsumerState<GeneralPanel> {
-  String _appVersion = '';
   final List<String> _languages = ['English', 'Spanish', 'French', 'German'];
   final List<String> _mapProviders = [
     'Default Map',
     'Google Maps',
     'OpenStreetMap',
   ];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadVersion();
-  }
-
-  Future<void> _loadVersion() async {
-    final info = await PackageInfo.fromPlatform();
-    if (mounted) {
-      setState(() {
-        _appVersion = 'v${info.version} (build ${info.buildNumber})';
-      });
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -222,14 +207,20 @@ class _GeneralPanelState extends ConsumerState<GeneralPanel> {
             ),
             _buildRow(
               'App Version',
-              Text(
-                _appVersion.isEmpty ? 'Loading...' : _appVersion,
-                style: GoogleFonts.outfit(
-                  color: FluentTheme.of(
-                    context,
-                  ).resources.textFillColorSecondary,
-                ),
-              ),
+              ref
+                  .watch(appInfoProvider)
+                  .when(
+                    data: (info) => Text(
+                      'v${info.version} (build ${info.buildNumber})',
+                      style: GoogleFonts.outfit(
+                        color: FluentTheme.of(
+                          context,
+                        ).resources.textFillColorSecondary,
+                      ),
+                    ),
+                    loading: () => const Text('Loading...'),
+                    error: (_, _) => const Text('Unknown'),
+                  ),
             ),
           ],
         ),

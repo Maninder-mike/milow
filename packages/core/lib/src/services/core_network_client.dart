@@ -37,21 +37,43 @@ class NetworkClientConfig {
 /// State of the circuit breaker.
 enum CircuitState { closed, open, halfOpen }
 
-/// A resilient network client with retry logic and circuit breaker pattern.
+/// Strategy for network requests.
+enum CachePolicy {
+  /// Always fetch from network (default).
+  networkOnly,
+
+  /// Return cached data if available and fresh, otherwise fetch from network.
+  cacheFirst,
+}
+
+class _CacheEntry {
+  final dynamic data;
+  final DateTime expiry;
+
+  _CacheEntry(this.data, this.expiry);
+
+  bool get isExpired => DateTime.now().isAfter(expiry);
+}
+
+/// A resilient network client with retry logic, circuit breaker, and response caching.
 ///
 /// Usage:
 /// ```dart
 /// final client = CoreNetworkClient(Supabase.instance.client);
-/// final result = await client.query(() => supabase.from('loads').select());
-/// result.fold(
-///   (failure) => handleError(failure),
-///   (data) => handleSuccess(data),
+/// final result = await client.query(
+///   () => supabase.from('config').select(),
+///   cachePolicy: CachePolicy.cacheFirst,
+///   cacheKey: 'config',
+///   ttl: const Duration(minutes: 5),
 /// );
 /// ```
 class CoreNetworkClient {
   final SupabaseClient _supabase;
   final NetworkClientConfig config;
   final NetworkCoalescer _coalescer;
+
+  // In-memory response cache
+  final Map<String, _CacheEntry> _responseCache = {};
 
   // Circuit breaker state
   CircuitState _circuitState = CircuitState.closed;
@@ -70,7 +92,7 @@ class CoreNetworkClient {
   /// Current state of the circuit breaker.
   CircuitState get circuitState => _circuitState;
 
-  /// Execute a query with retry logic and circuit breaker.
+  /// Execute a query with retry logic, circuit breaker, and optional caching.
   ///
   /// [operation] is a function that performs the Supabase query.
   /// [operationName] is used for logging purposes.
@@ -78,15 +100,46 @@ class CoreNetworkClient {
     Future<T> Function() operation, {
     String operationName = 'query',
     String? coalesceKey,
+    CachePolicy cachePolicy = CachePolicy.networkOnly,
+    String? cacheKey,
+    Duration? ttl,
   }) async {
-    // If a coalesce key is provided, wrap the operation
+    // 1. Check cache if applicable
+    if (cachePolicy == CachePolicy.cacheFirst && cacheKey != null) {
+      final cached = _responseCache[cacheKey];
+      if (cached != null && !cached.isExpired) {
+        AppLogger.debug('Returning cached response for $cacheKey');
+        // We assume T matches the cached data type.
+        // For strict type safety, we'd need rigorous casting, but for this generic client
+        // we trust the caller knows what they are asking for.
+        return right(cached.data as T);
+      }
+    }
+
+    // 2. Perform network request (with coalescing if key provided)
+    final Future<Result<T>> networkFuture;
     if (coalesceKey != null) {
-      return _coalescer.coalesce<Result<T>>(
+      networkFuture = _coalescer.coalesce<Result<T>>(
         coalesceKey,
         () => _executeWithRetry(operation, operationName),
       );
+    } else {
+      networkFuture = _executeWithRetry(operation, operationName);
     }
-    return _executeWithRetry(operation, operationName);
+
+    final result = await networkFuture;
+
+    // 3. Cache successful result if needed
+    if (cacheKey != null && ttl != null) {
+      result.fold(
+        (failure) {}, // Don't cache failures
+        (data) {
+          _responseCache[cacheKey] = _CacheEntry(data, DateTime.now().add(ttl));
+        },
+      );
+    }
+
+    return result;
   }
 
   Future<Result<T>> _executeWithRetry<T>(

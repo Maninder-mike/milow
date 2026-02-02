@@ -30,8 +30,6 @@ class LoadsPage extends ConsumerStatefulWidget {
 }
 
 class _LoadsPageState extends ConsumerState<LoadsPage> {
-  String _searchText = '';
-
   @override
   void initState() {
     super.initState();
@@ -49,15 +47,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     super.dispose();
   }
 
-  List<Load> _filterLoads(List<Load> rawLoads) {
-    if (_searchText.isEmpty) return rawLoads;
-    final search = _searchText.toLowerCase();
-    return rawLoads.where((load) {
-      return load.loadReference.toLowerCase().contains(search) ||
-          load.pickup.companyName.toLowerCase().contains(search) ||
-          load.delivery.companyName.toLowerCase().contains(search);
-    }).toList();
-  }
+  // Removed _filterLoads as filtering is now server-side
 
   KeyEventResult _handleKeyEvent(
     FocusNode node,
@@ -125,6 +115,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
   Widget build(BuildContext context) {
     final isCreatingLoad = ref.watch(isCreatingLoadProvider);
     final theme = FluentTheme.of(context);
+    final paginationStateAsync = ref.watch(paginatedLoadsProvider);
 
     return ScaffoldPage(
       header: null,
@@ -169,35 +160,34 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
             )
           : Consumer(
               builder: (context, ref, child) {
-                final loadsAsync = ref.watch(loadsListProvider);
                 final usersAsync = ref.watch(usersProvider);
                 final vehiclesAsync = ref.watch(vehiclesListProvider);
 
-                return loadsAsync.when(
-                  data: (rawLoads) {
+                return paginationStateAsync.when(
+                  data: (paginationState) {
+                    final loads = paginationState.loads;
                     final users = usersAsync.value ?? [];
                     final vehicles = vehiclesAsync.value ?? [];
 
-                    final loads = _filterLoads(rawLoads);
+                    // Stats are currently based on loaded data.
+                    // TODO: Implement dedicated LoadStatsProvider for accurate global counts.
                     final now = DateTime.now();
-                    final todayCount = rawLoads.where((l) {
+                    final todayCount = loads.where((l) {
                       return l.pickup.date.year == now.year &&
                           l.pickup.date.month == now.month &&
                           l.pickup.date.day == now.day;
                     }).length;
 
-                    final completedCount = rawLoads
+                    final completedCount = loads
                         .where((l) => l.status.toLowerCase() == 'delivered')
                         .length;
 
-                    final activeCount = rawLoads.where((l) {
+                    final activeCount = loads.where((l) {
                       final s = l.status.toLowerCase();
                       return s == 'assigned' || s == 'in transit';
                     }).length;
 
-                    final delayedCount = rawLoads
-                        .where((l) => l.isDelayed)
-                        .length;
+                    final delayedCount = loads.where((l) => l.isDelayed).length;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -211,8 +201,8 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                             children: [
                               Expanded(
                                 child: DispatchStatCard(
-                                  title: 'Total Loads',
-                                  value: rawLoads.length.toString(),
+                                  title: 'Loads (Visible)',
+                                  value: loads.length.toString(),
                                   icon: FluentIcons.box_24_regular,
                                   iconColor: const Color(0xFF00ACC1),
                                   iconBackgroundColor: const Color(0xFFE0F7FA),
@@ -265,9 +255,11 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                               Expanded(
                                 child: TextBox(
                                   placeholder:
-                                      'Search by shipper, city or reference...',
+                                      'Search by reference or status...',
                                   onChanged: (value) {
-                                    setState(() => _searchText = value);
+                                    ref
+                                        .read(paginatedLoadsProvider.notifier)
+                                        .updateSearch(value);
                                   },
                                   prefix: const Padding(
                                     padding: EdgeInsets.symmetric(
@@ -328,6 +320,8 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                               theme,
                               users: users,
                               vehicles: vehicles,
+                              hasMore: paginationState.hasMore,
+                              isLoadingMore: paginationState.isLoadingMore,
                             ),
                           ),
                         ),
@@ -585,8 +579,10 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     FluentThemeData theme, {
     required List<UserProfile> users,
     required List<Map<String, dynamic>> vehicles,
+    bool hasMore = false,
+    bool isLoadingMore = false,
   }) {
-    if (loads.isEmpty) return _buildEmptyState();
+    if (loads.isEmpty && !isLoadingMore) return _buildEmptyState();
 
     return Container(
       decoration: BoxDecoration(
@@ -626,27 +622,44 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
               ],
             ),
           ),
-          // Table Rows
+          // Table Rows with Infinite Scroll
           Expanded(
             child: Focus(
               focusNode: _listFocusNode,
               onKeyEvent: (node, event) => _handleKeyEvent(node, event, loads),
-              child: ListView.separated(
-                controller: _scrollController,
-                itemCount: loads.length,
-                separatorBuilder: (context, index) => const Divider(),
-                itemBuilder: (context, index) {
-                  final load = loads[index];
-                  final isFocused = index == _focusedIndex;
-                  return _buildRow(
-                    load,
-                    index + 1,
-                    theme,
-                    isFocused: isFocused,
-                    users: users,
-                    vehicles: vehicles,
-                  );
+              child: NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification scrollInfo) {
+                  if (hasMore &&
+                      !isLoadingMore &&
+                      scrollInfo.metrics.pixels >=
+                          scrollInfo.metrics.maxScrollExtent - 200) {
+                    ref.read(paginatedLoadsProvider.notifier).loadMore();
+                  }
+                  return false;
                 },
+                child: ListView.separated(
+                  controller: _scrollController,
+                  itemCount: loads.length + (isLoadingMore ? 1 : 0),
+                  separatorBuilder: (context, index) => const Divider(),
+                  itemBuilder: (context, index) {
+                    if (index == loads.length) {
+                      return const Padding(
+                        padding: EdgeInsets.all(16.0),
+                        child: Center(child: ProgressRing()),
+                      );
+                    }
+                    final load = loads[index];
+                    final isFocused = index == _focusedIndex;
+                    return _buildRow(
+                      load,
+                      index + 1,
+                      theme,
+                      isFocused: isFocused,
+                      users: users,
+                      vehicles: vehicles,
+                    );
+                  },
+                ),
               ),
             ),
           ),

@@ -12,6 +12,8 @@ import 'package:milow/core/services/integrity_service.dart';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
+import 'package:milow/core/utils/image_utils.dart';
+import 'package:milow/core/mixins/form_restoration_mixin.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -21,16 +23,34 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage>
-    with SingleTickerProviderStateMixin {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _passwordController = TextEditingController();
+    with
+        SingleTickerProviderStateMixin,
+        RestorationMixin,
+        FormRestorationMixin {
+  late final RestorableTextEditingController _emailController =
+      RestorableTextEditingController();
+  late final RestorableTextEditingController _passwordController =
+      RestorableTextEditingController();
   late final AnimationController _animController;
   late final Animation<double> _fadeAnim;
-  bool _obscurePassword = true;
-  bool _isLoading = false;
-  bool _isGoogleLoading = false;
+  late final RestorableBool _obscurePassword = RestorableBool(true);
+  late final RestorableBool _isLoading = RestorableBool(false);
+  late final RestorableBool _isGoogleLoading = RestorableBool(false);
   String? _loginError;
-  bool _emailValid = false;
+  late final RestorableBool _emailValid = RestorableBool(false);
+
+  @override
+  String get restorationId => 'login_page';
+
+  @override
+  void restoreState(RestorationBucket? oldBucket, bool initialRestore) {
+    registerForRestoration(_emailController, 'email_controller');
+    registerForRestoration(_passwordController, 'password_controller');
+    registerForRestoration(_obscurePassword, 'obscure_password');
+    registerForRestoration(_isLoading, 'is_loading');
+    registerForRestoration(_isGoogleLoading, 'is_google_loading');
+    registerForRestoration(_emailValid, 'email_valid');
+  }
 
   @override
   void initState() {
@@ -50,7 +70,7 @@ class _LoginPageState extends State<LoginPage>
     final trimmed = value.trim();
     final valid = RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(trimmed);
     setState(() {
-      _emailValid = valid;
+      _emailValid.value = valid;
     });
   }
 
@@ -84,21 +104,21 @@ class _LoginPageState extends State<LoginPage>
 
   Future<void> _signIn() async {
     // Validation
-    if (_emailController.text.trim().isEmpty) {
+    if (_emailController.value.text.trim().isEmpty) {
       AppDialogs.showWarning(
         context,
         AppLocalizations.of(context)!.pleaseEnterEmail,
       );
       return;
     }
-    if (!_emailValid) {
+    if (!_emailValid.value) {
       AppDialogs.showWarning(
         context,
         AppLocalizations.of(context)!.pleaseEnterValidEmail,
       );
       return;
     }
-    if (_passwordController.text.isEmpty) {
+    if (_passwordController.value.text.isEmpty) {
       AppDialogs.showWarning(
         context,
         AppLocalizations.of(context)!.pleaseEnterPassword,
@@ -107,13 +127,13 @@ class _LoginPageState extends State<LoginPage>
     }
 
     setState(() {
-      _isLoading = true;
+      _isLoading.value = true;
       _loginError = null;
     });
     try {
       final res = await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text,
+        email: _emailController.value.text.trim(),
+        password: _passwordController.value.text,
       );
       if (res.session != null && mounted) {
         // Verify device integrity (warn-only mode)
@@ -136,13 +156,13 @@ class _LoginPageState extends State<LoginPage>
     } catch (_) {
       setState(() => _loginError = AppLocalizations.of(context)!.signInFailed);
     } finally {
-      if (mounted) setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading.value = false);
     }
   }
 
   Future<void> _signInWithGoogle() async {
     setState(() {
-      _isGoogleLoading = true;
+      _isGoogleLoading.value = true;
       _loginError = null;
     });
 
@@ -263,14 +283,13 @@ class _LoginPageState extends State<LoginPage>
         () => _loginError = AppLocalizations.of(context)!.googleSignInFailed,
       );
     } finally {
-      if (mounted) setState(() => _isGoogleLoading = false);
+      if (mounted) setState(() => _isGoogleLoading.value = false);
     }
   }
 
   @override
   void dispose() {
-    _emailController.dispose();
-    _passwordController.dispose();
+    // Restorable controllers are disposed by the RestorationMixin
     _animController.dispose();
     super.dispose();
   }
@@ -319,7 +338,7 @@ class _LoginPageState extends State<LoginPage>
                   _buildLabel(AppLocalizations.of(context)!.emailAddress),
                   SizedBox(height: tokens.spacingS),
                   TextField(
-                    controller: _emailController,
+                    controller: _emailController.value,
                     keyboardType: TextInputType.emailAddress,
                     onChanged: _validateEmail,
                     style: textTheme.bodyLarge?.copyWith(
@@ -328,7 +347,7 @@ class _LoginPageState extends State<LoginPage>
                     decoration: _inputDecoration(
                       hint: AppLocalizations.of(context)!.emailHint,
                       prefixIcon: Icons.alternate_email_rounded,
-                      suffixIcon: _emailValid
+                      suffixIcon: _emailValid.value
                           ? Icons.check_circle_rounded
                           : null,
                       suffixColor: tokens.success,
@@ -341,19 +360,22 @@ class _LoginPageState extends State<LoginPage>
                   _buildLabel(AppLocalizations.of(context)!.password),
                   SizedBox(height: tokens.spacingS),
                   TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
+                    controller: _passwordController.value,
+                    obscureText: _obscurePassword.value,
                     style: textTheme.bodyLarge?.copyWith(
                       color: tokens.textPrimary,
                     ),
                     decoration: _inputDecoration(
                       hint: AppLocalizations.of(context)!.enterPasswordHint,
                       prefixIcon: Icons.lock_rounded,
-                      suffixIcon: _obscurePassword
+                      suffixIcon: _obscurePassword.value
                           ? Icons.visibility_off_rounded
                           : Icons.visibility_rounded,
                       onSuffixTap: () {
-                        setState(() => _obscurePassword = !_obscurePassword);
+                        setState(
+                          () =>
+                              _obscurePassword.value = !_obscurePassword.value,
+                        );
                       },
                     ),
                   ),
@@ -386,9 +408,9 @@ class _LoginPageState extends State<LoginPage>
                     width: double.infinity,
                     height: 56,
                     child: FilledButton(
-                      onPressed: _isLoading ? null : _signIn,
+                      onPressed: _isLoading.value ? null : _signIn,
                       // Style handled by AppTheme
-                      child: _isLoading
+                      child: _isLoading.value
                           ? SizedBox(
                               width: 24,
                               height: 24,
@@ -544,13 +566,13 @@ class _LoginPageState extends State<LoginPage>
       width: double.infinity,
       height: 56,
       child: OutlinedButton(
-        onPressed: _isGoogleLoading ? null : _signInWithGoogle,
+        onPressed: _isGoogleLoading.value ? null : _signInWithGoogle,
 
         style: OutlinedButton.styleFrom(
           backgroundColor: tokens.surfaceContainer,
           side: BorderSide(color: colorScheme.outlineVariant),
         ),
-        child: _isGoogleLoading
+        child: _isGoogleLoading.value
             ? Center(
                 child: SizedBox(
                   width: 24,
@@ -569,8 +591,8 @@ class _LoginPageState extends State<LoginPage>
                     imageUrl: 'https://www.google.com/favicon.ico',
                     width: 20,
                     height: 20,
-                    memCacheHeight: 40,
-                    memCacheWidth: 40,
+                    memCacheHeight: ImageUtils.getCacheSize(20, context),
+                    memCacheWidth: ImageUtils.getCacheSize(20, context),
                     errorWidget: (context, url, error) {
                       return Text(
                         'G',

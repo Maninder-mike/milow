@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/utils/image_utils.dart';
 
 /// Performance-optimized image widget with memory caching defaults
 ///
@@ -58,9 +59,9 @@ class OptimizedImage extends StatelessWidget {
   Widget build(BuildContext context) {
     final tokens = context.tokens;
 
-    // Calculate memory cache dimensions (2x for retina, capped at 1000px)
-    final cacheWidth = (width * 2).clamp(0, 1000).toInt();
-    final cacheHeight = (height * 2).clamp(0, 1000).toInt();
+    // Calculate memory cache dimensions using ImageUtils
+    final cacheWidth = ImageUtils.getCacheSize(width, context);
+    final cacheHeight = ImageUtils.getCacheSize(height, context);
 
     Widget image = CachedNetworkImage(
       imageUrl: imageUrl,

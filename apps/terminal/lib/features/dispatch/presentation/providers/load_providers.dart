@@ -76,21 +76,144 @@ Stream<int> stopsChangeSignal(Ref ref) {
   return controller.stream;
 }
 
-/// List of loads (AsyncValue) by fetching from repository
+/// State object for Pagination
+class LoadsPaginationState {
+  final List<Load> loads;
+  final bool hasMore;
+  final bool isLoadingMore;
+
+  const LoadsPaginationState({
+    this.loads = const [],
+    this.hasMore = true,
+    this.isLoadingMore = false,
+  });
+
+  LoadsPaginationState copyWith({
+    List<Load>? loads,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return LoadsPaginationState(
+      loads: loads ?? this.loads,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
+}
+
+/// Paginated Loads Provider
+/// Manages list state, page number, filters, and search query.
 @riverpod
-Future<List<Load>> loadsList(Ref ref) async {
-  // Watch for realtime changes to trigger re-fetch
-  ref.watch(loadsChangeSignalProvider);
-  ref.watch(stopsChangeSignalProvider);
+class PaginatedLoads extends _$PaginatedLoads {
+  int _page = 0;
+  static const _pageSize = 20;
+  String _searchQuery = '';
+  String _statusFilter = 'All';
 
-  final repository = ref.watch(loadRepositoryProvider);
-  final result = await repository.fetchLoads();
+  @override
+  Future<LoadsPaginationState> build() async {
+    // Watch for realtime changes
+    // Debatable: Should realtime update ONLY the current view?
+    // For "deep optimization", we should listen to specific row changes, but
+    // re-fetching the first page on change is safer for consistency.
+    ref.watch(loadsChangeSignalProvider);
 
-  // Fold the Result: throw on failure to let Riverpod handle it as AsyncError
-  return result.fold((failure) {
-    AppLogger.error('Failed to fetch loads: ${failure.message}');
-    throw failure; // Riverpod will capture as AsyncError
-  }, (loads) => loads);
+    // Reset page on rebuild (e.g. if signal fires)
+    _page = 0;
+
+    final repository = ref.read(loadRepositoryProvider);
+    final result = await repository.fetchLoads(
+      page: 0,
+      pageSize: _pageSize,
+      statusFilter: _statusFilter,
+      searchQuery: _searchQuery,
+    );
+
+    return result.fold(
+      (failure) {
+        AppLogger.error('Failed to fetch initial loads: ${failure.message}');
+        throw failure;
+      },
+      (newLoads) {
+        return LoadsPaginationState(
+          loads: newLoads,
+          hasMore: newLoads.length >= _pageSize,
+          isLoadingMore: false,
+        );
+      },
+    );
+  }
+
+  Future<void> loadMore() async {
+    final currentState = state.value;
+    if (currentState == null ||
+        !currentState.hasMore ||
+        currentState.isLoadingMore) {
+      return;
+    }
+
+    // Set loading more flag
+    state = AsyncValue.data(currentState.copyWith(isLoadingMore: true));
+
+    try {
+      final repository = ref.read(loadRepositoryProvider);
+      final nextPage = _page + 1;
+
+      final result = await repository.fetchLoads(
+        page: nextPage,
+        pageSize: _pageSize,
+        statusFilter: _statusFilter,
+        searchQuery: _searchQuery,
+      );
+
+      result.fold(
+        (failure) {
+          AppLogger.error('Failed to load more: ${failure.message}');
+          state = AsyncValue.data(currentState.copyWith(isLoadingMore: false));
+        },
+        (newLoads) {
+          _page = nextPage;
+          state = AsyncValue.data(
+            LoadsPaginationState(
+              loads: [...currentState.loads, ...newLoads],
+              hasMore: newLoads.length >= _pageSize,
+              isLoadingMore: false,
+            ),
+          );
+        },
+      );
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> updateSearch(String query) async {
+    if (_searchQuery == query) return;
+    _searchQuery = query;
+    ref.invalidateSelf(); // Triggers build() with new query
+  }
+
+  Future<void> updateStatusFilter(String status) async {
+    if (_statusFilter == status) return;
+    _statusFilter = status;
+    ref.invalidateSelf();
+  }
+}
+
+// Helper to keep 'delayedLoads' working (it used loadsListProvider)
+// Now we use paginatedLoadsProvider but we need to watch meaningful state.
+// delayedLoads likely needs 'All' or specific filter.
+// Ideally, Delayed Loads should be its own query on the backend!
+// But for now, we map from the visible list.
+@riverpod
+Future<List<Load>> delayedLoads(Ref ref) async {
+  final paginationState = await ref.watch(paginatedLoadsProvider.future);
+  final loads = paginationState.loads;
+  final dismissedIds = ref.watch(dismissedDelayedLoadIdsProvider);
+
+  return loads
+      .where((l) => l.isDelayed && !dismissedIds.contains(l.id))
+      .toList();
 }
 
 /// Provider for dismissed delayed load IDs (session-based)
@@ -102,17 +225,6 @@ class DismissedDelayedLoadIds extends _$DismissedDelayedLoadIds {
   void dismiss(String loadId) {
     state = {...state, loadId};
   }
-}
-
-/// Provider for delayed loads, filtering out dismissed ones
-@riverpod
-Future<List<Load>> delayedLoads(Ref ref) async {
-  final loads = await ref.watch(loadsListProvider.future);
-  final dismissedIds = ref.watch(dismissedDelayedLoadIdsProvider);
-
-  return loads
-      .where((l) => l.isDelayed && !dismissedIds.contains(l.id))
-      .toList();
 }
 
 /// Controller for Load Operations (Create, Update, Delete)
@@ -134,7 +246,7 @@ class LoadController extends _$LoadController {
         return AsyncValue.error(failure, StackTrace.current);
       },
       (_) {
-        ref.invalidate(loadsListProvider);
+        ref.invalidate(paginatedLoadsProvider);
         return const AsyncValue.data(null);
       },
     );
@@ -151,7 +263,7 @@ class LoadController extends _$LoadController {
         return AsyncValue.error(failure, StackTrace.current);
       },
       (_) {
-        ref.invalidate(loadsListProvider);
+        ref.invalidate(paginatedLoadsProvider);
         return const AsyncValue.data(null);
       },
     );
@@ -168,7 +280,7 @@ class LoadController extends _$LoadController {
         return AsyncValue.error(failure, StackTrace.current);
       },
       (_) {
-        ref.invalidate(loadsListProvider);
+        ref.invalidate(paginatedLoadsProvider);
         return const AsyncValue.data(null);
       },
     );
@@ -196,3 +308,15 @@ class LoadDraft extends _$LoadDraft {
 
   void reset() => state = Load.empty();
 }
+
+/// Alias for backwards compatibility with existing code referencing loadsListProvider.
+/// Maps the paginated state to a simple `AsyncValue<List<Load>>`.
+@riverpod
+AsyncValue<List<Load>> loadsListLegacy(Ref ref) {
+  final paginatedAsync = ref.watch(paginatedLoadsProvider);
+  return paginatedAsync.whenData((state) => state.loads);
+}
+
+/// DEPRECATED: Use paginatedLoadsProvider directly for infinite scrolling.
+/// This is a simple alias for backwards compatibility.
+final loadsListProvider = loadsListLegacyProvider;

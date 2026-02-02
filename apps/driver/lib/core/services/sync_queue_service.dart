@@ -163,7 +163,20 @@ class SyncQueueService {
         case 'update':
           final id = payload['id'] as String?;
           if (id == null) throw Exception('Update requires id in payload');
-          await client.from(operation.tableName).update(payload).eq('id', id);
+
+          // Implement Last-Write-Wins (LWW) with Optimistic Locking
+          // Only update if server's updated_at is OLDER than our payload's updated_at
+          var query = client
+              .from(operation.tableName)
+              .update(payload)
+              .eq('id', id);
+
+          if (payload.containsKey('updated_at') &&
+              payload['updated_at'] != null) {
+            query = query.lt('updated_at', payload['updated_at']);
+          }
+
+          await query;
           break;
         case 'delete':
           final id = payload['id'] as String?;

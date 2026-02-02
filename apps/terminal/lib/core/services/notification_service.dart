@@ -85,7 +85,9 @@ class NotificationService {
     const InitializationSettings initializationSettings =
         InitializationSettings(macOS: initializationSettingsMacOS);
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
+    await flutterLocalNotificationsPlugin.initialize(
+      settings: initializationSettings,
+    );
 
     // 2. Initialize FCM (macOS/Android/iOS only)
     if (!Platform.isWindows) {
@@ -145,10 +147,10 @@ class NotificationService {
     );
 
     await flutterLocalNotificationsPlugin.show(
-      id,
-      title,
-      body,
-      notificationDetails,
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: notificationDetails,
       payload: payload,
     );
   }

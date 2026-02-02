@@ -4,10 +4,11 @@ import 'package:flutter/foundation.dart';
 /// Service for managing feature flags and remote configuration.
 ///
 /// Use this for gradual rollouts, A/B testing, and emergency kill switches.
-class RemoteConfigService {
-  static final RemoteConfigService instance = RemoteConfigService._internal();
-  factory RemoteConfigService() => instance;
-  RemoteConfigService._internal();
+class DriverRemoteConfigService {
+  static final DriverRemoteConfigService instance =
+      DriverRemoteConfigService._internal();
+  factory DriverRemoteConfigService() => instance;
+  DriverRemoteConfigService._internal();
 
   final FirebaseRemoteConfig _remoteConfig = FirebaseRemoteConfig.instance;
   bool _initialized = false;
@@ -115,4 +116,4 @@ class RemoteConfigService {
 }
 
 /// Global instance
-final remoteConfigService = RemoteConfigService.instance;
+final driverRemoteConfigService = DriverRemoteConfigService.instance;

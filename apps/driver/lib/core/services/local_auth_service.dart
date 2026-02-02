@@ -1,5 +1,5 @@
 import 'package:local_auth/local_auth.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:crypto/crypto.dart';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
@@ -12,6 +12,9 @@ class LocalAuthService {
   static const String _userEmailKey = 'user_email';
 
   final LocalAuthentication _localAuth = LocalAuthentication();
+  final FlutterSecureStorage _storage = const FlutterSecureStorage(
+    iOptions: IOSOptions(accessibility: KeychainAccessibility.first_unlock),
+  );
 
   // Check if device supports biometric authentication
   Future<bool> canCheckBiometrics() async {
@@ -114,18 +117,16 @@ class LocalAuthService {
 
   // PIN Management
   Future<bool> isPinEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_pinEnabledKey) ?? false;
+    final val = await _storage.read(key: _pinEnabledKey);
+    return val == 'true';
   }
 
   Future<void> setPinEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_pinEnabledKey, enabled);
+    await _storage.write(key: _pinEnabledKey, value: enabled.toString());
   }
 
   Future<bool> hasPin() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_pinHashKey) != null;
+    return await _storage.containsKey(key: _pinHashKey);
   }
 
   String _hashPin(String pin) {
@@ -135,15 +136,13 @@ class LocalAuthService {
   }
 
   Future<void> setPin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
     final hashedPin = _hashPin(pin);
-    await prefs.setString(_pinHashKey, hashedPin);
-    await prefs.setBool(_pinEnabledKey, true);
+    await _storage.write(key: _pinHashKey, value: hashedPin);
+    await setPinEnabled(true);
   }
 
   Future<bool> verifyPin(String pin) async {
-    final prefs = await SharedPreferences.getInstance();
-    final storedHash = prefs.getString(_pinHashKey);
+    final storedHash = await _storage.read(key: _pinHashKey);
 
     if (storedHash == null) return false;
 
@@ -158,27 +157,24 @@ class LocalAuthService {
   }
 
   Future<void> removePin() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_pinHashKey);
-    await prefs.setBool(_pinEnabledKey, false);
+    await _storage.delete(key: _pinHashKey);
+    await setPinEnabled(false);
   }
 
   // Biometric preference management
   Future<bool> isBiometricEnabled() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_biometricEnabledKey) ?? false;
+    final val = await _storage.read(key: _biometricEnabledKey);
+    return val == 'true';
   }
 
   Future<void> setBiometricEnabled(bool enabled) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool(_biometricEnabledKey, enabled);
+    await _storage.write(key: _biometricEnabledKey, value: enabled.toString());
   }
 
   // Check if user needs to authenticate (based on session)
   Future<bool> needsAuthentication() async {
-    final prefs = await SharedPreferences.getInstance();
-    final isPinEnabled = prefs.getBool(_pinEnabledKey) ?? false;
-    final isBiometricEnabled = prefs.getBool(_biometricEnabledKey) ?? false;
+    final isPinEnabled = await this.isPinEnabled();
+    final isBiometricEnabled = await this.isBiometricEnabled();
 
     // If neither is enabled, no auth needed
     if (!isPinEnabled && !isBiometricEnabled) {
@@ -186,15 +182,18 @@ class LocalAuthService {
     }
 
     // Check if user has authenticated recently (within 5 minutes)
-    final lastAuthTime = prefs.getInt(_lastAuthTimeKey);
-    if (lastAuthTime != null) {
-      final lastAuth = DateTime.fromMillisecondsSinceEpoch(lastAuthTime);
-      final now = DateTime.now();
-      final difference = now.difference(lastAuth);
+    final lastAuthTimeStr = await _storage.read(key: _lastAuthTimeKey);
+    if (lastAuthTimeStr != null) {
+      final lastAuthTime = int.tryParse(lastAuthTimeStr);
+      if (lastAuthTime != null) {
+        final lastAuth = DateTime.fromMillisecondsSinceEpoch(lastAuthTime);
+        final now = DateTime.now();
+        final difference = now.difference(lastAuth);
 
-      // If authenticated within last 5 minutes, no need to re-authenticate
-      if (difference.inMinutes < 5) {
-        return false;
+        // If authenticated within last 5 minutes, no need to re-authenticate
+        if (difference.inMinutes < 5) {
+          return false;
+        }
       }
     }
 
@@ -202,28 +201,23 @@ class LocalAuthService {
   }
 
   Future<void> _updateLastAuthTime() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt(_lastAuthTimeKey, DateTime.now().millisecondsSinceEpoch);
+    await _storage.write(
+      key: _lastAuthTimeKey,
+      value: DateTime.now().millisecondsSinceEpoch.toString(),
+    );
   }
 
   // Store user email for auto-login
   Future<void> storeUserEmail(String email) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_userEmailKey, email);
+    await _storage.write(key: _userEmailKey, value: email);
   }
 
   Future<String?> getStoredUserEmail() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_userEmailKey);
+    return await _storage.read(key: _userEmailKey);
   }
 
   // Clear all auth data
   Future<void> clearAuthData() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.remove(_pinHashKey);
-    await prefs.remove(_pinEnabledKey);
-    await prefs.remove(_biometricEnabledKey);
-    await prefs.remove(_lastAuthTimeKey);
-    await prefs.remove(_userEmailKey);
+    await _storage.deleteAll();
   }
 }

@@ -3,11 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:go_router/go_router.dart';
+
 import '../../../dispatch/presentation/providers/load_providers.dart';
-import '../../../users/data/user_repository_provider.dart';
-import '../../../dispatch/domain/models/load.dart';
 
 import 'package:milow_core/milow_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
@@ -18,6 +15,7 @@ import 'package:terminal/core/constants/app_elevation.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/toast_notification.dart';
 import '../../../../core/providers/latency_provider.dart';
+import 'notification_flyout_content.dart';
 
 class StatusBar extends ConsumerStatefulWidget {
   const StatusBar({super.key});
@@ -55,27 +53,19 @@ class _StatusBarState extends ConsumerState<StatusBar>
   Widget build(BuildContext context) {
     _setupListeners(context);
 
-    final pendingUsersAsync = ref.watch(pendingUsersProvider);
-    final pendingCount = pendingUsersAsync.maybeWhen(
-      data: (users) => users.length,
-      orElse: () => 0,
-    );
-    final driverLeftAsync = ref.watch(driverLeftNotificationsProvider);
-    final driverLeftCount = driverLeftAsync.maybeWhen(
-      data: (notifications) => notifications.length,
-      orElse: () => 0,
-    );
-    final companyInviteAsync = ref.watch(companyInviteNotificationsProvider);
-    final companyInviteCount = companyInviteAsync.maybeWhen(
-      data: (notifications) => notifications.length,
-      orElse: () => 0,
-    );
-
-    final delayedLoadsAsync = ref.watch(delayedLoadsProvider);
-    final delayedLoadsCount = delayedLoadsAsync.maybeWhen(
-      data: (loads) => loads.length,
-      orElse: () => 0,
-    );
+    // Calculate notification counts for badge
+    final pendingCount = ref
+        .watch(pendingUsersProvider)
+        .maybeWhen(data: (u) => u.length, orElse: () => 0);
+    final driverLeftCount = ref
+        .watch(driverLeftNotificationsProvider)
+        .maybeWhen(data: (n) => n.length, orElse: () => 0);
+    final companyInviteCount = ref
+        .watch(companyInviteNotificationsProvider)
+        .maybeWhen(data: (n) => n.length, orElse: () => 0);
+    final delayedLoadsCount = ref
+        .watch(delayedLoadsProvider)
+        .maybeWhen(data: (l) => l.length, orElse: () => 0);
 
     final totalNotificationCount =
         pendingCount + driverLeftCount + companyInviteCount + delayedLoadsCount;
@@ -366,12 +356,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                               ),
                               boxShadow: AppElevation.shadow8(context),
                             ),
-                            child: _buildCombinedNotificationList(
-                              pendingUsersAsync,
-                              driverLeftAsync,
-                              companyInviteAsync,
-                              delayedLoadsAsync,
-                            ),
+                            child: const NotificationFlyoutContent(),
                           ),
                         );
                       },
@@ -615,12 +600,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                   decoration: BoxDecoration(
                     boxShadow: AppElevation.shadow8(context),
                   ),
-                  child: _buildCombinedNotificationList(
-                    ref.read(pendingUsersProvider),
-                    ref.read(driverLeftNotificationsProvider),
-                    ref.read(companyInviteNotificationsProvider),
-                    ref.read(delayedLoadsProvider),
-                  ),
+                  child: const NotificationFlyoutContent(),
                 ),
               );
             },
@@ -668,324 +648,6 @@ class _StatusBarState extends ConsumerState<StatusBar>
               .read(notificationActionsProvider)
               .dismissNotification(notification['id']);
         },
-      ),
-    );
-  }
-
-  Widget _buildCombinedNotificationList(
-    AsyncValue<List<UserProfile>> pendingUsersAsync,
-    AsyncValue<List<Map<String, dynamic>>> driverLeftAsync,
-    AsyncValue<List<Map<String, dynamic>>> companyInviteAsync,
-    AsyncValue<List<Load>> delayedLoadsAsync,
-  ) {
-    final pendingUsers = pendingUsersAsync.maybeWhen(
-      data: (users) => users,
-      orElse: () => <UserProfile>[],
-    );
-    final driverLeftNotifs = driverLeftAsync.maybeWhen(
-      data: (notifs) => notifs,
-      orElse: () => <Map<String, dynamic>>[],
-    );
-    final companyInviteNotifs = companyInviteAsync.maybeWhen(
-      data: (notifs) => notifs,
-      orElse: () => <Map<String, dynamic>>[],
-    );
-    final delayedLoads = delayedLoadsAsync.maybeWhen(
-      data: (loads) => loads,
-      orElse: () => <Load>[],
-    );
-
-    final theme = FluentTheme.of(context);
-
-    final isEmpty =
-        pendingUsers.isEmpty &&
-        driverLeftNotifs.isEmpty &&
-        companyInviteNotifs.isEmpty &&
-        delayedLoads.isEmpty;
-
-    if (isEmpty) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-        child: Text(
-          'No notifications',
-          style: GoogleFonts.outfit(
-            fontSize: 13,
-            color: theme.resources.textFillColorSecondary,
-          ),
-        ),
-      );
-    }
-
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (driverLeftNotifs.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                'DRIVER UPDATES',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            ...driverLeftNotifs.map((notif) {
-              final driverName = notif['data']?['driver_name'] ?? 'Unknown';
-              final driverEmail = notif['data']?['driver_email'] ?? '';
-              return ListTile(
-                title: Text(
-                  driverName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (driverEmail.isNotEmpty) Text(driverEmail),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.warning.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'Left Company',
-                        style: TextStyle(fontSize: 10),
-                      ),
-                    ),
-                  ],
-                ),
-                trailing: IconButton(
-                  icon: Icon(
-                    FluentIcons.dismiss_24_regular,
-                    color: theme.resources.textFillColorSecondary,
-                  ),
-                  onPressed: () {
-                    ref
-                        .read(notificationActionsProvider)
-                        .dismissNotification(notif['id']);
-                  },
-                ),
-              );
-            }),
-            if (pendingUsers.isNotEmpty) const Divider(),
-          ],
-          if (pendingUsers.isNotEmpty) ...[
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                'PENDING APPROVALS',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            ...pendingUsers.map((user) {
-              return ListTile(
-                title: Text(
-                  user.fullName ?? 'Unknown User',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(user.email ?? 'No email'),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppColors.info.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        'Requested: ${user.role.label}',
-                        style: const TextStyle(fontSize: 10),
-                      ),
-                    ),
-                  ],
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      icon: Icon(
-                        FluentIcons.checkmark_24_regular,
-                        color: AppColors.success,
-                      ),
-                      onPressed: () {
-                        ref
-                            .read(notificationActionsProvider)
-                            .approveUser(user.id, user.role);
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: Icon(
-                        FluentIcons.dismiss_24_regular,
-                        color: AppColors.error,
-                      ),
-                      onPressed: () {
-                        ref
-                            .read(notificationActionsProvider)
-                            .rejectUser(user.id);
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ],
-                ),
-              );
-            }),
-          ],
-          // Verification Response Notifications (Accepted/Declined)
-          if (companyInviteNotifs.isNotEmpty) ...[
-            if (pendingUsers.isNotEmpty || driverLeftNotifs.isNotEmpty)
-              const Divider(),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                'VERIFICATION RESPONSES',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            ...companyInviteNotifs.map((notif) {
-              final title = notif['title'] ?? 'Verification Response';
-              final body = notif['body'] ?? notif['message'] ?? '';
-              final driverName = notif['data']?['driver_name'] ?? 'Unknown';
-              final isDeclined = title.toLowerCase().contains('declined');
-              return ListTile(
-                title: Text(
-                  driverName,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(body, maxLines: 2, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: isDeclined
-                            ? AppColors.error.withValues(alpha: 0.1)
-                            : AppColors.success.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        isDeclined ? 'Declined' : 'Accepted',
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: isDeclined
-                              ? AppColors.error
-                              : AppColors.success,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                trailing: IconButton(
-                  icon: Icon(
-                    FluentIcons.dismiss_24_regular,
-                    color: theme.resources.textFillColorSecondary,
-                  ),
-                  onPressed: () {
-                    ref
-                        .read(notificationActionsProvider)
-                        .dismissNotification(notif['id']);
-                  },
-                ),
-              );
-            }),
-          ],
-          if (delayedLoads.isNotEmpty) ...[
-            if (pendingUsers.isNotEmpty ||
-                driverLeftNotifs.isNotEmpty ||
-                companyInviteNotifs.isNotEmpty)
-              const Divider(),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(16, 12, 16, 4),
-              child: Text(
-                'DELAYED LOADS',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                  color: AppColors.error,
-                ),
-              ),
-            ),
-            ...delayedLoads.map((load) {
-              final usersAsync = ref.watch(usersProvider);
-              final driverName = usersAsync.maybeWhen(
-                data: (users) {
-                  final driver = users.firstWhere(
-                    (u) => u.id == load.assignedDriverId,
-                    orElse: () => const UserProfile(
-                      id: '',
-                      role: UserRole.driver,
-                      fullName: 'Unassigned',
-                    ),
-                  );
-                  return driver.fullName ?? 'Unknown';
-                },
-                orElse: () => 'Unassigned',
-              );
-
-              return ListTile(
-                title: Text(
-                  'Trip #${load.tripNumber}',
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Driver: $driverName'),
-                    Text(
-                      'Late since: ${DateFormat('MM/dd HH:mm').format(load.delivery.date)}',
-                      style: const TextStyle(
-                        fontSize: 11,
-                        color: AppColors.error,
-                      ),
-                    ),
-                  ],
-                ),
-                onPressed: () {
-                  Navigator.of(context).pop(); // Close flyout
-                  ref.read(loadDraftProvider.notifier).update((_) => load);
-                  ref.read(isCreatingLoadProvider.notifier).toggle(true);
-                  context.go('/highway-dispatch');
-                },
-                trailing: IconButton(
-                  icon: const Icon(FluentIcons.dismiss_20_regular),
-                  onPressed: () {
-                    ref
-                        .read(dismissedDelayedLoadIdsProvider.notifier)
-                        .dismiss(load.id);
-                  },
-                ),
-              );
-            }),
-          ],
-        ],
       ),
     );
   }

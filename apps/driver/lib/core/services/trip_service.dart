@@ -4,6 +4,7 @@ import 'package:milow_core/milow_core.dart';
 /// Service for managing trips in Supabase
 class TripService {
   static SupabaseClient get _client => Supabase.instance.client;
+  static final _networkClient = CoreNetworkClient(Supabase.instance.client);
   static String? get _userId => _client.auth.currentUser?.id;
 
   /// Create a new trip
@@ -74,55 +75,71 @@ class TripService {
     int? offset,
     DateTime? fromDate,
     DateTime? toDate,
+    String? coalesceKey,
   }) async {
     final userId = _userId;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
-    try {
-      var query = _client.from('trips').select().eq('user_id', userId);
+    final result = await _networkClient.query(
+      () async {
+        var query = _client.from('trips').select().eq('user_id', userId);
 
-      if (fromDate != null) {
-        query = query.gte('trip_date', fromDate.toIso8601String());
-      }
-      if (toDate != null) {
-        query = query.lte('trip_date', toDate.toIso8601String());
-      }
+        if (fromDate != null) {
+          query = query.gte('trip_date', fromDate.toIso8601String());
+        }
+        if (toDate != null) {
+          query = query.lte('trip_date', toDate.toIso8601String());
+        }
 
-      final response = await query.order('trip_date', ascending: false);
+        final response = await query.order('trip_date', ascending: false);
+        return response as List<dynamic>;
+      },
+      operationName: 'getTrips',
+      coalesceKey: coalesceKey,
+    );
 
-      List<dynamic> data = response;
-      if (limit != null) {
-        data = data.take(limit).toList();
-      }
-
-      return data.map((json) => Trip.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to get trips: $e');
-    }
+    return result.fold(
+      (failure) => throw Exception('Failed to get trips: ${failure.message}'),
+      (data) {
+        var list = data;
+        if (limit != null) {
+          list = list.take(limit).toList();
+        }
+        return list.map((json) => Trip.fromJson(json)).toList();
+      },
+    );
   }
 
   /// Get a single trip by ID
-  static Future<Trip?> getTripById(String tripId) async {
+  static Future<Trip?> getTripById(String tripId, {String? coalesceKey}) async {
     final userId = _userId;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
-    try {
-      final response = await _client
-          .from('trips')
-          .select()
-          .eq('id', tripId)
-          .eq('user_id', userId)
-          .maybeSingle();
+    final result = await _networkClient.query(
+      () async {
+        final response = await _client
+            .from('trips')
+            .select()
+            .eq('id', tripId)
+            .eq('user_id', userId)
+            .maybeSingle();
+        return response;
+      },
+      operationName: 'getTripById',
+      coalesceKey: coalesceKey,
+    );
 
-      if (response == null) return null;
-      return Trip.fromJson(response);
-    } catch (e) {
-      throw Exception('Failed to get trip: $e');
-    }
+    return result.fold(
+      (failure) => throw Exception('Failed to get trip: ${failure.message}'),
+      (data) {
+        if (data == null) return null;
+        return Trip.fromJson(data);
+      },
+    );
   }
 
   /// Update an existing trip

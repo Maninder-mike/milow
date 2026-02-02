@@ -455,12 +455,22 @@ class MockCoreNetworkClient extends _i1.Mock implements _i3.CoreNetworkClient {
   _i4.Future<_i7.Either<_i8.Failure, T>> query<T>(
     _i4.Future<T> Function()? operation, {
     String? operationName = 'query',
+    String? coalesceKey,
+    _i3.CachePolicy? cachePolicy = _i3.CachePolicy.networkOnly,
+    String? cacheKey,
+    Duration? ttl,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
               #query,
               [operation],
-              {#operationName: operationName},
+              {
+                #operationName: operationName,
+                #coalesceKey: coalesceKey,
+                #cachePolicy: cachePolicy,
+                #cacheKey: cacheKey,
+                #ttl: ttl,
+              },
             ),
             returnValue: _i4.Future<_i7.Either<_i8.Failure, T>>.value(
               _i6.dummyValue<_i7.Either<_i8.Failure, T>>(
@@ -468,7 +478,13 @@ class MockCoreNetworkClient extends _i1.Mock implements _i3.CoreNetworkClient {
                 Invocation.method(
                   #query,
                   [operation],
-                  {#operationName: operationName},
+                  {
+                    #operationName: operationName,
+                    #coalesceKey: coalesceKey,
+                    #cachePolicy: cachePolicy,
+                    #cacheKey: cacheKey,
+                    #ttl: ttl,
+                  },
                 ),
               ),
             ),
@@ -3325,12 +3341,14 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
     int? page = 0,
     int? pageSize = 20,
     String? statusFilter,
+    String? searchQuery,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#fetchLoads, [], {
               #page: page,
               #pageSize: pageSize,
               #statusFilter: statusFilter,
+              #searchQuery: searchQuery,
             }),
             returnValue:
                 _i4.Future<_i7.Either<_i8.Failure, List<_i14.Load>>>.value(
@@ -3340,6 +3358,7 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
                       #page: page,
                       #pageSize: pageSize,
                       #statusFilter: statusFilter,
+                      #searchQuery: searchQuery,
                     }),
                   ),
                 ),

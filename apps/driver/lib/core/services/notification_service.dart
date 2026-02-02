@@ -77,7 +77,7 @@ class NotificationService {
         );
 
     await _localNotifications.initialize(
-      initializationSettings,
+      settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         logger.info('Notification', 'Notification clicked: ${details.payload}');
       },
@@ -116,10 +116,10 @@ class NotificationService {
         // Show Local Notification
         unawaited(
           _localNotifications.show(
-            notification.hashCode,
-            notification.title,
-            notification.body,
-            NotificationDetails(
+            id: notification.hashCode,
+            title: notification.title,
+            body: notification.body,
+            notificationDetails: NotificationDetails(
               android: AndroidNotificationDetails(
                 channel.id,
                 channel.name,
@@ -202,10 +202,11 @@ class NotificationService {
     );
 
     await _localNotifications.show(
-      0,
-      'Missing End Odometer',
-      'Trip #$tripNumber (Truck #$truckNumber) is missing an end odometer reading.',
-      details,
+      id: 0,
+      title: 'Missing End Odometer',
+      body:
+          'Trip #$tripNumber (Truck #$truckNumber) is missing an end odometer reading.',
+      notificationDetails: details,
     );
 
     // Also record it in the database so it shows up in history
@@ -248,10 +249,10 @@ class NotificationService {
     );
 
     await _localNotifications.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      'Arrived at $locationType',
-      '$locationName\nTrip #$tripNumber',
-      details,
+      id: DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title: 'Arrived at $locationType',
+      body: '$locationName\nTrip #$tripNumber',
+      notificationDetails: details,
     );
   }
 
