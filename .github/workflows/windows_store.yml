@@ -14,44 +14,115 @@ permissions:
   contents: write
 
 jobs:
-  build-windows:
-    name: Build & Publish Windows App
+  # -----------------------------------------------------------------------------
+  # Job 1: Quality Check (Tests, Lint, Security)
+  # -----------------------------------------------------------------------------
+  quality_check:
+    name: 🛡️ Quality Check
     runs-on: windows-latest
-    
     defaults:
       run:
         working-directory: apps/terminal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+          cache-key: 'flutter-:os:-:channel:-:version:-:arch:-v2'
+
+      # Create .env file from secrets
+      - name: Create .env file
+        shell: bash
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+
+      - name: Create firebase_options.dart
+        shell: bash
+        env:
+          FIREBASE_OPTIONS_BASE64: ${{ secrets.TERMINAL_FIREBASE_OPTIONS_BASE64 }}
+        run: |
+          if [ -n "$FIREBASE_OPTIONS_BASE64" ]; then
+            echo "$FIREBASE_OPTIONS_BASE64" | base64 --decode > lib/firebase_options.dart
+          else
+            echo "::warning::TERMINAL_FIREBASE_OPTIONS_BASE64 not set, build may fail"
+          fi
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate Mocks & Code
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      # 🛡️ Quality Gates
+      - name: Analyze code
+        continue-on-error: true
+        run: flutter analyze
+
+      - name: Run Tests
+        run: flutter test
+
+  # -----------------------------------------------------------------------------
+  # Job 2: Build (Windows App & MSIX)
+  # -----------------------------------------------------------------------------
+  build_windows:
+    name: 🏗️ Build Windows App
+    needs: quality_check
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/terminal
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_number: ${{ steps.version.outputs.version_number }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      # Extract version and auto-increment with GitHub Run Number
-      - name: Read & Bump Version
+      # Extract version and auto-increment with Build Number (Persistent)
+      - name: Check and Increment Version
         id: version
         shell: bash
         run: |
-          # Read base version (e.g., 0.0.3 from 0.0.3+19)
-          BASE_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //;s/\+.*//')
+          echo "🔎 Reading version from pubspec.yaml..."
+          # Read base version (e.g., 0.0.3+45)
+          FULL_VERSION=$(grep '^version:' pubspec.yaml | sed 's/version: //')
           
-          # Construct unique Windows version: Major.Minor.Patch.RunNumber
-          AUTO_VERSION="${BASE_VERSION}+${{ github.run_number }}"
+          # Extract parts
+          BASE_VERSION=$(echo $FULL_VERSION | sed 's/+.*//')
+          BUILD_NUMBER=$(echo $FULL_VERSION | sed 's/.*+//')
           
-          echo "version=v$AUTO_VERSION" >> $GITHUB_OUTPUT
-          echo "version_number=$AUTO_VERSION" >> $GITHUB_OUTPUT
+          # Increment Build Number
+          NEW_BUILD_NUMBER=$((BUILD_NUMBER + 1))
+          NEW_FULL_VERSION="$BASE_VERSION+$NEW_BUILD_NUMBER"
           
-          echo "🔢 Base Version: $BASE_VERSION"
-          echo "🚀 Auto-incremented Version: $AUTO_VERSION"
+          echo "🚀 Auto-incrementing version: $FULL_VERSION -> $NEW_FULL_VERSION"
           
-          # Update pubspec.yaml so msix:create uses this version
-          sed -i "s/^version: .*/version: $AUTO_VERSION/" pubspec.yaml
+          # Update pubspec.yaml
+          sed -i "s/version: $FULL_VERSION/version: $NEW_FULL_VERSION/" pubspec.yaml
+          
+          # Commit and Push the new version so the next run starts higher
+          # This prevents "Duplicate Package Identity" errors in Windows Store
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+          git add pubspec.yaml
+          git commit -m "chore: bump windows build number to $NEW_BUILD_NUMBER [skip ci]"
+          git push
+          
+          # Output for subsequent steps
+          # msix uses x.y.z.w format usually, but updating pubspec handles it
+          echo "version=v$NEW_FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "version_number=$NEW_FULL_VERSION" >> $GITHUB_OUTPUT
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-
           channel: 'stable'
           cache: true
           cache-key: 'flutter-:os:-:channel:-:version:-:arch:-v2'
@@ -80,15 +151,6 @@ jobs:
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      # 🛡️ Quality Gates
-      - name: Analyze code
-        continue-on-error: true
-        run: flutter analyze
-
-      - name: Run Tests
-        run: flutter test
-
-
       # 🏗️ Build
       - name: Build Windows Release
         run: flutter build windows --release
@@ -97,6 +159,35 @@ jobs:
         run: dart run msix:create
         env:
           temp: true
+
+      - name: Upload MSIX Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: milow-terminal-msix
+          path: apps/terminal/build/windows/runner/Release/*.msix
+          retention-days: 1
+
+  # -----------------------------------------------------------------------------
+  # Job 3: Release (MS Store & GitHub)
+  # -----------------------------------------------------------------------------
+  release:
+    name: 🚀 Release
+    needs: build_windows
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: apps/terminal
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: milow-terminal-msix
+          path: apps/terminal/build/windows/runner/Release
 
       # 📝 Changelog
       - name: Generate Changelog
@@ -149,7 +240,7 @@ jobs:
           msstore apps list
 
           Write-Host "Publishing to Store..."
-          msstore publish --inputDirectory build/windows/x64/runner/Release --appId $env:WINDOWS_STORE_APP_ID --verbose
+          msstore publish --inputDirectory build/windows/runner/Release --appId $env:WINDOWS_STORE_APP_ID --verbose
         env:
           WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
           WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
@@ -163,20 +254,9 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.version.outputs.version }}
-          name: Release ${{ steps.version.outputs.version }}
+          tag_name: ${{ needs.build_windows.outputs.version }}
+          name: Release ${{ needs.build_windows.outputs.version }}
           body_path: apps/terminal/RELEASE_NOTES.md
           draft: false
           prerelease: false
           files: apps/terminal/build/windows/runner/Release/*.msix
-
-      - name: Upload MSIX Artifact (Backup)
-        uses: actions/upload-artifact@v4
-        with:
-          name: milow-terminal-msix
-          path: apps/terminal/build/windows/runner/Release/*.msix
-          if-no-files-found: warn
-
-
-
-

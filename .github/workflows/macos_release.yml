@@ -6,22 +6,69 @@ on:
       - beta
 
 jobs:
+  # -----------------------------------------------------------------------------
+  # Job 1: Quality Check (Tests, Lint)
+  # -----------------------------------------------------------------------------
+  quality_check:
+    name: 🛡️ Quality Check
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: ./apps/terminal
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Generate Mocks
+        run: dart run build_runner build --delete-conflicting-outputs
+
+      - name: Create Configs
+        run: |
+          echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
+          echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
+          
+          if [ -n "${{ secrets.TERMINAL_FIREBASE_OPTIONS_BASE64 }}" ]; then
+            echo "${{ secrets.TERMINAL_FIREBASE_OPTIONS_BASE64 }}" | base64 --decode > lib/firebase_options.dart
+          fi
+
+      - name: Analyze code
+        run: flutter analyze
+
+      - name: Run tests
+        run: flutter test
+
+  # -----------------------------------------------------------------------------
+  # Job 2: Build MacOS App
+  # -----------------------------------------------------------------------------
   build_macos:
-    name: Build macOS App
+    name: 🏗️ Build macOS App
+    needs: quality_check
     runs-on: macos-latest
     defaults:
       run:
         working-directory: ./apps/terminal
     permissions:
       contents: write
-
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      version_number: ${{ steps.version.outputs.version_number }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
-      - name: Increment Build Number
+      - name: Increment Build Number & Push
         run: |
           # Extract current version line, e.g., "version: 0.0.2+4"
           CURRENT_VERSION=$(grep '^version:' pubspec.yaml)
@@ -33,9 +80,7 @@ jobs:
           sed -i '' "s/+$BUILD_NUMBER/+$NEW_BUILD_NUMBER/" pubspec.yaml
           
           echo "Bumping version to build +$NEW_BUILD_NUMBER"
-
-      - name: Commit and Push Version Bump
-        run: |
+          
           git config user.name "GitHub Actions"
           git config user.email "actions@github.com"
           git add pubspec.yaml
@@ -62,35 +107,21 @@ jobs:
       - name: Generate code
         run: dart run build_runner build --delete-conflicting-outputs
 
-      - name: Create .env file
+      - name: Create Secrets
+        env:
+           GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
+           FIREBASE_OPTIONS_BASE64: ${{ secrets.TERMINAL_FIREBASE_OPTIONS_BASE64 }}
         run: |
           echo "SUPABASE_URL=${{ secrets.SUPABASE_URL }}" > .env
           echo "SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}" >> .env
-
-      - name: Create firebase_options.dart
-        env:
-          FIREBASE_OPTIONS_BASE64: ${{ secrets.TERMINAL_FIREBASE_OPTIONS_BASE64 }}
-        run: |
+          
           if [ -n "$FIREBASE_OPTIONS_BASE64" ]; then
             echo "$FIREBASE_OPTIONS_BASE64" | base64 --decode > lib/firebase_options.dart
           fi
-
-      - name: Create GoogleService-Info.plist
-        env:
-          GOOGLE_SERVICE_INFO_PLIST_BASE64: ${{ secrets.GOOGLE_SERVICE_INFO_PLIST_BASE64 }}
-        run: |
+          
           if [ -n "$GOOGLE_SERVICE_INFO_PLIST_BASE64" ]; then
-            echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > macos/Runner/GoogleService-Info.plist
+             echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > ../../macos/Runner/GoogleService-Info.plist
           fi
-
-      - name: Install FlutterFire CLI
-        run: dart pub global activate flutterfire_cli
-
-      - name: Analyze code
-        run: flutter analyze
-
-      - name: Run tests
-        run: flutter test
 
       - name: Build macOS App
         run: |
@@ -101,7 +132,7 @@ jobs:
 
       - name: Compress App Bundle
         run: |
-          cd build/macos/Build/Products/Release
+          cd ../../build/macos/Build/Products/Release
           zip -r "MilowTerminal-${{ steps.version.outputs.version }}-macos.zip" "Milow Terminal.app"
 
       - name: Upload Artifact
@@ -110,12 +141,28 @@ jobs:
           name: macos-release-build
           path: apps/terminal/build/macos/Build/Products/Release/MilowTerminal-${{ steps.version.outputs.version }}-macos.zip
 
+  # -----------------------------------------------------------------------------
+  # Job 3: Release (GitHub & Homebrew)
+  # -----------------------------------------------------------------------------
+  release:
+    name: 🚀 Release
+    needs: build_macos
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Download Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: macos-release-build
+          path: artifacts
+
       - name: Create Release
         uses: softprops/action-gh-release@v1
         with:
-          name: Milow Terminal ${{ steps.version.outputs.version }}
-          tag_name: ${{ steps.version.outputs.version }}
-          files: apps/terminal/build/macos/Build/Products/Release/MilowTerminal-${{ steps.version.outputs.version }}-macos.zip
+          name: Milow Terminal ${{ needs.build_macos.outputs.version }}
+          tag_name: ${{ needs.build_macos.outputs.version }}
+          files: artifacts/MilowTerminal-${{ needs.build_macos.outputs.version }}-macos.zip
           generate_release_notes: true
           draft: false
           prerelease: true
@@ -123,10 +170,10 @@ jobs:
       - name: Update Homebrew Tap
         env:
           GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          VERSION: ${{ steps.version.outputs.version_number }}
+          VERSION: ${{ needs.build_macos.outputs.version_number }}
         run: |
-          # Calculate SHA256 of the zip
-          SHA256=$(shasum -a 256 "build/macos/Build/Products/Release/MilowTerminal-${{ steps.version.outputs.version }}-macos.zip" | cut -d ' ' -f 1)
+          # Calculate SHA256 of the downloaded zip
+          SHA256=$(shasum -a 256 "artifacts/MilowTerminal-${{ needs.build_macos.outputs.version }}-macos.zip" | cut -d ' ' -f 1)
           echo "New SHA256: $SHA256"
           
           # Clone the tap repo
@@ -134,9 +181,9 @@ jobs:
           cd /tmp/tap
           
           # Update the version and SHA256 in the cask file
-          sed -i '' "s/version \"[^\"]*\"/version \"$VERSION\"/" Casks/milow-terminal.rb
-          sed -i '' "s/sha256 \"[a-f0-9]*\"/sha256 \"$SHA256\"/" Casks/milow-terminal.rb
-          sed -i '' "s|url \".*\"|url \"https://github.com/Maninder-mike/milow/releases/download/v$VERSION/MilowTerminal-v$VERSION-macos.zip\"|" Casks/milow-terminal.rb
+          sed -i "s/version \"[^\"]*\"/version \"$VERSION\"/" Casks/milow-terminal.rb
+          sed -i "s/sha256 \"[a-f0-9]*\"/sha256 \"$SHA256\"/" Casks/milow-terminal.rb
+          sed -i "s|url \".*\"|url \"https://github.com/Maninder-mike/milow/releases/download/v$VERSION/MilowTerminal-v$VERSION-macos.zip\"|" Casks/milow-terminal.rb
           
           # Commit and push
           git config user.name "GitHub Actions"
