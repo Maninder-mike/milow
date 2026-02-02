@@ -120,7 +120,7 @@ jobs:
           fi
           
           if [ -n "$GOOGLE_SERVICE_INFO_PLIST_BASE64" ]; then
-             echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > ../../macos/Runner/GoogleService-Info.plist
+             echo "$GOOGLE_SERVICE_INFO_PLIST_BASE64" | base64 --decode > macos/Runner/GoogleService-Info.plist
           fi
 
       - name: Build macOS App
@@ -132,7 +132,7 @@ jobs:
 
       - name: Compress App Bundle
         run: |
-          cd ../../build/macos/Build/Products/Release
+          cd build/macos/Build/Products/Release
           zip -r "MilowTerminal-${{ steps.version.outputs.version }}-macos.zip" "Milow Terminal.app"
 
       - name: Upload Artifact
