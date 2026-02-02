@@ -1000,8 +1000,9 @@ class _AddEntryPageState extends State<AddEntryPage>
         _deliveryFocusNodes[index].dispose();
         _deliveryFocusNodes.removeAt(index);
         if (index < _deliveryTimes.length) _deliveryTimes.removeAt(index);
-        if (index < _deliveryCompleted.length)
+        if (index < _deliveryCompleted.length) {
           _deliveryCompleted.removeAt(index);
+        }
       });
     }
   }

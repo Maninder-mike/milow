@@ -162,8 +162,8 @@ class _ExplorePageState extends State<ExplorePage> {
                       ],
 
                       // Stats & Intelligence Strip
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
                         child: StatsOverviewCard(),
                       ),
                       const SizedBox(height: 8),

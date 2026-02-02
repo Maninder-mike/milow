@@ -414,7 +414,7 @@ class _SettingsPageState extends State<SettingsPage> {
           iconColor: Colors.teal,
           onTap: () async {
             await context.push('/units-settings');
-            _loadPreferences(); // Reload in case distance unit changed
+            await _loadPreferences(); // Reload in case distance unit changed
           },
           textColor: textColor,
         ),
@@ -431,8 +431,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _buildDataSection(BuildContext context, Color textColor) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      ],
+    return const Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [],
     );
   }
 

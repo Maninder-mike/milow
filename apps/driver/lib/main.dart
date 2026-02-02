@@ -209,7 +209,7 @@ Future<void> main() async {
     debugPrint('❌ [Init] Fatal error during initialization: $e');
     debugPrint('Stack trace: $stack');
     try {
-      FirebaseCrashlytics.instance.recordError(e, stack, fatal: true);
+      await FirebaseCrashlytics.instance.recordError(e, stack, fatal: true);
     } catch (_) {}
   } finally {
     // ALWAYS allow the first frame and run the app, even if some services failed.
