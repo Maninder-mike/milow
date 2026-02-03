@@ -1066,15 +1066,8 @@ class _AddEntryPageState extends State<AddEntryPage>
           ),
         ),
         const SizedBox(width: 8),
-        IconButton.filledTonal(
-          onPressed: _showAddBorderCrossingDialog,
-          icon: const Icon(Icons.add),
-          style: IconButton.styleFrom(
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(tokens.shapeM),
-            ),
-            fixedSize: const Size(56, 56),
-          ),
+        _buildAddButton(
+          _showAddBorderCrossingDialog,
           tooltip: 'Add Border Crossing',
         ),
       ],
@@ -1301,26 +1294,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                     const SizedBox(width: 8),
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: InkWell(
-                        onTap: _addPickupLocation,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.tertiaryContainer,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.tertiary,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.add,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.tertiary,
-                          ),
-                        ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: _buildAddButton(_addPickupLocation),
                       ),
                     ),
                   ],
@@ -1398,26 +1374,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                     const SizedBox(width: 8),
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: InkWell(
-                        onTap: _addDeliveryLocation,
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.tertiaryContainer,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.tertiary,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.add,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.tertiary,
-                          ),
-                        ),
+                      child: Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: _buildAddButton(_addDeliveryLocation),
                       ),
                     ),
                   ],
@@ -1960,44 +1919,35 @@ class _AddEntryPageState extends State<AddEntryPage>
           _buildQuickActions(),
           // Empty Leg Toggle - only show for new trips
           if (_fetchedTrip == null && widget.editingTrip == null) ...[
-            Container(
-              decoration: BoxDecoration(
-                color: context.tokens.surfaceContainer,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: context.tokens.inputBorder),
-              ),
-              child: SwitchListTile(
-                value: _isEmptyLeg.value,
-                onChanged: (value) {
-                  setState(() => _isEmptyLeg.value = value);
-                  if (value) {
-                    _fetchLastDestination();
-                  }
-                },
-                title: Text(
-                  'Empty Leg',
-                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: context.tokens.textPrimary,
-                  ),
-                ),
-                subtitle: Text(
-                  'Driving without cargo (Deadhead)',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: context.tokens.textSecondary,
-                  ),
-                ),
-                secondary: Icon(
-                  Icons.no_luggage_outlined,
-                  color: _isEmptyLeg.value
-                      ? context.tokens.textPrimary
-                      : context.tokens.textTertiary,
-                ),
-                activeThumbColor: Theme.of(context).colorScheme.primary,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+            SwitchListTile(
+              value: _isEmptyLeg.value,
+              onChanged: (value) {
+                setState(() => _isEmptyLeg.value = value);
+                if (value) {
+                  _fetchLastDestination();
+                }
+              },
+              title: Text(
+                'Empty Leg',
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontWeight: FontWeight.w500,
+                  color: context.tokens.textPrimary,
                 ),
               ),
+              subtitle: Text(
+                'Driving without cargo (Deadhead)',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: context.tokens.textSecondary,
+                ),
+              ),
+              secondary: Icon(
+                Icons.no_luggage_outlined,
+                color: _isEmptyLeg.value
+                    ? Theme.of(context).colorScheme.primary
+                    : context.tokens.textTertiary,
+              ),
+              activeColor: Theme.of(context).colorScheme.primary,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 0),
             ),
             const SizedBox(height: 16),
           ],
@@ -2095,16 +2045,24 @@ class _AddEntryPageState extends State<AddEntryPage>
               weightUnit: _weightUnit.value,
               onWeightUnitChanged: (unit) =>
                   setState(() => _weightUnit.value = unit),
-              onAddReferenceNumber: () => setState(
-                () => _referenceNumberControllers.add(
-                  RestorableTextEditingController(text: ''),
-                ),
-              ),
+              onAddReferenceNumber: () => setState(() {
+                _refNumberCount.value++;
+                final controller = RestorableTextEditingController(text: '');
+                _referenceNumberControllers.add(controller);
+                registerForRestoration(
+                  controller,
+                  'ref_controller_${_referenceNumberControllers.length - 1}',
+                );
+              }),
               onRemoveReferenceNumber: (index) {
                 if (_referenceNumberControllers.length > 1) {
                   setState(() {
+                    _refNumberCount.value--;
                     _referenceNumberControllers[index].dispose();
                     _referenceNumberControllers.removeAt(index);
+                    // Note: Unregistering is not strictly required as the
+                    // restoration bucket will be recreated or cleaned up,
+                    // but keeping counts in sync is crucial.
                   });
                 }
               },
@@ -3144,30 +3102,23 @@ class _AddEntryPageState extends State<AddEntryPage>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 8),
+          padding: const EdgeInsets.fromLTRB(8, 24, 0, 8),
           child: Text(
-            title,
-            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-              fontSize: 16,
+            title.toUpperCase(),
+            style: Theme.of(context).textTheme.labelLarge?.copyWith(
               color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 1.2,
             ),
           ),
         ),
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: context.tokens.surfaceContainer,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: children,
-          ),
-        ),
+        Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
         const SizedBox(height: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: children,
+        ),
+        const SizedBox(height: 8),
       ],
     );
   }
@@ -3316,10 +3267,14 @@ class _AddEntryPageState extends State<AddEntryPage>
   void _addTrailer([String? customTrailer]) {
     if (_trailerControllers.length < _maxTrailers) {
       setState(() {
-        _trailerControllers.add(
-          RestorableTextEditingController(text: customTrailer),
-        );
+        _trailerCount.value++;
+        final controller = RestorableTextEditingController(text: customTrailer);
+        _trailerControllers.add(controller);
         _trailerFocusNodes.add(FocusNode());
+        registerForRestoration(
+          controller,
+          'trailer_controller_${_trailerControllers.length - 1}',
+        );
       });
     }
   }
@@ -3327,12 +3282,30 @@ class _AddEntryPageState extends State<AddEntryPage>
   void _removeTrailer(int index) {
     if (_trailerControllers.length > 1) {
       setState(() {
+        _trailerCount.value--;
         _trailerControllers[index].dispose();
         _trailerControllers.removeAt(index);
         _trailerFocusNodes[index].dispose();
         _trailerFocusNodes.removeAt(index);
       });
     }
+  }
+
+  Widget _buildAddButton(VoidCallback onTap, {String? tooltip}) {
+    final tokens = context.tokens;
+    return IconButton.filledTonal(
+      onPressed: onTap,
+      icon: const Icon(Icons.add),
+      style: IconButton.styleFrom(
+        backgroundColor: Theme.of(context).colorScheme.tertiaryContainer,
+        foregroundColor: Theme.of(context).colorScheme.onTertiaryContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.shapeS),
+        ),
+        fixedSize: const Size.square(48),
+      ),
+      tooltip: tooltip,
+    );
   }
 
   List<Widget> _buildTrailerFields() {
@@ -3369,6 +3342,15 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: Container(
                       padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.errorContainer,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.error,
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.remove,
+                        size: 20,
                         color: Theme.of(context).colorScheme.error,
                       ),
                     ),
@@ -3379,25 +3361,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                 const SizedBox(width: 8),
                 Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: InkWell(
-                    onTap: () => _addTrailer(),
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.tertiaryContainer,
-                        borderRadius: BorderRadius.circular(8),
-                        border: Border.all(
-                          color: Theme.of(context).colorScheme.tertiary,
-                        ),
-                      ),
-                      child: Icon(
-                        Icons.add,
-                        size: 20,
-                        color: Theme.of(context).colorScheme.tertiary,
-                      ),
-                    ),
-                  ),
+                  child: _buildAddButton(() => _addTrailer()),
                 ),
               ],
             ],

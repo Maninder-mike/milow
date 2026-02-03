@@ -206,11 +206,13 @@ class _LoadDetailsSectionState extends State<LoadDetailsSection> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               _buildLabel('Reference Numbers', tokens),
-              TextButton.icon(
+              FilledButton.tonalIcon(
                 onPressed: widget.onAddReferenceNumber,
                 icon: const Icon(Icons.add, size: 18),
                 label: const Text('Add'),
-                style: TextButton.styleFrom(
+                style: FilledButton.styleFrom(
+                  backgroundColor: theme.colorScheme.tertiaryContainer,
+                  foregroundColor: theme.colorScheme.onTertiaryContainer,
                   padding: EdgeInsets.symmetric(horizontal: tokens.spacingS),
                   minimumSize: const Size(0, 32),
                 ),
