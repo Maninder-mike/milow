@@ -5,16 +5,28 @@ import 'shared_preferences_provider.dart';
 part 'user_preferences_provider.g.dart';
 
 class UserPreferencesState {
-  final bool emailAlerts;
-  final bool pushNotifications;
+  final bool opsPush;
+  final bool opsEmail;
+  final bool msgPush;
+  final bool msgEmail;
+  final bool safetyPush;
+  final bool safetyEmail;
+  final bool accountPush;
+  final bool accountEmail;
   final double syncFrequency;
   final String language;
   final String mapProvider;
   final String unitSystem; // 'Imperial' or 'Metric'
 
   const UserPreferencesState({
-    required this.emailAlerts,
-    required this.pushNotifications,
+    required this.opsPush,
+    required this.opsEmail,
+    required this.msgPush,
+    required this.msgEmail,
+    required this.safetyPush,
+    required this.safetyEmail,
+    required this.accountPush,
+    required this.accountEmail,
     required this.syncFrequency,
     required this.language,
     required this.mapProvider,
@@ -22,16 +34,28 @@ class UserPreferencesState {
   });
 
   UserPreferencesState copyWith({
-    bool? emailAlerts,
-    bool? pushNotifications,
+    bool? opsPush,
+    bool? opsEmail,
+    bool? msgPush,
+    bool? msgEmail,
+    bool? safetyPush,
+    bool? safetyEmail,
+    bool? accountPush,
+    bool? accountEmail,
     double? syncFrequency,
     String? language,
     String? mapProvider,
     String? unitSystem,
   }) {
     return UserPreferencesState(
-      emailAlerts: emailAlerts ?? this.emailAlerts,
-      pushNotifications: pushNotifications ?? this.pushNotifications,
+      opsPush: opsPush ?? this.opsPush,
+      opsEmail: opsEmail ?? this.opsEmail,
+      msgPush: msgPush ?? this.msgPush,
+      msgEmail: msgEmail ?? this.msgEmail,
+      safetyPush: safetyPush ?? this.safetyPush,
+      safetyEmail: safetyEmail ?? this.safetyEmail,
+      accountPush: accountPush ?? this.accountPush,
+      accountEmail: accountEmail ?? this.accountEmail,
       syncFrequency: syncFrequency ?? this.syncFrequency,
       language: language ?? this.language,
       mapProvider: mapProvider ?? this.mapProvider,
@@ -49,8 +73,14 @@ class UserPreferencesNotifier extends _$UserPreferencesNotifier {
     _prefs = ref.watch(sharedPreferencesProvider);
 
     return UserPreferencesState(
-      emailAlerts: _prefs.getBool('email_alerts') ?? true,
-      pushNotifications: _prefs.getBool('notifications_enabled') ?? true,
+      opsPush: _prefs.getBool('notifications_ops_push') ?? true,
+      opsEmail: _prefs.getBool('notifications_ops_email') ?? true,
+      msgPush: _prefs.getBool('notifications_msg_push') ?? true,
+      msgEmail: _prefs.getBool('notifications_msg_email') ?? true,
+      safetyPush: _prefs.getBool('notifications_safety_push') ?? true,
+      safetyEmail: _prefs.getBool('notifications_safety_email') ?? true,
+      accountPush: _prefs.getBool('notifications_account_push') ?? true,
+      accountEmail: _prefs.getBool('notifications_account_email') ?? true,
       syncFrequency: _prefs.getDouble('sync_frequency') ?? 50.0,
       language: _prefs.getString('language') ?? 'English',
       mapProvider: _prefs.getString('map_provider') ?? 'Default Map',
@@ -58,14 +88,44 @@ class UserPreferencesNotifier extends _$UserPreferencesNotifier {
     );
   }
 
-  Future<void> setEmailAlerts(bool value) async {
-    await _prefs.setBool('email_alerts', value);
-    state = state.copyWith(emailAlerts: value);
+  Future<void> setOpsPush(bool value) async {
+    await _prefs.setBool('notifications_ops_push', value);
+    state = state.copyWith(opsPush: value);
   }
 
-  Future<void> setPushNotifications(bool value) async {
-    await _prefs.setBool('notifications_enabled', value);
-    state = state.copyWith(pushNotifications: value);
+  Future<void> setOpsEmail(bool value) async {
+    await _prefs.setBool('notifications_ops_email', value);
+    state = state.copyWith(opsEmail: value);
+  }
+
+  Future<void> setMsgPush(bool value) async {
+    await _prefs.setBool('notifications_msg_push', value);
+    state = state.copyWith(msgPush: value);
+  }
+
+  Future<void> setMsgEmail(bool value) async {
+    await _prefs.setBool('notifications_msg_email', value);
+    state = state.copyWith(msgEmail: value);
+  }
+
+  Future<void> setSafetyPush(bool value) async {
+    await _prefs.setBool('notifications_safety_push', value);
+    state = state.copyWith(safetyPush: value);
+  }
+
+  Future<void> setSafetyEmail(bool value) async {
+    await _prefs.setBool('notifications_safety_email', value);
+    state = state.copyWith(safetyEmail: value);
+  }
+
+  Future<void> setAccountPush(bool value) async {
+    await _prefs.setBool('notifications_account_push', value);
+    state = state.copyWith(accountPush: value);
+  }
+
+  Future<void> setAccountEmail(bool value) async {
+    await _prefs.setBool('notifications_account_email', value);
+    state = state.copyWith(accountEmail: value);
   }
 
   Future<void> setSyncFrequency(double value) async {

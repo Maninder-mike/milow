@@ -522,98 +522,108 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   Future<void> _loadUnitPreferences() async {
-    final prefDistanceUnit = await PreferencesService.getDistanceUnit();
-    final prefFuelUnit = await PreferencesService.getVolumeUnit();
-    final prefWeightUnit = await PreferencesService.getWeightUnit();
+    try {
+      final prefDistanceUnit = await PreferencesService.getDistanceUnit();
+      final prefFuelUnit = await PreferencesService.getVolumeUnit();
+      final prefWeightUnit = await PreferencesService.getWeightUnit();
 
-    // Get currency from user profile country
-    final profile = await ProfileService.getProfile();
-    final country = profile?['country'] as String?;
-    final prefCurrency = UnitUtils.getCurrency(country);
+      // Get currency from user profile country
+      final profile = await ProfileService.getProfile();
+      final country = profile?['country'] as String?;
+      final prefCurrency = UnitUtils.getCurrency(country);
 
-    if (mounted) {
-      setState(() {
-        if (!_isEditMode) {
-          // New Entry: Set currency from profile, but allow override
-          _currency.value = prefCurrency;
-          if (prefCurrency == 'USD') {
-            _fuelUnit.value = 'gal';
-            _distanceUnit.value = 'mi';
-            _weightUnit.value = 'lb';
-          } else if (prefCurrency == 'CAD') {
-            _fuelUnit.value = 'L';
-            _distanceUnit.value = 'km';
-            _weightUnit.value = 'kg';
+      if (mounted) {
+        setState(() {
+          if (!_isEditMode) {
+            // New Entry: Set currency from profile, but allow override
+            _currency.value = prefCurrency;
+            if (prefCurrency == 'USD') {
+              _fuelUnit.value = 'gal';
+              _distanceUnit.value = 'mi';
+              _weightUnit.value = 'lb';
+            } else if (prefCurrency == 'CAD') {
+              _fuelUnit.value = 'L';
+              _distanceUnit.value = 'km';
+              _weightUnit.value = 'kg';
+            } else {
+              // Fallback to preferences for other currencies
+              _distanceUnit.value = prefDistanceUnit;
+              _fuelUnit.value = prefFuelUnit;
+              _weightUnit.value = prefWeightUnit;
+            }
           } else {
-            // Fallback to preferences for other currencies
-            _distanceUnit.value = prefDistanceUnit;
-            _fuelUnit.value = prefFuelUnit;
-            _weightUnit.value = prefWeightUnit;
-          }
-        } else {
-          // Edit Mode: Convert units if they differ from preference
-          // (Data is already loaded, potentially we normally re-localize here if we wanted live switching)
-          // Preserve currency for historical accuracy
+            // Edit Mode: Convert units if they differ from preference
+            // (Data is already loaded, potentially we normally re-localize here if we wanted live switching)
+            // Preserve currency for historical accuracy
 
-          // 1. Convert Distance (mi <-> km)
-          if (_distanceUnit.value != prefDistanceUnit) {
-            final toMetric = prefDistanceUnit == 'km';
-            final factor = toMetric ? 1.60934 : 0.621371;
+            // 1. Convert Distance (mi <-> km)
+            if (_distanceUnit.value != prefDistanceUnit) {
+              final toMetric = prefDistanceUnit == 'km';
+              final factor = toMetric ? 1.60934 : 0.621371;
 
-            // Helper to convert text field
-            void convertField(TextEditingController controller) {
-              final val = double.tryParse(controller.text.replaceAll(',', ''));
-              if (val != null) {
-                final newVal = val * factor;
-                // Odometer usually int or 1 decimal
-                controller.text = newVal.toStringAsFixed(toMetric ? 1 : 0);
+              // Helper to convert text field
+              void convertField(TextEditingController controller) {
+                final val = double.tryParse(
+                  controller.text.replaceAll(',', ''),
+                );
+                if (val != null) {
+                  final newVal = val * factor;
+                  // Odometer usually int or 1 decimal
+                  controller.text = newVal.toStringAsFixed(toMetric ? 1 : 0);
+                }
               }
+
+              convertField(_tripStartOdometerController.value);
+              convertField(_tripEndOdometerController.value);
+              convertField(_odometerController.value); // For fuel entry
+
+              _distanceUnit.value = prefDistanceUnit;
             }
 
-            convertField(_tripStartOdometerController.value);
-            convertField(_tripEndOdometerController.value);
-            convertField(_odometerController.value); // For fuel entry
+            // 2. Convert Volume (gal <-> L)
+            // Note: Fuel Price is also per unit, so it must be inverted/converted
+            if (_fuelUnit.value != prefFuelUnit) {
+              final toMetric = prefFuelUnit == 'L';
+              // 1 gal = 3.78541 L
+              final volumeFactor = toMetric ? 3.78541 : 0.264172;
 
-            _distanceUnit.value = prefDistanceUnit;
-          }
+              // Price is currency/volume. So if volume increases (gal->L), price decreases.
+              // $/gal -> $/L. 1 gal = 3.78 L.
+              // $4/gal = $4 / 3.78 L = $1.05/L.
+              // So price factor is 1/volumeFactor.
+              final priceFactor = 1 / volumeFactor;
 
-          // 2. Convert Volume (gal <-> L)
-          // Note: Fuel Price is also per unit, so it must be inverted/converted
-          if (_fuelUnit.value != prefFuelUnit) {
-            final toMetric = prefFuelUnit == 'L';
-            // 1 gal = 3.78541 L
-            final volumeFactor = toMetric ? 3.78541 : 0.264172;
-
-            // Price is currency/volume. So if volume increases (gal->L), price decreases.
-            // $/gal -> $/L. 1 gal = 3.78 L.
-            // $4/gal = $4 / 3.78 L = $1.05/L.
-            // So price factor is 1/volumeFactor.
-            final priceFactor = 1 / volumeFactor;
-
-            void convertVolume(TextEditingController controller) {
-              final val = double.tryParse(controller.text.replaceAll(',', ''));
-              if (val != null) {
-                controller.text = (val * volumeFactor).toStringAsFixed(2);
+              void convertVolume(TextEditingController controller) {
+                final val = double.tryParse(
+                  controller.text.replaceAll(',', ''),
+                );
+                if (val != null) {
+                  controller.text = (val * volumeFactor).toStringAsFixed(2);
+                }
               }
-            }
 
-            void convertPrice(TextEditingController controller) {
-              final val = double.tryParse(controller.text.replaceAll(',', ''));
-              if (val != null) {
-                controller.text = (val * priceFactor).toStringAsFixed(3);
+              void convertPrice(TextEditingController controller) {
+                final val = double.tryParse(
+                  controller.text.replaceAll(',', ''),
+                );
+                if (val != null) {
+                  controller.text = (val * priceFactor).toStringAsFixed(3);
+                }
               }
+
+              convertVolume(_fuelQuantityController.value);
+              convertPrice(_fuelPriceController.value);
+
+              convertVolume(_defQuantityController.value);
+              convertPrice(_defPriceController.value);
+
+              _fuelUnit.value = prefFuelUnit;
             }
-
-            convertVolume(_fuelQuantityController.value);
-            convertPrice(_fuelPriceController.value);
-
-            convertVolume(_defQuantityController.value);
-            convertPrice(_defPriceController.value);
-
-            _fuelUnit.value = prefFuelUnit;
           }
-        }
-      });
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading unit preferences: $e');
     }
   }
 
@@ -1654,52 +1664,63 @@ class _AddEntryPageState extends State<AddEntryPage>
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Row(
-                            children: [
-                              IconButton(
-                                icon: Icon(
-                                  Icons.arrow_back_ios_new_rounded,
-                                  color: Theme.of(
-                                    context,
-                                  ).colorScheme.onSurface,
-                                  size: 20,
+                          Expanded(
+                            child: Row(
+                              children: [
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.arrow_back_ios_new_rounded,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurface,
+                                    size: 20,
+                                  ),
+                                  onPressed: () {
+                                    if (context.canPop()) {
+                                      context.pop();
+                                    } else {
+                                      context.go('/dashboard');
+                                    }
+                                  },
+                                  padding: EdgeInsets.zero,
+                                  constraints: const BoxConstraints(),
                                 ),
-                                onPressed: () {
-                                  if (context.canPop()) {
-                                    context.pop();
-                                  } else {
-                                    context.go('/dashboard');
-                                  }
-                                },
-                                padding: EdgeInsets.zero,
-                                constraints: const BoxConstraints(),
-                              ),
-                              const SizedBox(width: 12),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    _fetchedTrip != null ||
-                                            widget.editingTrip != null
-                                        ? 'Edit Entry'
-                                        : 'Add Entry',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .headlineSmall
-                                        ?.copyWith(fontWeight: FontWeight.bold),
+                                const SizedBox(width: 12),
+                                Flexible(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        _fetchedTrip != null ||
+                                                widget.editingTrip != null
+                                            ? 'Edit Entry'
+                                            : 'Add Entry',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .headlineSmall
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        'Track trips and fuel',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: Theme.of(
+                                                context,
+                                              ).colorScheme.onSurfaceVariant,
+                                            ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    'Track trips and fuel',
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.onSurfaceVariant,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ],
+                                ),
+                              ],
+                            ),
                           ),
                           Row(
                             children: [
@@ -1946,7 +1967,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     ? Theme.of(context).colorScheme.primary
                     : context.tokens.textTertiary,
               ),
-              activeColor: Theme.of(context).colorScheme.primary,
+              activeThumbColor: Theme.of(context).colorScheme.primary,
               contentPadding: const EdgeInsets.symmetric(horizontal: 0),
             ),
             const SizedBox(height: 16),

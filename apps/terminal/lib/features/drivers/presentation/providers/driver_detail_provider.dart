@@ -43,10 +43,10 @@ Future<DriverDetailState> driverDetail(Ref ref, String driverId) async {
 
   // For stats, we can use a .count() and .sum() if Supabase supports it cleanly,
   // or just fetch lightweight objects.
-  // Let's fetch just distance for all trips to calculate sum.
+  // We calculate distance from odometer readings as total_distance column is missing.
   final statsFuture = supabase
       .from('trips')
-      .select('total_distance')
+      .select('start_odometer, end_odometer, distance_unit')
       .eq('user_id', driverId);
 
   final [vehicle, recentTripsData, statsData] = await Future.wait<dynamic>([
@@ -60,7 +60,15 @@ Future<DriverDetailState> driverDetail(Ref ref, String driverId) async {
 
   double totalMiles = 0;
   for (var trip in stats) {
-    totalMiles += (trip['total_distance'] as num?)?.toDouble() ?? 0;
+    final start = (trip['start_odometer'] as num?)?.toDouble() ?? 0;
+    final end = (trip['end_odometer'] as num?)?.toDouble() ?? 0;
+    final unit = trip['distance_unit'] as String? ?? 'mi';
+
+    double distance = (end - start).abs();
+    if (unit.toLowerCase() == 'km') {
+      distance *= 0.621371; // Convert to miles
+    }
+    totalMiles += distance;
   }
 
   return DriverDetailState(

@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../services/vehicle_service.dart';
 import 'add_vehicle_dialog.dart';
 
@@ -13,6 +14,22 @@ class VehiclesPage extends ConsumerStatefulWidget {
 }
 
 class _VehiclesPageState extends ConsumerState<VehiclesPage> {
+  bool _initialActionHandled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialActionHandled) return;
+
+    final uri = GoRouterState.of(context).uri;
+    if (uri.queryParameters['action'] == 'new') {
+      _initialActionHandled = true;
+      Future.microtask(() {
+        if (mounted) _showAddEditDialog();
+      });
+    }
+  }
+
   Future<void> _showAddEditDialog([Map<String, dynamic>? vehicle]) async {
     await showDialog(
       context: context,

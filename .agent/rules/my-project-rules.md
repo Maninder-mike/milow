@@ -244,6 +244,23 @@ trigger: always_on
 
 ---
 
+## 16. Safety-Critical Engineering (NASA Power of 10)
+
+**Apply these principles to core logic to ensure extreme reliability at scale.**
+
+1. **Simple Control Flow**: Avoid complex recursion; prefer iterative patterns for business-critical logic.
+2. **Deterministic Loops**: All loops must have a checkable upper bound. For infinite sequences, use `.take(n)` or explicit timeouts.
+3. **Allocation Awareness**: Minimize dynamic memory allocation in high-frequency paths (e.g., `build` methods). Use `const` constructors aggressively.
+4. **Function Conciseness**: No function shall exceed 60 lines (standard sheet of paper).
+5. **Invariant Density**: Minimum of two `assert()` calls per function to verify state and parameter validity.
+6. **Smallest Scope**: Declare data objects at the smallest possible level of scope to prevent state leakage.
+7. **Input/Output Validation**: Validate all parameters and handle every non-void return value (via `Result` types).
+8. **Minimal Meta-Programming**: Avoid complex conditional imports or logic-heavy code generation where standard patterns suffice.
+9. **Referential Clarity**: Limit deep object dereferencing (e.g., `a.b.c.d`). Use local variables for intermediate steps.
+10. **Zero-Warning Compilation**: All code must compile with zero warnings under pedantic lint settings (Mandatory).
+
+---
+
 ## 25. Golden Path Snippets
 
 **Use these patterns as the absolute source of truth.**

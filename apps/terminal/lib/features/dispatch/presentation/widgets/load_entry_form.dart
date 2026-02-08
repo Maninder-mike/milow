@@ -6,6 +6,8 @@ import '../providers/load_providers.dart';
 import 'address_input_form.dart';
 import '../../domain/models/load.dart';
 
+import 'package:terminal/features/dispatch/domain/models/accessorial_charge.dart';
+import '../widgets/accessorials_widget.dart';
 import '../../domain/models/broker.dart';
 
 class LoadEntryForm extends ConsumerStatefulWidget {
@@ -832,6 +834,25 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                   ),
                 ),
               ],
+
+              const SizedBox(height: 24),
+
+              // Accessorials Section
+              AccessorialsWidget(
+                charges: draft.accessorials,
+                onAdd: (charge) {
+                  final updatedList = List<AccessorialCharge>.from(
+                    draft.accessorials,
+                  )..add(charge);
+                  _updateDraft((l) => l.copyWith(accessorials: updatedList));
+                },
+                onDelete: (charge) {
+                  final updatedList = List<AccessorialCharge>.from(
+                    draft.accessorials,
+                  )..removeWhere((c) => c.id == charge.id);
+                  _updateDraft((l) => l.copyWith(accessorials: updatedList));
+                },
+              ),
 
               const SizedBox(height: 24),
             ],

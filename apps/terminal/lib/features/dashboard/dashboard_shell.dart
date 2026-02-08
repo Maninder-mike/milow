@@ -11,6 +11,8 @@ import 'presentation/widgets/fleet_sidebar.dart';
 import 'presentation/widgets/status_bar.dart';
 import 'presentation/widgets/main_content_area.dart';
 import 'presentation/providers/tab_manager_provider.dart';
+import '../dispatch/presentation/providers/load_providers.dart';
+import '../notifications/presentation/providers/notifications_aggregator_provider.dart';
 
 import 'presentation/widgets/custom_title_bar.dart';
 import '../../../core/shortcuts/app_intents.dart';
@@ -206,8 +208,10 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
         ),
         RefreshDataIntent: CallbackAction<RefreshDataIntent>(
           onInvoke: (_) {
-            // TODO: Implement refresh logic
-            debugPrint('Refresh triggered');
+            // Refresh key data providers
+            ref.invalidate(paginatedLoadsProvider);
+            ref.invalidate(notificationsAggregatorProvider);
+            debugPrint('Global refresh triggered');
             return null;
           },
         ),

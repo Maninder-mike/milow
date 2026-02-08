@@ -130,7 +130,9 @@ class CustomAboutDialog extends StatelessWidget {
                     child: const Text('Terms'),
                     onPressed: () {
                       launchUrl(
-                        Uri.parse('https://maninder.co.in/milow/terms'),
+                        Uri.parse(
+                          'https://www.maninder.co.in/milow/termsandconditions',
+                        ),
                       );
                     },
                   ),

@@ -1,13 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
-import 'package:system_theme/system_theme.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:window_manager/window_manager.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'dart:io';
 import 'dart:async';
 
@@ -18,6 +16,7 @@ import 'package:firebase_performance/firebase_performance.dart';
 import 'firebase_options.dart';
 
 import 'core/providers/theme_provider.dart';
+import 'core/theme/app_theme.dart';
 import 'core/router/router_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'features/shared/widgets/shortcuts_reference_dialog.dart';
@@ -387,15 +386,27 @@ class _AdminAppState extends ConsumerState<AdminApp> {
                 }
               },
             ),
-            const PlatformMenuItemGroup(
+            PlatformMenuItemGroup(
               members: [
                 PlatformMenuItem(
                   label: 'View License',
-                  onSelected: null, // TODO: Implement license view
+                  onSelected: () {
+                    launchUrl(
+                      Uri.parse(
+                        'https://www.maninder.co.in/milow/termsandconditions',
+                      ),
+                    );
+                  },
                 ),
                 PlatformMenuItem(
                   label: 'Privacy Statement',
-                  onSelected: null, // TODO: Implement privacy statement view
+                  onSelected: () {
+                    launchUrl(
+                      Uri.parse(
+                        'https://www.maninder.co.in/milow/privacypolicy',
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -416,18 +427,8 @@ class _AdminAppState extends ConsumerState<AdminApp> {
       ],
       child: FluentApp.router(
         title: 'Milow Terminal',
-        theme: FluentThemeData(
-          accentColor: SystemTheme.accentColor.accent.toAccentColor(),
-          brightness: Brightness.light,
-          visualDensity: VisualDensity.standard,
-          fontFamily: GoogleFonts.outfit().fontFamily,
-        ),
-        darkTheme: FluentThemeData(
-          accentColor: SystemTheme.accentColor.accent.toAccentColor(),
-          brightness: Brightness.dark,
-          visualDensity: VisualDensity.standard,
-          fontFamily: GoogleFonts.outfit().fontFamily,
-        ),
+        theme: AppTheme.light,
+        darkTheme: AppTheme.dark,
         themeMode: themeMode,
         routerConfig: router,
         debugShowCheckedModeBanner: false,

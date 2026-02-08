@@ -159,4 +159,16 @@ class NotificationActions {
         .update({'is_read': true})
         .eq('id', notificationId);
   }
+
+  /// Mark all unread notifications as read for the current user
+  Future<void> markAllAsRead() async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _client
+        .from('notifications')
+        .update({'is_read': true})
+        .eq('user_id', userId)
+        .eq('is_read', false);
+  }
 }

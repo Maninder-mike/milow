@@ -211,14 +211,7 @@ class _TeamPanelState extends State<TeamPanel> {
             CommandBarButton(
               icon: const Icon(FluentIcons.add_24_regular),
               label: const Text('Invite User'),
-              onPressed: () {
-                // TODO: Implement invitation logic
-                showToast(
-                  context,
-                  title: 'Coming Soon',
-                  message: 'Invite feature is coming soon.',
-                );
-              },
+              onPressed: () => _showInviteUserDialog(),
             ),
           ],
         ),
@@ -254,14 +247,21 @@ class _TeamPanelState extends State<TeamPanel> {
     );
   }
 
+  void _showInviteUserDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => const _InviteUserDialog(),
+    ).then((_) => _loadTeamMembers());
+  }
+
   Widget _buildList(List<Map<String, dynamic>> items, String emptyMessage) {
     if (_isLoading) return const Center(child: ProgressBar());
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Approval Section (Only show on Users tab for simplicity, or make a dedicated tab)
-        if (_selectedIndex == 0) ...[
+        // Approval Section (Only show on Drivers tab)
+        if (_selectedIndex == 1) ...[
           Padding(
             padding: const EdgeInsets.all(16),
             child: Card(
@@ -271,7 +271,7 @@ class _TeamPanelState extends State<TeamPanel> {
                     child: TextBox(
                       controller: _emailController,
                       placeholder:
-                          'Approve user by email (e.g. user@email.com)',
+                          'Approve driver by email (e.g. driver@email.com)',
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -391,6 +391,236 @@ class _TeamPanelState extends State<TeamPanel> {
                     );
                   },
                 ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InviteUserDialog extends StatefulWidget {
+  const _InviteUserDialog();
+
+  @override
+  State<_InviteUserDialog> createState() => _InviteUserDialogState();
+}
+
+class _InviteUserDialogState extends State<_InviteUserDialog> {
+  final _emailController = TextEditingController();
+  final _nameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  String? _selectedRoleId;
+  bool _isLoading = false;
+  bool _passwordGenerated = false;
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _nameController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
+
+  void _generatePassword() {
+    const chars =
+        'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#\$%';
+    final password = List.generate(12, (index) {
+      return chars[(DateTime.now().microsecondsSinceEpoch + index) %
+          chars.length];
+    }).join();
+
+    setState(() {
+      _passwordController.text = password;
+      _passwordGenerated = true;
+    });
+  }
+
+  Future<void> _inviteUser() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      showToast(
+        context,
+        title: 'Missing fields',
+        message: 'Email and password are required.',
+        type: ToastType.warning,
+      );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final supabase = Supabase.instance.client;
+
+      final response = await supabase.functions.invoke(
+        'invite-user',
+        body: {
+          'email': _emailController.text.trim(),
+          'password': _passwordController.text,
+          'full_name': _nameController.text.trim().isNotEmpty
+              ? _nameController.text.trim()
+              : null,
+          'role_id': _selectedRoleId,
+        },
+      );
+
+      if (response.status != 200) {
+        final error = response.data?['error'] ?? 'Failed to invite user';
+        throw Exception(error);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        showToast(
+          context,
+          title: 'User invited',
+          message: 'Invitation sent to ${_emailController.text}',
+          type: ToastType.success,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        showToast(
+          context,
+          title: 'Error',
+          message: 'Failed to invite user: $e',
+          type: ToastType.error,
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> _fetchRoles() async {
+    try {
+      final supabase = Supabase.instance.client;
+      final currentUser = supabase.auth.currentUser;
+      if (currentUser == null) return [];
+
+      final profile = await supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('id', currentUser.id)
+          .single();
+
+      final companyId = profile['company_id'] as String?;
+      if (companyId == null) return [];
+
+      final roles = await supabase
+          .from('roles')
+          .select('id, name')
+          .eq('company_id', companyId)
+          .order('name');
+
+      return List<Map<String, dynamic>>.from(roles as List);
+    } catch (e) {
+      debugPrint('Error fetching roles: $e');
+      return [];
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: const Text('Invite User'),
+      content: SizedBox(
+        width: 400,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InfoLabel(
+              label: 'Email',
+              child: TextBox(
+                controller: _emailController,
+                placeholder: 'user@example.com',
+                keyboardType: TextInputType.emailAddress,
+              ),
+            ),
+            const SizedBox(height: 16),
+            InfoLabel(
+              label: 'Full Name (optional)',
+              child: TextBox(
+                controller: _nameController,
+                placeholder: 'John Smith',
+              ),
+            ),
+            const SizedBox(height: 16),
+            InfoLabel(
+              label: 'Temporary Password',
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextBox(
+                      controller: _passwordController,
+                      placeholder: 'Generate a password',
+                      readOnly: true,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Button(
+                    onPressed: _generatePassword,
+                    child: const Text('Generate'),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            InfoLabel(
+              label: 'Role',
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future: _fetchRoles(),
+                builder: (context, snapshot) {
+                  final roles = snapshot.data ?? [];
+                  if (roles.isEmpty && !snapshot.hasData) {
+                    return const ProgressBar();
+                  }
+
+                  return ComboBox<String>(
+                    value: _selectedRoleId,
+                    placeholder: const Text('Select a role'),
+                    isExpanded: true,
+                    items: roles.map((role) {
+                      return ComboBoxItem<String>(
+                        value: role['id'] as String,
+                        child: Text(role['name'] as String),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() => _selectedRoleId = value);
+                    },
+                  );
+                },
+              ),
+            ),
+            if (_passwordGenerated) ...[
+              const SizedBox(height: 16),
+              const InfoBar(
+                title: Text('Password generated'),
+                content: Text(
+                  'Copy this password and share it securely with the user.',
+                ),
+                severity: InfoBarSeverity.success,
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        Button(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _isLoading ? null : _inviteUser,
+          child: _isLoading
+              ? const SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: ProgressRing(strokeWidth: 2),
+                )
+              : const Text('Invite'),
         ),
       ],
     );

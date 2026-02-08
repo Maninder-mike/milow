@@ -1,7 +1,9 @@
 import 'load_location.dart';
 import 'stop.dart';
+import 'accessorial_charge.dart';
 
 export 'load_location.dart';
+export 'load_status.dart'; // Export LoadStatus enum
 export 'stop.dart'; // Export for convenience
 
 class Load {
@@ -27,6 +29,7 @@ class Load {
   final String tripNumber;
   final String? poNumber;
   final String? companyId;
+  final List<AccessorialCharge> accessorials;
 
   Load({
     required this.id,
@@ -51,6 +54,7 @@ class Load {
     required this.tripNumber,
     this.poNumber,
     this.companyId,
+    this.accessorials = const [],
   });
 
   factory Load.empty() {
@@ -139,6 +143,7 @@ class Load {
     String? tripNumber,
     String? poNumber,
     String? companyId,
+    List<AccessorialCharge>? accessorials,
   }) {
     return Load(
       id: id ?? this.id,
@@ -163,6 +168,7 @@ class Load {
       tripNumber: tripNumber ?? this.tripNumber,
       poNumber: poNumber ?? this.poNumber,
       companyId: companyId ?? this.companyId,
+      accessorials: accessorials ?? this.accessorials,
     );
   }
 
@@ -192,6 +198,7 @@ class Load {
       'trip_number': tripNumber,
       'po_number': poNumber,
       'company_id': companyId,
+      'accessorials': accessorials.map((e) => e.toJson()).toList(),
       // Stops handled separately ideally, or nested based on requirement
     };
   }

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:go_router/go_router.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -8,9 +9,11 @@ import 'package:milow_core/milow_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
 import 'package:terminal/features/dispatch/presentation/providers/quote_providers.dart';
+import 'package:terminal/features/dispatch/presentation/providers/load_stats_provider.dart';
 import 'package:terminal/features/users/data/user_repository_provider.dart';
 import 'package:terminal/features/dashboard/services/vehicle_service.dart';
 import 'package:terminal/features/dispatch/domain/models/load.dart';
+
 import 'package:terminal/features/dispatch/domain/models/quote.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/load_entry_form.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/broker_entry_dialog.dart';
@@ -39,6 +42,20 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
   final FocusNode _listFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   int? _focusedIndex;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final uri = GoRouterState.of(context).uri;
+    if (uri.queryParameters['action'] == 'new') {
+      // Use microtask to avoid build conflicts
+      Future.microtask(() {
+        if (mounted) {
+          ref.read(isCreatingLoadProvider.notifier).toggle(true);
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -162,32 +179,14 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
               builder: (context, ref, child) {
                 final usersAsync = ref.watch(usersProvider);
                 final vehiclesAsync = ref.watch(vehiclesListProvider);
+                final statsAsync = ref.watch(loadStatsProvider);
+                final stats = statsAsync.asData?.value ?? const LoadStats();
 
                 return paginationStateAsync.when(
                   data: (paginationState) {
                     final loads = paginationState.loads;
                     final users = usersAsync.value ?? [];
                     final vehicles = vehiclesAsync.value ?? [];
-
-                    // Stats are currently based on loaded data.
-                    // TODO: Implement dedicated LoadStatsProvider for accurate global counts.
-                    final now = DateTime.now();
-                    final todayCount = loads.where((l) {
-                      return l.pickup.date.year == now.year &&
-                          l.pickup.date.month == now.month &&
-                          l.pickup.date.day == now.day;
-                    }).length;
-
-                    final completedCount = loads
-                        .where((l) => l.status.toLowerCase() == 'delivered')
-                        .length;
-
-                    final activeCount = loads.where((l) {
-                      final s = l.status.toLowerCase();
-                      return s == 'assigned' || s == 'in transit';
-                    }).length;
-
-                    final delayedCount = loads.where((l) => l.isDelayed).length;
 
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -209,15 +208,15 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                                   breakdown: [
                                     StatBreakdownItem(
                                       label: 'Completed',
-                                      value: completedCount.toString(),
+                                      value: stats.completedCount.toString(),
                                     ),
                                     StatBreakdownItem(
                                       label: 'Active',
-                                      value: activeCount.toString(),
+                                      value: stats.activeCount.toString(),
                                     ),
                                     StatBreakdownItem(
                                       label: 'Delayed',
-                                      value: delayedCount.toString(),
+                                      value: stats.delayedCount.toString(),
                                     ),
                                   ],
                                 ),
@@ -226,7 +225,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                               Expanded(
                                 child: DispatchStatCard(
                                   title: 'Today',
-                                  value: todayCount.toString(),
+                                  value: stats.todayCount.toString(),
                                   icon: FluentIcons.calendar_ltr_24_regular,
                                   iconColor: const Color(0xFFFB8C00),
                                   iconBackgroundColor: const Color(0xFFFFF3E0),
@@ -236,7 +235,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                               Expanded(
                                 child: DispatchStatCard(
                                   title: 'Completed',
-                                  value: completedCount.toString(),
+                                  value: stats.completedCount.toString(),
                                   icon: FluentIcons.checkmark_circle_24_regular,
                                   iconColor: const Color(0xFF43A047),
                                   iconBackgroundColor: const Color(0xFFE8F5E9),
@@ -1171,35 +1170,38 @@ class _LoadRowItemState extends State<_LoadRowItem> {
   }
 
   Widget _buildStatusChip(Load load) {
+    final loadStatus = LoadStatus.fromString(load.status);
+    String label = loadStatus.displayName.toUpperCase();
     Color color;
-    String status = load.status;
-    String label = status.toUpperCase();
 
     if (load.isDelayed) {
       color = AppColors.error;
       label = 'DELAYED';
     } else {
-      switch (status.toLowerCase()) {
-        case 'pending':
-        case 'scheduled':
+      // Use enum-based color mapping
+      switch (loadStatus) {
+        case LoadStatus.pending:
+        case LoadStatus.booked:
           color = AppColors.info;
-          label = 'SCHEDULED';
           break;
-        case 'assigned':
-          color = const Color(0xFF0288D1);
+        case LoadStatus.dispatched:
+        case LoadStatus.tendered:
+          color = const Color(0xFF8B5CF6); // Purple
           break;
-        case 'picked up':
-          color = AppColors.success;
-          label = 'PICKED UP';
-          break;
-        case 'in transit':
+        case LoadStatus.inTransit:
           color = AppColors.purple;
           break;
-        case 'delivered':
+        case LoadStatus.delivered:
+        case LoadStatus.invoiced:
           color = AppColors.success;
           break;
-        default:
+        case LoadStatus.rejected:
+        case LoadStatus.cancelled:
+          color = AppColors.error;
+          break;
+        case LoadStatus.archived:
           color = AppColors.neutral;
+          break;
       }
     }
 

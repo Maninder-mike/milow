@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:go_router/go_router.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -96,25 +97,52 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
             context,
             'New Load',
             FluentIcons.add_24_regular,
-            onPressed: () {},
+            onPressed: () => context.go(
+              Uri(
+                path: '/highway-dispatch',
+                queryParameters: {'action': 'new'},
+              ).toString(),
+            ),
+          ),
+          _buildQuickAction(
+            context,
+            'New Customer',
+            FluentIcons.people_add_24_regular,
+            onPressed: () => context.go(
+              Uri(
+                path: '/customer',
+                queryParameters: {'action': 'new'},
+              ).toString(),
+            ),
           ),
           _buildQuickAction(
             context,
             'Assign Driver',
             FluentIcons.person_add_24_regular,
-            onPressed: () {},
+            onPressed: () => context.go('/users/new'),
           ),
           _buildQuickAction(
             context,
-            'Dispatch Truck',
+            'Add Vehicle',
             FluentIcons.vehicle_truck_profile_24_regular,
-            onPressed: () {},
+            onPressed: () => context.go(
+              Uri(
+                path: '/vehicles',
+                queryParameters: {'action': 'new'},
+              ).toString(),
+            ),
+          ),
+          _buildQuickAction(
+            context,
+            'Dispatch Board',
+            FluentIcons.board_24_regular,
+            onPressed: () => context.go('/dispatch'),
           ),
           _buildQuickAction(
             context,
             'Billing Report',
             FluentIcons.document_bullet_list_24_regular,
-            onPressed: () {},
+            onPressed: () => context.go('/invoices'),
           ),
         ],
       ),

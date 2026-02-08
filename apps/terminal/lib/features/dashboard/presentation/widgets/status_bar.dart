@@ -16,6 +16,7 @@ import '../../../../core/constants/app_colors.dart';
 import '../../../../core/widgets/toast_notification.dart';
 import '../../../../core/providers/latency_provider.dart';
 import 'notification_flyout_content.dart';
+import '../../../notifications/presentation/providers/notifications_aggregator_provider.dart';
 
 class StatusBar extends ConsumerStatefulWidget {
   const StatusBar({super.key});
@@ -54,21 +55,9 @@ class _StatusBarState extends ConsumerState<StatusBar>
     _setupListeners(context);
 
     // Calculate notification counts for badge
-    final pendingCount = ref
-        .watch(pendingUsersProvider)
-        .maybeWhen(data: (u) => u.length, orElse: () => 0);
-    final driverLeftCount = ref
-        .watch(driverLeftNotificationsProvider)
-        .maybeWhen(data: (n) => n.length, orElse: () => 0);
-    final companyInviteCount = ref
-        .watch(companyInviteNotificationsProvider)
-        .maybeWhen(data: (n) => n.length, orElse: () => 0);
-    final delayedLoadsCount = ref
-        .watch(delayedLoadsProvider)
-        .maybeWhen(data: (l) => l.length, orElse: () => 0);
-
-    final totalNotificationCount =
-        pendingCount + driverLeftCount + companyInviteCount + delayedLoadsCount;
+    // Watch aggregated notifications for badge count
+    final notifications = ref.watch(notificationsAggregatorProvider);
+    final totalNotificationCount = notifications.where((n) => !n.isRead).length;
 
     final connectivityAsync = ref.watch(connectivityProvider);
     final dbHealth = ref.watch(databaseHealthProvider);

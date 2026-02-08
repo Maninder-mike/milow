@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -104,6 +105,22 @@ class _CustomerPageState extends State<CustomerPage> {
     } else {
       // Load saved dialog size when opening new dialog
       if (widget.isDialog) _loadDialogSize();
+    }
+  }
+
+  bool _initialActionHandled = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_initialActionHandled) return;
+
+    final uri = GoRouterState.of(context).uri;
+    if (uri.queryParameters['action'] == 'new') {
+      _initialActionHandled = true;
+      Future.microtask(() {
+        if (mounted && !widget.isDialog) _openAddCustomerDialog(context);
+      });
     }
   }
 

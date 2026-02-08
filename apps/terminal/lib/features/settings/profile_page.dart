@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:file_selector/file_selector.dart';
 import 'dart:io';
+import 'package:intl/intl.dart';
 
 import '../../core/widgets/toast_notification.dart';
 import '../../core/widgets/choreographed_entrance.dart';
@@ -35,7 +36,6 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   XFile? _profileImage;
   bool _isLoading = false;
   bool _isEditing = false;
-  int _selectedTab = 0;
 
   @override
   void initState() {
@@ -246,34 +246,36 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         builder: (context, constraints) {
           final isWide = constraints.maxWidth > 800;
           return ChoreographedEntrance(
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. Identity Sidebar (Fixed Width)
-                if (isWide) ...[
-                  SizedBox(
-                    width: 320,
-                    child: _buildIdentityCard(context, isLight),
-                  ),
-                  const SizedBox(width: 24),
-                ],
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // 1. Identity Sidebar (Fixed Width)
+                  if (isWide) ...[
+                    SizedBox(
+                      width: 320,
+                      child: _buildIdentityCard(context, isLight),
+                    ),
+                    const SizedBox(width: 32),
+                  ],
 
-                // 2. Main content (Flexible)
-                Expanded(
-                  child: isWide
-                      ? _buildTabs(context)
-                      : SingleChildScrollView(
-                          padding: const EdgeInsets.only(right: 24, bottom: 24),
-                          child: Column(
-                            children: [
-                              _buildIdentityCard(context, isLight),
-                              const SizedBox(height: 24),
-                              SizedBox(height: 500, child: _buildTabs(context)),
-                            ],
+                  // 2. Main content (Flexible)
+                  Expanded(
+                    child: isWide
+                        ? _buildMainContent()
+                        : SingleChildScrollView(
+                            child: Column(
+                              children: [
+                                _buildIdentityCard(context, isLight),
+                                const SizedBox(height: 32),
+                                _buildMainContent(),
+                              ],
+                            ),
                           ),
-                        ),
-                ),
-              ],
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -282,12 +284,29 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   }
 
   Widget _buildIdentityCard(BuildContext context, bool isLight) {
-    return Card(
-      padding: const EdgeInsets.all(24),
+    final theme = FluentTheme.of(context);
+
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.resources.dividerStrokeColorDefault,
+          width: 0.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isLight ? 0.04 : 0.12),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Avatar
+          // Avatar with Refined Border
           Stack(
             children: [
               Container(
@@ -295,7 +314,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 height: 120,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: Colors.grey[40],
+                  color: theme.resources.controlFillColorDefault,
+                  border: Border.all(
+                    color: theme.accentColor.withValues(alpha: 0.2),
+                    width: 4,
+                  ),
                   image: _profileImage != null
                       ? DecorationImage(
                           image: FileImage(File(_profileImage!.path)),
@@ -314,7 +337,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                           _nameController.text.isNotEmpty
                               ? _nameController.text[0].toUpperCase()
                               : '?',
-                          style: const TextStyle(fontSize: 40),
+                          style: GoogleFonts.outfit(
+                            fontSize: 48,
+                            fontWeight: FontWeight.bold,
+                            color: theme.accentColor,
+                          ),
                         ),
                       )
                     : null,
@@ -327,8 +354,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                     icon: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: FluentTheme.of(context).accentColor,
+                        color: theme.accentColor,
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.2),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
                       ),
                       child: const Icon(
                         FluentIcons.camera_24_regular,
@@ -341,61 +375,70 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 24),
           Text(
             _nameController.text,
             style: GoogleFonts.outfit(
               fontSize: 24,
               fontWeight: FontWeight.bold,
+              color: theme.resources.textFillColorPrimary,
             ),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 8),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
             decoration: BoxDecoration(
-              color: FluentTheme.of(context).accentColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(20),
+              color: theme.accentColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: FluentTheme.of(
-                  context,
-                ).accentColor.withValues(alpha: 0.5),
+                color: theme.accentColor.withValues(alpha: 0.3),
               ),
             ),
             child: Text(
               _role.toUpperCase(),
-              style: TextStyle(
-                color: FluentTheme.of(context).accentColor,
+              style: GoogleFonts.outfit(
+                color: theme.accentColor,
                 fontWeight: FontWeight.bold,
-                fontSize: 12,
+                fontSize: 11,
+                letterSpacing: 1.2,
               ),
             ),
           ),
+          const SizedBox(height: 32),
+          Divider(), // Changed from const Divider()
           const SizedBox(height: 24),
-          const Divider(),
+          _buildStatRow(context, FluentIcons.mail_24_regular, _email),
           const SizedBox(height: 16),
-          _buildStatRow(FluentIcons.mail_24_regular, _email),
-          if (_createdAt != null) ...[
-            const SizedBox(height: 12),
+          if (_createdAt != null)
             _buildStatRow(
+              context,
               FluentIcons.calendar_ltr_24_regular,
-              'Joined ${_createdAt!.year}',
+              'Joined ${DateFormat('MMMM y').format(_createdAt!)}',
             ),
-          ],
         ],
       ),
     );
   }
 
-  Widget _buildStatRow(IconData icon, String text) {
+  Widget _buildStatRow(BuildContext context, IconData icon, String text) {
+    final theme = FluentTheme.of(context);
     return Row(
       children: [
-        Icon(icon, size: 16, color: Colors.grey[100]),
-        const SizedBox(width: 12),
+        Icon(
+          icon,
+          size: 18,
+          color: theme.resources.textFillColorSecondary.withValues(alpha: 0.8),
+        ),
+        const SizedBox(width: 14),
         Expanded(
           child: Text(
             text,
-            style: TextStyle(color: Colors.grey[120], fontSize: 13),
+            style: GoogleFonts.outfit(
+              color: theme.resources.textFillColorSecondary,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -403,162 +446,202 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
-  Widget _buildTabs(BuildContext context) {
-    return TabView(
-      currentIndex: _selectedTab,
-      onChanged: (index) => setState(() => _selectedTab = index),
-      tabs: [
-        Tab(
-          text: const Text('Overview'),
-          icon: const Icon(FluentIcons.person_24_regular),
-          body: _buildOverviewTab(),
-        ),
-        Tab(
-          text: const Text('Security'),
-          icon: const Icon(FluentIcons.lock_shield_24_regular),
-          body: _buildSecurityTab(),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildOverviewTab() {
+  Widget _buildMainContent() {
+    final theme = FluentTheme.of(context);
     return Form(
       key: _formKey,
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Contact Information',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            InfoLabel(
-              label: 'Full Name',
-              child: TextFormBox(
-                controller: _nameController,
-                readOnly: !_isEditing,
-                validator: (v) => v!.isEmpty ? 'Required' : null,
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            InfoLabel(
-              label: 'Phone Number',
-              child: TextFormBox(
-                controller: _phoneController,
-                readOnly: !_isEditing,
-                placeholder: '+1 (000) 000-0000',
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            Text(
-              'Address',
-              style: GoogleFonts.outfit(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            InfoLabel(
-              label: 'Street Address',
-              child: TextFormBox(
-                controller: _streetController,
-                readOnly: !_isEditing,
-              ),
-            ),
-            const SizedBox(height: 16),
-
+            _buildSectionHeader(context, 'Contact Information'),
+            const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(
-                  flex: 2,
-                  child: InfoLabel(
-                    label: 'City',
-                    child: TextFormBox(
-                      controller: _cityController,
-                      readOnly: !_isEditing,
-                    ),
+                  child: _buildInfoField(
+                    label: 'Full Name',
+                    controller: _nameController,
+                    placeholder: 'Enter your full name',
+                    validator: (v) => v!.isEmpty ? 'Required' : null,
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 24),
                 Expanded(
-                  child: InfoLabel(
-                    label: 'State',
-                    child: TextFormBox(
-                      controller: _stateController,
-                      readOnly: !_isEditing,
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: InfoLabel(
-                    label: 'Zip',
-                    child: TextFormBox(
-                      controller: _zipController,
-                      readOnly: !_isEditing,
-                    ),
+                  child: _buildInfoField(
+                    label: 'Phone Number',
+                    controller: _phoneController,
+                    placeholder: '+1 (000) 000-0000',
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 16),
-            InfoLabel(
+            const SizedBox(height: 48),
+            _buildSectionHeader(context, 'Local Address'),
+            const SizedBox(height: 24),
+            _buildInfoField(
+              label: 'Street Address',
+              controller: _streetController,
+              placeholder: '123 Main St',
+            ),
+            const SizedBox(height: 20),
+            Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: _buildInfoField(
+                    label: 'City',
+                    controller: _cityController,
+                    placeholder: 'City',
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildInfoField(
+                    label: 'State / Province',
+                    controller: _stateController,
+                    placeholder: 'State',
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildInfoField(
+                    label: 'Zip / Postal Code',
+                    controller: _zipController,
+                    placeholder: 'Zip',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            _buildInfoField(
               label: 'Country',
-              child: TextFormBox(
-                controller: _countryController,
-                readOnly: !_isEditing,
+              controller: _countryController,
+              placeholder: 'Country',
+            ),
+            const SizedBox(height: 48),
+            _buildSectionHeader(context, 'Security'),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: theme.resources.cardBackgroundFillColorDefault,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: theme.resources.dividerStrokeColorDefault,
+                  width: 0.5,
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(FluentIcons.shield_24_regular, size: 32),
+                  const SizedBox(width: 24),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Password & Authentication',
+                          style: GoogleFonts.outfit(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Manage your password and sign-in methods.',
+                          style: GoogleFonts.outfit(
+                            color: theme.resources.textFillColorSecondary,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 24),
+                  Button(
+                    child: Text(
+                      'Reset Password',
+                      style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+                    ),
+                    onPressed: () async {
+                      await Supabase.instance.client.auth.signOut();
+                      if (mounted) {
+                        Navigator.of(context).pushReplacementNamed('/');
+                      }
+                    },
+                  ),
+                ],
               ),
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildSecurityTab() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(
-            FluentIcons.lock_closed_24_regular,
-            size: 48,
-            color: Colors.grey,
+  Widget _buildSectionHeader(BuildContext context, String title) {
+    final theme = FluentTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: GoogleFonts.outfit(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: theme.resources.textFillColorPrimary,
           ),
-          const SizedBox(height: 16),
-          Text(
-            'Password & Security',
-            style: GoogleFonts.outfit(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+        ),
+        const SizedBox(height: 4),
+        Container(
+          width: 40,
+          height: 3,
+          decoration: BoxDecoration(
+            color: theme.accentColor.withValues(alpha: 0.6),
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildInfoField({
+    required String label,
+    required TextEditingController controller,
+    String? placeholder,
+    String? Function(String?)? validator,
+  }) {
+    final theme = FluentTheme.of(context);
+    return InfoLabel(
+      label: label,
+      labelStyle: GoogleFonts.outfit(
+        fontSize: 13,
+        fontWeight: FontWeight.w600,
+        color: theme.resources.textFillColorSecondary,
+      ),
+      child: TextFormBox(
+        controller: controller,
+        readOnly: !_isEditing,
+        placeholder: placeholder,
+        validator: validator,
+        style: GoogleFonts.outfit(fontSize: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: WidgetStateProperty.all(
+          BoxDecoration(
+            color: _isEditing
+                ? theme.resources.controlFillColorDefault
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(
+              color: _isEditing
+                  ? theme.resources.dividerStrokeColorDefault
+                  : Colors.transparent,
             ),
           ),
-          const SizedBox(height: 8),
-          const Text(
-            'To change your password, please use the logout button and select "Forgot Password".',
-          ),
-          const SizedBox(height: 24),
-          Button(
-            child: const Text('Sign out to Reset Password'),
-            onPressed: () async {
-              await Supabase.instance.client.auth.signOut();
-              if (mounted) {
-                // Navigation handled by auth wrapper usually, or:
-                Navigator.of(context).pushReplacementNamed('/');
-              }
-            },
-          ),
-        ],
+        ),
       ),
     );
   }

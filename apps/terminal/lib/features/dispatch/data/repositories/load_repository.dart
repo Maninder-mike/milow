@@ -35,7 +35,8 @@ class LoadRepository {
           customers(name),
           stops(*),
           pickups(*),
-          receivers(*)
+          receivers(*),
+          accessorials:accessorial_charges(*)
         ''');
 
       if (statusFilter != null && statusFilter != 'All') {
@@ -100,6 +101,9 @@ class LoadRepository {
       loadData.remove('created_at');
       loadData.remove('updated_at');
 
+      // Separate accessorials
+      final accessorials = loadData.remove('accessorials') as List?;
+
       // Insert Load and get ID
       final response = await _client.supabase
           .from('loads')
@@ -119,6 +123,20 @@ class LoadRepository {
         }).toList();
 
         await _client.supabase.from('stops').insert(stopsData);
+      }
+
+      // Insert Accessorials
+      if (accessorials != null && accessorials.isNotEmpty) {
+        final accessorialsData = accessorials.map((e) {
+          final map = e as Map<String, dynamic>;
+          map['load_id'] = newLoadId;
+          map.remove('id'); // Generate new IDs
+          return map;
+        }).toList();
+
+        await _client.supabase
+            .from('accessorial_charges')
+            .insert(accessorialsData);
       }
 
       AppLogger.info('Load created successfully ($newLoadId).');
@@ -155,6 +173,9 @@ class LoadRepository {
       loadData.remove('created_at');
       loadData.remove('updated_at');
 
+      // Separate accessorials
+      final accessorials = loadData.remove('accessorials') as List?;
+
       AppLogger.debug('Updating load ${load.id} with data: $loadData');
 
       final updateRes = await _client.supabase
@@ -186,6 +207,27 @@ class LoadRepository {
             .insert(stopsData)
             .select();
         AppLogger.debug('Stops insert result: $insertRes');
+      }
+
+      // Update Accessorials: Replace All Strategy
+      // 1. Delete all accessorials for this load
+      await _client.supabase
+          .from('accessorial_charges')
+          .delete()
+          .eq('load_id', load.id);
+
+      // 2. Insert current accessorials
+      if (accessorials != null && accessorials.isNotEmpty) {
+        final accessorialsData = accessorials.map((e) {
+          final map = e as Map<String, dynamic>;
+          map['load_id'] = load.id;
+          map.remove('id'); // Generate new IDs ensures clean slate
+          return map;
+        }).toList();
+
+        await _client.supabase
+            .from('accessorial_charges')
+            .insert(accessorialsData);
       }
 
       AppLogger.info('Load ${load.id} updated successfully.');

@@ -15,7 +15,7 @@ class OrganizationPanel extends StatefulWidget {
 class _OrganizationPanelState extends State<OrganizationPanel> {
   bool _isLoading = false;
   bool _isEditing = false;
-  bool _isAdmin = false; // We'll fetch this
+  bool _isAdmin = false;
 
   // Company Details Controllers
   final _compNameController = TextEditingController();
@@ -40,7 +40,6 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
 
-      // 1. Fetch User Profile to check Role & Company ID
       final profile = await Supabase.instance.client
           .from('profiles')
           .select()
@@ -52,13 +51,6 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
           role.toLowerCase() == 'admin' ||
           (user.email?.contains('admin') ?? false);
 
-      // 2. Fetch Company Details
-      // Strategy: If admin, fetch from their profile (or companies table if you have one linked)
-      // For now, mirroring the logic from ProfilePage where admin profiles hold the "Source of Truth"
-      // or using the denormalized fields.
-
-      // Note: Ideally, we should be fetching from a 'companies' table using profile['company_id'].
-      // Let's try that first for "Big Grade" correctness.
       Map<String, dynamic>? companyData;
       final companyId = profile['company_id'] as String?;
 
@@ -70,7 +62,6 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
             .maybeSingle();
       }
 
-      // Fallback: If no companies table entry, use profile denormalized fields (Legacy support)
       companyData ??= profile;
 
       if (mounted) {
@@ -114,9 +105,6 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
       final user = Supabase.instance.client.auth.currentUser;
       if (user == null) return;
 
-      // Update 'companies' table via Edge Function or direct depending on RLS.
-      // For this refactor, we maintain existing logic: update profiles and companies table.
-
       final profile = await Supabase.instance.client
           .from('profiles')
           .select('company_id')
@@ -125,7 +113,6 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
 
       final companyId = profile['company_id'] as String?;
 
-      // 1. Update Companies Table
       if (companyId != null) {
         await Supabase.instance.client
             .from('companies')
@@ -144,7 +131,6 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
             .eq('id', companyId);
       }
 
-      // 2. Update Admin Profile (Denormalized backup)
       await Supabase.instance.client
           .from('profiles')
           .update({
@@ -186,7 +172,6 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
   Widget build(BuildContext context) {
     final theme = FluentTheme.of(context);
 
-    // Identity Warning if not admin
     if (!_isAdmin && !_isLoading) {
       return Center(
         child: Column(
@@ -212,7 +197,7 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
       );
     }
 
-    return ScaffoldPage(
+    return ScaffoldPage.scrollable(
       header: PageHeader(
         title: Text(
           'Organization',
@@ -242,74 +227,113 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
               )
             : null,
       ),
-      content: LayoutBuilder(
-        builder: (context, constraints) {
-          final isWide = constraints.maxWidth > 900;
+      children: [
+        if (_isLoading)
+          const Padding(
+            padding: EdgeInsets.only(bottom: 24),
+            child: ProgressBar(),
+          ),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 800;
 
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(
-                  maxWidth: 1000,
-                ), // Prevent infinite stretching
-                child: Form(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (_isLoading) ...[
-                        const ProgressBar(),
-                        const SizedBox(height: 24),
-                      ],
-
-                      // Description Header
-                      Text(
-                        'Compamy Profile',
-                        style: GoogleFonts.outfit(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Manage your official carrier information. This will appear on invoices and rate confirmations.',
-                        style: TextStyle(
-                          color: theme.resources.textFillColorSecondary,
-                        ),
-                      ),
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                _buildCategory(
+                  context,
+                  title: 'Company Profile',
+                  description:
+                      'Manage your official carrier information for invoices and rate confirmations.',
+                  icon: FluentIcons.organization_24_regular,
+                  children: [
+                    if (isWide)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildIdentitySection(context)),
+                          const SizedBox(width: 48),
+                          Expanded(child: _buildContactSection(context)),
+                        ],
+                      )
+                    else ...[
+                      _buildIdentitySection(context),
                       const SizedBox(height: 32),
-
-                      if (isWide)
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Left Column: Identity
-                            Expanded(child: _buildIdentitySection(context)),
-                            const SizedBox(width: 48), // Generous spacing
-                            // Right Column: Contact
-                            Expanded(child: _buildContactSection(context)),
-                          ],
-                        )
-                      else
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            _buildIdentitySection(context),
-                            const SizedBox(height: 32),
-                            const Divider(),
-                            const SizedBox(height: 32),
-                            _buildContactSection(context),
-                          ],
-                        ),
-
-                      const SizedBox(height: 48), // Bottom padding
+                      const Divider(),
+                      const SizedBox(height: 32),
+                      _buildContactSection(context),
                     ],
-                  ),
+                  ],
+                ),
+                const SizedBox(height: 48),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategory(
+    BuildContext context, {
+    required String title,
+    required String description,
+    required IconData icon,
+    required List<Widget> children,
+  }) {
+    final theme = FluentTheme.of(context);
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: theme.cardColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: theme.resources.surfaceStrokeColorDefault,
+          width: 0.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: theme.accentColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, size: 20, color: theme.accentColor),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: GoogleFonts.outfit(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      description,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: theme.resources.textFillColorSecondary,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+          const SizedBox(height: 32),
+          ...children,
+        ],
       ),
     );
   }
@@ -318,17 +342,14 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          FluentIcons.building_24_regular,
-          'Company Identity',
-        ),
+        _buildSectionTitle('Identity Details'),
         const SizedBox(height: 24),
         _buildField(
           'Company Name',
           _compNameController,
           placeholder: 'Legal Company Name',
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Row(
           children: [
             Expanded(
@@ -356,17 +377,14 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader(
-          FluentIcons.location_24_regular,
-          'Contact & Location',
-        ),
+        _buildSectionTitle('Contact & Location'),
         const SizedBox(height: 24),
         _buildField(
           'Address',
           _compAddressController,
           placeholder: 'Street Address',
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Row(
           children: [
             Expanded(flex: 2, child: _buildField('City', _compCityController)),
@@ -382,7 +400,7 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
             Expanded(child: _buildField('Zip', _compZipController)),
           ],
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 20),
         Row(
           children: [
             Expanded(
@@ -406,16 +424,16 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
     );
   }
 
-  Widget _buildSectionHeader(IconData icon, String title) {
-    return Row(
-      children: [
-        Icon(icon, size: 20, color: FluentTheme.of(context).accentColor),
-        const SizedBox(width: 12),
-        Text(
-          title,
-          style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
-        ),
-      ],
+  Widget _buildSectionTitle(String title) {
+    final theme = FluentTheme.of(context);
+    return Text(
+      title.toUpperCase(),
+      style: TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        letterSpacing: 1.2,
+        color: theme.accentColor,
+      ),
     );
   }
 
@@ -424,7 +442,8 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
     TextEditingController controller, {
     String? placeholder,
   }) {
-    // If NOT editing, show a clean typography version
+    final theme = FluentTheme.of(context);
+
     if (!_isEditing) {
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -433,22 +452,43 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
             label,
             style: TextStyle(
               fontSize: 12,
-              color: FluentTheme.of(context).resources.textFillColorSecondary,
+              color: theme.resources.textFillColorSecondary,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           SelectableText(
             controller.text.isNotEmpty ? controller.text : '-',
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            style: GoogleFonts.outfit(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ],
       );
     }
 
-    // If Editing, show form box
     return InfoLabel(
       label: label,
-      child: TextFormBox(controller: controller, placeholder: placeholder),
+      labelStyle: GoogleFonts.outfit(fontSize: 13, fontWeight: FontWeight.w500),
+      child: TextFormBox(
+        controller: controller,
+        placeholder: placeholder,
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
     );
+  }
+
+  @override
+  void dispose() {
+    _compNameController.dispose();
+    _compAddressController.dispose();
+    _compCityController.dispose();
+    _compStateController.dispose();
+    _compZipController.dispose();
+    _compDotController.dispose();
+    _compMcController.dispose();
+    _compPhoneController.dispose();
+    _compEmailController.dispose();
+    super.dispose();
   }
 }
