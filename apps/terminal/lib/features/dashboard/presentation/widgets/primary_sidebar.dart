@@ -14,6 +14,7 @@ class PrimarySidebar extends ConsumerWidget {
 
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
+  final VoidCallback onAnalyticsTap;
   final String? activePane; // 'add_record', 'drivers', etc
   final String currentLocation;
 
@@ -28,6 +29,7 @@ class PrimarySidebar extends ConsumerWidget {
     required this.onSettlementsTap,
     required this.onProfileTap,
     required this.onDashboardTap,
+    required this.onAnalyticsTap,
     required this.currentLocation,
     this.activePane,
   });
@@ -140,6 +142,16 @@ class PrimarySidebar extends ConsumerWidget {
                       isActive:
                           activePane == 'fleet' ||
                           currentLocation.startsWith('/vehicles'),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Analytics
+                    _buildNavItem(
+                      context,
+                      FluentIcons.data_bar_vertical_24_regular,
+                      label: 'Analytics',
+                      onTap: onAnalyticsTap,
+                      isActive: currentLocation.startsWith('/analytics'),
                     ),
                   ],
                 ),

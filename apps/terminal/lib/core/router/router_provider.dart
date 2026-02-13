@@ -37,6 +37,7 @@ import 'package:terminal/features/crm/presentation/pages/crm_page.dart';
 import 'package:terminal/features/crm/presentation/pages/crm_details_page.dart';
 import 'package:terminal/features/settlements/presentation/pages/settlements_page.dart';
 import 'package:terminal/features/settlements/presentation/pages/settlement_details_page.dart'; // [NEW]
+import 'package:terminal/features/analytics/presentation/screens/analytics_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -224,6 +225,14 @@ final routerProvider = Provider<GoRouter>((ref) {
                 },
               ),
             ],
+          ),
+          GoRoute(
+            path: '/analytics',
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const AnalyticsPage(),
+            ),
           ),
         ],
       ),

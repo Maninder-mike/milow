@@ -63,6 +63,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     if (location.startsWith('/dashboard')) {
       title = 'Dashboard';
       icon = FluentIcons.home_24_regular;
+    } else if (location.startsWith('/analytics')) {
+      title = 'Analytics';
+      icon = FluentIcons.data_usage_24_regular;
     } else if (location.startsWith('/inbox')) {
       title = 'Inbox';
       icon = FluentIcons.mail_24_regular;
@@ -248,6 +251,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
 
                           onProfileTap: () => _navigateTo('/profile'),
                           onDashboardTap: () => _navigateTo('/dashboard'),
+                          onAnalyticsTap: () => _navigateTo('/analytics'),
                           activePane: _activeSidebarPane,
                           currentLocation: GoRouterState.of(
                             context,

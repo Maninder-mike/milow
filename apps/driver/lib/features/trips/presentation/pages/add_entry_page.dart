@@ -280,6 +280,13 @@ class _AddEntryPageState extends State<AddEntryPage>
     _tripNumberController.addListener(_checkTripNumberExists);
 
     _loadExistingTripNumbers();
+
+    // Prefill data if editing an existing trip or fuel entry
+    if (widget.editingTrip != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _prefillTripData(widget.editingTrip!);
+      });
+    }
   }
 
   Future<void> _loadDriverType() async {
