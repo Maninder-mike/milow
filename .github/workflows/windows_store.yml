@@ -171,7 +171,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: milow-terminal-msix
-          path: staging/*
+          path: apps/terminal/staging/*
           retention-days: 1
 
   # -----------------------------------------------------------------------------
