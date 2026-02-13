@@ -165,7 +165,7 @@ jobs:
         shell: bash
         run: |
           mkdir -p staging
-          cp build/windows/runner/Release/*.msix staging/
+          cp build/windows/x64/runner/Release/*.msix staging/
 
       - name: Upload MSIX Artifact
         uses: actions/upload-artifact@v4
