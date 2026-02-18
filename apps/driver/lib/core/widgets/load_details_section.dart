@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/utils/input_formatters.dart';
 
 /// Collapsible section for owner-operator load details
 /// Only visible when driver type is ownerOperator or leaseOperator
@@ -166,7 +168,12 @@ class _LoadDetailsSectionState extends State<LoadDetailsSection> {
                       controller: widget.weightController,
                       hint: '0',
                       icon: Icons.scale_outlined,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(allowFraction: true),
+                      ],
                       tokens: tokens,
                       theme: theme,
                     ),
@@ -196,6 +203,7 @@ class _LoadDetailsSectionState extends State<LoadDetailsSection> {
             hint: '0',
             icon: Icons.view_in_ar_outlined,
             keyboardType: TextInputType.number,
+            inputFormatters: [ThousandsSeparatorInputFormatter()],
             tokens: tokens,
             theme: theme,
           ),
@@ -278,10 +286,12 @@ class _LoadDetailsSectionState extends State<LoadDetailsSection> {
     required DesignTokens tokens,
     required ThemeData theme,
     TextInputType? keyboardType,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return TextFormField(
       controller: controller,
       keyboardType: keyboardType,
+      inputFormatters: inputFormatters,
       style: theme.textTheme.bodyMedium?.copyWith(color: tokens.textPrimary),
       decoration: InputDecoration(
         hintText: hint,

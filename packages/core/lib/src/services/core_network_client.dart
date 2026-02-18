@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:fpdart/fpdart.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 
 import '../utils/failure.dart';
 import 'app_logger.dart';
@@ -88,6 +89,12 @@ class CoreNetworkClient {
 
   /// Access the underlying Supabase client (for advanced use cases).
   SupabaseClient get supabase => _supabase;
+
+  /// current connection status
+  Future<bool> get hasConnection async {
+    final result = await Connectivity().checkConnectivity();
+    return !result.contains(ConnectivityResult.none);
+  }
 
   /// Current state of the circuit breaker.
   CircuitState get circuitState => _circuitState;

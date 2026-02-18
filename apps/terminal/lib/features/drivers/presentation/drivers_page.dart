@@ -336,7 +336,7 @@ class _OverviewTab extends ConsumerWidget {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(40),
-              child: driver.avatarUrl != null && driver.avatarUrl!.isNotEmpty
+              child: (driver.avatarUrl?.isNotEmpty ?? false)
                   ? Image.network(
                       driver.avatarUrl!,
                       fit: BoxFit.cover,
@@ -633,7 +633,7 @@ class _OverviewTab extends ConsumerWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              if (trailing != null) trailing,
+              trailing ?? const SizedBox.shrink(),
             ],
           ),
           const SizedBox(height: 12),
@@ -735,7 +735,7 @@ class _OverviewTab extends ConsumerWidget {
   Widget _buildAvatarPlaceholder(BuildContext context, {double size = 48}) {
     final theme = FluentTheme.of(context);
     String initials = '?';
-    if (driver.fullName != null && driver.fullName!.isNotEmpty) {
+    if (driver.fullName?.isNotEmpty ?? false) {
       final parts = driver.fullName!.trim().split(' ');
       if (parts.length >= 2) {
         initials = '${parts[0][0]}${parts[1][0]}'.toUpperCase();

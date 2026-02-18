@@ -130,7 +130,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
           stream: Supabase.instance.client
               .from('notifications')
               .stream(primaryKey: ['id'])
-              .eq('user_id', Supabase.instance.client.auth.currentUser!.id),
+              .eq(
+                'user_id',
+                Supabase.instance.client.auth.currentUser?.id ?? '',
+              ),
           builder: (context, snapshot) {
             int unread = 0;
             if (snapshot.hasData) {
@@ -176,7 +179,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
         stream: Supabase.instance.client
             .from('notifications')
             .stream(primaryKey: ['id'])
-            .eq('user_id', Supabase.instance.client.auth.currentUser!.id)
+            .eq('user_id', Supabase.instance.client.auth.currentUser?.id ?? '')
             .order('created_at', ascending: false),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
@@ -607,12 +610,14 @@ class _NotificationsPageState extends State<NotificationsPage> {
       // Set driver as verified, associate with company, and ensure role is 'driver'
       await Supabase.instance.client
           .from('profiles')
-          .update({
-            'is_verified': true,
-            'role': 'driver', // Ensure role is driver when accepting
-            if (companyId != null) 'company_id': companyId,
-            if (companyName != null) 'company_name': companyName,
-          })
+          .update(
+            {
+              'is_verified': true,
+              'role': 'driver', // Ensure role is driver when accepting
+              'company_id': companyId,
+              'company_name': companyName,
+            }..removeWhere((_, v) => v == null),
+          )
           .eq('id', userId);
 
       // Notify the admin that driver accepted

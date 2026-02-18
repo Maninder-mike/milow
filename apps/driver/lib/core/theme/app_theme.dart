@@ -153,58 +153,115 @@ class AppTheme {
   }
 
   static ThemeData get darkTheme {
-    final colorScheme =
-        ColorScheme.fromSeed(
-          seedColor: primaryBlue,
-          brightness: Brightness.dark,
-          // M3 Expressive: Use vibrant variant for rich dark colors
-          dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
-        ).copyWith(
-          // M3 Expressive: Tertiary for emphasis in dark mode
-          tertiary: tertiaryAccent.withAlpha(230),
-          outlineVariant: const Color(0xFF49454F),
-        );
+    const tokens = DesignTokens.dark;
+
+    // Create base scheme from seed, then override with our fixed functional colors
+    final baseScheme = ColorScheme.fromSeed(
+      seedColor: primaryBlue,
+      brightness: Brightness.dark,
+      dynamicSchemeVariant: DynamicSchemeVariant.vibrant,
+    );
+
+    final colorScheme = baseScheme.copyWith(
+      // Override surfaces with our "Big Grade" slate palette
+      surface: tokens.surfaceContainer,
+      onSurface: tokens.textPrimary,
+      surfaceContainer: tokens.surfaceContainer,
+      surfaceContainerHigh: tokens.surfaceContainerHigh,
+
+      // Override semantic roles
+      error: tokens.error,
+      errorContainer: tokens.errorContainer,
+
+      // Accents from seed (keep these dynamic if we want, or lock them)
+      primary: baseScheme.primary,
+      tertiary: tertiaryAccent, // Keep tertiary distinct
+      // Borders
+      outline: tokens.subtleBorderColor,
+      outlineVariant: tokens.subtleBorderColor,
+    );
 
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       colorScheme: colorScheme,
-      extensions: const [DesignTokens.dark],
-      // M3 Typography Scale
+      scaffoldBackgroundColor: tokens.scaffoldAltBackground,
+      extensions: const [tokens],
       textTheme: _buildTextTheme(Brightness.dark),
-      // M3 Expressive: Page transitions with emphasis motion
+
+      // M3 Expressive: Page transitions
       pageTransitionsTheme: const PageTransitionsTheme(
         builders: {TargetPlatform.iOS: CupertinoPageTransitionsBuilder()},
       ),
-      // M3 Expressive: Global Input Decoration
+
+      // AppBar
+      appBarTheme: AppBarTheme(
+        backgroundColor: tokens.scaffoldAltBackground, // Seamless with scaffold
+        scrolledUnderElevation: 0,
+        centerTitle: true,
+        titleTextStyle: GoogleFonts.outfit(
+          color: tokens.textPrimary,
+          fontSize: 18,
+          fontWeight: FontWeight.w600,
+        ),
+        iconTheme: IconThemeData(color: tokens.textPrimary),
+      ),
+
+      // Navigation Bar (Bottom)
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: tokens.surfaceContainer,
+        surfaceTintColor: Colors.transparent.withValues(alpha: 0.05),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return GoogleFonts.outfit(
+              color: tokens.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+            );
+          }
+          return GoogleFonts.outfit(
+            color: tokens.textSecondary,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          );
+        }),
+        iconTheme: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return IconThemeData(color: colorScheme.primary);
+          }
+          return IconThemeData(color: tokens.textSecondary);
+        }),
+      ),
+
+      // Input Decoration (Big Grade: Darker bg + visible border)
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: DesignTokens.dark.inputBackground,
+        fillColor: tokens.inputBackground,
+        hintStyle: TextStyle(color: tokens.textTertiary),
+        labelStyle: TextStyle(color: tokens.textSecondary),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.dark.shapeL),
-          borderSide: BorderSide(color: DesignTokens.dark.inputBorder),
+          borderRadius: BorderRadius.circular(tokens.shapeS),
+          borderSide: BorderSide(color: tokens.inputBorder),
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.dark.shapeL),
-          borderSide: BorderSide(color: DesignTokens.dark.inputBorder),
+          borderRadius: BorderRadius.circular(tokens.shapeS),
+          borderSide: BorderSide(color: tokens.inputBorder),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(DesignTokens.dark.shapeL),
-          borderSide: BorderSide(
-            color: DesignTokens.dark.inputFocusedBorder,
-            width: 2,
-          ),
+          borderRadius: BorderRadius.circular(tokens.shapeS),
+          borderSide: BorderSide(color: tokens.inputFocusedBorder, width: 2),
         ),
         contentPadding: EdgeInsets.symmetric(
-          horizontal: DesignTokens.dark.spacingM,
-          vertical: DesignTokens.dark.spacingM,
+          horizontal: tokens.spacingM,
+          vertical: tokens.spacingM,
         ),
       ),
-      // M3 Expressive: Elevated buttons with rounded corners
+
+      // Buttons
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DesignTokens.dark.shapeButton),
+            borderRadius: BorderRadius.circular(tokens.shapeButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
           textStyle: GoogleFonts.outfit(
@@ -214,59 +271,76 @@ class AppTheme {
           ),
         ),
       ),
-      // M3 Expressive: Outlined buttons
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          foregroundColor: tokens.textPrimary,
+          side: BorderSide(color: tokens.subtleBorderColor),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DesignTokens.dark.shapeButton),
+            borderRadius: BorderRadius.circular(tokens.shapeButton),
           ),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          side: BorderSide(color: DesignTokens.dark.subtleBorderColor),
-          textStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            letterSpacing: 0.1,
-          ),
+          textStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600),
         ),
       ),
-      // M3 Expressive: Text buttons
-      textButtonTheme: TextButtonThemeData(
-        style: TextButton.styleFrom(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(DesignTokens.dark.shapeButton),
-          ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          textStyle: GoogleFonts.outfit(
-            fontWeight: FontWeight.w600,
-            fontSize: 14,
-            letterSpacing: 0.1,
-          ),
-        ),
-      ),
-      // M3 Expressive: Cards with subtle elevation
-      cardTheme: const CardThemeData(
+
+      // Cards (Clean, bordered, low elevation)
+      cardTheme: CardThemeData(
+        color: tokens.surfaceContainerHigh, // Slightly lighter than background
         elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.shapeM),
+          side: BorderSide(
+            color: tokens.subtleBorderColor,
+          ), // Mandatory 1px border
+        ),
         clipBehavior: Clip.antiAlias,
       ),
-      // M3 Expressive: Chips with expressive shape
-      chipTheme: ChipThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      ),
-      // M3 Expressive: Dialog with increased corner radius
+
+      // Dialogs
       dialogTheme: DialogThemeData(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        backgroundColor: tokens.surfaceContainer,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(tokens.shapeXL),
+          side: BorderSide(color: tokens.subtleBorderColor),
+        ),
+        titleTextStyle: GoogleFonts.outfit(
+          fontSize: 24,
+          fontWeight: FontWeight.w600,
+          color: tokens.textPrimary,
+        ),
+        contentTextStyle: GoogleFonts.outfit(
+          fontSize: 14,
+          color: tokens.textSecondary,
+        ),
       ),
-      // M3 Expressive: Bottom sheet with drag handle
-      bottomSheetTheme: const BottomSheetThemeData(
+
+      // Bottom Sheet
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: tokens.surfaceContainer,
+        modalBackgroundColor: tokens.surfaceContainer,
         showDragHandle: true,
-        dragHandleColor: Color(0xFF49454F),
-        dragHandleSize: Size(32, 4),
+        dragHandleColor: tokens.subtleBorderColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(tokens.shapeXL),
+          ),
+          side: BorderSide(
+            color: tokens.subtleBorderColor,
+            width: 0.5,
+          ), // Subtle top border
+        ),
       ),
-      // M3 Expressive: Progress indicators with rounded stroke caps
+
+      dividerTheme: DividerThemeData(
+        color: tokens.subtleBorderColor,
+        thickness: 1,
+      ),
+
       progressIndicatorTheme: ProgressIndicatorThemeData(
         color: colorScheme.primary,
-        circularTrackColor: colorScheme.surfaceContainerHighest,
-        linearTrackColor: colorScheme.surfaceContainerHighest,
+        circularTrackColor: tokens.surfaceContainerHigh,
+        linearTrackColor: tokens.surfaceContainerHigh,
         strokeCap: StrokeCap.round,
       ),
     );

@@ -1,16 +1,16 @@
 import 'dart:io';
 
+import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:hive/hive.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/fuel_repository.dart';
-import 'package:milow/core/services/local_fuel_store.dart';
-import 'package:milow/core/services/local_trip_store.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
-import 'package:milow_core/milow_core.dart';
+import 'package:milow/features/offline/data/database/driver_database.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Mock Connectivity Service
@@ -28,29 +28,17 @@ void main() {
   late Directory tempDir;
 
   setUpAll(() async {
-    // Setup Hive for testing
+    // Setup Mock Path Provider via MethodChannel
     tempDir = await Directory.systemTemp.createTemp();
-    Hive.init(tempDir.path);
 
-    // Open boxes if not already open
-    if (!Hive.isBoxOpen('trips')) {
-      await Hive.openBox<String>('trips');
-    }
-    if (!Hive.isBoxOpen('fuel_entries')) {
-      await Hive.openBox<String>('fuel_entries');
-    }
-
-    // Initialize Local Stores
-    // Just ensure the boxes are open, LocalTripStore.init() expects Hive to be init
-    // LocalTripStore._box = await Hive.openBox(...) in actual code
-    // We can manually inject the box if needed, or call init()
-    // But init() calls Hive.openBox which works if Hive.init is called.
-    await LocalTripStore.init();
-    await LocalFuelStore.init();
+    const channel = MethodChannel('plugins.flutter.io/path_provider');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          return tempDir.path;
+        });
   });
 
   tearDownAll(() async {
-    await Hive.close();
     await tempDir.delete(recursive: true);
   });
 
@@ -64,9 +52,9 @@ void main() {
     TripRepository.mockUserId = 'test-user';
     FuelRepository.mockUserId = 'test-user';
 
-    // Clear stores
-    await LocalTripStore.clear();
-    await LocalFuelStore.clear();
+    // Clear DB
+    await driverDatabase.delete(driverDatabase.trips).go();
+    await driverDatabase.delete(driverDatabase.fuelEntries).go();
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
@@ -81,7 +69,7 @@ void main() {
 
     // Pump a fixed duration to allow async _loadRecords to complete.
     // We avoid pumpAndSettle() because AnimatedContainer animations
-    // can cause timeouts. 500ms is plenty for local Hive reads.
+    // can cause timeouts. 500ms is plenty for local DB reads.
     await tester.pump(const Duration(milliseconds: 500));
   }
 
@@ -89,43 +77,35 @@ void main() {
     await pumpPage(tester);
 
     expect(find.text('All Records'), findsOneWidget);
-    expect(
-      find.byType(SliverAppBar),
-      findsWidgets,
-    ); // 1 or 2 depending on implementation
+    expect(find.byType(SliverAppBar), findsWidgets);
     expect(find.text('No matching records'), findsOneWidget);
   });
 
   testWidgets('loads and displays trips and fuel', (tester) async {
-    // Seed Data
-    final trip = Trip(
+    // Seed Data into DriverDatabase directly
+    final trip = TripsCompanion.insert(
       id: 'trip-1',
-      userId: 'test-user',
+      userId: const Value('test-user'),
       tripNumber: '12345',
-      tripDate: DateTime(2023, 10, 1),
       truckNumber: 'T-100',
-      pickupLocations: ['Chicago, IL'],
-      deliveryLocations: ['Detroit, MI'],
+      tripDate: DateTime(2023, 10, 1),
+      pickupLocations: const Value('["Chicago, IL"]'),
+      deliveryLocations: const Value('["Detroit, MI"]'),
     );
 
-    final fuel = FuelEntry(
+    final fuel = FuelEntriesCompanion.insert(
       id: 'fuel-1',
-      userId: 'test-user',
+      userId: const Value('test-user'),
       fuelDate: DateTime(2023, 10, 2),
       fuelQuantity: 50.0,
-      fuelUnit: 'gal',
-      pricePerUnit: 4.0, // results in 200.0 cost
-      currency: 'USD',
-      location: 'Gary, IN',
-      fuelType: 'truck',
-      truckNumber: 'T-100',
+      pricePerUnit: 4.0,
+      location: const Value('Gary, IN'),
+      fuelType: const Value('truck'),
+      truckNumber: const Value('T-100'),
     );
 
-    // Use runAsync for Hive I/O operations since they require real async
-    await tester.runAsync(() async {
-      await LocalTripStore.put(trip);
-      await LocalFuelStore.put(fuel);
-    });
+    await driverDatabase.into(driverDatabase.trips).insert(trip);
+    await driverDatabase.into(driverDatabase.fuelEntries).insert(fuel);
 
     await pumpPage(tester);
 
@@ -142,37 +122,34 @@ void main() {
 
   testWidgets('filters functionality works', (tester) async {
     // Seed Trips and Fuel
-    final trip = Trip(
+    final trip = TripsCompanion.insert(
       id: 'trip-1',
-      userId: 'test-user',
+      userId: const Value('test-user'),
       tripNumber: '100',
+      truckNumber: 'T-100',
       tripDate: DateTime.now(),
-      truckNumber: 'T-100', // Required
-      pickupLocations: [],
-      deliveryLocations: [],
-    );
-    final fuel = FuelEntry(
-      id: 'fuel-1',
-      userId: 'test-user',
-      fuelDate: DateTime.now(),
-      fuelQuantity: 10,
-      fuelUnit: 'gal',
-      pricePerUnit: 1.0,
-      currency: 'USD',
-      fuelType: 'truck',
     );
 
-    // Use runAsync for Hive I/O operations
-    await tester.runAsync(() async {
-      await LocalTripStore.put(trip);
-      await LocalFuelStore.put(fuel);
-    });
+    final fuel = FuelEntriesCompanion.insert(
+      id: 'fuel-1',
+      userId: const Value('test-user'),
+      fuelDate: DateTime.now(),
+      fuelQuantity: 10.0,
+      pricePerUnit: 1.0,
+      fuelType: const Value('truck'),
+      truckNumber: const Value(
+        'Truck',
+      ), // Default identifier logic uses truckNumber or "Truck"
+    );
+
+    await driverDatabase.into(driverDatabase.trips).insert(trip);
+    await driverDatabase.into(driverDatabase.fuelEntries).insert(fuel);
 
     await pumpPage(tester);
 
     // Initial: Show All
     expect(find.text('Trip #100'), findsOneWidget);
-    // Fuel entry has no truckNumber set, so identifier defaults to 'Truck'
+    // Fuel entry has truckNumber 'Truck'
     expect(find.text('Truck - Truck'), findsOneWidget);
 
     // Filter: Trips Only
@@ -191,30 +168,23 @@ void main() {
   });
 
   testWidgets('search functionality works', (tester) async {
-    final trip1 = Trip(
+    final trip1 = TripsCompanion.insert(
       id: 't1',
-      userId: 'test-user',
+      userId: const Value('test-user'),
       tripNumber: 'ALPHA',
-      tripDate: DateTime.now(),
       truckNumber: 'T-1',
-      pickupLocations: [],
-      deliveryLocations: [],
-    );
-    final trip2 = Trip(
-      id: 't2',
-      userId: 'test-user',
-      tripNumber: 'BETA',
       tripDate: DateTime.now(),
+    );
+    final trip2 = TripsCompanion.insert(
+      id: 't2',
+      userId: const Value('test-user'),
+      tripNumber: 'BETA',
       truckNumber: 'T-2',
-      pickupLocations: [],
-      deliveryLocations: [],
+      tripDate: DateTime.now(),
     );
 
-    // Use runAsync for Hive I/O operations
-    await tester.runAsync(() async {
-      await LocalTripStore.put(trip1);
-      await LocalTripStore.put(trip2);
-    });
+    await driverDatabase.into(driverDatabase.trips).insert(trip1);
+    await driverDatabase.into(driverDatabase.trips).insert(trip2);
 
     await pumpPage(tester);
 

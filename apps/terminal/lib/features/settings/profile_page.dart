@@ -152,13 +152,15 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       }
 
       // 2. Update Profiles (Base)
+      final updates = {
+        'full_name': _nameController.text,
+        'updated_at': DateTime.now().toIso8601String(),
+      };
+      if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
+
       await Supabase.instance.client
           .from('profiles')
-          .update({
-            'full_name': _nameController.text,
-            'updated_at': DateTime.now().toIso8601String(),
-            if (avatarUrl != null) 'avatar_url': avatarUrl,
-          })
+          .update(updates)
           .eq('id', user.id);
 
       // 3. Update Staff Details

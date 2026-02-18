@@ -124,15 +124,11 @@ class NotificationActions {
     // Update user profile
     // NOTE: The database trigger `notify_on_verification` automatically
     // sends a notification to the driver when is_verified changes to true.
-    await client
-        .from('profiles')
-        .update({
-          'role': role.name,
-          'is_verified': true,
-          if (companyId != null) 'company_id': companyId,
-          if (companyName != null) 'company_name': companyName,
-        })
-        .eq('id', userId);
+    final updates = {'role': role.name, 'is_verified': true};
+    if (companyId != null) updates['company_id'] = companyId;
+    if (companyName != null) updates['company_name'] = companyName;
+
+    await client.from('profiles').update(updates).eq('id', userId);
   }
 
   Future<void> rejectUser(String userId) async {

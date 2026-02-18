@@ -1,4 +1,6 @@
+import 'package:milow/features/trips/presentation/dialogs/detention_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:milow/core/mixins/form_restoration_mixin.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/utils/error_handler.dart';
@@ -23,6 +25,7 @@ import 'package:milow/core/theme/m3_expressive_motion.dart';
 
 import 'package:milow/core/widgets/load_details_section.dart';
 import 'package:milow/core/widgets/m3_spring_button.dart';
+import 'package:milow/core/utils/input_formatters.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:intl/intl.dart';
@@ -135,6 +138,9 @@ class _AddEntryPageState extends State<AddEntryPage>
   _pendingPickupDocs = {};
   final Map<int, List<({File file, TripDocumentType type})>>
   _pendingDeliveryDocs = {};
+
+  final List<Detention?> _pickupDetention = [];
+  final List<Detention?> _deliveryDetention = [];
 
   DriverType? _currentDriverType;
   List<Vehicle> _vehicles = [];
@@ -389,11 +395,13 @@ class _AddEntryPageState extends State<AddEntryPage>
     if (trip.trailers.isNotEmpty) {
       // Clear initial empty trailer if present
       if (_trailerControllers.isNotEmpty &&
-          _trailerControllers[0].value.text.isEmpty) {
-        _trailerControllers[0].dispose();
+          _trailerControllers.first.value.text.isEmpty) {
+        _trailerControllers.first.dispose();
         _trailerControllers.removeAt(0);
-        _trailerFocusNodes[0].dispose();
-        _trailerFocusNodes.removeAt(0);
+        if (_trailerFocusNodes.isNotEmpty) {
+          _trailerFocusNodes.first.dispose();
+          _trailerFocusNodes.removeAt(0);
+        }
       }
 
       for (final trailer in trip.trailers) {
@@ -407,7 +415,9 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Fill pickup locations
     if (trip.pickupLocations.isNotEmpty) {
-      _pickupControllers[0].value.text = trip.pickupLocations[0];
+      if (_pickupControllers.isNotEmpty) {
+        _pickupControllers[0].value.text = trip.pickupLocations[0];
+      }
       for (int i = 1; i < trip.pickupLocations.length; i++) {
         _addPickupLocation();
         _pickupControllers[i].value.text = trip.pickupLocations[i];
@@ -416,7 +426,9 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Fill delivery locations
     if (trip.deliveryLocations.isNotEmpty) {
-      _deliveryControllers[0].value.text = trip.deliveryLocations[0];
+      if (_deliveryControllers.isNotEmpty) {
+        _deliveryControllers[0].value.text = trip.deliveryLocations[0];
+      }
       for (int i = 1; i < trip.deliveryLocations.length; i++) {
         _addDeliveryLocation();
         _deliveryControllers[i].value.text = trip.deliveryLocations[i];
@@ -429,6 +441,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       if (_pickupTimes.isNotEmpty) {
         _pickupTimes.clear();
         _pickupCompleted.clear();
+        _pickupDetention.clear(); // Clear detention
       }
       for (var i = 0; i < trip.pickupTimes.length; i++) {
         _pickupTimes.add(trip.pickupTimes[i]);
@@ -438,11 +451,24 @@ class _AddEntryPageState extends State<AddEntryPage>
         } else {
           _pickupCompleted.add(false);
         }
+
+        // Detention
+        if (i < trip.pickupDetention.length) {
+          _pickupDetention.add(trip.pickupDetention[i]);
+        } else {
+          _pickupDetention.add(null);
+        }
       }
       // Ensure length matches controllers if possible (padding)
       while (_pickupTimes.length < _pickupControllers.length) {
         _pickupTimes.add(null);
         _pickupCompleted.add(false);
+        _pickupDetention.add(null);
+      }
+    } else {
+      // Init empty detentions if not present but controllers are
+      while (_pickupDetention.length < _pickupControllers.length) {
+        _pickupDetention.add(null);
       }
     }
 
@@ -451,6 +477,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       if (_deliveryTimes.isNotEmpty) {
         _deliveryTimes.clear();
         _deliveryCompleted.clear();
+        _deliveryDetention.clear(); // Clear detention
       }
       for (var i = 0; i < trip.deliveryTimes.length; i++) {
         _deliveryTimes.add(trip.deliveryTimes[i]);
@@ -459,10 +486,22 @@ class _AddEntryPageState extends State<AddEntryPage>
         } else {
           _deliveryCompleted.add(false);
         }
+        // Detention
+        if (i < trip.deliveryDetention.length) {
+          _deliveryDetention.add(trip.deliveryDetention[i]);
+        } else {
+          _deliveryDetention.add(null);
+        }
       }
       while (_deliveryTimes.length < _deliveryControllers.length) {
         _deliveryTimes.add(null);
         _deliveryCompleted.add(false);
+        _deliveryDetention.add(null);
+      }
+    } else {
+      // Init empty detentions if not present
+      while (_deliveryDetention.length < _deliveryControllers.length) {
+        _deliveryDetention.add(null);
       }
     }
 
@@ -769,7 +808,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   /// Load all existing trip numbers for duplicate detection
   Future<void> _loadExistingTripNumbers() async {
     try {
-      final trips = await TripRepository.getTrips(refresh: false);
+      final List<Trip> trips = await TripRepository.getTrips(refresh: false);
       if (mounted) {
         setState(() {
           _existingTripNumbers = trips
@@ -846,6 +885,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       _pickupFocusNodes.add(FocusNode());
       _pickupTimes.add(null);
       _pickupCompleted.add(false);
+      _pickupDetention.add(null);
     }
     for (int i = 0; i < _pickupControllers.length; i++) {
       registerForRestoration(_pickupControllers[i], 'pickup_controller_$i');
@@ -857,6 +897,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       _deliveryFocusNodes.add(FocusNode());
       _deliveryTimes.add(null);
       _deliveryCompleted.add(false);
+      _deliveryDetention.add(null);
     }
     for (int i = 0; i < _deliveryControllers.length; i++) {
       registerForRestoration(_deliveryControllers[i], 'delivery_controller_$i');
@@ -960,6 +1001,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   // Methods to manage pickup locations
   void _addPickupLocation([String? location]) {
+    HapticFeedback.lightImpact();
     if (_pickupControllers.length < _maxLocations) {
       setState(() {
         _pickupCount.value++;
@@ -968,6 +1010,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         _pickupFocusNodes.add(FocusNode());
         _pickupTimes.add(null);
         _pickupCompleted.add(false);
+        _pickupDetention.add(null);
         registerForRestoration(
           controller,
           'pickup_controller_${_pickupControllers.length - 1}',
@@ -977,6 +1020,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   void _removePickupLocation(int index) {
+    HapticFeedback.lightImpact();
     if (_pickupControllers.length > 1) {
       setState(() {
         _pickupCount.value--;
@@ -986,12 +1030,14 @@ class _AddEntryPageState extends State<AddEntryPage>
         _pickupFocusNodes.removeAt(index);
         if (index < _pickupTimes.length) _pickupTimes.removeAt(index);
         if (index < _pickupCompleted.length) _pickupCompleted.removeAt(index);
+        if (index < _pickupDetention.length) _pickupDetention.removeAt(index);
       });
     }
   }
 
   // Methods to manage delivery locations
   void _addDeliveryLocation([String? location]) {
+    HapticFeedback.lightImpact();
     if (_deliveryControllers.length < _maxLocations) {
       setState(() {
         _deliveryCount.value++;
@@ -1000,6 +1046,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         _deliveryFocusNodes.add(FocusNode());
         _deliveryTimes.add(null);
         _deliveryCompleted.add(false);
+        _deliveryDetention.add(null);
         registerForRestoration(
           controller,
           'delivery_controller_${_deliveryControllers.length - 1}',
@@ -1009,6 +1056,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   void _removeDeliveryLocation(int index) {
+    HapticFeedback.lightImpact();
     if (_deliveryControllers.length > 1) {
       setState(() {
         _deliveryCount.value--;
@@ -1019,6 +1067,9 @@ class _AddEntryPageState extends State<AddEntryPage>
         if (index < _deliveryTimes.length) _deliveryTimes.removeAt(index);
         if (index < _deliveryCompleted.length) {
           _deliveryCompleted.removeAt(index);
+        }
+        if (index < _deliveryDetention.length) {
+          _deliveryDetention.removeAt(index);
         }
       });
     }
@@ -1257,7 +1308,6 @@ class _AddEntryPageState extends State<AddEntryPage>
       final isLast = i == _pickupControllers.length - 1;
       final canAdd = _pickupControllers.length < _maxLocations;
       final canRemove = _pickupControllers.length > 1;
-      // final pendingDocs removed
 
       fields.add(
         Padding(
@@ -1280,6 +1330,27 @@ class _AddEntryPageState extends State<AddEntryPage>
                           _getLocationFor(_pickupControllers[i].value),
                       optionsBuilder:
                           PredictionService.instance.getLocationSuggestions,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Detention Button
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: _buildDetentionButton(
+                      detention: _pickupDetention[i],
+                      onTap: () async {
+                        final result = await showDialog<Detention>(
+                          context: context,
+                          builder: (context) => DetentionDialog(
+                            initialDetention: _pickupDetention[i],
+                          ),
+                        );
+                        if (result != null) {
+                          setState(() {
+                            _pickupDetention[i] = result;
+                          });
+                        }
+                      },
                     ),
                   ),
                   if (canRemove) ...[
@@ -1319,8 +1390,6 @@ class _AddEntryPageState extends State<AddEntryPage>
                   ],
                 ],
               ),
-
-              // Document Capture removed per user request
             ],
           ),
         ),
@@ -1336,7 +1405,6 @@ class _AddEntryPageState extends State<AddEntryPage>
       final isLast = i == _deliveryControllers.length - 1;
       final canAdd = _deliveryControllers.length < _maxLocations;
       final canRemove = _deliveryControllers.length > 1;
-      // final pendingDocs removed
 
       fields.add(
         Padding(
@@ -1360,6 +1428,27 @@ class _AddEntryPageState extends State<AddEntryPage>
                           _getLocationFor(_deliveryControllers[i].value),
                       optionsBuilder:
                           PredictionService.instance.getLocationSuggestions,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Detention Button
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: _buildDetentionButton(
+                      detention: _deliveryDetention[i],
+                      onTap: () async {
+                        final result = await showDialog<Detention>(
+                          context: context,
+                          builder: (context) => DetentionDialog(
+                            initialDetention: _deliveryDetention[i],
+                          ),
+                        );
+                        if (result != null) {
+                          setState(() {
+                            _deliveryDetention[i] = result;
+                          });
+                        }
+                      },
                     ),
                   ),
                   if (canRemove) ...[
@@ -1399,14 +1488,51 @@ class _AddEntryPageState extends State<AddEntryPage>
                   ],
                 ],
               ),
-
-              // Document Capture removed per user request
             ],
           ),
         ),
       );
     }
     return fields;
+  }
+
+  Widget _buildDetentionButton({
+    required VoidCallback onTap,
+    Detention? detention,
+  }) {
+    final hasDetention = detention != null;
+    final isLayover = detention?.isLayover ?? false;
+    final primaryColor = Theme.of(context).colorScheme.primary;
+    final surfaceContainer = Theme.of(context).colorScheme.surfaceContainer;
+
+    return Tooltip(
+      message: hasDetention
+          ? (isLayover
+                ? 'Overnight Stay (Edit)'
+                : 'Waiting Time: ${detention.duration.inMinutes}m (Edit)')
+          : 'Add Waiting Time / Overnight',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: hasDetention ? primaryColor : surfaceContainer,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: hasDetention ? primaryColor : context.tokens.inputBorder,
+            ),
+          ),
+          child: Icon(
+            isLayover ? Icons.hotel : Icons.timer,
+            size: 20,
+            color: hasDetention
+                ? Theme.of(context).colorScheme.onPrimary
+                : context.tokens.textSecondary,
+          ),
+        ),
+      ),
+    );
   }
 
   // void _onTripScroll() {
@@ -1498,7 +1624,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       );
 
       if (placemarks.isNotEmpty && mounted) {
-        final Placemark place = placemarks[0];
+        final Placemark place = placemarks.first;
         String address = '';
 
         if (place.street != null && place.street!.isNotEmpty) {
@@ -1562,7 +1688,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             setState(() {
               // Assuming the first pickup location is where we want to prefill
               if (_pickupControllers.isNotEmpty) {
-                _pickupControllers[0].value.text = lastDestination;
+                _pickupControllers.first.value.text = lastDestination;
               } else {
                 // Should exist by default, but just in case
                 _addPickupLocation();
@@ -2105,6 +2231,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: TextField(
                       controller: _tripStartOdometerController.value,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: _inputDecoration(
                         label: 'Start Odometer',
                         hint: _distanceUnit.value,
@@ -2117,6 +2244,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: TextField(
                       controller: _tripEndOdometerController.value,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [ThousandsSeparatorInputFormatter()],
                       decoration: _inputDecoration(
                         label: 'End Odometer',
                         hint: _distanceUnit.value,
@@ -2146,6 +2274,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   void _validateAndSaveTrip() {
+    HapticFeedback.mediumImpact();
     // Check trip number
     if (_tripNumberController.value.text.trim().isEmpty) {
       AppDialogs.showWarning(context, 'Please enter trip number');
@@ -2289,6 +2418,16 @@ class _AddEntryPageState extends State<AddEntryPage>
                   : false,
             )
             .toList(),
+        pickupDetention: _pickupControllers
+            .asMap()
+            .entries
+            .where((e) => e.value.value.text.trim().isNotEmpty)
+            .map(
+              (e) => e.key < _pickupDetention.length
+                  ? _pickupDetention[e.key]
+                  : null,
+            )
+            .toList(),
         deliveryLocations: _deliveryControllers
             .asMap()
             .entries
@@ -2312,6 +2451,16 @@ class _AddEntryPageState extends State<AddEntryPage>
               (e) => e.key < _deliveryCompleted.length
                   ? _deliveryCompleted[e.key]
                   : false,
+            )
+            .toList(),
+        deliveryDetention: _deliveryControllers
+            .asMap()
+            .entries
+            .where((e) => e.value.value.text.trim().isNotEmpty)
+            .map(
+              (e) => e.key < _deliveryDetention.length
+                  ? _deliveryDetention[e.key]
+                  : null,
             )
             .toList(),
         startOdometer: startOdometer,
@@ -2341,13 +2490,13 @@ class _AddEntryPageState extends State<AddEntryPage>
         savedTripId = widget.editingTrip!.id;
       } else {
         // Get existing trips before creating new one
-        final existingTrips = await TripRepository.getTrips();
+        final List<Trip> existingTrips = await TripRepository.getTrips();
 
         // Create the new trip (offline-first: saves locally, queues sync)
         await TripRepository.createTrip(trip);
 
         // Try to get the trip ID from repository after creation
-        final updatedTrips = await TripRepository.getTrips();
+        final List<Trip> updatedTrips = await TripRepository.getTrips();
         final createdTrip = updatedTrips.firstWhere(
           (t) => t.tripNumber == trip.tripNumber,
           orElse: () => trip,
@@ -2731,6 +2880,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                     child: TextField(
                       controller: _odometerController.value,
                       keyboardType: TextInputType.number,
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(allowFraction: true),
+                      ],
                       decoration: _inputDecoration(
                         label: _isReeferFuel.value ? 'Hours' : 'Odometer',
                         hint: _isReeferFuel.value
@@ -2797,6 +2949,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [
+                        ThousandsSeparatorInputFormatter(allowFraction: true),
+                      ],
                       decoration: _inputDecoration(
                         label: 'Fuel Qty (${_fuelUnit.value})',
                         hint: '0.0',
@@ -2813,6 +2968,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
                       ),
+                      inputFormatters: [CurrencyInputFormatter()],
                       decoration: _inputDecoration(
                         label: 'Price/${_fuelUnit.value}',
                         hint: '0.00',
@@ -2834,6 +2990,9 @@ class _AddEntryPageState extends State<AddEntryPage>
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        inputFormatters: [
+                          ThousandsSeparatorInputFormatter(allowFraction: true),
+                        ],
                         decoration: _inputDecoration(
                           label: 'DEF Qty (${_fuelUnit.value})',
                           hint: '0.0',
@@ -2850,6 +3009,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
                         ),
+                        inputFormatters: [CurrencyInputFormatter()],
                         decoration:
                             _inputDecoration(
                               label: 'DEF Price/${_fuelUnit.value}',
@@ -2898,6 +3058,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   void _validateAndSaveFuel() {
+    HapticFeedback.mediumImpact();
     // Check date
     if (_fuelDateController.value.text.trim().isEmpty) {
       AppDialogs.showWarning(context, 'Please select date and time');
@@ -3293,6 +3454,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   // Methods to manage trailers
   void _addTrailer([String? customTrailer]) {
+    HapticFeedback.lightImpact();
     if (_trailerControllers.length < _maxTrailers) {
       setState(() {
         _trailerCount.value++;
@@ -3308,6 +3470,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   void _removeTrailer(int index) {
+    HapticFeedback.lightImpact();
     if (_trailerControllers.length > 1) {
       setState(() {
         _trailerCount.value--;

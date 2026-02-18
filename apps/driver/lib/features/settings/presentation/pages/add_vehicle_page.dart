@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/utils/input_formatters.dart';
+import 'package:milow/core/widgets/empty_state_widget.dart';
+import 'package:milow/core/widgets/info_tooltip.dart';
+import 'package:flutter/services.dart';
 
 class AddVehiclePage extends StatefulWidget {
   const AddVehiclePage({super.key});
@@ -193,6 +197,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                 TextButton(
                   onPressed: () {
                     if (makeController.text.isNotEmpty) {
+                      HapticFeedback.mediumImpact();
                       setState(() {
                         _trucks.add({
                           'id': DateTime.now().millisecondsSinceEpoch
@@ -210,7 +215,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: const Text('Truck added successfully'),
+                          content: const Text('Truck saved.'),
                           backgroundColor: tokens.success,
                         ),
                       );
@@ -302,6 +307,9 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         hint: '17-character VIN',
                         icon: Icons.qr_code_outlined,
                         textCapitalization: TextCapitalization.characters,
+                        inputFormatters: [VinFormatter()],
+                        tooltipMessage:
+                            'Found on the dashboard or driver-side door jamb.',
                       ),
                       SizedBox(height: tokens.spacingM),
                       Row(
@@ -414,6 +422,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                     onPressed: () {
                       if (makeController.text.isNotEmpty ||
                           selectedType.isNotEmpty) {
+                        HapticFeedback.mediumImpact();
                         setState(() {
                           _trailers.add({
                             'id': DateTime.now().millisecondsSinceEpoch
@@ -431,7 +440,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                         Navigator.pop(context);
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: const Text('Trailer added successfully'),
+                            content: const Text('Trailer saved.'),
                             backgroundColor: tokens.success,
                           ),
                         );
@@ -536,6 +545,9 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                           hint: '17-character VIN',
                           icon: Icons.qr_code_outlined,
                           textCapitalization: TextCapitalization.characters,
+                          inputFormatters: [VinFormatter()],
+                          tooltipMessage:
+                              'Found on trailer frame or registration docs.',
                         ),
                         SizedBox(height: tokens.spacingM),
                         Row(
@@ -549,6 +561,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                                 icon: Icons.credit_card_outlined,
                                 textCapitalization:
                                     TextCapitalization.characters,
+                                inputFormatters: [LicensePlateFormatter()],
                               ),
                             ),
                             SizedBox(width: tokens.spacingM),
@@ -560,6 +573,10 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                                 icon: Icons.location_on_outlined,
                                 textCapitalization:
                                     TextCapitalization.characters,
+                                inputFormatters: [
+                                  LengthLimitingTextInputFormatter(2),
+                                  UpperCaseTextFormatter(),
+                                ],
                               ),
                             ),
                           ],
@@ -738,16 +755,26 @@ class _AddVehiclePageState extends State<AddVehiclePage>
     required IconData icon,
     TextInputType keyboardType = TextInputType.text,
     TextCapitalization textCapitalization = TextCapitalization.none,
+    List<TextInputFormatter>? inputFormatters,
+    String? tooltipMessage,
   }) {
     final tokens = context.tokens;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel(label),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            _buildLabel(label),
+            if (tooltipMessage != null)
+              InfoTooltip(message: tooltipMessage, title: label),
+          ],
+        ),
         TextField(
           controller: controller,
           keyboardType: keyboardType,
           textCapitalization: textCapitalization,
+          inputFormatters: inputFormatters,
           style: Theme.of(
             context,
           ).textTheme.bodyLarge?.copyWith(color: tokens.textPrimary),
@@ -767,7 +794,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
-        content: const Text('Are you sure you want to delete this truck?'),
+        content: const Text('Permanently delete this truck?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -775,6 +802,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           ),
           TextButton(
             onPressed: () {
+              HapticFeedback.lightImpact();
               setState(() {
                 _trucks.removeWhere((truck) => truck['id'] == id);
               });
@@ -798,7 +826,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
         ),
-        content: const Text('Are you sure you want to delete this trailer?'),
+        content: const Text('Permanently delete this trailer?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -806,6 +834,7 @@ class _AddVehiclePageState extends State<AddVehiclePage>
           ),
           TextButton(
             onPressed: () {
+              HapticFeedback.lightImpact();
               setState(() {
                 _trailers.removeWhere((trailer) => trailer['id'] == id);
               });
@@ -864,9 +893,10 @@ class _AddVehiclePageState extends State<AddVehiclePage>
         children: [
           // Trucks Tab
           _trucks.isEmpty
-              ? _buildEmptyState(
-                  'No trucks added yet',
-                  Icons.local_shipping_outlined,
+              ? const EmptyStateWidget(
+                  title: 'No trucks yet',
+                  description: 'Add your truck to get started.',
+                  icon: Icons.local_shipping_outlined,
                 )
               : ListView.builder(
                   padding: EdgeInsets.all(tokens.spacingM),
@@ -887,9 +917,10 @@ class _AddVehiclePageState extends State<AddVehiclePage>
 
           // Trailers Tab
           _trailers.isEmpty
-              ? _buildEmptyState(
-                  'No trailers added yet',
-                  Icons.local_shipping_outlined,
+              ? const EmptyStateWidget(
+                  title: 'No trailers yet',
+                  description: 'Add a trailer to your fleet.',
+                  icon: Icons.local_shipping_outlined,
                 )
               : ListView.builder(
                   padding: EdgeInsets.all(tokens.spacingM),
@@ -1009,36 +1040,6 @@ class _AddVehiclePageState extends State<AddVehiclePage>
                 ),
               );
             }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyState(String message, IconData icon) {
-    final tokens = context.tokens;
-    final textTheme = Theme.of(context).textTheme;
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            padding: EdgeInsets.all(tokens.spacingXL),
-            decoration: BoxDecoration(
-              color: colorScheme.primary.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, size: 48, color: colorScheme.primary),
-          ),
-          SizedBox(height: tokens.spacingL),
-          Text(
-            message,
-            style: textTheme.titleMedium?.copyWith(
-              color: tokens.textSecondary,
-              fontWeight: FontWeight.w600,
-            ),
           ),
         ],
       ),

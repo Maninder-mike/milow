@@ -90,13 +90,15 @@ class _UsersRolesGroupsPageState extends ConsumerState<UsersRolesGroupsPage> {
 
       // Update user - the database trigger `notify_on_verification`
       // automatically sends a notification to the driver when is_verified changes to true.
+      final updates = <String, dynamic>{
+        'is_verified': true,
+        // Verify implies driver role usually in this context, or keep existing
+      };
+      if (companyId != null) updates['company_id'] = companyId;
+
       await Supabase.instance.client
           .from('profiles')
-          .update({
-            'is_verified': true,
-            if (companyId != null) 'company_id': companyId,
-            // Verify implies driver role usually in this context, or keep existing
-          })
+          .update(updates)
           .eq('email', email);
 
       if (mounted) {

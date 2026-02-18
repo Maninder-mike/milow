@@ -3,14 +3,13 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
+
 import 'package:url_launcher/url_launcher.dart';
 
 // TabsShell provides navigation; this page returns content only
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/preferences_service.dart';
 
-import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/m3_spring_button.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
@@ -67,44 +66,11 @@ class _DashboardPageState extends State<DashboardPage>
   late List<Color> _currentGradientColors;
 
   static const List<List<Color>> _gradientPalettes = [
-    // Deep Ocean Blue
+    // Big Grade Premium Gradient (Slate - Blue - Purple)
     [
-      Color(0xFF172554), // Blue 950
-      Color(0xFF2563EB), // Blue 600
-      Color(0xFF60A5FA), // Blue 400
-    ],
-    // Sunset Coral
-    [
-      Color(0xFF7C2D12), // Orange 900
-      Color(0xFFEA580C), // Orange 600
-      Color(0xFFFDBA74), // Orange 300
-    ],
-    // Pistachio Green
-    [
-      Color(0xFF14532D), // Green 900
-      Color(0xFF16A34A), // Green 600
-      Color(0xFF86EFAC), // Green 300
-    ],
-    [
-      Color(0xFF78350F), // Amber 900
-      Color(0xFFD97706), // Amber 600
-      Color(0xFFFCD34D), // Amber 300
-    ],
-    [
-      Color(0xFF134E4A), // Teal 900
-      Color(0xFF0D9488), // Teal 600
-      Color(0xFF5EEAD4), // Teal 300
-    ],
-    [
-      Color(0xFF431407), // Orange 950
-      Color(0xFFF97316), // Orange 500
-      Color(0xFFFED7AA), // Orange 200
-    ],
-    // Mint Fresh
-    [
-      Color(0xFF064E3B), // Emerald 900
-      Color(0xFF10B981), // Emerald 500
-      Color(0xFFA7F3D0), // Emerald 200
+      Color(0xFF0F172A), // Slate 900
+      Color(0xFF1E293B), // Slate 800
+      Color(0xFF334155), // Slate 700
     ],
   ];
 
@@ -126,8 +92,8 @@ class _DashboardPageState extends State<DashboardPage>
       ),
     );
 
-    // Lock to Royal Purple (Index 3) for design consistency
-    _currentGradientColors = _gradientPalettes[3];
+    // Use the single premium gradient
+    _currentGradientColors = _gradientPalettes[0];
 
     _loadBorderWaitTimes(
       forceRefresh: false,
@@ -191,7 +157,10 @@ class _DashboardPageState extends State<DashboardPage>
           SnackBar(
             content: Row(
               children: [
-                Icon(_getIconForType(notification.type), color: Colors.white),
+                Icon(
+                  _getIconForType(notification.type),
+                  color: Theme.of(context).colorScheme.inversePrimary,
+                ),
                 SizedBox(width: context.tokens.spacingS),
                 Expanded(
                   child: Column(
@@ -495,147 +464,93 @@ class _DashboardPageState extends State<DashboardPage>
           ),
         ),
 
-        // Get Started Section
         Padding(
           padding: EdgeInsets.symmetric(horizontal: margin),
-          child: Text(
-            'Get started',
-            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-          ),
-        ),
-        SizedBox(height: context.tokens.spacingM),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          padding: EdgeInsets.symmetric(horizontal: margin),
-          child: M3StaggeredList(
-            direction: Axis.horizontal,
-            spacing: context.tokens.spacingM,
+          child: ResponsiveRow(
+            // Use gutter for horizontal spacing (default),
+            // and regular spacing for vertical run spacing matching prior design
+            runSpacing: context.tokens.spacingM,
             children: [
-              _buildGetStartedCard(context, 'Add Data', Icons.add, () async {
-                final result = await context.push('/add-entry');
-                if (result == true) {
-                  unawaited(_onRefresh());
-                }
-              }),
-              _buildGetStartedCard(
-                context,
-                'Expenses',
-                Icons.receipt_long_outlined,
-                () => context.push('/expenses'),
-              ),
-              _buildGetStartedCard(
-                context,
-                'Explore',
-                Icons.explore_outlined,
-                () => context.go('/explore'),
-              ),
-              if (context.watch<ProfileProvider>().isConnectedToCompany)
-                _buildGetStartedCard(
-                  context,
-                  'Inbox',
-                  Icons.inbox_outlined,
-                  () => context.go('/inbox'),
+              ResponsiveColumn(
+                xs: 2, // 2 items per row on phone (4 cols total / 2)
+                sm: 2, // 4 items per row on tablet (8 cols total / 2) -> Wait, 8/2 = 4 items? Yes.
+                md: 3, // 4 items per row on desktop (12 cols total / 3) -> Yes.
+                child: _DashboardCard(
+                  title: 'Inspections',
+                  subtitle: 'Pre/Post Trip',
+                  icon: Icons.checklist,
+                  color: Theme.of(context).colorScheme.primaryContainer,
+                  onTap: () => context.push('/inspections'),
                 ),
-              _buildGetStartedCard(
-                context,
-                'Scan Documents',
-                Icons.document_scanner_outlined,
-                () async {
-                  await context.push(
-                    '/scan-document',
-                    extra: {
-                      if (activeTrip != null) 'tripId': activeTrip.id,
-                      if (activeTrip != null)
-                        'tripNumber': activeTrip.tripNumber,
-                    },
-                  );
-                },
               ),
-              _buildGetStartedCard(
-                context,
-                'Settings',
-                Icons.settings_outlined,
-                () => context.go('/settings'),
+              ResponsiveColumn(
+                xs: 2,
+                sm: 2,
+                md: 3,
+                child: _DashboardCard(
+                  title: 'Documents',
+                  subtitle: 'Permits & Regs',
+                  icon: Icons.folder_open,
+                  color: Theme.of(context).colorScheme.secondaryContainer,
+                  onTap: () => context.push(
+                    '/scan-document',
+                    extra: <String, dynamic>{},
+                  ),
+                ),
+              ),
+              ResponsiveColumn(
+                xs: 2,
+                sm: 2,
+                md: 3,
+                child: _DashboardCard(
+                  title: 'Expenses',
+                  subtitle: 'Receipts & Logs',
+                  icon: Icons.receipt_long_outlined,
+                  color: Theme.of(context).colorScheme.tertiaryContainer,
+                  onTap: () => context.push('/expenses'),
+                ),
+              ),
+              ResponsiveColumn(
+                xs: 2,
+                sm: 2,
+                md: 3,
+                child: _DashboardCard(
+                  title: 'Explore',
+                  subtitle: 'Map & Loads',
+                  icon: Icons.explore_outlined,
+                  color: Theme.of(context).colorScheme.tertiaryContainer,
+                  onTap: () => ResponsiveLayout.isMobile(context)
+                      ? context.push('/explore')
+                      : context.go('/explore'),
+                ),
+              ),
+              ResponsiveColumn(
+                xs: 2,
+                sm: 2,
+                md: 3,
+                child: _DashboardCard(
+                  title: 'Inbox',
+                  subtitle: 'Messages',
+                  icon: Icons.chat_bubble_outline,
+                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                  onTap: () => ResponsiveLayout.isMobile(context)
+                      ? context.push('/inbox')
+                      : context.go('/inbox'),
+                ),
+              ),
+              ResponsiveColumn(
+                xs: 2,
+                sm: 2,
+                md: 3,
+                child: _DashboardCard(
+                  title: 'Settings',
+                  subtitle: 'App Prefs',
+                  icon: Icons.settings_outlined,
+                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  onTap: () => context.go('/settings'),
+                ),
               ),
             ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildGetStartedCard(
-    BuildContext context,
-    String label,
-    IconData icon,
-    VoidCallback onTap,
-  ) {
-    return Column(
-      children: [
-        M3SpringButton(
-          onTap: onTap,
-          child: SizedBox(
-            width: 72, // Slightly smaller to look refined
-            height: 72,
-            child: Card(
-              elevation: 0,
-              // Use a proper surface color that adapts to light/dark mode
-              // surfaceContainerHigh works well on top of background gradients/colors
-              color: Theme.of(context).colorScheme.surfaceContainerHigh,
-              margin: EdgeInsets.zero,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(context.tokens.shapeL),
-              ),
-              child: Center(
-                child: Icon(
-                  icon,
-                  size: 28,
-                  // Use onSurfaceVariant for the icon to match the container
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-        ),
-        SizedBox(height: context.tokens.spacingS),
-        SizedBox(
-          width: 72,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              // Use onSurface for text legibility against any background (since it's outside the card)
-              // But wait, the text is ON THE GRADIENT background.
-              // If the background is light, white text is bad.
-              // If the background is dark, black text is bad.
-              // The text is separate from the card.
-              // Check the screenshot. The text is below the buttons on the gradient background.
-              // The gradient seems to change based on `_currentGradientColors`.
-              // `_currentGradientColors` defaults to `_gradientPalettes[3]` (Amber/Orange).
-              // Text on Amber needs to be dark (or specifically handled).
-              // However, typically in M3, if we have a qualified background, we should probably check if we want
-              // to force a specific color or let it adapt.
-              // The user's compliant is "not seeing while light mode".
-              // If I change the text to `onSurface`, it will be Black in Light Mode (good for Amber background)
-              // and White in Dark Mode (good for Dark background).
-              // This relies on the Scaffold background being transparent or ignored if on gradient?
-              // `DashboardPage` has a Stack with Gradient Background.
-              // And the text is printed on top of that Gradient.
-              // The Gradient colors are fixed in `_gradientPalettes`.
-              // If we are in Light Mode, `colorScheme.onSurface` is usually dark (black/grey).
-              // Dark text on Amber gradient = Visible.
-              // If we are in Dark Mode, `colorScheme.onSurface` is light (white/grey).
-              // Light Text on Dark Blue gradient = Visible.
-              // So `onSurface` should be correct, UNLESS the gradient doesn't match the theme brightness.
-              // But let's assume standard theme behavior.
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.w600,
-            ),
-            textAlign: TextAlign.center,
-            maxLines: 2,
-            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],
@@ -1855,6 +1770,66 @@ class _DashboardPageState extends State<DashboardPage>
               },
             ),
             SizedBox(height: context.tokens.spacingM),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DashboardCard extends StatelessWidget {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final VoidCallback onTap;
+
+  const _DashboardCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return M3SpringButton(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(context.tokens.spacingS),
+        decoration: BoxDecoration(
+          color: color,
+          borderRadius: BorderRadius.circular(context.tokens.shapeM),
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 32,
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+            SizedBox(height: context.tokens.spacingXS),
+            Text(
+              title,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            Text(
+              subtitle,
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: Theme.of(
+                  context,
+                ).colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
+              ),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

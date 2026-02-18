@@ -41,6 +41,27 @@ class LocalDocumentStore {
     return docs;
   }
 
+  /// Get all documents shared with the company (cached)
+  static List<TripDocument> getSharedDocumentsForCompany(
+    String companyId,
+    String currentUserId,
+  ) {
+    final docs = <TripDocument>[];
+    for (final jsonStr in _ensureBox.values) {
+      try {
+        final doc = TripDocument.fromJson(
+          json.decode(jsonStr) as Map<String, dynamic>,
+        );
+        if (doc.companyId == companyId && doc.userId != currentUserId) {
+          docs.add(doc);
+        }
+      } catch (e) {
+        debugPrint('[LocalDocumentStore] Error parsing doc: $e');
+      }
+    }
+    return docs;
+  }
+
   /// Save multiple documents (usually from a sync/fetch)
   static Future<void> putAll(List<TripDocument> documents) async {
     // Note: We might want to be careful not to overwrite "Pending" local docs

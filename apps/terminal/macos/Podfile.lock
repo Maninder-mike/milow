@@ -16,7 +16,7 @@ PODS:
   - Firebase/RemoteConfig (12.8.0):
     - Firebase/CoreOnly
     - FirebaseRemoteConfig (~> 12.8.0)
-  - firebase_analytics (12.1.1):
+  - firebase_analytics (12.1.2):
     - firebase_core
     - FirebaseAnalytics (= 12.8.0)
     - FlutterMacOS
@@ -281,7 +281,7 @@ SPEC CHECKSUMS:
   connectivity_plus: 4adf20a405e25b42b9c9f87feff8f4b6fde18a4e
   file_selector_macos: 9e9e068e90ebee155097d00e89ae91edb2374db7
   Firebase: 9a58fdbc9d8655ed7b79a19cf9690bb007d3d46d
-  firebase_analytics: a5e02c7d878b16431358e4b65808c171db05ae5a
+  firebase_analytics: baaf472ae2221d731cf1ec69b3e360bd1bbf40c5
   firebase_core: b1697fb64ff2b9ca16baaa821205f8b0c058e5d2
   firebase_crashlytics: 1fc281aed26b12f6076d4be765f3dc66a453c64b
   firebase_messaging: e6b30479b390f3a41203a7244886c6ab345536d3

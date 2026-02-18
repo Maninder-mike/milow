@@ -34,11 +34,12 @@ class LoggingService {
       }
 
       final today = DateFormat('yyyy-MM-dd').format(DateTime.now());
-      _logFile = File('${logDir.path}/milow_$today.log');
+      final logFile = File('${logDir.path}/milow_$today.log');
+      _logFile = logFile;
 
       // Create file if it doesn't exist
-      if (!await _logFile!.exists()) {
-        await _logFile!.create();
+      if (!await logFile.exists()) {
+        await logFile.create();
         await _writeToFile('=== Milow App Log Started ===');
       }
 
@@ -54,15 +55,16 @@ class LoggingService {
 
   /// Rotate log file if it exceeds max size
   Future<void> _rotateLogIfNeeded() async {
-    if (_logFile == null) return;
+    final logFile = _logFile;
+    if (logFile == null) return;
 
     try {
-      final stat = await _logFile!.stat();
+      final stat = await logFile.stat();
       if (stat.size > _maxLogFileSizeBytes) {
         final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
-        final backupPath = _logFile!.path.replaceAll('.log', '_$timestamp.log');
-        await _logFile!.rename(backupPath);
-        _logFile = File(_logFile!.path);
+        final backupPath = logFile.path.replaceAll('.log', '_$timestamp.log');
+        await logFile.rename(backupPath);
+        _logFile = File(logFile.path);
         await _logFile!.create();
         await _writeToFile('=== Log rotated from previous file ===');
       }
@@ -165,10 +167,11 @@ class LoggingService {
   }
 
   Future<void> _writeToFile(String content) async {
-    if (_logFile == null) return;
+    final logFile = _logFile;
+    if (logFile == null) return;
 
     try {
-      await _logFile!.writeAsString('$content\n', mode: FileMode.append);
+      await logFile.writeAsString('$content\n', mode: FileMode.append);
     } catch (e) {
       debugPrint('Failed to write to log file: $e');
     }
@@ -266,10 +269,10 @@ class LoggingService {
       'API',
       '$method $endpoint',
       extras: {
-        if (statusCode != null) 'statusCode': statusCode,
-        if (responseMessage != null) 'response': responseMessage,
-        if (duration != null) 'duration': '${duration.inMilliseconds}ms',
-      },
+        'statusCode': statusCode,
+        'response': responseMessage,
+        'duration': duration != null ? '${duration.inMilliseconds}ms' : null,
+      }..removeWhere((_, v) => v == null),
     );
   }
 
@@ -282,7 +285,8 @@ class LoggingService {
     await info(
       'Auth',
       event,
-      extras: {'success': success, if (userId != null) 'userId': userId},
+      extras: {'success': success, 'userId': userId}
+        ..removeWhere((_, v) => v == null),
     );
   }
 
@@ -296,7 +300,7 @@ class LoggingService {
     await info(
       'Data',
       '$operation $entity',
-      extras: {if (id != null) 'id': id, 'success': success},
+      extras: {'id': id, 'success': success}..removeWhere((_, v) => v == null),
     );
   }
 
@@ -322,12 +326,13 @@ class LoggingService {
 
   /// Get all logs from current log file
   Future<String> getLogFileContents() async {
-    if (_logFile == null || !await _logFile!.exists()) {
+    final logFile = _logFile;
+    if (logFile == null || !await logFile.exists()) {
       return 'No log file available';
     }
 
     try {
-      return await _logFile!.readAsString();
+      return await logFile.readAsString();
     } catch (e) {
       return 'Failed to read log file: $e';
     }

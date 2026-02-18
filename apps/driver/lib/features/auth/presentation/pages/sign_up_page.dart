@@ -75,21 +75,21 @@ class _SignUpPageState extends State<SignUpPage>
   Future<void> _signUp() async {
     // Validate fields
     if (_nameController.text.trim().isEmpty) {
-      AppDialogs.showWarning(context, 'Please enter your name');
+      AppDialogs.showWarning(context, 'Full name is required.');
       return;
     }
     if (_emailController.text.trim().isEmpty) {
-      AppDialogs.showWarning(context, 'Please enter your email');
+      AppDialogs.showWarning(context, 'Email address is required.');
       return;
     }
     if (!RegExp(
       r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
     ).hasMatch(_emailController.text.trim())) {
-      AppDialogs.showWarning(context, 'Please enter a valid email');
+      AppDialogs.showWarning(context, 'Check your email address.');
       return;
     }
     if (_passwordController.text.isEmpty) {
-      AppDialogs.showWarning(context, 'Please enter a password');
+      AppDialogs.showWarning(context, 'Password is required.');
       return;
     }
     if (_passwordController.text.length < 6) {
@@ -97,7 +97,7 @@ class _SignUpPageState extends State<SignUpPage>
       return;
     }
     if (_passwordController.text != _confirmPasswordController.text) {
-      AppDialogs.showError(context, 'Passwords do not match');
+      AppDialogs.showError(context, 'Passwords don\'t match.');
       return;
     }
     if (!_agreedToTerms) {
@@ -134,7 +134,7 @@ class _SignUpPageState extends State<SignUpPage>
       if (mounted) {
         AppDialogs.showSuccess(
           context,
-          'Sign up successful! Please check your email to verify.',
+          'Account created! Check email to verify.',
         );
         context.go('/login');
       }
@@ -247,7 +247,7 @@ class _SignUpPageState extends State<SignUpPage>
                             r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
                           ).hasMatch(email)) {
                         setDialogState(
-                          () => verifyError = 'Please enter a valid email',
+                          () => verifyError = 'Check your email address.',
                         );
                         return;
                       }
@@ -265,9 +265,7 @@ class _SignUpPageState extends State<SignUpPage>
                           Navigator.pop(dialogContext);
                           messenger.showSnackBar(
                             SnackBar(
-                              content: Text(
-                                'Verification email sent to $email',
-                              ),
+                              content: Text('New email sent to $email'),
                               backgroundColor: tokens.success,
                             ),
                           );

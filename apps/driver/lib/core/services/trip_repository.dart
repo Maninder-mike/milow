@@ -1,12 +1,21 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 
+import 'package:http/http.dart' as http;
+import 'package:path_provider/path_provider.dart';
+import 'package:intl/intl.dart';
+
+import 'package:fpdart/fpdart.dart'
+    hide State; // Hide State to avoid conflict with Flutter
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
 import 'package:milow_core/milow_core.dart';
 
+import 'package:drift/drift.dart';
+import 'package:milow/features/offline/data/database/driver_database.dart';
 import 'package:milow/core/services/connectivity_service.dart';
-import 'package:milow/core/services/local_trip_store.dart';
 import 'package:milow/core/services/sync_queue_service.dart';
 import 'package:milow/core/services/trip_service.dart';
 
@@ -18,6 +27,7 @@ import 'package:milow/core/services/trip_service.dart';
 class TripRepository {
   static const _uuid = Uuid();
   static SupabaseClient get _client => Supabase.instance.client;
+  static final _networkClient = CoreNetworkClient(Supabase.instance.client);
   static String? get _userId => mockUserId ?? _client.auth.currentUser?.id;
 
   /// Mock user ID for testing
@@ -33,7 +43,10 @@ class TripRepository {
     if (userId == null) return [];
 
     // Return cached data immediately
-    final cached = LocalTripStore.getAllForUser(userId);
+    final query = driverDatabase.select(driverDatabase.trips)
+      ..where((t) => t.userId.equals(userId));
+    final List<TripData> tripDataList = await query.get();
+    final List<Trip> cached = tripDataList.map((d) => _fromData(d)).toList();
 
     if (refresh && connectivityService.isOnline) {
       // Fire-and-forget refresh
@@ -73,27 +86,34 @@ class TripRepository {
           .toSet();
 
       // Clear existing local cache for this user, BUT preserve pending creates
-      final existingLocal = LocalTripStore.getAllForUser(userId);
-      for (final trip in existingLocal) {
-        if (trip.id != null) {
-          // If this trip is pending creation, DON'T delete it locally
-          // (Server doesn't have it yet, so if we delete, it's gone)
-          if (pendingCreateIds.contains(trip.id)) {
-            continue;
-          }
-          await LocalTripStore.delete(trip.id!);
+      final existingData = await (driverDatabase.select(
+        driverDatabase.trips,
+      )..where((t) => t.userId.equals(userId))).get();
+      for (final data in existingData) {
+        // id is non-nullable in Drill generated classes, check is redundant
+
+        if (pendingCreateIds.contains(data.id)) {
+          continue;
         }
+        await (driverDatabase.delete(
+          driverDatabase.trips,
+        )..where((t) => t.id.equals(data.id))).go();
+        // }
       }
 
       // Update local cache with server data, BUT respect pending updates
-      for (final trip in serverTrips) {
-        // If this trip has a pending local update, DON'T overwrite it with server data
-        // (Local version is newer than server version)
-        if (trip.id != null && pendingUpdateIds.contains(trip.id)) {
-          continue;
+      await driverDatabase.batch((batch) {
+        for (final trip in serverTrips) {
+          if (trip.id != null && pendingUpdateIds.contains(trip.id)) {
+            continue;
+          }
+          batch.insert(
+            driverDatabase.trips,
+            _toCompanion(trip),
+            mode: InsertMode.insertOrReplace,
+          );
         }
-        await LocalTripStore.put(trip);
-      }
+      });
 
       debugPrint(
         '[TripRepository] Refreshed ${serverTrips.length} trips from server',
@@ -102,15 +122,20 @@ class TripRepository {
     } catch (e) {
       debugPrint('[TripRepository] Failed to refresh: $e');
       // Return cached data on failure
-      return LocalTripStore.getAllForUser(userId);
+      final List<TripData> dataList = await (driverDatabase.select(
+        driverDatabase.trips,
+      )..where((t) => t.userId.equals(userId))).get();
+      return dataList.map((d) => _fromData(d)).toList();
     }
   }
 
   /// Get a single trip by ID (local-first)
   static Future<Trip?> getTripById(String tripId) async {
     // Check local cache first
-    final cached = LocalTripStore.get(tripId);
-    if (cached != null) return cached;
+    final query = driverDatabase.select(driverDatabase.trips)
+      ..where((t) => t.id.equals(tripId));
+    final data = await query.getSingleOrNull();
+    if (data != null) return _fromData(data);
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
@@ -139,7 +164,9 @@ class TripRepository {
     );
 
     // Save to local cache immediately
-    await LocalTripStore.put(localTrip);
+    await driverDatabase
+        .into(driverDatabase.trips)
+        .insert(_toCompanion(localTrip));
     debugPrint('[TripRepository] Created locally: $localId');
 
     // Queue sync operation
@@ -171,7 +198,9 @@ class TripRepository {
     // Update local cache immediately
     final updatedTrip = trip.copyWith(updatedAt: DateTime.now());
 
-    await LocalTripStore.put(updatedTrip);
+    await driverDatabase
+        .update(driverDatabase.trips)
+        .replace(_toCompanion(updatedTrip));
     debugPrint('[TripRepository] Updated locally: ${trip.id}');
 
     // Queue sync operation
@@ -196,7 +225,9 @@ class TripRepository {
     }
 
     // Delete from local cache immediately
-    await LocalTripStore.delete(tripId);
+    await (driverDatabase.delete(
+      driverDatabase.trips,
+    )..where((t) => t.id.equals(tripId))).go();
     debugPrint('[TripRepository] Deleted locally: $tripId');
 
     // Queue sync operation (Soft Delete)
@@ -226,12 +257,219 @@ class TripRepository {
     }
 
     // Local search
-    final all = LocalTripStore.getAllForUser(userId);
-    final queryLower = query.toLowerCase();
-    return all.where((trip) {
-      return trip.tripNumber.toLowerCase().contains(queryLower) ||
-          trip.truckNumber.toLowerCase().contains(queryLower);
-    }).toList();
+    final queryLower = '%${query.toLowerCase()}%';
+    final List<TripData> tripDataList =
+        await (driverDatabase.select(driverDatabase.trips)..where(
+              (t) =>
+                  t.userId.equals(userId) &
+                  (t.tripNumber.like(queryLower) |
+                      t.truckNumber.like(queryLower)),
+            ))
+            .get();
+    return tripDataList.map((d) => _fromData(d)).toList();
+  }
+
+  static Future<Result<List<TripDocument>>> getSharedDocuments(
+    String companyId,
+  ) async {
+    final userId = _userId;
+    if (userId == null) return const Left(UnauthorizedFailure());
+
+    final result = await _networkClient.query(() async {
+      final response = await _client
+          .from('trip_documents')
+          .select('*, trips(trip_number)')
+          .eq('company_id', companyId)
+          .neq('user_id', userId)
+          .order('created_at', ascending: false);
+      return response;
+    }, operationName: 'getSharedDocuments');
+
+    return result.fold((failure) => Left(failure), (data) {
+      try {
+        final docs = (data as List)
+            .map((doc) => TripDocument.fromJson(doc as Map<String, dynamic>))
+            .toList();
+        return Right(docs);
+      } catch (e) {
+        return Left(ParsingFailure(e.toString()));
+      }
+    });
+  }
+
+  /// Download a document to a temporary file
+  static Future<Result<File>> downloadDocument(TripDocument doc) async {
+    return _networkClient.query(() async {
+      String? downloadUrl;
+      if (doc.url != null && doc.url!.isNotEmpty) {
+        downloadUrl = doc.url;
+      } else if (doc.filePath.isNotEmpty) {
+        downloadUrl = await _client.storage
+            .from('trip_documents')
+            .createSignedUrl(doc.filePath, 60);
+      } else {
+        throw Exception('No document URL or path available');
+      }
+
+      final response = await http.get(Uri.parse(downloadUrl!));
+      if (response.statusCode != 200) {
+        throw Exception('Download failed with status ${response.statusCode}');
+      }
+
+      final tempDir = await getTemporaryDirectory();
+      final fileName =
+          doc.fileName ??
+          'document_${DateTime.now().millisecondsSinceEpoch}.pdf';
+      final tempFile = File('${tempDir.path}/$fileName');
+      await tempFile.writeAsBytes(response.bodyBytes);
+
+      return tempFile;
+    }, operationName: 'downloadDocument');
+  }
+
+  /// Resolve trip ID from trip number
+  static Future<Result<String?>> resolveTripId(String tripNumber) async {
+    final userId = _userId;
+    if (userId == null) return const Left(UnauthorizedFailure());
+
+    return _networkClient.query(() async {
+      final response = await _client
+          .from('trips')
+          .select('id')
+          .eq('trip_number', tripNumber)
+          .maybeSingle();
+      return response?['id'] as String?;
+    }, operationName: 'resolveTripId');
+  }
+
+  /// Upload a document (offline capable)
+  static Future<Result<void>> uploadDocument({
+    required File file,
+    required TripDocumentType type,
+    required String tripNumber, // Used for filename
+    required String notes,
+    String? tripId,
+  }) async {
+    final userId = _userId;
+    if (userId == null) return const Left(UnauthorizedFailure());
+
+    // Logic:
+    // 1. Generate path/filename
+    // 2. If Offline -> Queue
+    // 3. If Online -> Upload & Insert
+
+    final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
+    // Format: BOL-TR12345-20240401.pdf
+    final shortType = type.name.toUpperCase().substring(0, 3);
+    final fileName = '$shortType-$tripNumber-$dateStr.pdf';
+    final folderId = tripId ?? tripNumber;
+    final storagePath = '$userId/$folderId/$fileName';
+    const mimeType = 'application/pdf';
+
+    if (!connectivityService.isOnline) {
+      // Offline
+      try {
+        final appDocsDir = await getApplicationDocumentsDirectory();
+        final pendingDir = Directory('${appDocsDir.path}/pending_uploads');
+        if (!await pendingDir.exists()) {
+          await pendingDir.create(recursive: true);
+        }
+        final localFile = File('${pendingDir.path}/$fileName');
+        await file.copy(localFile.path);
+
+        final dbData = {
+          'trip_id': tripId,
+          'user_id': userId,
+          'document_type': type.value,
+          'file_path': storagePath,
+          'file_name': fileName,
+          'file_size': await file.length(),
+          'mime_type': mimeType,
+          'notes': notes,
+          'description': notes,
+          'object_key': type.name, // Simplified object key logic
+        };
+
+        await syncQueueService.enqueue(
+          tableName: 'trip_documents',
+          operationType: 'upload_document',
+          payload: {
+            'local_file_path': localFile.path,
+            'storage_path': storagePath,
+            'db_data': dbData,
+            'mime_type': mimeType,
+          },
+          localId: const Uuid().v4(),
+        );
+        return const Right(null);
+      } catch (e) {
+        return Left(CacheFailure(e.toString()));
+      }
+    }
+
+    // Online
+    return _networkClient.query(() async {
+      await _client.storage
+          .from('trip_documents')
+          .upload(
+            storagePath,
+            file,
+            fileOptions: const FileOptions(
+              contentType: mimeType,
+              upsert: false,
+            ),
+          );
+
+      await _client.from('trip_documents').insert({
+        'trip_id': tripId,
+        'user_id': userId,
+        'document_type': type.value,
+        'file_path': storagePath,
+        'file_name': fileName,
+        'file_size': await file.length(),
+        'mime_type': mimeType,
+        'notes': notes,
+        'description': notes,
+        'object_key': type.name,
+      });
+    }, operationName: 'uploadDocument');
+  }
+
+  static Future<Result<List<TripDocument>>> getDocuments(String userId) async {
+    final result = await _networkClient.query(() async {
+      final response = await _client
+          .from('trip_documents')
+          .select('*, trips(trip_number)')
+          .eq('user_id', userId)
+          .order('created_at', ascending: false);
+      return response;
+    }, operationName: 'getDocuments');
+
+    return result.fold((failure) => Left(failure), (data) {
+      try {
+        final docs = (data as List)
+            .map((doc) => TripDocument.fromJson(doc as Map<String, dynamic>))
+            .toList();
+        return Right(docs);
+      } catch (e) {
+        return Left(ParsingFailure(e.toString()));
+      }
+    });
+  }
+
+  static Future<Result<void>> deleteDocuments(List<TripDocument> docs) async {
+    return _networkClient.query(() async {
+      final filePaths = docs
+          .map((d) => d.filePath)
+          .where((path) => path.isNotEmpty)
+          .toList();
+      final idsToDelete = docs.map((d) => d.id).whereType<String>().toList();
+
+      if (filePaths.isNotEmpty) {
+        await _client.storage.from('trip_documents').remove(filePaths);
+      }
+      await _client.from('trip_documents').delete().inFilter('id', idsToDelete);
+    }, operationName: 'deleteDocuments');
   }
 
   /// Get active trip (trip that is not fully completed)
@@ -241,21 +479,11 @@ class TripRepository {
     if (userId == null) return null;
 
     // Check locally first
-    final trips = LocalTripStore.getAllForUser(userId);
-
-    // Find first trip that is not fully completed
-    // Active = no end_odometer OR has incomplete deliveries
-    final activeLocal = trips.where((t) {
-      // Trip with no end odometer is always active
-      if (t.endOdometer == null) return true;
-
-      // Trip with incomplete deliveries is still active
-      if (!t.allDeliveriesCompleted) return true;
-
-      return false;
-    }).firstOrNull;
-
-    if (activeLocal != null) return activeLocal;
+    final query = driverDatabase.select(driverDatabase.trips)
+      ..where((t) => t.userId.equals(userId) & t.endOdometer.isNull())
+      ..limit(1);
+    final data = await query.getSingleOrNull();
+    if (data != null) return _fromData(data);
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
@@ -267,6 +495,93 @@ class TripRepository {
 
   /// Clear local cache (for logout)
   static Future<void> clearCache() async {
-    await LocalTripStore.clear();
+    await driverDatabase.delete(driverDatabase.trips).go();
+    await driverDatabase.delete(driverDatabase.fuelEntries).go();
+  }
+
+  static Trip _fromData(TripData data) {
+    return Trip(
+      id: data.id,
+      userId: data.userId,
+      vehicleId: data.vehicleId,
+      tripNumber: data.tripNumber,
+      truckNumber: data.truckNumber,
+      trailers: (jsonDecode(data.trailers) as List).cast<String>(),
+      tripDate: data.tripDate,
+      pickupLocations: (jsonDecode(data.pickupLocations) as List)
+          .cast<String>(),
+      deliveryLocations: (jsonDecode(data.deliveryLocations) as List)
+          .cast<String>(),
+      pickupTimes: (jsonDecode(data.pickupTimes) as List)
+          .map((e) => e == null ? null : DateTime.parse(e.toString()))
+          .toList(),
+      deliveryTimes: (jsonDecode(data.deliveryTimes) as List)
+          .map((e) => e == null ? null : DateTime.parse(e.toString()))
+          .toList(),
+      pickupCompleted: (jsonDecode(data.pickupCompleted) as List).cast<bool>(),
+      deliveryCompleted: (jsonDecode(data.deliveryCompleted) as List)
+          .cast<bool>(),
+      pickupDetention: (jsonDecode(data.pickupDetention) as List)
+          .map((e) => e == null ? null : Detention.fromJson(e))
+          .toList(),
+      deliveryDetention: (jsonDecode(data.deliveryDetention) as List)
+          .map((e) => e == null ? null : Detention.fromJson(e))
+          .toList(),
+      startOdometer: data.startOdometer,
+      endOdometer: data.endOdometer,
+      distanceUnit: data.distanceUnit,
+      borderCrossing: data.borderCrossing,
+      notes: data.notes,
+      isEmptyLeg: data.isEmptyLeg,
+      commodity: data.commodity,
+      weight: data.weight,
+      weightUnit: data.weightUnit,
+      pieces: data.pieces,
+      referenceNumbers: (jsonDecode(data.referenceNumbers) as List)
+          .cast<String>(),
+      // lastUpdated is used for sync internal logic, but we map it if needed
+    );
+  }
+
+  static TripsCompanion _toCompanion(Trip trip) {
+    return TripsCompanion(
+      id: Value(trip.id!),
+      userId: Value(trip.userId),
+      vehicleId: Value(trip.vehicleId),
+      tripNumber: Value(trip.tripNumber),
+      truckNumber: Value(trip.truckNumber),
+      trailers: Value(jsonEncode(trip.trailers)),
+      tripDate: Value(trip.tripDate),
+      pickupLocations: Value(jsonEncode(trip.pickupLocations)),
+      deliveryLocations: Value(jsonEncode(trip.deliveryLocations)),
+      pickupTimes: Value(
+        jsonEncode(trip.pickupTimes.map((e) => e?.toIso8601String()).toList()),
+      ),
+      deliveryTimes: Value(
+        jsonEncode(
+          trip.deliveryTimes.map((e) => e?.toIso8601String()).toList(),
+        ),
+      ),
+      pickupCompleted: Value(jsonEncode(trip.pickupCompleted)),
+      deliveryCompleted: Value(jsonEncode(trip.deliveryCompleted)),
+      pickupDetention: Value(
+        jsonEncode(trip.pickupDetention.map((e) => e?.toJson()).toList()),
+      ),
+      deliveryDetention: Value(
+        jsonEncode(trip.deliveryDetention.map((e) => e?.toJson()).toList()),
+      ),
+      startOdometer: Value(trip.startOdometer),
+      endOdometer: Value(trip.endOdometer),
+      distanceUnit: Value(trip.distanceUnit),
+      borderCrossing: Value(trip.borderCrossing),
+      notes: Value(trip.notes),
+      isEmptyLeg: Value(trip.isEmptyLeg),
+      commodity: Value(trip.commodity),
+      weight: Value(trip.weight),
+      weightUnit: Value(trip.weightUnit),
+      pieces: Value(trip.pieces),
+      referenceNumbers: Value(jsonEncode(trip.referenceNumbers)),
+      lastUpdated: Value(DateTime.now()),
+    );
   }
 }

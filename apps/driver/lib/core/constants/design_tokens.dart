@@ -243,29 +243,29 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     elevationLevel4: 8, // Modals
     elevationLevel5: 12, // FAB pressed
     // Text
-    textPrimary: Color(0xFFFFFFFF),
-    textSecondary: Color(0xFFADBBC9),
-    textTertiary: Color(0xFF9CA3AF),
+    textPrimary: Color(0xFFF9FAFB), // Gray 50
+    textSecondary: Color(0xFF9CA3AF), // Gray 400
+    textTertiary: Color(0xFF6B7280), // Gray 500
     // Surfaces
-    surfaceContainer: Color(0xFF1E1E1E),
-    surfaceContainerHigh: Color(0xFF2C2C2C), // Slightly lighter for contrast
-    scaffoldAltBackground: Color(0xFF121212),
-    subtleBorderColor: Color(0xFF49454F), // Increased visibility
+    surfaceContainer: Color(0xFF111827), // Gray 900 (Rich Slate)
+    surfaceContainerHigh: Color(0xFF1F2937), // Gray 800
+    scaffoldAltBackground: Color(0xFF0B0F19), // Rich Deep Background
+    subtleBorderColor: Color(0xFF374151), // Gray 700
     sectionLabelColor: Color(0xFF9CA3AF),
-    // Semantic
-    success: Color(0xFF10B981),
-    successContainer: Color(0xFF064E3B),
-    error: Color(0xFFEF4444),
-    errorContainer: Color(0xFF7F1D1D),
-    warning: Color(0xFFF59E0B),
-    warningContainer: Color(0xFF78350F),
-    info: Color(0xFF3B82F6),
-    infoContainer: Color(0xFF1E3A5F),
+    // Semantic - Desaturated for dark mode
+    success: Color(0xFF34D399), // Emerald 400
+    successContainer: Color(0xFF064E3B), // Emerald 900
+    error: Color(0xFFF87171), // Red 400
+    errorContainer: Color(0xFF7F1D1D), // Red 900
+    warning: Color(0xFFFBBF24), // Amber 400
+    warningContainer: Color(0xFF78350F), // Amber 900
+    info: Color(0xFF60A5FA), // Blue 400
+    infoContainer: Color(0xFF1E3A8A), // Blue 900
     // Inputs
-    inputBackground: Color(0xFF2C2C2C), // Matches surfaceContainerHigh
-    inputBorder: Color(0xFF49454F), // Visible border
-    inputFocusedBorder: Color(0xFF64B5F6),
-    disabled: Color(0xFF3A3A3A),
+    inputBackground: Color(0xFF1F2937), // Matches surfaceContainerHigh
+    inputBorder: Color(0xFF374151),
+    inputFocusedBorder: Color(0xFF60A5FA), // Blue 400
+    disabled: Color(0xFF374151),
   );
 
   @override

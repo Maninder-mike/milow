@@ -1,4 +1,8 @@
 /// Model representing a trip entry
+library;
+
+import 'detention.dart';
+
 class Trip {
   final String? id;
   final String? userId;
@@ -13,6 +17,10 @@ class Trip {
   final List<DateTime?> deliveryTimes;
   final List<bool> pickupCompleted;
   final List<bool> deliveryCompleted;
+  // Detention / Waiting Time
+  final List<Detention?> pickupDetention;
+  final List<Detention?> deliveryDetention;
+
   final double? startOdometer;
   final double? endOdometer;
   final String distanceUnit; // 'mi' or 'km'
@@ -43,6 +51,8 @@ class Trip {
     this.deliveryTimes = const [],
     this.pickupCompleted = const [],
     this.deliveryCompleted = const [],
+    this.pickupDetention = const [],
+    this.deliveryDetention = const [],
     this.startOdometer,
     this.endOdometer,
     this.distanceUnit = 'mi',
@@ -127,6 +137,24 @@ class Trip {
               ?.map((e) => e as bool)
               .toList() ??
           [],
+      pickupDetention:
+          (json['pickup_detention'] as List<dynamic>?)
+              ?.map(
+                (e) => e != null
+                    ? Detention.fromJson(e as Map<String, dynamic>)
+                    : null,
+              )
+              .toList() ??
+          [],
+      deliveryDetention:
+          (json['delivery_detention'] as List<dynamic>?)
+              ?.map(
+                (e) => e != null
+                    ? Detention.fromJson(e as Map<String, dynamic>)
+                    : null,
+              )
+              .toList() ??
+          [],
       startOdometer: json['start_odometer'] != null
           ? (json['start_odometer'] as num).toDouble()
           : null,
@@ -174,6 +202,8 @@ class Trip {
       'delivery_times': deliveryTimes.map((t) => t?.toIso8601String()).toList(),
       'pickup_completed': pickupCompleted,
       'delivery_completed': deliveryCompleted,
+      'pickup_detention': pickupDetention.map((d) => d?.toJson()).toList(),
+      'delivery_detention': deliveryDetention.map((d) => d?.toJson()).toList(),
       'start_odometer': startOdometer,
       'end_odometer': endOdometer,
       'distance_unit': distanceUnit,
@@ -206,6 +236,8 @@ class Trip {
     List<DateTime?>? deliveryTimes,
     List<bool>? pickupCompleted,
     List<bool>? deliveryCompleted,
+    List<Detention?>? pickupDetention,
+    List<Detention?>? deliveryDetention,
     double? startOdometer,
     double? endOdometer,
     String? distanceUnit,
@@ -235,6 +267,8 @@ class Trip {
       deliveryTimes: deliveryTimes ?? this.deliveryTimes,
       pickupCompleted: pickupCompleted ?? this.pickupCompleted,
       deliveryCompleted: deliveryCompleted ?? this.deliveryCompleted,
+      pickupDetention: pickupDetention ?? this.pickupDetention,
+      deliveryDetention: deliveryDetention ?? this.deliveryDetention,
       startOdometer: startOdometer ?? this.startOdometer,
       endOdometer: endOdometer ?? this.endOdometer,
       distanceUnit: distanceUnit ?? this.distanceUnit,

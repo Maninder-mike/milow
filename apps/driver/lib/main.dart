@@ -6,6 +6,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:milow/core/theme/app_theme.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -21,8 +22,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:milow/core/services/trip_parser_service.dart';
 import 'package:milow/core/services/local_profile_store.dart';
-import 'package:milow/core/services/local_trip_store.dart';
-import 'package:milow/core/services/local_fuel_store.dart';
 import 'package:milow/core/services/local_document_store.dart';
 import 'package:milow/core/services/local_expense_store.dart';
 import 'package:milow/core/services/connectivity_service.dart';
@@ -50,7 +49,8 @@ import 'package:milow/features/settings/presentation/pages/notifications_page.da
 
 import 'package:milow/features/settings/presentation/pages/language_page.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
-import 'package:milow/features/trips/presentation/pages/scan_document_page.dart';
+import 'package:milow/features/documents/presentation/pages/documents_page.dart';
+import 'package:milow/features/documents/presentation/pages/shared_documents_page.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/expenses/presentation/pages/expenses_list_page.dart';
 import 'package:milow/features/expenses/presentation/pages/add_expense_page.dart';
@@ -60,6 +60,13 @@ import 'package:milow/features/dashboard/presentation/pages/driver_tools_page.da
 import 'package:milow/core/widgets/auth_wrapper.dart';
 import 'package:milow/core/widgets/tabs_shell.dart';
 import 'package:milow/core/widgets/splash_screen.dart';
+
+import 'package:milow/features/inspections/presentation/providers/inspection_provider.dart';
+import 'package:milow/features/inspections/data/repositories/inspection_repository_impl.dart';
+import 'package:milow/features/inspections/presentation/pages/inspections_page.dart';
+import 'package:milow/features/inspections/presentation/pages/inspection_form_page.dart';
+import 'package:milow/features/offline/data/database/driver_database.dart';
+
 import 'package:milow/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart';
@@ -165,15 +172,9 @@ Future<void> main() async {
         debugPrint('🚀 [Init] Initializing Hive adapters and stores...');
         Hive.registerAdapter(SyncOperationAdapter());
         // Stores needed for dashboard/cached data
-        await Future.wait([
+        await Future.wait<dynamic>([
           LocalProfileStore.init().then(
             (_) => debugPrint('✅ [Init] LocalProfileStore ready'),
-          ),
-          LocalTripStore.init().then(
-            (_) => debugPrint('✅ [Init] LocalTripStore ready'),
-          ),
-          LocalFuelStore.init().then(
-            (_) => debugPrint('✅ [Init] LocalFuelStore ready'),
           ),
           LocalDocumentStore.init().then(
             (_) => debugPrint('✅ [Init] LocalDocumentStore ready'),
@@ -218,16 +219,33 @@ Future<void> main() async {
     widgetsBinding.allowFirstFrame();
   }
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => ThemeService()),
-        ChangeNotifierProvider(create: (_) => ProfileProvider()),
-        ChangeNotifierProvider.value(value: localeService),
-        ChangeNotifierProvider(create: (_) => ExploreProvider()),
-      ],
-      child: const MyApp(),
-    ),
+  // Wrap in runZonedGuarded to catch all async errors (including those outside Flutter context)
+  runZonedGuarded(
+    () {
+      runApp(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => ThemeService()),
+            ChangeNotifierProvider(create: (_) => ProfileProvider()),
+            ChangeNotifierProvider.value(value: localeService),
+            ChangeNotifierProvider(create: (_) => ExploreProvider()),
+            ChangeNotifierProvider(
+              create: (_) => InspectionProvider(
+                InspectionRepositoryImpl(
+                  driverDatabase,
+                  CoreNetworkClient(Supabase.instance.client),
+                ),
+              ),
+            ),
+          ],
+          child: const MyApp(),
+        ),
+      );
+    },
+    (error, stack) {
+      debugPrint('🔥 [runZonedGuarded] Caught fatal error: $error');
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+    },
   );
 }
 
@@ -442,7 +460,18 @@ final GoRouter _router = GoRouter(
         return _buildTransitionPage(
           context,
           state,
-          AuthWrapper(child: ScanDocumentPage(extra: extra)),
+          AuthWrapper(child: DocumentsPage(extra: extra)),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/shared-documents',
+      pageBuilder: (context, state) {
+        final companyId = state.extra as String;
+        return _buildTransitionPage(
+          context,
+          state,
+          AuthWrapper(child: SharedDocumentsPage(companyId: companyId)),
         );
       },
     ),
@@ -506,6 +535,35 @@ final GoRouter _router = GoRouter(
           ),
         );
       },
+    ),
+    GoRoute(
+      path: '/inspections',
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: InspectionsPage()),
+      ),
+      routes: [
+        GoRoute(
+          path: 'new',
+          pageBuilder: (context, state) => _buildTransitionPage(
+            context,
+            state,
+            const AuthWrapper(child: InspectionFormPage()),
+          ),
+        ),
+        GoRoute(
+          path: 'edit/:id',
+          pageBuilder: (context, state) {
+            final id = state.pathParameters['id'];
+            return _buildTransitionPage(
+              context,
+              state,
+              AuthWrapper(child: InspectionFormPage(inspectionId: id)),
+            );
+          },
+        ),
+      ],
     ),
   ],
 );
@@ -681,12 +739,29 @@ class _MyAppState extends State<MyApp> {
         // Use dynamic colors from wallpaper if available, otherwise fallback to app theme
         final lightColorScheme =
             lightDynamic ?? AppTheme.lightTheme.colorScheme;
-        final darkColorScheme = darkDynamic ?? AppTheme.darkTheme.colorScheme;
+
+        // For dark mode, we want dynamic ACCENTS (primary/secondary) but fixed PREMIUM SURFACES.
+        // If darkDynamic is present, use it but force our slate surfaces back in.
+        final effectiveDarkScheme =
+            (darkDynamic ?? AppTheme.darkTheme.colorScheme).copyWith(
+              surface: DesignTokens.dark.surfaceContainer,
+              onSurface: DesignTokens.dark.textPrimary,
+              surfaceContainer: DesignTokens.dark.surfaceContainer,
+              surfaceContainerHigh: DesignTokens.dark.surfaceContainerHigh,
+              // Ensure semantic colors are consistent
+              error: DesignTokens.dark.error,
+              errorContainer: DesignTokens.dark.errorContainer,
+              outline: DesignTokens.dark.subtleBorderColor,
+              outlineVariant: DesignTokens.dark.subtleBorderColor,
+            );
 
         return MaterialApp.router(
           title: 'Milow',
           theme: AppTheme.lightTheme.copyWith(colorScheme: lightColorScheme),
-          darkTheme: AppTheme.darkTheme.copyWith(colorScheme: darkColorScheme),
+          darkTheme: AppTheme.darkTheme.copyWith(
+            colorScheme: effectiveDarkScheme,
+            scaffoldBackgroundColor: DesignTokens.dark.scaffoldAltBackground,
+          ),
           themeMode: themeService.themeMode,
           locale: localeService.locale,
           supportedLocales: AppLocalizations.supportedLocales,

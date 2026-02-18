@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'package:milow/features/trips/presentation/pages/scan_document_page.dart';
+import 'package:milow/features/documents/presentation/pages/documents_page.dart';
 import 'package:milow/core/services/local_document_store.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/sync_queue_service.dart';
@@ -138,7 +138,7 @@ void main() {
     when(() => mockScanner.close()).thenAnswer((_) async {});
   });
 
-  group('ScanDocumentPage Offline Tests', () {
+  group('DocumentsPage Offline Tests', () {
     testWidgets('Shows cached documents when offline', (
       WidgetTester tester,
     ) async {
@@ -168,7 +168,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(extensions: [DesignTokens.light]),
-          home: ScanDocumentPage(
+          home: DocumentsPage(
             extra: {'tripId': 'trip1', 'tripNumber': 'T123'},
             supabaseClient: mockSupabaseClient,
           ),

@@ -11,7 +11,9 @@ import 'package:milow/core/services/receipt_scanner_service.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/core/utils/error_handler.dart';
 import 'package:milow/core/widgets/m3_spring_button.dart';
+import 'package:milow/core/services/storage_service.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Page for adding or editing an expense.
 class AddExpensePage extends StatefulWidget {
@@ -106,7 +108,13 @@ class _AddExpensePageState extends State<AddExpensePage> {
     try {
       final documentScanner = DocumentScanner(
         options: DocumentScannerOptions(
-          documentFormat: DocumentFormat.jpeg,
+          // Fix: documentFormat might be deprecated or renamed.
+          // Checking typical ML Kit usage, it might be inferred or different param.
+          // For now, removing it if it causes error, or checking if it should be `mode`.
+          // Actually, let's assume it's valid but maybe named differently?
+          // Let's comment it out for now to strict compilation, or check if it's `formats`.
+          // Verifying with user rule "No Hallucinations".
+          // I will look at ScanDocumentPage usage line 195, it DOES NOT use documentFormat.
           mode: ScannerMode.full,
           pageLimit: 1,
           isGalleryImport: true,
@@ -115,8 +123,8 @@ class _AddExpensePageState extends State<AddExpensePage> {
 
       final result = await documentScanner.scanDocument();
 
-      if (result.images.isNotEmpty) {
-        final scannedFile = File(result.images.first);
+      if (result.images != null && result.images!.isNotEmpty) {
+        final scannedFile = File(result.images!.first);
         setState(() => _receiptImage = scannedFile);
 
         // Parse receipt for data extraction
@@ -146,7 +154,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
 
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Receipt scanned! Check extracted data.'),
+                  content: Text('Receipt scanned! Please check details.'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -156,7 +164,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
               Navigator.of(context).pop(); // Close parsing dialog
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
-                  content: Text('Receipt attached (OCR extraction failed)'),
+                  content: Text('Receipt attached. Please fill details.'),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -186,7 +194,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
           children: [
             CircularProgressIndicator(),
             SizedBox(width: 24),
-            Text('Extracting receipt data...'),
+            Text('Reading receipt...'),
           ],
         ),
       ),
@@ -199,7 +207,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
     setState(() => _isSubmitting = true);
 
     try {
-      final expense = Expense(
+      var expense = Expense(
         id: widget.existingExpense?.id,
         expenseDate: _selectedDate,
         category: _selectedCategory,
@@ -218,6 +226,23 @@ class _AddExpensePageState extends State<AddExpensePage> {
         isReimbursable: _isReimbursable,
         tripId: widget.tripId ?? widget.existingExpense?.tripId,
       );
+
+      // Upload receipt if present
+      if (_receiptImage != null) {
+        final userId = Supabase.instance.client.auth.currentUser?.id;
+        if (userId != null) {
+          // Show upload status? Already showing loading spinner.
+          final url = await StorageService.uploadReceipt(
+            _receiptImage!,
+            userId,
+          );
+          if (url != null) {
+            expense = expense.copyWith(
+              receiptUrl: url,
+            ); // Update expense with URL
+          }
+        }
+      }
 
       if (widget.existingExpense != null) {
         await ExpenseRepository.updateExpense(expense);
@@ -303,10 +328,10 @@ class _AddExpensePageState extends State<AddExpensePage> {
                     ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
-                        return 'Required';
+                        return 'Please fill this in.';
                       }
                       if (double.tryParse(value) == null) {
-                        return 'Invalid amount';
+                        return 'Please enter a valid amount.';
                       }
                       return null;
                     },
@@ -460,7 +485,7 @@ class _AddExpensePageState extends State<AddExpensePage> {
             // Reimbursable Toggle
             SwitchListTile(
               title: const Text('Reimbursable'),
-              subtitle: const Text('Mark this expense for reimbursement'),
+              subtitle: const Text('I need to be paid back for this'),
               value: _isReimbursable,
               onChanged: (v) => setState(() => _isReimbursable = v),
               contentPadding: EdgeInsets.zero,
