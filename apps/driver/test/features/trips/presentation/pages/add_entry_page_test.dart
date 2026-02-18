@@ -68,14 +68,18 @@ void main() {
     );
     when(() => mockSupabaseClient.auth).thenReturn(mockAuth);
 
-    when(() => mockSupabaseClient.from(any())).thenReturn(mockQueryBuilder);
-    when(() => mockQueryBuilder.select(any())).thenReturn(mockFilterBuilder);
+    when(
+      () => mockSupabaseClient.from(any()),
+    ).thenAnswer((_) => mockQueryBuilder);
+    when(
+      () => mockQueryBuilder.select(any()),
+    ).thenAnswer((_) => mockFilterBuilder);
     when(
       () => mockFilterBuilder.eq(any(), any()),
-    ).thenReturn(mockFilterBuilder);
+    ).thenAnswer((_) => mockFilterBuilder);
     when(
       () => mockFilterBuilder.order(any(), ascending: any(named: 'ascending')),
-    ).thenReturn(FakePostgrestTransformBuilder([]));
+    ).thenAnswer((_) => FakePostgrestTransformBuilder([]));
   });
 
   Widget createTestWidget() {
