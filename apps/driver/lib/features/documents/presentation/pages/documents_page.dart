@@ -106,7 +106,8 @@ class _DocumentsPageState extends State<DocumentsPage> {
   Future<void> _loadDocuments() async {
     if (!mounted) return;
 
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final client = widget.supabaseClient ?? Supabase.instance.client;
+    final userId = client.auth.currentUser?.id;
     if (userId == null) return;
 
     // 1. Load from cache first for immediate UI

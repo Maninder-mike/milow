@@ -1,12 +1,81 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+class MockSupabaseClient extends Mock implements SupabaseClient {}
+
+class MockGoTrueClient extends Mock implements GoTrueClient {}
+
+class MockUser extends Mock implements User {}
+
+class MockSupabaseQueryBuilder extends Mock implements SupabaseQueryBuilder {}
+
+class MockPostgrestFilterBuilder extends Mock
+    implements PostgrestFilterBuilder<List<Map<String, dynamic>>> {}
+
+class FakePostgrestTransformBuilder extends Fake
+    implements PostgrestTransformBuilder<List<Map<String, dynamic>>> {
+  final List<Map<String, dynamic>> result;
+  FakePostgrestTransformBuilder([this.result = const []]);
+
+  @override
+  Future<U> then<U>(
+    FutureOr<U> Function(List<Map<String, dynamic>>) onValue, {
+    Function? onError,
+  }) {
+    return Future.value(onValue(result));
+  }
+}
+
 void main() {
-  setUp(() {
+  late MockSupabaseClient mockSupabaseClient;
+  late MockGoTrueClient mockAuth;
+  late MockUser mockUser;
+  late MockSupabaseQueryBuilder mockQueryBuilder;
+  late MockPostgrestFilterBuilder mockFilterBuilder;
+
+  setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
+    await Supabase.initialize(
+      url: 'https://dummy.supabase.co',
+      anonKey: 'dummy-key',
+    );
+  });
+
+  setUp(() {
+    mockSupabaseClient = MockSupabaseClient();
+    mockAuth = MockGoTrueClient();
+    mockUser = MockUser();
+    mockQueryBuilder = MockSupabaseQueryBuilder();
+    mockFilterBuilder = MockPostgrestFilterBuilder();
+
+    when(() => mockUser.id).thenReturn('user1');
+    when(() => mockUser.appMetadata).thenReturn({'company_id': 'comp1'});
+    when(() => mockAuth.currentUser).thenReturn(mockUser);
+    when(() => mockAuth.currentSession).thenReturn(
+      Session(
+        accessToken: 'abc',
+        refreshToken: 'def',
+        expiresIn: 3600,
+        tokenType: 'bearer',
+        user: mockUser,
+      ),
+    );
+    when(() => mockSupabaseClient.auth).thenReturn(mockAuth);
+
+    when(() => mockSupabaseClient.from(any())).thenReturn(mockQueryBuilder);
+    when(() => mockQueryBuilder.select(any())).thenReturn(mockFilterBuilder);
+    when(
+      () => mockFilterBuilder.eq(any(), any()),
+    ).thenReturn(mockFilterBuilder);
+    when(
+      () => mockFilterBuilder.order(any(), ascending: any(named: 'ascending')),
+    ).thenReturn(FakePostgrestTransformBuilder([]));
   });
 
   Widget createTestWidget() {
@@ -15,10 +84,10 @@ void main() {
         extensions: const [DesignTokens.light],
         useMaterial3: true,
       ),
-      home: const Material(
+      home: Material(
         child: RootRestorationScope(
           restorationId: 'root',
-          child: AddEntryPage(),
+          child: AddEntryPage(supabaseClient: mockSupabaseClient),
         ),
       ),
     );

@@ -62,11 +62,11 @@ jobs:
           flutter clean
           flutter pub get
 
-      - name: Generate Mocks
+      - name: Generate Code
         run: |
-          echo "🛠️ Generating Mocks..."
-          cd apps/driver
-          dart run build_runner build --delete-conflicting-outputs
+          echo "🛠️ Generating Code..."
+          cd packages/core && dart run build_runner build --delete-conflicting-outputs
+          cd ../../apps/driver && dart run build_runner build --delete-conflicting-outputs
 
       - name: Analyze code
         run: |
@@ -211,6 +211,12 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL=${{ secrets.SUPABASE_URL }}
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           EOF
+
+      - name: Generate Code
+        run: |
+          echo "🛠️ Generating Code..."
+          cd packages/core && dart run build_runner build --delete-conflicting-outputs
+          cd ../../apps/driver && dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Artifacts
         run: |

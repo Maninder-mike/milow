@@ -35,6 +35,7 @@ class AddEntryPage extends StatefulWidget {
   final Trip? editingTrip;
   final FuelEntry? editingFuel;
   final int initialTab;
+  final SupabaseClient? supabaseClient;
 
   const AddEntryPage({
     super.key,
@@ -42,6 +43,7 @@ class AddEntryPage extends StatefulWidget {
     this.editingTrip,
     this.editingFuel,
     this.initialTab = 0,
+    this.supabaseClient,
   });
 
   @override
@@ -313,7 +315,8 @@ class _AddEntryPageState extends State<AddEntryPage>
     // Loading state removed
 
     try {
-      final res = await Supabase.instance.client
+      final client = widget.supabaseClient ?? Supabase.instance.client;
+      final res = await client
           .from('trip_templates')
           .select()
           .order('name', ascending: true);
@@ -356,7 +359,9 @@ class _AddEntryPageState extends State<AddEntryPage>
   Future<void> _loadVehicles() async {
     setState(() => _isLoadingVehicles = true);
     try {
-      final vehicles = await VehicleRepository.getVehicles();
+      final vehicles = await VehicleRepository.getVehicles(
+        supabaseClient: widget.supabaseClient,
+      );
       if (mounted) {
         setState(() {
           _vehicles = vehicles;
@@ -676,7 +681,9 @@ class _AddEntryPageState extends State<AddEntryPage>
   /// Load border crossings and prefill with most frequently used
   Future<void> _prefillBorderCrossing() async {
     try {
-      final trips = await TripService.getTrips();
+      final trips = await TripService.getTrips(
+        supabaseClient: widget.supabaseClient,
+      );
       if (trips.isEmpty) return;
 
       // Count frequency of each border crossing
@@ -1676,7 +1683,10 @@ class _AddEntryPageState extends State<AddEntryPage>
   Future<void> _fetchLastDestination() async {
     try {
       // Get the most recent trip
-      final recentTrips = await TripService.getTrips(limit: 1);
+      final recentTrips = await TripService.getTrips(
+        limit: 1,
+        supabaseClient: widget.supabaseClient,
+      );
 
       if (recentTrips.isNotEmpty && mounted) {
         final lastTrip = recentTrips.first;

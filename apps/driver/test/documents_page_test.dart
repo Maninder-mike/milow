@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milow/features/documents/presentation/pages/documents_page.dart';
 import 'package:milow/core/services/local_document_store.dart';
 import 'package:milow/core/services/connectivity_service.dart';
@@ -14,6 +15,8 @@ import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:google_mlkit_document_scanner/google_mlkit_document_scanner.dart';
+import 'package:provider/provider.dart';
+import 'package:milow/core/services/profile_provider.dart';
 
 class MockConnectivityService extends Mock implements ConnectivityService {}
 
@@ -31,6 +34,8 @@ class MockPostgrestFilterBuilder extends Mock
     implements PostgrestFilterBuilder<List<Map<String, dynamic>>> {}
 
 class MockDocumentScanner extends Mock implements DocumentScanner {}
+
+class MockProfileProvider extends Mock implements ProfileProvider {}
 
 class FakePostgrestTransformBuilder extends Fake
     implements PostgrestTransformBuilder<List<Map<String, dynamic>>> {
@@ -80,11 +85,18 @@ void main() {
   late MockSupabaseQueryBuilder mockQueryBuilder;
   late MockPostgrestFilterBuilder mockFilterBuilder;
   late MockDocumentScanner mockScanner;
+  late MockProfileProvider mockProfileProvider;
   late Directory tempDir;
 
   setUpAll(() async {
+    SharedPreferences.setMockInitialValues({});
     tempDir = await Directory.systemTemp.createTemp('milow_widget_test_');
     PathProviderPlatform.instance = FakePathProvider(tempDir.path);
+
+    await Supabase.initialize(
+      url: 'https://dummy.supabase.co',
+      anonKey: 'dummy-key',
+    );
 
     await Hive.initFlutter(tempDir.path);
     await LocalDocumentStore.init();
@@ -136,6 +148,14 @@ void main() {
     ).thenAnswer((_) => const Stream.empty());
 
     when(() => mockScanner.close()).thenAnswer((_) async {});
+
+    mockProfileProvider = MockProfileProvider();
+    when(() => mockProfileProvider.profile).thenReturn({
+      'id': 'user1',
+      'company_id': 'comp1',
+      'company_name': 'Test Company',
+    });
+    when(() => mockProfileProvider.loading).thenReturn(false);
   });
 
   group('DocumentsPage Offline Tests', () {
@@ -168,9 +188,12 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           theme: ThemeData(extensions: [DesignTokens.light]),
-          home: DocumentsPage(
-            extra: {'tripId': 'trip1', 'tripNumber': 'T123'},
-            supabaseClient: mockSupabaseClient,
+          home: ChangeNotifierProvider<ProfileProvider>.value(
+            value: mockProfileProvider,
+            child: DocumentsPage(
+              extra: {'tripId': 'trip1', 'tripNumber': 'T123'},
+              supabaseClient: mockSupabaseClient,
+            ),
           ),
         ),
       );

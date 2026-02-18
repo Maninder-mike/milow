@@ -3,19 +3,27 @@ import 'package:milow_core/milow_core.dart';
 
 /// Service for managing trips in Supabase
 class TripService {
-  static SupabaseClient get _client => Supabase.instance.client;
-  static final _networkClient = CoreNetworkClient(Supabase.instance.client);
-  static String? get _userId => _client.auth.currentUser?.id;
+  static SupabaseClient _getClient(SupabaseClient? customClient) {
+    return customClient ?? Supabase.instance.client;
+  }
+
+  static CoreNetworkClient _getNetworkClient(SupabaseClient client) {
+    return CoreNetworkClient(client);
+  }
 
   /// Create a new trip
-  static Future<Trip?> createTrip(Trip trip) async {
-    final userId = _userId;
+  static Future<Trip?> createTrip(
+    Trip trip, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     // Check for duplicate trip number
-    if (await tripNumberExists(trip.tripNumber)) {
+    if (await tripNumberExists(trip.tripNumber, supabaseClient: client)) {
       throw Exception('Trip number "${trip.tripNumber}" already exists');
     }
 
@@ -24,7 +32,7 @@ class TripService {
       data['user_id'] = userId;
       data.remove('id'); // Let database generate ID
 
-      final response = await _client
+      final response = await client
           .from('trips')
           .insert(data)
           .select()
@@ -44,14 +52,16 @@ class TripService {
   static Future<bool> tripNumberExists(
     String tripNumber, {
     String? excludeId,
+    SupabaseClient? supabaseClient,
   }) async {
-    final userId = _userId;
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      var query = _client
+      var query = client
           .from('trips')
           .select('id')
           .eq('user_id', userId)
@@ -76,15 +86,18 @@ class TripService {
     DateTime? fromDate,
     DateTime? toDate,
     String? coalesceKey,
+    SupabaseClient? supabaseClient,
   }) async {
-    final userId = _userId;
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
-    final result = await _networkClient.query(
+    final networkClient = _getNetworkClient(client);
+    final result = await networkClient.query(
       () async {
-        var query = _client.from('trips').select().eq('user_id', userId);
+        var query = client.from('trips').select().eq('user_id', userId);
 
         if (fromDate != null) {
           query = query.gte('trip_date', fromDate.toIso8601String());
@@ -113,15 +126,21 @@ class TripService {
   }
 
   /// Get a single trip by ID
-  static Future<Trip?> getTripById(String tripId, {String? coalesceKey}) async {
-    final userId = _userId;
+  static Future<Trip?> getTripById(
+    String tripId, {
+    String? coalesceKey,
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
-    final result = await _networkClient.query(
+    final networkClient = _getNetworkClient(client);
+    final result = await networkClient.query(
       () async {
-        final response = await _client
+        final response = await client
             .from('trips')
             .select()
             .eq('id', tripId)
@@ -143,8 +162,12 @@ class TripService {
   }
 
   /// Update an existing trip
-  static Future<Trip?> updateTrip(Trip trip) async {
-    final userId = _userId;
+  static Future<Trip?> updateTrip(
+    Trip trip, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
@@ -154,7 +177,11 @@ class TripService {
     }
 
     // Check for duplicate trip number (excluding current trip)
-    if (await tripNumberExists(trip.tripNumber, excludeId: trip.id)) {
+    if (await tripNumberExists(
+      trip.tripNumber,
+      excludeId: trip.id,
+      supabaseClient: client,
+    )) {
       throw Exception('Trip number "${trip.tripNumber}" already exists');
     }
 
@@ -162,7 +189,7 @@ class TripService {
       final data = trip.toJson();
       data['updated_at'] = DateTime.now().toIso8601String();
 
-      final response = await _client
+      final response = await client
           .from('trips')
           .update(data)
           .eq('id', trip.id!)
@@ -177,14 +204,18 @@ class TripService {
   }
 
   /// Delete a trip
-  static Future<void> deleteTrip(String tripId) async {
-    final userId = _userId;
+  static Future<void> deleteTrip(
+    String tripId, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      await _client
+      await client
           .from('trips')
           .delete()
           .eq('id', tripId)
@@ -195,14 +226,15 @@ class TripService {
   }
 
   /// Get total trips count for current user
-  static Future<int> getTripsCount() async {
-    final userId = _userId;
+  static Future<int> getTripsCount({SupabaseClient? supabaseClient}) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      final response = await _client
+      final response = await client
           .from('trips')
           .select()
           .eq('user_id', userId)
@@ -215,14 +247,17 @@ class TripService {
   }
 
   /// Get total distance for all trips (calculated on server)
-  static Future<double> getTotalDistance() async {
-    final userId = _userId;
+  static Future<double> getTotalDistance({
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      final response = await _client.rpc(
+      final response = await client.rpc(
         'get_total_trip_distance',
         params: {'user_uuid': userId},
       );
@@ -233,14 +268,18 @@ class TripService {
   }
 
   /// Search trips by trip number or truck number
-  static Future<List<Trip>> searchTrips(String query) async {
-    final userId = _userId;
+  static Future<List<Trip>> searchTrips(
+    String query, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      final response = await _client
+      final response = await client
           .from('trips')
           .select()
           .eq('user_id', userId)
@@ -255,14 +294,15 @@ class TripService {
 
   /// Get the most recent active trip (trip without end odometer)
   /// Returns null if no active trip exists
-  static Future<Trip?> getActiveTrip() async {
-    final userId = _userId;
+  static Future<Trip?> getActiveTrip({SupabaseClient? supabaseClient}) async {
+    final client = _getClient(supabaseClient);
+    final userId = client.auth.currentUser?.id;
     if (userId == null) {
       throw Exception('User not authenticated');
     }
 
     try {
-      final response = await _client
+      final response = await client
           .from('trips')
           .select()
           .eq('user_id', userId)

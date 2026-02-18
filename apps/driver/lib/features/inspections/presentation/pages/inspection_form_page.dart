@@ -109,6 +109,7 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
     if (widget.inspectionId != null) {
       setState(() => _isLoading = true);
       try {
+        if (!mounted) return;
         // Fetch inspection from provider
         final provider = Provider.of<InspectionProvider>(
           context,
@@ -152,7 +153,7 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
   }
 
   void _populateForm(Inspection inspection) {
-    print('Populating form with inspection type: ${inspection.type}');
+    debugPrint('Populating form with inspection type: ${inspection.type}');
     _driverId = inspection.driverId;
     _type = inspection.type;
     _vehicleController.text = inspection.vehicleId;
@@ -892,10 +893,10 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
                   },
                 ),
                 const SizedBox(height: 8),
-                Row(
+                const Row(
                   children: [
-                    const Text('Sign above'),
-                    const Spacer(),
+                    Text('Sign above'),
+                    Spacer(),
                     // Clear handled within SignaturePad or by re-signing
                   ],
                 ),

@@ -74,6 +74,12 @@ jobs:
           flutter pub get
           cd apps/driver && flutter pub get
 
+      - name: Generate Code
+        run: |
+          echo "🛠️ Generating Code..."
+          cd packages/core && dart run build_runner build --delete-conflicting-outputs
+          cd ../../apps/driver && dart run build_runner build --delete-conflicting-outputs
+
       # STRICT: Tests MUST pass for production
       - name: Run Full Test Suite
         if: ${{ github.event.inputs.skip_tests != 'true' }}
@@ -198,6 +204,12 @@ jobs:
           cd apps/driver
           flutter clean
           flutter pub get
+
+      - name: Generate Code
+        run: |
+          echo "🛠️ Generating Code..."
+          cd packages/core && dart run build_runner build --delete-conflicting-outputs
+          cd ../../apps/driver && dart run build_runner build --delete-conflicting-outputs
 
       - name: Build Release Artifacts
         run: |
