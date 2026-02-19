@@ -6,9 +6,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart'; // [NEW]
 import 'package:terminal/core/providers/biometric_provider.dart';
-import '../../services/biometric_service.dart';
+import 'package:terminal/features/auth/services/biometric_service.dart';
 import '../theme/auth_theme.dart';
-import '../../../../core/widgets/choreographed_entrance.dart';
+import 'package:terminal/core/widgets/choreographed_entrance.dart';
 import '../providers/login_controller.dart';
 
 class LoginPage extends ConsumerStatefulWidget {

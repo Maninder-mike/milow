@@ -3,7 +3,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/providers/profile_provider.dart';
+import 'package:terminal/core/providers/profile_provider.dart';
 
 import 'panels/compliance_panel.dart';
 import 'panels/general_panel.dart';

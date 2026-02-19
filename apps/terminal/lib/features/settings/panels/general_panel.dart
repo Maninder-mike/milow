@@ -7,10 +7,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import '../../../../core/providers/theme_provider.dart';
-import '../../../../core/providers/permission_provider.dart';
-import '../../../../core/providers/user_preferences_provider.dart';
-import '../../../../core/providers/app_info_provider.dart';
+import 'package:terminal/core/providers/theme_provider.dart';
+import 'package:terminal/core/providers/permission_provider.dart';
+import 'package:terminal/core/providers/user_preferences_provider.dart';
+import 'package:terminal/core/providers/app_info_provider.dart';
 
 class GeneralPanel extends ConsumerStatefulWidget {
   const GeneralPanel({super.key});

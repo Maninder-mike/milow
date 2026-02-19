@@ -2,7 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../users/data/user_repository_provider.dart';
+import 'package:terminal/features/users/data/user_repository_provider.dart';
 import 'package:go_router/go_router.dart';
 
 import '../providers/driver_selection_provider.dart';

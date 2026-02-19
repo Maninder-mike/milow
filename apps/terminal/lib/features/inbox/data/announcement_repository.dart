@@ -1,6 +1,6 @@
 import 'package:milow_core/milow_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import '../../../../core/providers/network_provider.dart';
+import 'package:terminal/core/providers/network_provider.dart';
 
 part 'announcement_repository.g.dart';
 

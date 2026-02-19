@@ -8,7 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../theme/auth_theme.dart';
-import '../../../../core/widgets/choreographed_entrance.dart';
+import 'package:terminal/core/widgets/choreographed_entrance.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});

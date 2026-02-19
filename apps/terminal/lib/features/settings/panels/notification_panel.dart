@@ -3,7 +3,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/providers/user_preferences_provider.dart';
+import 'package:terminal/core/providers/user_preferences_provider.dart';
 
 class NotificationPanel extends ConsumerWidget {
   const NotificationPanel({super.key});

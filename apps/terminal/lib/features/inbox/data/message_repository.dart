@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:milow_core/milow_core.dart';
-import '../../../../core/providers/network_provider.dart';
+import 'package:terminal/core/providers/network_provider.dart';
 
 final messageRepositoryProvider = Provider<MessageRepository>((ref) {
   return MessageRepository(ref.watch(coreNetworkClientProvider));

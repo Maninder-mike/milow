@@ -8,7 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'providers/driver_selection_provider.dart';
 import 'providers/driver_detail_provider.dart';
 import 'package:terminal/core/constants/app_elevation.dart';
-import '../../../core/widgets/choreographed_entrance.dart';
+import 'package:terminal/core/widgets/choreographed_entrance.dart';
 
 class DriversPage extends ConsumerStatefulWidget {
   const DriversPage({super.key});

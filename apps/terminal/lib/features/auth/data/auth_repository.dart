@@ -3,7 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:fpdart/fpdart.dart';
 
-import '../../../../core/providers/network_provider.dart';
+import 'package:terminal/core/providers/network_provider.dart';
 
 part 'auth_repository.g.dart';
 
