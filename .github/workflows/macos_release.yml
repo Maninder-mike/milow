@@ -34,7 +34,9 @@ jobs:
       - name: Generate Code
         run: |
           cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs
-          dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build --delete-conflicting-outputs --verbose
+          echo "Listing generated files:"
+          find lib -name "*.g.dart"
 
       - name: Create Configs
         run: |
