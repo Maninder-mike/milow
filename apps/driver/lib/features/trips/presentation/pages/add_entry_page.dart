@@ -1205,7 +1205,9 @@ class _AddEntryPageState extends State<AddEntryPage>
               side: BorderSide(
                 color: isPickedUp
                     ? Colors.transparent
-                    : Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -1266,7 +1268,9 @@ class _AddEntryPageState extends State<AddEntryPage>
               side: BorderSide(
                 color: isDelivered
                     ? Colors.transparent
-                    : Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                    : Theme.of(
+                        context,
+                      ).colorScheme.primary.withValues(alpha: 0.5),
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),

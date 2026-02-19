@@ -8,6 +8,7 @@ import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
 import 'package:csv/csv.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 
 import 'package:milow/core/services/trip_repository.dart';
@@ -22,7 +23,9 @@ import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/features/dashboard/presentation/widgets/records_export_sheet.dart';
 
 class RecordsListPage extends StatefulWidget {
-  const RecordsListPage({super.key});
+  final SupabaseClient? supabaseClient;
+
+  const RecordsListPage({super.key, this.supabaseClient});
 
   @override
   State<RecordsListPage> createState() => _RecordsListPageState();
@@ -125,8 +128,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
   Future<void> _loadRecords() async {
     try {
-      final trips = await TripRepository.getTrips();
-      final fuelEntries = await FuelRepository.getFuelEntries();
+      final trips = await TripRepository.getTrips(
+        supabaseClient: widget.supabaseClient,
+      );
+      final fuelEntries = await FuelRepository.getFuelEntries(
+        supabaseClient: widget.supabaseClient,
+      );
 
       final List<Map<String, dynamic>> combined = [];
 

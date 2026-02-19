@@ -12,12 +12,9 @@ import 'package:milow/core/services/sync_queue_service.dart';
 import 'package:milow/core/services/fuel_service.dart';
 
 /// Repository for fuel entries with offline-first support.
-///
-/// - Reads from local cache first (instant)
-/// - Writes to local cache immediately + queues sync
-/// - Background syncs when online
 class FuelRepository {
   static const _uuid = Uuid();
+
   static SupabaseClient _getClient(SupabaseClient? customClient) {
     return customClient ?? Supabase.instance.client;
   }
@@ -25,16 +22,17 @@ class FuelRepository {
   static String? _getUserId(SupabaseClient client) =>
       mockUserId ?? client.auth.currentUser?.id;
 
-  static SupabaseClient get _client => Supabase.instance.client;
-  static String? get _userId => mockUserId ?? _client.auth.currentUser?.id;
-
   /// Mock user ID for testing
   @visibleForTesting
   static String? mockUserId;
 
   /// Get all fuel entries for current user (local-first)
-  static Future<List<FuelEntry>> getFuelEntries({bool refresh = true}) async {
-    final userId = _userId;
+  static Future<List<FuelEntry>> getFuelEntries({
+    bool refresh = true,
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return [];
 
     // Return cached data immediately
@@ -45,23 +43,32 @@ class FuelRepository {
 
     if (refresh && connectivityService.isOnline) {
       // Fire-and-forget refresh
-      unawaited(_refreshFromServer(userId));
+      unawaited(_refreshFromServer(userId, supabaseClient: client));
     }
 
     return cached;
   }
 
   /// Force refresh from server and update cache
-  static Future<List<FuelEntry>> refresh() async {
-    final userId = _userId;
+  static Future<List<FuelEntry>> refresh({
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return [];
 
-    return await _refreshFromServer(userId);
+    return await _refreshFromServer(userId, supabaseClient: client);
   }
 
-  static Future<List<FuelEntry>> _refreshFromServer(String userId) async {
+  static Future<List<FuelEntry>> _refreshFromServer(
+    String userId, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
     try {
-      final serverEntries = await FuelService.getFuelEntries();
+      final serverEntries = await FuelService.getFuelEntries(
+        supabaseClient: client,
+      );
 
       // Clear existing local cache for this user
       await (driverDatabase.delete(
@@ -93,7 +100,14 @@ class FuelRepository {
   }
 
   /// Get a single fuel entry by ID (local-first)
-  static Future<FuelEntry?> getFuelEntryById(String entryId) async {
+  static Future<FuelEntry?> getFuelEntryById(
+    String entryId, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
+    if (userId == null) return null;
+
     // Check local cache first
     final query = driverDatabase.select(driverDatabase.fuelEntries)
       ..where((f) => f.id.equals(entryId));
@@ -102,7 +116,10 @@ class FuelRepository {
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
-      return await FuelService.getFuelEntryById(entryId);
+      return await FuelService.getFuelEntryById(
+        entryId,
+        supabaseClient: client,
+      );
     }
 
     return null;
@@ -136,7 +153,7 @@ class FuelRepository {
     // Queue sync operation
     final payload = localEntry.toJson();
     payload['user_id'] = userId;
-    payload.remove('id');
+    payload.remove('id'); // Server will generate its own ID
 
     await syncQueueService.enqueue(
       tableName: 'fuel_entries',
@@ -144,6 +161,9 @@ class FuelRepository {
       payload: payload,
       localId: localId,
     );
+
+    // Trigger background sync
+    unawaited(syncQueueService.processQueue(supabaseClient: client));
 
     return localEntry;
   }
@@ -166,9 +186,9 @@ class FuelRepository {
     // Update local cache immediately
     final updatedEntry = entry.copyWith(updatedAt: DateTime.now());
 
-    await driverDatabase
-        .update(driverDatabase.fuelEntries)
-        .replace(_toCompanion(updatedEntry));
+    await (driverDatabase.update(driverDatabase.fuelEntries)
+          ..where((f) => f.id.equals(updatedEntry.id!)))
+        .write(_toCompanion(updatedEntry));
     debugPrint('[FuelRepository] Updated locally: ${entry.id}');
 
     // Queue sync operation
@@ -182,12 +202,19 @@ class FuelRepository {
       localId: entry.id!,
     );
 
+    // Trigger background sync
+    unawaited(syncQueueService.processQueue(supabaseClient: client));
+
     return updatedEntry;
   }
 
   /// Delete a fuel entry (offline-capable)
-  static Future<void> deleteFuelEntry(String entryId) async {
-    final userId = _userId;
+  static Future<void> deleteFuelEntry(
+    String entryId, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) {
       throw Exception('User not authenticated');
     }
@@ -209,16 +236,26 @@ class FuelRepository {
       },
       localId: entryId,
     );
+
+    // Trigger background sync
+    unawaited(syncQueueService.processQueue(supabaseClient: client));
   }
 
   /// Search fuel entries (local search if offline)
-  static Future<List<FuelEntry>> searchFuelEntries(String query) async {
-    final userId = _userId;
+  static Future<List<FuelEntry>> searchFuelEntries(
+    String query, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return [];
 
     if (connectivityService.isOnline) {
       try {
-        return await FuelService.searchFuelEntries(query);
+        return await FuelService.searchFuelEntries(
+          query,
+          supabaseClient: client,
+        );
       } catch (_) {
         // Fallback to local search
       }

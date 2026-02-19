@@ -114,7 +114,7 @@ class SyncQueueService {
   }
 
   /// Process all pending operations in the queue
-  Future<void> processQueue() async {
+  Future<void> processQueue({SupabaseClient? supabaseClient}) async {
     if (_isProcessing) return;
     if (!connectivityService.isOnline) {
       _emitStatus();
@@ -141,20 +141,23 @@ class SyncQueueService {
         }
       }
 
-      await _processOperation(operation);
+      await _processOperation(operation, supabaseClient: supabaseClient);
     }
 
     _isProcessing = false;
     _emitStatus();
   }
 
-  Future<void> _processOperation(SyncOperation operation) async {
+  Future<void> _processOperation(
+    SyncOperation operation, {
+    SupabaseClient? supabaseClient,
+  }) async {
     operation.markSyncing();
     debugPrint('[SyncQueueService] Processing: $operation');
 
     try {
       final payload = json.decode(operation.payload) as Map<String, dynamic>;
-      final client = Supabase.instance.client;
+      final client = supabaseClient ?? Supabase.instance.client;
 
       switch (operation.operationType) {
         case 'create':
