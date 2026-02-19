@@ -27,10 +27,14 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
+        run: |
+          flutter pub get
+          cd ../../packages/core && flutter pub get
 
-      - name: Generate Mocks
-        run: dart run build_runner build --delete-conflicting-outputs
+      - name: Generate Code
+        run: |
+          cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Create Configs
         run: |
@@ -103,15 +107,14 @@ jobs:
           cache: true
 
       - name: Install dependencies
-        run: flutter pub get
-
-      - name: Install FlutterFire CLI
         run: |
-          dart pub global activate flutterfire_cli
-          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+          flutter pub get
+          cd ../../packages/core && flutter pub get
 
       - name: Generate code
-        run: dart run build_runner build --delete-conflicting-outputs
+        run: |
+          cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs
+          dart run build_runner build --delete-conflicting-outputs
 
       - name: Create Secrets
         env:
