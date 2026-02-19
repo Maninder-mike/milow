@@ -299,7 +299,9 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   Future<void> _loadDriverType() async {
     try {
-      final profileMap = await ProfileService.getProfile();
+      final profileMap = await ProfileService.getProfile(
+        supabaseClient: widget.supabaseClient,
+      );
       if (mounted && profileMap != null) {
         final profile = UserProfile.fromJson(profileMap);
         setState(() {
@@ -815,7 +817,10 @@ class _AddEntryPageState extends State<AddEntryPage>
   /// Load all existing trip numbers for duplicate detection
   Future<void> _loadExistingTripNumbers() async {
     try {
-      final List<Trip> trips = await TripRepository.getTrips(refresh: false);
+      final List<Trip> trips = await TripRepository.getTrips(
+        refresh: false,
+        supabaseClient: widget.supabaseClient,
+      );
       if (mounted) {
         setState(() {
           _existingTripNumbers = trips
@@ -1200,9 +1205,7 @@ class _AddEntryPageState extends State<AddEntryPage>
               side: BorderSide(
                 color: isPickedUp
                     ? Colors.transparent
-                    : Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.5),
+                    : Theme.of(context).colorScheme.primary.withOpacity(0.5),
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -1263,9 +1266,7 @@ class _AddEntryPageState extends State<AddEntryPage>
               side: BorderSide(
                 color: isDelivered
                     ? Colors.transparent
-                    : Theme.of(
-                        context,
-                      ).colorScheme.primary.withValues(alpha: 0.5),
+                    : Theme.of(context).colorScheme.primary.withOpacity(0.5),
               ),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(20),
@@ -2496,17 +2497,27 @@ class _AddEntryPageState extends State<AddEntryPage>
       String? savedTripId = trip.id;
 
       if (_isEditMode && widget.editingTrip != null) {
-        await TripRepository.updateTrip(trip);
+        await TripRepository.updateTrip(
+          trip,
+          supabaseClient: widget.supabaseClient,
+        );
         savedTripId = widget.editingTrip!.id;
       } else {
         // Get existing trips before creating new one
-        final List<Trip> existingTrips = await TripRepository.getTrips();
+        final List<Trip> existingTrips = await TripRepository.getTrips(
+          supabaseClient: widget.supabaseClient,
+        );
 
         // Create the new trip (offline-first: saves locally, queues sync)
-        await TripRepository.createTrip(trip);
+        await TripRepository.createTrip(
+          trip,
+          supabaseClient: widget.supabaseClient,
+        );
 
         // Try to get the trip ID from repository after creation
-        final List<Trip> updatedTrips = await TripRepository.getTrips();
+        final List<Trip> updatedTrips = await TripRepository.getTrips(
+          supabaseClient: widget.supabaseClient,
+        );
         final createdTrip = updatedTrips.firstWhere(
           (t) => t.tripNumber == trip.tripNumber,
           orElse: () => trip,
@@ -2572,7 +2583,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   /// Upload pending documents attached during trip creation
   Future<void> _uploadPendingDocuments(String tripId, String tripNumber) async {
-    final client = Supabase.instance.client;
+    final client = widget.supabaseClient ?? Supabase.instance.client;
     final userId = client.auth.currentUser?.id;
     if (userId == null) return;
 
@@ -3232,9 +3243,15 @@ class _AddEntryPageState extends State<AddEntryPage>
       );
 
       if (_isEditMode && widget.editingFuel != null) {
-        await FuelRepository.updateFuelEntry(fuelEntry);
+        await FuelRepository.updateFuelEntry(
+          fuelEntry,
+          supabaseClient: widget.supabaseClient,
+        );
       } else {
-        await FuelRepository.createFuelEntry(fuelEntry);
+        await FuelRepository.createFuelEntry(
+          fuelEntry,
+          supabaseClient: widget.supabaseClient,
+        );
       }
 
       if (mounted) {

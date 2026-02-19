@@ -26,9 +26,18 @@ import 'package:milow/core/services/trip_service.dart';
 /// - Background syncs when online
 class TripRepository {
   static const _uuid = Uuid();
+  static SupabaseClient _getClient(SupabaseClient? customClient) {
+    return customClient ?? Supabase.instance.client;
+  }
+
+  static String? _getUserId(SupabaseClient client) =>
+      mockUserId ?? client.auth.currentUser?.id;
+
   static SupabaseClient get _client => Supabase.instance.client;
-  static final _networkClient = CoreNetworkClient(Supabase.instance.client);
   static String? get _userId => mockUserId ?? _client.auth.currentUser?.id;
+  static CoreNetworkClient _getNetworkClient(SupabaseClient client) {
+    return CoreNetworkClient(client);
+  }
 
   /// Mock user ID for testing
   @visibleForTesting
@@ -38,8 +47,12 @@ class TripRepository {
   ///
   /// Returns cached data immediately. If [refresh] is true, also
   /// fetches from server in the background.
-  static Future<List<Trip>> getTrips({bool refresh = true}) async {
-    final userId = _userId;
+  static Future<List<Trip>> getTrips({
+    bool refresh = true,
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return [];
 
     // Return cached data immediately
@@ -130,7 +143,10 @@ class TripRepository {
   }
 
   /// Get a single trip by ID (local-first)
-  static Future<Trip?> getTripById(String tripId) async {
+  static Future<Trip?> getTripById(
+    String tripId, {
+    SupabaseClient? supabaseClient,
+  }) async {
     // Check local cache first
     final query = driverDatabase.select(driverDatabase.trips)
       ..where((t) => t.id.equals(tripId));
@@ -139,7 +155,11 @@ class TripRepository {
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
-      return await TripService.getTripById(tripId, coalesceKey: 'trip:$tripId');
+      return await TripService.getTripById(
+        tripId,
+        coalesceKey: 'trip:$tripId',
+        supabaseClient: supabaseClient,
+      );
     }
 
     return null;
@@ -149,8 +169,12 @@ class TripRepository {
   ///
   /// Saves to local cache immediately and queues sync.
   /// Returns the trip with a local ID that will be synced.
-  static Future<Trip> createTrip(Trip trip) async {
-    final userId = _userId;
+  static Future<Trip> createTrip(
+    Trip trip, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) {
       throw Exception('User not authenticated');
     }
@@ -185,8 +209,12 @@ class TripRepository {
   }
 
   /// Update an existing trip (offline-capable)
-  static Future<Trip> updateTrip(Trip trip) async {
-    final userId = _userId;
+  static Future<Trip> updateTrip(
+    Trip trip, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) {
       throw Exception('User not authenticated');
     }
@@ -218,8 +246,12 @@ class TripRepository {
   }
 
   /// Delete a trip (offline-capable)
-  static Future<void> deleteTrip(String tripId) async {
-    final userId = _userId;
+  static Future<void> deleteTrip(
+    String tripId, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) {
       throw Exception('User not authenticated');
     }
@@ -244,13 +276,17 @@ class TripRepository {
   }
 
   /// Search trips (local search if offline, server if online)
-  static Future<List<Trip>> searchTrips(String query) async {
-    final userId = _userId;
+  static Future<List<Trip>> searchTrips(
+    String query, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return [];
 
     if (connectivityService.isOnline) {
       try {
-        return await TripService.searchTrips(query);
+        return await TripService.searchTrips(query, supabaseClient: client);
       } catch (_) {
         // Fallback to local search
       }
@@ -270,13 +306,15 @@ class TripRepository {
   }
 
   static Future<Result<List<TripDocument>>> getSharedDocuments(
-    String companyId,
-  ) async {
-    final userId = _userId;
+    String companyId, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return const Left(UnauthorizedFailure());
 
-    final result = await _networkClient.query(() async {
-      final response = await _client
+    final result = await _getNetworkClient(client).query(() async {
+      final response = await client
           .from('trip_documents')
           .select('*, trips(trip_number)')
           .eq('company_id', companyId)
@@ -298,13 +336,17 @@ class TripRepository {
   }
 
   /// Download a document to a temporary file
-  static Future<Result<File>> downloadDocument(TripDocument doc) async {
-    return _networkClient.query(() async {
+  static Future<Result<File>> downloadDocument(
+    TripDocument doc, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    return _getNetworkClient(client).query(() async {
       String? downloadUrl;
       if (doc.url != null && doc.url!.isNotEmpty) {
         downloadUrl = doc.url;
       } else if (doc.filePath.isNotEmpty) {
-        downloadUrl = await _client.storage
+        downloadUrl = await client.storage
             .from('trip_documents')
             .createSignedUrl(doc.filePath, 60);
       } else {
@@ -328,12 +370,16 @@ class TripRepository {
   }
 
   /// Resolve trip ID from trip number
-  static Future<Result<String?>> resolveTripId(String tripNumber) async {
-    final userId = _userId;
+  static Future<Result<String?>> resolveTripId(
+    String tripNumber, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return const Left(UnauthorizedFailure());
 
-    return _networkClient.query(() async {
-      final response = await _client
+    return _getNetworkClient(client).query(() async {
+      final response = await client
           .from('trips')
           .select('id')
           .eq('trip_number', tripNumber)
@@ -349,8 +395,10 @@ class TripRepository {
     required String tripNumber, // Used for filename
     required String notes,
     String? tripId,
+    SupabaseClient? supabaseClient,
   }) async {
-    final userId = _userId;
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return const Left(UnauthorizedFailure());
 
     // Logic:
@@ -408,8 +456,8 @@ class TripRepository {
     }
 
     // Online
-    return _networkClient.query(() async {
-      await _client.storage
+    return _getNetworkClient(client).query(() async {
+      await client.storage
           .from('trip_documents')
           .upload(
             storagePath,
@@ -420,7 +468,7 @@ class TripRepository {
             ),
           );
 
-      await _client.from('trip_documents').insert({
+      await client.from('trip_documents').insert({
         'trip_id': tripId,
         'user_id': userId,
         'document_type': type.value,
@@ -435,9 +483,13 @@ class TripRepository {
     }, operationName: 'uploadDocument');
   }
 
-  static Future<Result<List<TripDocument>>> getDocuments(String userId) async {
-    final result = await _networkClient.query(() async {
-      final response = await _client
+  static Future<Result<List<TripDocument>>> getDocuments(
+    String userId, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final result = await _getNetworkClient(client).query(() async {
+      final response = await client
           .from('trip_documents')
           .select('*, trips(trip_number)')
           .eq('user_id', userId)
@@ -457,8 +509,12 @@ class TripRepository {
     });
   }
 
-  static Future<Result<void>> deleteDocuments(List<TripDocument> docs) async {
-    return _networkClient.query(() async {
+  static Future<Result<void>> deleteDocuments(
+    List<TripDocument> docs, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    return _getNetworkClient(client).query(() async {
       final filePaths = docs
           .map((d) => d.filePath)
           .where((path) => path.isNotEmpty)
@@ -466,16 +522,17 @@ class TripRepository {
       final idsToDelete = docs.map((d) => d.id).whereType<String>().toList();
 
       if (filePaths.isNotEmpty) {
-        await _client.storage.from('trip_documents').remove(filePaths);
+        await client.storage.from('trip_documents').remove(filePaths);
       }
-      await _client.from('trip_documents').delete().inFilter('id', idsToDelete);
+      await client.from('trip_documents').delete().inFilter('id', idsToDelete);
     }, operationName: 'deleteDocuments');
   }
 
   /// Get active trip (trip that is not fully completed)
   /// A trip is active if it has no end_odometer OR has incomplete deliveries
-  static Future<Trip?> getActiveTrip() async {
-    final userId = _userId;
+  static Future<Trip?> getActiveTrip({SupabaseClient? supabaseClient}) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return null;
 
     // Check locally first
@@ -487,7 +544,7 @@ class TripRepository {
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
-      return await TripService.getActiveTrip();
+      return await TripService.getActiveTrip(supabaseClient: client);
     }
 
     return null;

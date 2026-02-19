@@ -8,19 +8,26 @@ class ProfileService {
   static const String _profilesTable = 'profiles';
   static const String _avatarsBucket = 'avatars';
 
-  static SupabaseClient get _client => Supabase.instance.client;
-  static final _networkClient = CoreNetworkClient(Supabase.instance.client);
+  static SupabaseClient _getClient(SupabaseClient? customClient) {
+    return customClient ?? Supabase.instance.client;
+  }
 
-  static String? get currentUserId => _client.auth.currentUser?.id;
+  static String? get currentUserId =>
+      Supabase.instance.client.auth.currentUser?.id;
 
-  static Future<Map<String, dynamic>?> getProfile({String? coalesceKey}) async {
-    final uid = currentUserId;
+  static Future<Map<String, dynamic>?> getProfile({
+    String? coalesceKey,
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final uid = client.auth.currentUser?.id;
     if (uid == null) return null;
 
-    final result = await _networkClient.query(
+    final networkClient = CoreNetworkClient(client);
+    final result = await networkClient.query(
       () async {
         // Join with driver_profiles to get the separated details
-        final res = await _client
+        final res = await client
             .from(_profilesTable)
             .select('*, companies(*), driver_profiles(*)')
             .eq('id', uid)
@@ -59,29 +66,35 @@ class ProfileService {
   static Future<String?> uploadAvatar({
     required Uint8List bytes,
     required String filename,
+    SupabaseClient? supabaseClient,
   }) async {
-    final uid = currentUserId;
+    final client = _getClient(supabaseClient);
+    final uid = client.auth.currentUser?.id;
     if (uid == null) return null;
     final path = '$uid/$filename';
-    await _client.storage
+    await client.storage
         .from(_avatarsBucket)
         .uploadBinary(
           path,
           bytes,
           fileOptions: const FileOptions(upsert: true),
         );
-    final publicUrl = _client.storage.from(_avatarsBucket).getPublicUrl(path);
+    final publicUrl = client.storage.from(_avatarsBucket).getPublicUrl(path);
 
     // Also update the profile with the new URL
     if (publicUrl.isNotEmpty) {
-      await updateProfile({'avatar_url': publicUrl});
+      await updateProfile({'avatar_url': publicUrl}, supabaseClient: client);
     }
 
     return publicUrl;
   }
 
-  static Future<void> updateProfile(Map<String, dynamic> values) async {
-    final uid = currentUserId;
+  static Future<void> updateProfile(
+    Map<String, dynamic> values, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final uid = client.auth.currentUser?.id;
     if (uid == null) return;
 
     // Separate fields for 'driver_profiles' vs 'profiles'
@@ -132,7 +145,7 @@ class ProfileService {
       // MUST do this first because 'driver_profiles' has a foreign key to 'profiles'
       if (baseUpdates.isNotEmpty) {
         // Use upsert to create if missing (e.g. trigger failed)
-        await _client.from(_profilesTable).upsert({
+        await client.from(_profilesTable).upsert({
           ...baseUpdates,
           'id': uid,
         }, onConflict: 'id');
@@ -140,7 +153,7 @@ class ProfileService {
 
       // 2. Update Driver Profiles (Personal Data)
       if (driverUpdates.isNotEmpty) {
-        await _client.from('driver_profiles').upsert({
+        await client.from('driver_profiles').upsert({
           ...driverUpdates,
           'id': uid,
         }, onConflict: 'id');
@@ -168,10 +181,11 @@ class ProfileService {
   /// Revoke company association - driver leaves their current company.
   /// This sets company_id and company_name to null, preventing the company
   /// from accessing the driver's data.
-  static Future<void> revokeCompany() async {
-    final uid = currentUserId;
+  static Future<void> revokeCompany({SupabaseClient? supabaseClient}) async {
+    final client = _getClient(supabaseClient);
+    final uid = client.auth.currentUser?.id;
     if (uid == null) return;
-    await _client
+    await client
         .from(_profilesTable)
         .update({'company_id': null, 'company_name': null})
         .eq('id', uid);

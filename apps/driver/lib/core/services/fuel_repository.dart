@@ -18,6 +18,13 @@ import 'package:milow/core/services/fuel_service.dart';
 /// - Background syncs when online
 class FuelRepository {
   static const _uuid = Uuid();
+  static SupabaseClient _getClient(SupabaseClient? customClient) {
+    return customClient ?? Supabase.instance.client;
+  }
+
+  static String? _getUserId(SupabaseClient client) =>
+      mockUserId ?? client.auth.currentUser?.id;
+
   static SupabaseClient get _client => Supabase.instance.client;
   static String? get _userId => mockUserId ?? _client.auth.currentUser?.id;
 
@@ -102,8 +109,12 @@ class FuelRepository {
   }
 
   /// Create a new fuel entry (offline-capable)
-  static Future<FuelEntry> createFuelEntry(FuelEntry entry) async {
-    final userId = _userId;
+  static Future<FuelEntry> createFuelEntry(
+    FuelEntry entry, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) {
       throw Exception('User not authenticated');
     }
@@ -138,8 +149,12 @@ class FuelRepository {
   }
 
   /// Update an existing fuel entry (offline-capable)
-  static Future<FuelEntry> updateFuelEntry(FuelEntry entry) async {
-    final userId = _userId;
+  static Future<FuelEntry> updateFuelEntry(
+    FuelEntry entry, {
+    SupabaseClient? supabaseClient,
+  }) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) {
       throw Exception('User not authenticated');
     }

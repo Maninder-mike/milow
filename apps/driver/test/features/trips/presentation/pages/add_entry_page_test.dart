@@ -18,16 +18,13 @@ class MockSupabaseQueryBuilder extends Mock implements SupabaseQueryBuilder {}
 class MockPostgrestFilterBuilder extends Mock
     implements PostgrestFilterBuilder<List<Map<String, dynamic>>> {}
 
-class FakePostgrestTransformBuilder extends Fake
-    implements PostgrestTransformBuilder<List<Map<String, dynamic>>> {
-  final List<Map<String, dynamic>> result;
-  FakePostgrestTransformBuilder([this.result = const []]);
+class FakePostgrestTransformBuilder<T> extends Fake
+    implements PostgrestTransformBuilder<T> {
+  final T result;
+  FakePostgrestTransformBuilder(this.result);
 
   @override
-  Future<U> then<U>(
-    FutureOr<U> Function(List<Map<String, dynamic>>) onValue, {
-    Function? onError,
-  }) {
+  Future<U> then<U>(FutureOr<U> Function(T) onValue, {Function? onError}) {
     return Future.value(onValue(result));
   }
 }
@@ -79,7 +76,17 @@ void main() {
     ).thenAnswer((_) => mockFilterBuilder);
     when(
       () => mockFilterBuilder.order(any(), ascending: any(named: 'ascending')),
-    ).thenAnswer((_) => FakePostgrestTransformBuilder([]));
+    ).thenAnswer(
+      (_) => FakePostgrestTransformBuilder<List<Map<String, dynamic>>>([]),
+    );
+
+    when(() => mockFilterBuilder.maybeSingle()).thenAnswer(
+      (_) => FakePostgrestTransformBuilder<Map<String, dynamic>?>(null),
+    );
+
+    when(() => mockFilterBuilder.single()).thenAnswer(
+      (_) => FakePostgrestTransformBuilder<Map<String, dynamic>>({}),
+    );
   });
 
   Widget createTestWidget() {
