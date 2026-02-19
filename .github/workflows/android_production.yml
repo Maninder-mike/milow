@@ -367,6 +367,13 @@ jobs:
           userFraction: ${{ steps.rollout.outputs.percentage == '100' && '1.0' || format('0.{0}', steps.rollout.outputs.percentage) }}
           whatsNewDirectory: apps/driver/fastlane/metadata/android
 
+      - name: Setup Ruby (Fastlane)
+        uses: ruby/setup-ruby@v1
+        with:
+            ruby-version: '3.1'
+            bundler-cache: true
+            working-directory: apps/driver
+
       # Update Play Store metadata
       - name: Update Play Store Metadata
         env:
@@ -375,12 +382,7 @@ jobs:
           echo "📝 Updating Play Store listing..."
           cd apps/driver
           echo "$ANDROID_SERVICE_ACCOUNT_JSON" > service-account.json
-          
-          export GEM_HOME="$HOME/.gem"
-          export PATH="$GEM_HOME/bin:$PATH"
-          gem install fastlane
-          
-          fastlane update_metadata
+          bundle exec fastlane update_metadata
           rm service-account.json
 
       # Prepare release assets
