@@ -444,6 +444,14 @@ class MockCoreNetworkClient extends _i1.Mock implements _i3.CoreNetworkClient {
           as _i2.SupabaseClient);
 
   @override
+  _i4.Future<bool> get hasConnection =>
+      (super.noSuchMethod(
+            Invocation.getter(#hasConnection),
+            returnValue: _i4.Future<bool>.value(false),
+          )
+          as _i4.Future<bool>);
+
+  @override
   _i3.CircuitState get circuitState =>
       (super.noSuchMethod(
             Invocation.getter(#circuitState),
