@@ -4,11 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../providers/load_providers.dart';
 import 'address_input_form.dart';
-import '../../domain/models/load.dart';
+import 'package:milow_core/milow_core.dart';
 
-import 'package:terminal/features/dispatch/domain/models/accessorial_charge.dart';
 import '../widgets/accessorials_widget.dart';
-import '../../domain/models/broker.dart';
 
 class LoadEntryForm extends ConsumerStatefulWidget {
   final Future<void> Function(Load load) onSave;

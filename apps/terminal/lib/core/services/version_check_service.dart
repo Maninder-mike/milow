@@ -35,7 +35,9 @@ class VersionCheckService {
 
       return UpdateStatus.latest;
     } catch (e) {
-      debugPrint('Error checking version status: $e');
+      if (kDebugMode) {
+        debugPrint('Error checking version status: $e');
+      }
       // On error, default to no update to prevent blocking user in case of network issues
       return UpdateStatus.latest;
     }
@@ -59,7 +61,9 @@ class VersionCheckService {
       }
       return false;
     } catch (e) {
-      debugPrint('Error parsing version: $e');
+      if (kDebugMode) {
+        debugPrint('Error parsing version: $e');
+      }
       return false;
     }
   }

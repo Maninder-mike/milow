@@ -11,15 +11,18 @@ class MessageRepository {
 
   MessageRepository(this._client);
 
-  /// Send a direct message to a user
+  /// Send a direct message or load-scoped message
   Future<Result<void>> sendMessage({
-    required String receiverId,
+    String? receiverId,
+    String? loadId,
     required String content,
   }) async {
     return _client.query<void>(() async {
+      final myId = _client.supabase.auth.currentUser!.id;
       await _client.supabase.from('messages').insert({
-        'sender_id': _client.supabase.auth.currentUser!.id,
-        'receiver_id': receiverId,
+        'sender_id': myId,
+        'receiver_id': ?receiverId,
+        'load_id': ?loadId,
         'content': content,
         'created_at': DateTime.now().toIso8601String(),
       });

@@ -4,17 +4,17 @@ import 'dart:io';
 
 abstract class IInspectionRepository {
   /// Get all inspections
-  Future<List<Inspection>> getInspections();
+  Future<Result<List<DVIRReport>>> getInspections();
 
   /// Create or Update an inspection
-  Future<void> saveInspection(
-    Inspection inspection, {
+  Future<Result<void>> saveInspection(
+    DVIRReport inspection, {
     Uint8List? signatureBytes,
   });
 
   /// Sync all pending inspections to Supabase
   /// Returns the number of inspections successfully synced
-  Future<int> syncPendingInspections();
+  Future<Result<int>> syncPendingInspections();
 
   /// Delete an inspection (soft delete if synced, hard delete if local)
   Future<void> deleteInspection(String id);

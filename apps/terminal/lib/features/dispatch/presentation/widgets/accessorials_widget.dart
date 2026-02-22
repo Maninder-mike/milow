@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:terminal/features/dispatch/domain/models/accessorial_charge.dart';
+import 'package:milow_core/milow_core.dart';
 
 class AccessorialsWidget extends StatefulWidget {
   final List<AccessorialCharge> charges;

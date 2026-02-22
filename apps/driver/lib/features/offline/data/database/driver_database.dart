@@ -171,6 +171,123 @@ class InspectionDefectPhotos extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('LoadData')
+class Loads extends Table {
+  TextColumn get id => text()();
+  TextColumn get loadReference => text().named('load_reference')();
+  TextColumn get brokerId => text().nullable().named('broker_id')();
+  TextColumn get brokerName => text().named('broker_name')();
+  RealColumn get rate => real()();
+  TextColumn get currency => text().withDefault(const Constant('CAD'))();
+  TextColumn get goods => text()();
+  RealColumn get weight => real().withDefault(const Constant(0.0))();
+  TextColumn get quantity => text().withDefault(const Constant(''))();
+  TextColumn get weightUnit =>
+      text().named('weight_unit').withDefault(const Constant('Lbs'))();
+  TextColumn get status => text()(); // Use name from enum
+  TextColumn get loadNotes => text().named('load_notes')();
+  TextColumn get companyNotes => text().named('company_notes')();
+  TextColumn get assignedDriverId =>
+      text().nullable().named('assigned_driver_id')();
+  TextColumn get assignedTruckId =>
+      text().nullable().named('assigned_truck_id')();
+  TextColumn get assignedTrailerId =>
+      text().nullable().named('assigned_trailer_id')();
+  TextColumn get tripNumber => text().named('trip_number')();
+  TextColumn get poNumber => text().nullable().named('po_number')();
+  TextColumn get companyId => text().nullable().named('company_id')();
+  DateTimeColumn get createdAt => dateTime().nullable().named('created_at')();
+  DateTimeColumn get updatedAt => dateTime().nullable().named('updated_at')();
+
+  // Accessorials stored as JSON for simplicity
+  TextColumn get accessorials =>
+      text().named('accessorials').withDefault(const Constant('[]'))();
+
+  // Offline/Sync fields
+  BoolColumn get isSynced =>
+      boolean().named('is_synced').withDefault(const Constant(false))();
+  BoolColumn get isDeleted =>
+      boolean().named('is_deleted').withDefault(const Constant(false))();
+  DateTimeColumn get lastUpdated =>
+      dateTime().nullable().named('last_updated')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('StopData')
+class Stops extends Table {
+  TextColumn get id => text()();
+  TextColumn get loadId => text()
+      .named('load_id')
+      .references(Loads, #id, onDelete: KeyAction.cascade)();
+  IntColumn get sequence => integer()();
+  TextColumn get type => text()(); // pickup, delivery, other
+  TextColumn get location => text()(); // JSON string of LoadLocation
+  TextColumn get notes => text().nullable()();
+
+  // Stop details
+  TextColumn get commodity => text().nullable()();
+  TextColumn get quantity => text().nullable()();
+  RealColumn get weight => real().nullable()();
+  TextColumn get weightUnit => text().nullable().named('weight_unit')();
+  TextColumn get stopReference => text().nullable().named('stop_reference')();
+  TextColumn get instructions => text().nullable()();
+  DateTimeColumn get appointmentTime =>
+      dateTime().nullable().named('appointment_time')();
+  BoolColumn get isCompleted =>
+      boolean().named('is_completed').withDefault(const Constant(false))();
+  DateTimeColumn get completedAt =>
+      dateTime().nullable().named('completed_at')();
+  DateTimeColumn get arrivedAt => dateTime().nullable().named('arrived_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('DriverLocationData')
+class DriverLocations extends Table {
+  TextColumn get id => text()();
+  TextColumn get driverId => text().named('driver_id')();
+  RealColumn get latitude => real()();
+  RealColumn get longitude => real()();
+  RealColumn get speed => real().nullable()();
+  RealColumn get heading => real().nullable()();
+  RealColumn get accuracy => real().nullable()();
+  DateTimeColumn get timestamp => dateTime()();
+  BoolColumn get isSynced =>
+      boolean().named('is_synced').withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('MessageData')
+class Messages extends Table {
+  TextColumn get id => text()();
+  TextColumn get companyId => text().named('company_id').nullable()();
+  TextColumn get loadId => text().named('load_id').nullable()();
+  TextColumn get senderId => text().named('sender_id')();
+  TextColumn get receiverId => text().named('receiver_id').nullable()();
+  TextColumn get content => text()();
+  TextColumn get messageType =>
+      text().named('message_type').withDefault(const Constant('text'))();
+  TextColumn get attachmentUrl => text().named('attachment_url').nullable()();
+  DateTimeColumn get createdAt => dateTime().named('created_at')();
+
+  // Metadata for UI
+  TextColumn get senderName => text().named('sender_name').nullable()();
+  TextColumn get senderRole => text().named('sender_role').nullable()();
+  TextColumn get senderAvatarUrl =>
+      text().named('sender_avatar_url').nullable()();
+
+  BoolColumn get isSynced =>
+      boolean().named('is_synced').withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Trips,
@@ -178,13 +295,17 @@ class InspectionDefectPhotos extends Table {
     DriverTruckInspections,
     DriverTruckInspectionDefects,
     InspectionDefectPhotos,
+    Loads,
+    Stops,
+    DriverLocations,
+    Messages,
   ],
 )
 class DriverDatabase extends _$DriverDatabase {
   DriverDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration {
@@ -231,6 +352,35 @@ class DriverDatabase extends _$DriverDatabase {
           await m.addColumn(
             driverTruckInspections,
             driverTruckInspections.notes as GeneratedColumn<Object>,
+          );
+        }
+        if (from < 8) {
+          // Schema v8: Add Loads and Stops tables for standardized load architecture
+          await m.createTable(loads);
+          await m.createTable(stops);
+        }
+        if (from < 10) {
+          // Schema v10: Add DriverLocations table
+          await m.createTable(driverLocations);
+        }
+        if (from < 11) {
+          // Schema v11: Add Messages table
+          await customStatement(
+            'CREATE TABLE IF NOT EXISTS messages ('
+            'id TEXT PRIMARY KEY, '
+            'company_id TEXT, '
+            'load_id TEXT, '
+            'sender_id TEXT NOT NULL, '
+            'receiver_id TEXT, '
+            'content TEXT NOT NULL, '
+            'message_type TEXT NOT NULL DEFAULT "text", '
+            'attachment_url TEXT, '
+            'created_at INTEGER NOT NULL, '
+            'sender_name TEXT, '
+            'sender_role TEXT, '
+            'sender_avatar_url TEXT, '
+            'is_synced INTEGER NOT NULL DEFAULT 0'
+            ')',
           );
         }
       },

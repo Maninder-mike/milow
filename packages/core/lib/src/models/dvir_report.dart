@@ -45,9 +45,14 @@ enum DVIRCategory {
 @freezed
 abstract class DVIRDefect with _$DVIRDefect {
   const factory DVIRDefect({
+    required String id,
     required DVIRCategory category,
     required String description,
     @Default(DefectSeverity.minor) DefectSeverity severity,
+    @JsonKey(name: 'photo_urls') @Default([]) List<String> photoUrls,
+    @JsonKey(name: 'is_repaired') @Default(false) bool isRepaired,
+    @JsonKey(name: 'repaired_at') DateTime? repairedAt,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
   }) = _DVIRDefect;
 
   factory DVIRDefect.fromJson(Map<String, dynamic> json) =>
@@ -57,11 +62,10 @@ abstract class DVIRDefect with _$DVIRDefect {
 /// Represents a Driver Vehicle Inspection Report (DVIR)
 @freezed
 abstract class DVIRReport with _$DVIRReport {
-  const DVIRReport._();
-
   const factory DVIRReport({
     required String id,
     @JsonKey(name: 'vehicle_id') required String vehicleId,
+    @JsonKey(name: 'trailer_id') String? trailerId,
     @JsonKey(name: 'driver_id') String? driverId,
     @JsonKey(name: 'inspection_type')
     required DVIRInspectionType inspectionType,
@@ -69,18 +73,24 @@ abstract class DVIRReport with _$DVIRReport {
     @JsonKey(name: 'defects_found') @Default(false) bool defectsFound,
     @Default([]) List<DVIRDefect> defects,
     @JsonKey(name: 'is_safe_to_operate') required bool isSafeToOperate,
-    @JsonKey(name: 'driver_signature') String? driverSignature,
-    @JsonKey(name: 'mechanic_signature') String? mechanicSignature,
+    @JsonKey(name: 'driver_signature_url') String? driverSignatureUrl,
+    @JsonKey(name: 'mechanic_signature_url') String? mechanicSignatureUrl,
     @JsonKey(name: 'corrected_at') DateTime? correctedAt,
+    @JsonKey(name: 'mechanic_notes') String? mechanicNotes,
+    String? location,
     String? notes,
     @JsonKey(name: 'created_at') DateTime? createdAt,
-    // Joined fields from profiles
+    @JsonKey(name: 'updated_at') DateTime? updatedAt,
+    // Joined fields from profiles (optional)
     @JsonKey(name: 'driver_name') String? driverName,
   }) = _DVIRReport;
 
   factory DVIRReport.fromJson(Map<String, dynamic> json) =>
       _$DVIRReportFromJson(json);
+}
 
+/// Custom computed properties for [DVIRReport]
+extension DVIRReportHelpers on DVIRReport {
   /// Whether defects have been corrected
   bool get isCorrected => correctedAt != null;
 

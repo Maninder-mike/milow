@@ -1,8 +1,6 @@
 import 'package:fpdart/fpdart.dart';
 import 'package:milow_core/milow_core.dart';
 
-import '../../domain/models/quote.dart';
-
 class QuoteRepository {
   final CoreNetworkClient _client;
 

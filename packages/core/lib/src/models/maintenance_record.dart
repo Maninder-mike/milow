@@ -39,34 +39,8 @@ enum MaintenanceServiceType {
   @JsonValue('hvac_service')
   hvacService,
   @JsonValue('other')
-  other,
-}
+  other;
 
-/// Represents a single maintenance/service record for a vehicle
-@freezed
-abstract class MaintenanceRecord with _$MaintenanceRecord {
-  const factory MaintenanceRecord({
-    required String id,
-    @JsonKey(name: 'vehicle_id') required String vehicleId,
-    @JsonKey(name: 'service_type') required MaintenanceServiceType serviceType,
-    String? description,
-    @JsonKey(name: 'odometer_at_service') int? odometerAtService,
-    double? cost,
-    @JsonKey(name: 'performed_by') String? performedBy,
-    @JsonKey(name: 'performed_at') required DateTime performedAt,
-    @JsonKey(name: 'next_due_odometer') int? nextDueOdometer,
-    @JsonKey(name: 'next_due_date') DateTime? nextDueDate,
-    String? notes,
-    @JsonKey(name: 'created_at') DateTime? createdAt,
-    @JsonKey(name: 'created_by') String? createdBy,
-  }) = _MaintenanceRecord;
-
-  factory MaintenanceRecord.fromJson(Map<String, dynamic> json) =>
-      _$MaintenanceRecordFromJson(json);
-}
-
-/// Extension for display-friendly names
-extension MaintenanceServiceTypeX on MaintenanceServiceType {
   String get displayName {
     switch (this) {
       case MaintenanceServiceType.oilChange:
@@ -124,4 +98,27 @@ extension MaintenanceServiceTypeX on MaintenanceServiceType {
         return 'wrench';
     }
   }
+}
+
+/// Represents a single maintenance/service record for a vehicle
+@freezed
+abstract class MaintenanceRecord with _$MaintenanceRecord {
+  const factory MaintenanceRecord({
+    required String id,
+    @JsonKey(name: 'vehicle_id') required String vehicleId,
+    @JsonKey(name: 'service_type') required MaintenanceServiceType serviceType,
+    String? description,
+    @JsonKey(name: 'odometer_at_service') int? odometerAtService,
+    double? cost,
+    @JsonKey(name: 'performed_by') String? performedBy,
+    @JsonKey(name: 'performed_at') required DateTime performedAt,
+    @JsonKey(name: 'next_due_odometer') int? nextDueOdometer,
+    @JsonKey(name: 'next_due_date') DateTime? nextDueDate,
+    String? notes,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
+    @JsonKey(name: 'created_by') String? createdBy,
+  }) = _MaintenanceRecord;
+
+  factory MaintenanceRecord.fromJson(Map<String, dynamic> json) =>
+      _$MaintenanceRecordFromJson(json);
 }

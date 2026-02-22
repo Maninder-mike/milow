@@ -122,3 +122,6 @@ supabase/functions/**/.env
 .svn/
 .swiftpm/
 migrate_working_dir/
+
+.gemini/
+gha-creds-*.json

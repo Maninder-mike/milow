@@ -6,9 +6,8 @@ import 'package:intl/intl.dart';
 import 'package:flutter/services.dart';
 import '../providers/quote_providers.dart';
 import '../providers/load_providers.dart';
-import '../widgets/load_quote_dialog.dart' hide QuoteLineItem;
-import '../../domain/models/quote.dart';
-import '../../domain/models/load.dart';
+import '../widgets/load_quote_dialog.dart';
+import 'package:milow_core/milow_core.dart';
 import '../../../../core/constants/app_colors.dart';
 
 class QuotesPage extends ConsumerStatefulWidget {

@@ -18,7 +18,6 @@ import 'package:terminal/features/auth/data/auth_repository.dart' as _i12;
 import 'package:terminal/features/auth/services/biometric_service.dart' as _i9;
 import 'package:terminal/features/dispatch/data/repositories/load_repository.dart'
     as _i13;
-import 'package:terminal/features/dispatch/domain/models/load.dart' as _i14;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -3345,7 +3344,7 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
   }
 
   @override
-  _i4.Future<_i7.Either<_i8.Failure, List<_i14.Load>>> fetchLoads({
+  _i4.Future<_i7.Either<_i8.Failure, List<_i3.Load>>> fetchLoads({
     int? page = 0,
     int? pageSize = 20,
     String? statusFilter,
@@ -3359,8 +3358,8 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
               #searchQuery: searchQuery,
             }),
             returnValue:
-                _i4.Future<_i7.Either<_i8.Failure, List<_i14.Load>>>.value(
-                  _i6.dummyValue<_i7.Either<_i8.Failure, List<_i14.Load>>>(
+                _i4.Future<_i7.Either<_i8.Failure, List<_i3.Load>>>.value(
+                  _i6.dummyValue<_i7.Either<_i8.Failure, List<_i3.Load>>>(
                     this,
                     Invocation.method(#fetchLoads, [], {
                       #page: page,
@@ -3371,10 +3370,10 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
                   ),
                 ),
           )
-          as _i4.Future<_i7.Either<_i8.Failure, List<_i14.Load>>>);
+          as _i4.Future<_i7.Either<_i8.Failure, List<_i3.Load>>>);
 
   @override
-  _i4.Future<_i7.Either<_i8.Failure, void>> createLoad(_i14.Load? load) =>
+  _i4.Future<_i7.Either<_i8.Failure, void>> createLoad(_i3.Load? load) =>
       (super.noSuchMethod(
             Invocation.method(#createLoad, [load]),
             returnValue: _i4.Future<_i7.Either<_i8.Failure, void>>.value(
@@ -3387,7 +3386,7 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
           as _i4.Future<_i7.Either<_i8.Failure, void>>);
 
   @override
-  _i4.Future<_i7.Either<_i8.Failure, void>> updateLoad(_i14.Load? load) =>
+  _i4.Future<_i7.Either<_i8.Failure, void>> updateLoad(_i3.Load? load) =>
       (super.noSuchMethod(
             Invocation.method(#updateLoad, [load]),
             returnValue: _i4.Future<_i7.Either<_i8.Failure, void>>.value(

@@ -188,7 +188,8 @@ class _StatusBarState extends ConsumerState<StatusBar>
 
                           final completedCount = rawLoads
                               .where(
-                                (l) => l.status.toLowerCase() == 'delivered',
+                                (l) =>
+                                    l.status.name.toLowerCase() == 'delivered',
                               )
                               .length;
 
@@ -197,7 +198,7 @@ class _StatusBarState extends ConsumerState<StatusBar>
                               .length;
 
                           final activeCount = rawLoads.where((l) {
-                            final s = l.status.toLowerCase();
+                            final s = l.status.name.toLowerCase();
                             return s == 'assigned' || s == 'in transit';
                           }).length;
 

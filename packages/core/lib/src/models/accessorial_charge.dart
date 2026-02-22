@@ -84,9 +84,9 @@ class AccessorialCharge {
   factory AccessorialCharge.fromJson(Map<String, dynamic> json) {
     return AccessorialCharge(
       id: json['id'] as String,
-      loadId: json['load_id'] as String,
-      type: json['type'] as String,
-      amount: (json['amount'] as num).toDouble(),
+      loadId: json['load_id'] as String? ?? '',
+      type: json['type'] as String? ?? '',
+      amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
       currency: json['currency'] as String? ?? 'CAD',
       notes: json['notes'] as String? ?? '',
       status: json['status'] != null

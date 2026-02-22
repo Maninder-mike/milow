@@ -9,6 +9,7 @@ import 'dart:async';
 import 'package:path/path.dart' as path;
 import 'package:path_provider/path_provider.dart';
 import 'package:uuid/uuid.dart';
+import 'package:fpdart/fpdart.dart';
 
 class InspectionRepositoryImpl implements IInspectionRepository {
   final DriverDatabase _db;
@@ -17,309 +18,329 @@ class InspectionRepositoryImpl implements IInspectionRepository {
   InspectionRepositoryImpl(this._db, this._client);
 
   @override
-  Future<List<domain.Inspection>> getInspections() async {
-    final query =
-        (_db.select(
-          _db.driverTruckInspections,
-        )..where((t) => t.isDeleted.equals(false))).join([
-          leftOuterJoin(
-            _db.driverTruckInspectionDefects,
-            _db.driverTruckInspectionDefects.inspectionId.equalsExp(
-              _db.driverTruckInspections.id,
+  Future<domain.Result<List<domain.DVIRReport>>> getInspections() async {
+    try {
+      final query =
+          (_db.select(
+            _db.driverTruckInspections,
+          )..where((t) => t.isDeleted.equals(false))).join([
+            leftOuterJoin(
+              _db.driverTruckInspectionDefects,
+              _db.driverTruckInspectionDefects.inspectionId.equalsExp(
+                _db.driverTruckInspections.id,
+              ),
             ),
-          ),
-        ]);
+          ]);
 
-    final rows = await query.get();
-    final grouped = <String, domain.Inspection>{};
+      final rows = await query.get();
+      final grouped = <String, domain.DVIRReport>{};
 
-    for (final row in rows) {
-      final inspectionData = row.readTable(_db.driverTruckInspections);
-      final defectData = row.readTableOrNull(_db.driverTruckInspectionDefects);
-
-      final inspection = grouped.putIfAbsent(
-        inspectionData.id,
-        () => _mapToDomain(inspectionData, []),
-      );
-
-      if (defectData != null) {
-        final currentDefects = List<domain.InspectionDefect>.from(
-          inspection.defects,
+      for (final row in rows) {
+        final inspectionData = row.readTable(_db.driverTruckInspections);
+        final defectData = row.readTableOrNull(
+          _db.driverTruckInspectionDefects,
         );
-        currentDefects.add(_mapDefectToDomain(defectData));
-        grouped[inspection.id] = inspection.copyWith(defects: currentDefects);
-      }
-    }
 
-    return grouped.values.toList();
+        final inspection = grouped.putIfAbsent(
+          inspectionData.id,
+          () => _mapToDomain(inspectionData, []),
+        );
+
+        if (defectData != null) {
+          final currentDefects = List<domain.DVIRDefect>.from(
+            inspection.defects,
+          );
+          currentDefects.add(_mapDefectToDomain(defectData));
+          grouped[inspection.id] = inspection.copyWith(defects: currentDefects);
+        }
+      }
+
+      return Right(grouped.values.toList());
+    } catch (e) {
+      domain.AppLogger.error('Failed to get inspections', error: e);
+      return Left(domain.UnexpectedFailure(e.toString()));
+    }
   }
 
   @override
-  Future<void> saveInspection(
-    domain.Inspection inspection, {
+  Future<domain.Result<void>> saveInspection(
+    domain.DVIRReport inspection, {
     Uint8List? signatureBytes,
   }) async {
-    // 1. Save to Local DB (Offline First)
-    var inspectionToSave = inspection;
+    try {
+      // 1. Save to Local DB (Offline First)
+      var inspectionToSave = inspection;
 
-    // Save signature if provided
-    if (signatureBytes != null) {
-      final directory = await getApplicationDocumentsDirectory();
-      final signaturePath = '${directory.path}/signatures/${inspection.id}.png';
-      final signatureFile = File(signaturePath);
+      // Save signature if provided
+      if (signatureBytes != null) {
+        final directory = await getApplicationDocumentsDirectory();
+        final signaturePath =
+            '${directory.path}/signatures/${inspection.id}.png';
+        final signatureFile = File(signaturePath);
 
-      if (!await signatureFile.parent.exists()) {
-        await signatureFile.parent.create(recursive: true);
+        if (!await signatureFile.parent.exists()) {
+          await signatureFile.parent.create(recursive: true);
+        }
+
+        await signatureFile.writeAsBytes(signatureBytes);
+        inspectionToSave = inspectionToSave.copyWith(
+          driverSignatureUrl: signaturePath,
+        );
       }
 
-      await signatureFile.writeAsBytes(signatureBytes);
-      inspectionToSave = inspectionToSave.copyWith(
-        signaturePath: signaturePath,
-      );
-    }
-
-    await _db.transaction(() async {
-      await _db
-          .into(_db.driverTruckInspections)
-          .insertOnConflictUpdate(
-            DriverTruckInspectionData(
-              id: inspection.id,
-              driverId: inspection.driverId,
-              vehicleId: inspection.vehicleId,
-              trailerId: inspection.trailerId,
-              type: inspection.type,
-              odometer: inspection.odometer,
-              notes: inspection.notes,
-              location: inspection.location,
-              signedAt: inspection.signedAt,
-              createdAt: inspection.createdAt,
-              updatedAt: DateTime.now(),
-              lastUpdated: DateTime.now(),
-              isSynced: false,
-              isDeleted: false,
-            ),
-          );
-
-      // Replace defects
-      await (_db.delete(
-        _db.driverTruckInspectionDefects,
-      )..where((t) => t.inspectionId.equals(inspection.id))).go();
-
-      for (final defect in inspection.defects) {
+      await _db.transaction(() async {
         await _db
-            .into(_db.driverTruckInspectionDefects)
-            .insert(
-              DriverTruckInspectionDefectData(
-                id: defect.id,
-                inspectionId: inspection.id,
-                category: defect.category,
-                item: defect.item,
-                comment: defect.comment,
-                isRepaired: defect.isRepaired,
-                createdAt: defect.createdAt,
+            .into(_db.driverTruckInspections)
+            .insertOnConflictUpdate(
+              DriverTruckInspectionData(
+                id: inspection.id,
+                driverId: inspection.driverId ?? '',
+                vehicleId: inspection.vehicleId,
+                trailerId: inspection.trailerId,
+                type: inspection.inspectionType.name,
+                odometer: inspection.odometer?.toDouble() ?? 0.0,
+                notes: inspection.notes,
+                location: inspection.location,
+                signedAt: inspection.createdAt ?? DateTime.now(),
+                createdAt: inspection.createdAt,
                 updatedAt: DateTime.now(),
                 lastUpdated: DateTime.now(),
                 isSynced: false,
                 isDeleted: false,
               ),
             );
-      }
-    });
 
-    // 2. Attempt Async Sync to Supabase
-    try {
-      await _syncToSupabase(inspection);
+        // Replace defects
+        await (_db.delete(
+          _db.driverTruckInspectionDefects,
+        )..where((t) => t.inspectionId.equals(inspection.id))).go();
+
+        for (final defect in inspection.defects) {
+          await _db
+              .into(_db.driverTruckInspectionDefects)
+              .insert(
+                DriverTruckInspectionDefectData(
+                  id: defect.id,
+                  inspectionId: inspection.id,
+                  category: defect.category.name,
+                  item: defect.category.displayName,
+                  comment: defect.description,
+                  isRepaired: defect.isRepaired,
+                  createdAt: defect.createdAt ?? DateTime.now(),
+                  updatedAt: DateTime.now(),
+                  lastUpdated: DateTime.now(),
+                  isSynced: false,
+                  isDeleted: false,
+                ),
+              );
+        }
+      });
+
+      // 2. Attempt Async Sync to Supabase
+      unawaited(_syncToSupabase(inspectionToSave));
+
+      return const Right(null);
     } catch (e, stack) {
       domain.AppLogger.error(
-        'Failed to sync inspection immediately (queued for background): ${inspection.id}',
+        'Failed to save inspection',
         error: e,
         stackTrace: stack,
       );
-      // Swallow error so UI doesn't break - it's saved locally
+      return Left(domain.UnexpectedFailure(e.toString()));
     }
   }
 
   @override
-  Future<int> syncPendingInspections() async {
-    final pending = await (_db.select(
-      _db.driverTruckInspections,
-    )..where((t) => t.isSynced.equals(false))).get();
+  Future<domain.Result<int>> syncPendingInspections() async {
+    try {
+      final pending = await (_db.select(
+        _db.driverTruckInspections,
+      )..where((t) => t.isSynced.equals(false))).get();
 
-    int syncedCount = 0;
+      int syncedCount = 0;
 
-    for (final inspectionData in pending) {
-      // We need to fetch defects for this inspection to sync them too
-      final defectsQuery = _db.select(_db.driverTruckInspectionDefects)
-        ..where((t) => t.inspectionId.equals(inspectionData.id));
-      final defectsData = await defectsQuery.get();
+      for (final inspectionData in pending) {
+        // We need to fetch defects for this inspection to sync them too
+        final defectsQuery = _db.select(_db.driverTruckInspectionDefects)
+          ..where((t) => t.inspectionId.equals(inspectionData.id));
+        final defectsData = await defectsQuery.get();
 
-      final defects = defectsData.map(_mapDefectToDomain).toList();
-      final inspection = _mapToDomain(inspectionData, defects);
+        final defects = defectsData.map(_mapDefectToDomain).toList();
+        final inspection = _mapToDomain(inspectionData, defects);
 
-      try {
-        await _syncToSupabase(inspection);
-        syncedCount++;
-      } catch (e) {
-        domain.AppLogger.warning(
-          'Background sync failed for ${inspection.id}: $e',
-        );
-        // Continue to next item
-      }
-    }
-    return syncedCount;
-  }
-
-  Future<void> _syncToSupabase(domain.Inspection inspection) async {
-    String? signatureUrl = inspection.signatureUrl;
-
-    // Upload signature if needed
-    if (signatureUrl == null && inspection.signaturePath != null) {
-      final file = File(inspection.signaturePath!);
-      if (await file.exists()) {
-        try {
-          final fileName = '${inspection.id}_signature.png';
-          final storagePath = 'signatures/$fileName';
-
-          // Check if file already exists or just overwrite? upsert is better but storage.upload usually fails if exists
-          // We'll try upload, if it fails maybe it exists?
-          // Actually, simply using upload with upsert: true if available, or just standard upload.
-          // Supabase Flutter SDK upload takes fileOptions.
-
-          await _client.supabase.storage
-              .from('inspection_photos')
-              .upload(
-                storagePath,
-                file,
-                fileOptions: const FileOptions(upsert: true),
-              );
-
-          signatureUrl = _client.supabase.storage
-              .from('inspection_photos')
-              .getPublicUrl(storagePath);
-
-          // Update local DB with the new signatureUrl
-          await (_db.update(
-            _db.driverTruckInspections,
-          )..where((t) => t.id.equals(inspection.id))).write(
-            DriverTruckInspectionsCompanion(
-              signatureUrl: Value(signatureUrl),
-              lastUpdated: Value(DateTime.now()),
-            ),
-          );
-        } catch (e) {
-          domain.AppLogger.warning(
-            'Failed to upload signature for ${inspection.id}: $e',
-          );
-          // Continue sync without signature URL for now
+        final result = await _syncToSupabase(inspection);
+        if (result.isRight()) {
+          syncedCount++;
         }
       }
+      return Right(syncedCount);
+    } catch (e) {
+      domain.AppLogger.error('Failed to sync pending inspections', error: e);
+      return Left(domain.UnexpectedFailure(e.toString()));
     }
+  }
 
-    await _client.query(() async {
-      // Insert Inspection
-      await _client.supabase.from('driver_truck_inspections').upsert({
-        'id': inspection.id,
-        'driver_id': inspection.driverId,
-        'vehicle_id': inspection.vehicleId,
-        'trailer_id': inspection.trailerId,
-        'type': inspection.type,
-        'odometer': inspection.odometer,
-        'notes': inspection.notes,
-        'location': inspection.location,
-        'signed_at': inspection.signedAt.toIso8601String(),
-        'created_at': inspection.createdAt?.toIso8601String(),
-        'updated_at': DateTime.now().toIso8601String(),
-        'signature_url': signatureUrl,
-      });
+  Future<domain.Result<void>> _syncToSupabase(
+    domain.DVIRReport inspection,
+  ) async {
+    try {
+      String? signatureUrl = inspection.driverSignatureUrl;
 
-      // Insert Defects (if any)
-      if (inspection.defects.isNotEmpty) {
-        // Delete existing for simplicity in this MVP sync
-        await _client.supabase
-            .from('driver_truck_inspection_defects')
-            .delete()
-            .eq('inspection_id', inspection.id);
+      // Upload signature if needed
+      if (signatureUrl == null && inspection.driverSignatureUrl != null) {
+        final file = File(inspection.driverSignatureUrl!);
+        if (await file.exists()) {
+          try {
+            final fileName = '${inspection.id}_signature.png';
+            final storagePath = 'signatures/$fileName';
 
-        final defectsJson = inspection.defects
-            .map(
-              (d) => {
-                'id': d.id,
-                'inspection_id': inspection.id,
-                'category': d.category,
-                'item': d.item,
-                'comment': d.comment,
-                'is_repaired': d.isRepaired,
-                'created_at': d.createdAt?.toIso8601String(),
-                'updated_at': DateTime.now().toIso8601String(),
-              },
-            )
-            .toList();
+            // Check if file already exists or just overwrite? upsert is better but storage.upload usually fails if exists
+            // We'll try upload, if it fails maybe it exists?
+            // Actually, simply using upload with upsert: true if available, or just standard upload.
+            // Supabase Flutter SDK upload takes fileOptions.
 
-        await _client.supabase
-            .from('driver_truck_inspection_defects')
-            .upsert(defectsJson);
+            await _client.supabase.storage
+                .from('inspection_photos')
+                .upload(
+                  storagePath,
+                  file,
+                  fileOptions: const FileOptions(upsert: true),
+                );
+
+            signatureUrl = _client.supabase.storage
+                .from('inspection_photos')
+                .getPublicUrl(storagePath);
+
+            // Update local DB with the new signatureUrl
+            await (_db.update(
+              _db.driverTruckInspections,
+            )..where((t) => t.id.equals(inspection.id))).write(
+              DriverTruckInspectionsCompanion(
+                signatureUrl: Value(signatureUrl),
+                lastUpdated: Value(DateTime.now()),
+              ),
+            );
+          } catch (e) {
+            domain.AppLogger.warning(
+              'Failed to upload signature for ${inspection.id}: $e',
+            );
+            // Continue sync without signature URL for now
+          }
+        }
       }
-      return true;
-    }, operationName: 'sync_inspection');
 
-    // Mark as Synced locally if successful
-    await (_db.update(_db.driverTruckInspections)
-          ..where((t) => t.id.equals(inspection.id)))
-        .write(const DriverTruckInspectionsCompanion(isSynced: Value(true)));
+      await _client.query(() async {
+        // Insert Inspection
+        await _client.supabase.from('driver_truck_inspections').upsert({
+          'id': inspection.id,
+          'driver_id': inspection.driverId,
+          'vehicle_id': inspection.vehicleId,
+          'trailer_id': inspection.trailerId,
+          'inspection_type': inspection.inspectionType.name,
+          'odometer': inspection.odometer,
+          'notes': inspection.notes,
+          'location': inspection.location,
+          'is_safe_to_operate': inspection.isSafeToOperate,
+          'defects_found': inspection.defectsFound,
+          'created_at': inspection.createdAt?.toIso8601String(),
+          'updated_at': DateTime.now().toIso8601String(),
+          'driver_signature_url': signatureUrl,
+        });
 
-    // Mark defects as synced
-    await (_db.update(
-      _db.driverTruckInspectionDefects,
-    )..where((t) => t.inspectionId.equals(inspection.id))).write(
-      const DriverTruckInspectionDefectsCompanion(isSynced: Value(true)),
-    );
+        // Insert Defects (if any)
+        if (inspection.defects.isNotEmpty) {
+          // Delete existing for simplicity in this MVP sync
+          await _client.supabase
+              .from('driver_truck_inspection_defects')
+              .delete()
+              .eq('inspection_id', inspection.id);
 
-    domain.AppLogger.info('Inspection synced successfully: ${inspection.id}');
+          final defectsJson = inspection.defects
+              .map(
+                (d) => {
+                  'id': d.id,
+                  'inspection_id': inspection.id,
+                  'category': d.category.name,
+                  'description': d.description,
+                  'severity': d.severity.name,
+                  'is_repaired': d.isRepaired,
+                  'repaired_at': d.repairedAt?.toIso8601String(),
+                  'created_at': (d.createdAt ?? DateTime.now())
+                      .toIso8601String(),
+                  'updated_at': DateTime.now().toIso8601String(),
+                },
+              )
+              .toList();
+
+          await _client.supabase
+              .from('driver_truck_inspection_defects')
+              .upsert(defectsJson);
+        }
+        return true;
+      }, operationName: 'sync_inspection');
+
+      // Mark as Synced locally if successful
+      await (_db.update(_db.driverTruckInspections)
+            ..where((t) => t.id.equals(inspection.id)))
+          .write(const DriverTruckInspectionsCompanion(isSynced: Value(true)));
+
+      // Mark defects as synced
+      await (_db.update(
+        _db.driverTruckInspectionDefects,
+      )..where((t) => t.inspectionId.equals(inspection.id))).write(
+        const DriverTruckInspectionDefectsCompanion(isSynced: Value(true)),
+      );
+
+      domain.AppLogger.info('Inspection synced successfully: ${inspection.id}');
+      return const Right(null);
+    } catch (e) {
+      domain.AppLogger.error('Sync failed', error: e);
+      return Left(domain.UnexpectedFailure(e.toString()));
+    }
   }
 
   @override
-  Future<void> deleteInspection(String id) async {
-    // 1. Check if synced
-    final inspection = await (_db.select(
-      _db.driverTruckInspections,
-    )..where((t) => t.id.equals(id))).getSingleOrNull();
-
-    if (inspection == null) return;
-
-    if (inspection.isSynced) {
-      // 2a. Soft Delete locally
-      await (_db.update(
+  Future<domain.Result<void>> deleteInspection(String id) async {
+    try {
+      // 1. Check if synced
+      final inspection = await (_db.select(
         _db.driverTruckInspections,
-      )..where((t) => t.id.equals(id))).write(
-        const DriverTruckInspectionsCompanion(
-          isDeleted: Value(true),
-          isSynced: Value(false), // Needs sync to propagate delete
-          lastUpdated:
-              Value.absent(), // datetime will be auto-updated by drift or manually if needed?
-          // Actually, let's explicit update updatedAt so sync picks it up
-        ),
-      );
+      )..where((t) => t.id.equals(id))).getSingleOrNull();
 
-      // Update updatedAt manually if needed by your schema/logic, but usually drift copies don't auto-update unless defined.
-      // Let's rely on the sync logic to pick up `isSynced: false`.
+      if (inspection == null) return const Right(null);
 
-      // 2b. Attempt Sync immediately
-      try {
-        await _syncDeletionToSupabase(id);
-      } catch (e) {
-        domain.AppLogger.warning('Failed to sync deletion for $id: $e');
-      }
-    } else {
-      // 2b. Hard Delete locally if never synced
-      // Transaction to delete defects too
-      await _db.transaction(() async {
-        await (_db.delete(
-          _db.driverTruckInspectionDefects,
-        )..where((t) => t.inspectionId.equals(id))).go();
-        await (_db.delete(
+      if (inspection.isSynced) {
+        // 2a. Soft Delete locally
+        await (_db.update(
           _db.driverTruckInspections,
-        )..where((t) => t.id.equals(id))).go();
-      });
+        )..where((t) => t.id.equals(id))).write(
+          const DriverTruckInspectionsCompanion(
+            isDeleted: Value(true),
+            isSynced: Value(false), // Needs sync to propagate delete
+          ),
+        );
+
+        // 2b. Attempt Sync immediately
+        try {
+          await _syncDeletionToSupabase(id);
+        } catch (e) {
+          domain.AppLogger.warning('Failed to sync deletion for $id: $e');
+        }
+      } else {
+        // 2b. Hard Delete locally if never synced
+        await _db.transaction(() async {
+          await (_db.delete(
+            _db.driverTruckInspectionDefects,
+          )..where((t) => t.inspectionId.equals(id))).go();
+          await (_db.delete(
+            _db.driverTruckInspections,
+          )..where((t) => t.id.equals(id))).go();
+        });
+      }
+      return const Right(null);
+    } catch (e) {
+      domain.AppLogger.error('Failed to delete inspection', error: e);
+      return Left(domain.UnexpectedFailure(e.toString()));
     }
   }
 
@@ -333,6 +354,7 @@ class InspectionRepositoryImpl implements IInspectionRepository {
             'updated_at': DateTime.now().toIso8601String(),
           })
           .eq('id', id);
+      return true;
     }, operationName: 'delete_inspection');
 
     // 4. Delete locally
@@ -344,32 +366,39 @@ class InspectionRepositoryImpl implements IInspectionRepository {
   }
 
   @override
-  Future<void> savePhoto(File file, String defectId) async {
-    final fileName = '${const Uuid().v4()}${path.extension(file.path)}';
+  Future<domain.Result<void>> savePhoto(File file, String defectId) async {
+    try {
+      final fileName = '${const Uuid().v4()}${path.extension(file.path)}';
 
-    // Save locally
-    final appDir = await getApplicationDocumentsDirectory();
-    final localDir = Directory('${appDir.path}/inspection_photos');
-    await localDir.create(recursive: true);
-    final localPath = '${localDir.path}/$fileName';
-    await file.copy(localPath);
+      // Save locally
+      final appDir = await getApplicationDocumentsDirectory();
+      final localDir = Directory('${appDir.path}/inspection_photos');
+      await localDir.create(recursive: true);
+      final localPath = '${localDir.path}/$fileName';
+      await file.copy(localPath);
 
-    // Save metadata to DB
-    final photoId = const Uuid().v4();
-    await _db
-        .into(_db.inspectionDefectPhotos)
-        .insert(
-          InspectionDefectPhotoData(
-            id: photoId,
-            defectId: defectId,
-            localPath: localPath,
-            remoteUrl: null, // Will be updated after sync
-            createdAt: DateTime.now(),
-          ),
-        );
+      // Save metadata to DB
+      final photoId = const Uuid().v4();
+      await _db
+          .into(_db.inspectionDefectPhotos)
+          .insert(
+            InspectionDefectPhotoData(
+              id: photoId,
+              defectId: defectId,
+              localPath: localPath,
+              remoteUrl: null, // Will be updated after sync
+              createdAt: DateTime.now(),
+            ),
+          );
 
-    // Attempt upload immediately (fire and forget or background sync)
-    unawaited(_uploadPhoto(file, fileName, photoId));
+      // Attempt upload immediately
+      unawaited(_uploadPhoto(file, fileName, photoId));
+
+      return const Right(null);
+    } catch (e) {
+      domain.AppLogger.error('Failed to save photo', error: e);
+      return Left(domain.UnexpectedFailure(e.toString()));
+    }
   }
 
   Future<void> _uploadPhoto(File file, String fileName, String photoId) async {
@@ -421,41 +450,41 @@ class InspectionRepositoryImpl implements IInspectionRepository {
     }).toList();
   }
 
-  domain.Inspection _mapToDomain(
+  domain.DVIRReport _mapToDomain(
     DriverTruckInspectionData data,
-    List<domain.InspectionDefect> defects,
+    List<domain.DVIRDefect> defects,
   ) {
-    return domain.Inspection(
+    return domain.DVIRReport(
       id: data.id,
       driverId: data.driverId,
       vehicleId: data.vehicleId,
       trailerId: data.trailerId,
-      type: data.type,
-      odometer: data.odometer,
+      inspectionType: domain.DVIRInspectionType.values.firstWhere(
+        (e) => e.name == data.type,
+        orElse: () => domain.DVIRInspectionType.preTrip,
+      ),
+      odometer: data.odometer.toInt(),
       notes: data.notes,
       location: data.location,
-      signedAt: data.signedAt,
-      signaturePath: data.signaturePath,
-      signatureUrl: data.signatureUrl,
+      driverSignatureUrl: data.signatureUrl ?? data.signaturePath,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
       defects: defects,
-      isSynced: data.isSynced,
+      defectsFound: defects.isNotEmpty,
+      isSafeToOperate: true, // TODO: Derive from defects
     );
   }
 
-  domain.InspectionDefect _mapDefectToDomain(
-    DriverTruckInspectionDefectData data,
-  ) {
-    return domain.InspectionDefect(
+  domain.DVIRDefect _mapDefectToDomain(DriverTruckInspectionDefectData data) {
+    return domain.DVIRDefect(
       id: data.id,
-      inspectionId: data.inspectionId,
-      category: data.category,
-      item: data.item,
-      comment: data.comment,
+      category: domain.DVIRCategory.values.firstWhere(
+        (e) => e.name == data.category,
+        orElse: () => domain.DVIRCategory.other,
+      ),
+      description: data.comment ?? '',
       isRepaired: data.isRepaired,
       createdAt: data.createdAt,
-      updatedAt: data.updatedAt,
     );
   }
 }

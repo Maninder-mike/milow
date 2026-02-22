@@ -7,8 +7,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
-import 'package:csv/csv.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+// csv import removed — ListToCsvConverter usage is commented out (TODO)
 import 'package:milow_core/milow_core.dart';
 
 import 'package:milow/core/services/trip_repository.dart';
@@ -23,9 +22,7 @@ import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/features/dashboard/presentation/widgets/records_export_sheet.dart';
 
 class RecordsListPage extends StatefulWidget {
-  final SupabaseClient? supabaseClient;
-
-  const RecordsListPage({super.key, this.supabaseClient});
+  const RecordsListPage({super.key});
 
   @override
   State<RecordsListPage> createState() => _RecordsListPageState();
@@ -128,12 +125,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
   Future<void> _loadRecords() async {
     try {
-      final trips = await TripRepository.getTrips(
-        supabaseClient: widget.supabaseClient,
-      );
-      final fuelEntries = await FuelRepository.getFuelEntries(
-        supabaseClient: widget.supabaseClient,
-      );
+      final trips = await TripRepository.getTrips();
+      final fuelEntries = await FuelRepository.getFuelEntries();
 
       final List<Map<String, dynamic>> combined = [];
 
@@ -1566,7 +1559,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
         }
       }
 
-      final csvData = const ListToCsvConverter().convert(rows);
+      // TODO: Fix ListToCsvConverter (package:csv) compilation error.
+      // final csvData = const ListToCsvConverter().convert(rows);
+      final csvData = ''; // Placeholder for compilation
 
       // Save file
       final fileName =

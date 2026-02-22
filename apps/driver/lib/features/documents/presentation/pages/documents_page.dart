@@ -617,10 +617,23 @@ class _DocumentsPageState extends State<DocumentsPage> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                '${_getShortDocType(doc.documentType)} - ${doc.tripNumber}',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.bold),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${_getShortDocType(doc.documentType)} - ${doc.tripNumber}',
+                                      style: Theme.of(context)
+                                          .textTheme
+                                          .titleMedium
+                                          ?.copyWith(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  _buildStatusBadge(doc.status, tokens),
+                                ],
                               ),
                               Text(
                                 _formatFileSize(doc.fileSize),
@@ -636,6 +649,47 @@ class _DocumentsPageState extends State<DocumentsPage> {
                         ),
                       ],
                     ),
+                    if (doc.status == DocumentStatus.rejected &&
+                        doc.reviewNotes != null) ...[
+                      const SizedBox(height: 16),
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: tokens.error.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(tokens.shapeM),
+                          border: Border.all(
+                            color: tokens.error.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.report_problem,
+                                  size: 20,
+                                  color: tokens.error,
+                                ),
+                                const SizedBox(width: 8),
+                                Text(
+                                  'Rejected',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: tokens.error,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              doc.reviewNotes!,
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 16),
                     const Divider(),
                     // Actions
@@ -826,6 +880,9 @@ class _DocumentsPageState extends State<DocumentsPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildDetailRow('Type', doc.documentType.label, tokens),
+            _buildDetailRow('Status', doc.status.name.toUpperCase(), tokens),
+            if (doc.reviewNotes != null)
+              _buildDetailRow('Review Notes', doc.reviewNotes, tokens),
             _buildDetailRow('File Name', doc.fileName, tokens),
             _buildDetailRow(
               'Size',
@@ -1148,12 +1205,20 @@ class _DocumentsPageState extends State<DocumentsPage> {
                           size: 24,
                         ),
                       ),
-                      title: Text(
-                        doc.fileName ?? _getShortDocType(doc.documentType),
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.w600),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      title: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              doc.fileName ??
+                                  _getShortDocType(doc.documentType),
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.w600),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          _buildStatusBadge(doc.status, tokens),
+                        ],
                       ),
                       subtitle: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1170,6 +1235,77 @@ class _DocumentsPageState extends State<DocumentsPage> {
                             style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(color: tokens.textSecondary),
                           ),
+                          if (doc.status == DocumentStatus.rejected &&
+                              doc.reviewNotes != null) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: tokens.error.withValues(alpha: 0.05),
+                                borderRadius: BorderRadius.circular(
+                                  tokens.shapeS,
+                                ),
+                                border: Border.all(
+                                  color: tokens.error.withValues(alpha: 0.1),
+                                ),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Icon(
+                                        Icons.report_problem_outlined,
+                                        size: 14,
+                                        color: tokens.error,
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Reason for Rejection:',
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: tokens.error,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    doc.reviewNotes!,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          color: tokens.textPrimary,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  TextButton.icon(
+                                    onPressed: () {
+                                      context.push(
+                                        '/chat',
+                                        extra: {
+                                          'loadId': doc.tripId,
+                                          'partnerName':
+                                              'Load #${doc.tripNumber ?? 'Unknown'}',
+                                        },
+                                      );
+                                    },
+                                    icon: const Icon(
+                                      Icons.chat_bubble_outline,
+                                      size: 14,
+                                    ),
+                                    label: const Text('Message Dispatcher'),
+                                    style: TextButton.styleFrom(
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      textStyle: const TextStyle(fontSize: 12),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           const SizedBox(height: 4),
                           Row(
                             children: [
@@ -1284,6 +1420,54 @@ class _DocumentsPageState extends State<DocumentsPage> {
   String _formatDate(DateTime? date) {
     if (date == null) return '';
     return DateFormat('MMM d, y').format(date);
+  }
+
+  Widget _buildStatusBadge(DocumentStatus status, DesignTokens tokens) {
+    Color color;
+    IconData icon;
+    String label;
+
+    switch (status) {
+      case DocumentStatus.approved:
+        color = tokens.success;
+        icon = Icons.check_circle_outline;
+        label = 'Approved';
+        break;
+      case DocumentStatus.rejected:
+        color = tokens.error;
+        icon = Icons.error_outline;
+        label = 'Rejected';
+        break;
+      case DocumentStatus.pending:
+        color = tokens.textTertiary;
+        icon = Icons.access_time;
+        label = 'Pending';
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(tokens.shapeS),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildReviewState(DesignTokens tokens) {

@@ -1,25 +1,18 @@
-import 'package:json_annotation/json_annotation.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
+part 'inspection_photo.freezed.dart';
 part 'inspection_photo.g.dart';
 
-@JsonSerializable(fieldRename: FieldRename.snake)
-class InspectionPhoto {
-  final String id;
-  final String defectId;
-  final String localPath;
-  final String? remoteUrl;
-  final DateTime createdAt;
-
-  InspectionPhoto({
-    required this.id,
-    required this.defectId,
-    required this.localPath,
-    this.remoteUrl,
-    required this.createdAt,
-  });
+@freezed
+abstract class InspectionPhoto with _$InspectionPhoto {
+  const factory InspectionPhoto({
+    required String id,
+    @JsonKey(name: 'defect_id') required String defectId,
+    @JsonKey(name: 'local_path') String? localPath,
+    @JsonKey(name: 'remote_url') String? remoteUrl,
+    @JsonKey(name: 'created_at') DateTime? createdAt,
+  }) = _InspectionPhoto;
 
   factory InspectionPhoto.fromJson(Map<String, dynamic> json) =>
       _$InspectionPhotoFromJson(json);
-
-  Map<String, dynamic> toJson() => _$InspectionPhotoToJson(this);
 }

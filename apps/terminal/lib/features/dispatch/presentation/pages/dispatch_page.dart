@@ -1,11 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../providers/load_providers.dart';
-import '../../domain/models/load.dart';
+import 'package:milow_core/milow_core.dart';
+import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
 import '../widgets/load_entry_form.dart';
 import '../widgets/broker_entry_dialog.dart';
-import '../../domain/models/broker.dart';
 
 class DispatchPage extends ConsumerStatefulWidget {
   const DispatchPage({super.key});
@@ -65,96 +64,119 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                 ref.read(loadDraftProvider.notifier).reset();
               },
             )
-          : ref
-                .watch(loadsListProvider)
-                .when(
-                  data: (loads) => loads.isEmpty
-                      ? _buildEmptyState()
-                      : _buildLoadsList(loads),
-                  loading: () => const Center(child: ProgressRing()),
-                  error: (err, stack) =>
-                      Center(child: Text('Error loading loads: $err')),
-                ),
+          : _buildPaginatedList(ref),
     );
   }
 
-  Widget _buildLoadsList(List<Load> loads) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(8),
-      itemCount: loads.length,
-      itemBuilder: (context, index) {
-        final load = loads[index];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Card(
-            child: ListTile(
-              leading: const Icon(FluentIcons.list_24_regular),
-              title: RichText(
-                text: TextSpan(
-                  style: DefaultTextStyle.of(context).style,
-                  children: [
-                    TextSpan(
-                      text: load.brokerName,
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    TextSpan(
-                      text: ' - #${load.loadReference}',
-                      style: TextStyle(
-                        color: FluentTheme.of(
-                          context,
-                        ).resources.textFillColorSecondary,
-                        fontWeight: FontWeight.normal,
-                        fontSize: 13,
+  Widget _buildPaginatedList(WidgetRef ref) {
+    final paginatedAsync = ref.watch(paginatedLoadsProvider);
+
+    return paginatedAsync.when(
+      data: (state) {
+        if (state.loads.isEmpty) {
+          return _buildEmptyState();
+        }
+        return NotificationListener<ScrollNotification>(
+          onNotification: (scrollInfo) {
+            if (!state.isLoadingMore &&
+                state.hasMore &&
+                scrollInfo.metrics.pixels >=
+                    scrollInfo.metrics.maxScrollExtent - 200) {
+              ref.read(paginatedLoadsProvider.notifier).loadMore();
+            }
+            return false;
+          },
+          child: ListView.builder(
+            padding: const EdgeInsets.all(8),
+            itemCount: state.loads.length + (state.hasMore ? 1 : 0),
+            itemBuilder: (context, index) {
+              if (index == state.loads.length) {
+                return const Padding(
+                  padding: EdgeInsets.all(16.0),
+                  child: Center(child: ProgressRing()),
+                );
+              }
+              final load = state.loads[index];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8.0),
+                child: Card(
+                  child: ListTile(
+                    leading: const Icon(FluentIcons.list_24_regular),
+                    title: RichText(
+                      text: TextSpan(
+                        style: DefaultTextStyle.of(context).style,
+                        children: [
+                          TextSpan(
+                            text: load.brokerName,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          TextSpan(
+                            text: ' - #${load.loadReference}',
+                            style: TextStyle(
+                              color: FluentTheme.of(
+                                context,
+                              ).resources.textFillColorSecondary,
+                              fontWeight: FontWeight.normal,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const TextSpan(text: '  |  '),
+                          TextSpan(
+                            text: 'PU: ',
+                            style: TextStyle(
+                              color: FluentTheme.of(
+                                context,
+                              ).resources.textFillColorSecondary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          TextSpan(
+                            text: '${load.pickup.city}, ${load.pickup.state}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                          const TextSpan(text: ' -> '),
+                          TextSpan(
+                            text: 'DEL: ',
+                            style: TextStyle(
+                              color: FluentTheme.of(
+                                context,
+                              ).resources.textFillColorSecondary,
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                '${load.delivery.city}, ${load.delivery.state}',
+                            style: const TextStyle(fontSize: 13),
+                          ),
+                        ],
                       ),
                     ),
-                    const TextSpan(text: '  |  '),
-                    TextSpan(
-                      text: 'PU: ',
-                      style: TextStyle(
-                        color: FluentTheme.of(
-                          context,
-                        ).resources.textFillColorSecondary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                    subtitle: Text(
+                      'Goods: ${load.goods}  |  Rate: \$${load.rate.toStringAsFixed(2)} ${load.currency}',
+                    ),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
                       ),
-                    ),
-                    TextSpan(
-                      text: '${load.pickup.city}, ${load.pickup.state}',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                    const TextSpan(text: ' -> '),
-                    TextSpan(
-                      text: 'DEL: ',
-                      style: TextStyle(
-                        color: FluentTheme.of(
-                          context,
-                        ).resources.textFillColorSecondary,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 12,
+                      decoration: BoxDecoration(
+                        color: const Color(0x30808080),
+                        borderRadius: BorderRadius.circular(12),
                       ),
+                      child: Text(load.status.displayName),
                     ),
-                    TextSpan(
-                      text: '${load.delivery.city}, ${load.delivery.state}',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  ],
+                  ),
                 ),
-              ),
-              subtitle: Text(
-                'Goods: ${load.goods}  |  Rate: \$${load.rate.toStringAsFixed(2)} ${load.currency}',
-              ),
-              trailing: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0x30808080),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(load.status),
-              ),
-            ),
+              );
+            },
           ),
         );
       },
+      loading: () => const Center(child: ProgressRing()),
+      error: (err, stack) => Center(child: Text('Error loading loads: $err')),
     );
   }
 

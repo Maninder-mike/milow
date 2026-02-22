@@ -10,8 +10,7 @@ import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/offline/data/database/driver_database.dart';
-import 'package:mocktail/mocktail.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:shared_preferences/shared_preferences.dart';
 
 // Mock Connectivity Service
@@ -24,9 +23,6 @@ class MockConnectivityService extends ConnectivityService {
   @override
   Stream<bool> get onConnectivityChanged => Stream.value(false);
 }
-
-// Mock Supabase
-class MockSupabaseClient extends Mock implements SupabaseClient {}
 
 void main() {
   late Directory tempDir;
@@ -62,11 +58,10 @@ void main() {
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
-    final mockSupabase = MockSupabaseClient();
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
-        home: RecordsListPage(supabaseClient: mockSupabase),
+        home: const RecordsListPage(),
       ),
     );
     // Trigger initState and first frame

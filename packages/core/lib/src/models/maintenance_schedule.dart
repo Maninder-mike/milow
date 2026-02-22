@@ -8,8 +8,6 @@ part 'maintenance_schedule.g.dart';
 /// Represents a recurring maintenance schedule for proactive alerts
 @freezed
 abstract class MaintenanceSchedule with _$MaintenanceSchedule {
-  const MaintenanceSchedule._();
-
   const factory MaintenanceSchedule({
     required String id,
     @JsonKey(name: 'vehicle_id') required String vehicleId,
@@ -24,7 +22,10 @@ abstract class MaintenanceSchedule with _$MaintenanceSchedule {
 
   factory MaintenanceSchedule.fromJson(Map<String, dynamic> json) =>
       _$MaintenanceScheduleFromJson(json);
+}
 
+/// Custom computed properties for [MaintenanceSchedule]
+extension MaintenanceScheduleHelpers on MaintenanceSchedule {
   /// Check if maintenance is due based on current odometer and date
   bool isDue({required int currentOdometer, DateTime? currentDate}) {
     currentDate ??= DateTime.now();

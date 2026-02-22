@@ -326,7 +326,7 @@ class _WindowsSearchBarState extends ConsumerState<_WindowsSearchBar> {
           onChanged: (value, reason) {
             ref.read(searchQueryProvider.notifier).update(value);
           },
-          onSelected: (item) {
+          onSelected: (item) async {
             final result = item.value;
             if (result == null) return;
 
@@ -351,6 +351,18 @@ class _WindowsSearchBarState extends ConsumerState<_WindowsSearchBar> {
                   launchUrl(
                     Uri.parse('https://github.com/Maninder-mike/milow/wiki'),
                   );
+                  break;
+                case 'toggle_dark_mode':
+                  ref.read(themeProvider.notifier).setTheme(ThemeMode.dark);
+                  break;
+                case 'toggle_light_mode':
+                  ref.read(themeProvider.notifier).setTheme(ThemeMode.light);
+                  break;
+                case 'sign_out':
+                  await Supabase.instance.client.auth.signOut();
+                  if (context.mounted) {
+                    context.go('/');
+                  }
                   break;
               }
             }

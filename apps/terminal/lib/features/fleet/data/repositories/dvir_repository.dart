@@ -1,7 +1,6 @@
 import 'package:milow_core/milow_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/providers/network_provider.dart';
-import '../../domain/models/dvir_report.dart';
 
 part 'dvir_repository.g.dart';
 
@@ -55,7 +54,7 @@ class DVIRRepository {
     int? odometer,
     List<DVIRDefect> defects = const [],
     String? notes,
-    String? driverSignature,
+    String? driverSignatureUrl,
   }) async {
     return _client.query<DVIRReport>(() async {
       final currentUser = _client.supabase.auth.currentUser;
@@ -72,7 +71,7 @@ class DVIRRepository {
             'defects_found': defects.isNotEmpty,
             'defects': defects.map((d) => d.toJson()).toList(),
             'is_safe_to_operate': isSafeToOperate,
-            'driver_signature': driverSignature,
+            'driver_signature_url': driverSignatureUrl,
             'notes': notes,
           })
           .select()
@@ -92,7 +91,7 @@ class DVIRRepository {
           .from('dvir_reports')
           .update({
             'corrected_at': DateTime.now().toIso8601String(),
-            'mechanic_signature': mechanicSignature,
+            'mechanic_signature_url': mechanicSignature,
           })
           .eq('id', reportId);
     }, operationName: 'markDefectCorrected');

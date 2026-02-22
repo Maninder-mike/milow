@@ -1,7 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/models/dvir_report.dart';
+import 'package:milow_core/milow_core.dart';
+import 'package:uuid/uuid.dart';
 import '../../data/repositories/dvir_repository.dart';
 
 /// Dialog for creating DVIR (Driver Vehicle Inspection Report)
@@ -480,6 +481,7 @@ class _AddDefectDialogState extends State<_AddDefectDialog> {
             }
             widget.onAdd(
               DVIRDefect(
+                id: const Uuid().v4(),
                 category: widget.category,
                 description: _descriptionController.text,
                 severity: _severity,

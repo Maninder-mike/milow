@@ -36,10 +36,10 @@ Future<DashboardMetrics> dashboardMetrics(Ref ref) async {
   final activeLoads = loads
       .where(
         (l) =>
-            l.status.toUpperCase() != 'AVAILABLE' &&
-            l.status.toUpperCase() != 'PENDING' &&
-            l.status.toUpperCase() != 'DELIVERED' &&
-            l.status.toUpperCase() != 'CANCELLED',
+            l.status.name.toUpperCase() != 'AVAILABLE' &&
+            l.status.name.toUpperCase() != 'PENDING' &&
+            l.status.name.toUpperCase() != 'DELIVERED' &&
+            l.status.name.toUpperCase() != 'CANCELLED',
       )
       .length;
 
@@ -47,8 +47,8 @@ Future<DashboardMetrics> dashboardMetrics(Ref ref) async {
   final awaitingDispatch = loads
       .where(
         (l) =>
-            l.status.toUpperCase() == 'AVAILABLE' ||
-            l.status.toUpperCase() == 'PENDING',
+            l.status.name.toUpperCase() == 'AVAILABLE' ||
+            l.status.name.toUpperCase() == 'PENDING',
       )
       .length;
 

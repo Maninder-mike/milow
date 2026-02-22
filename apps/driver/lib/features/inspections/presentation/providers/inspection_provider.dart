@@ -9,8 +9,8 @@ class InspectionProvider extends ChangeNotifier {
 
   InspectionProvider(this._repository);
 
-  List<Inspection> _inspections = [];
-  List<Inspection> get inspections => _inspections;
+  List<DVIRReport> _inspections = [];
+  List<DVIRReport> get inspections => _inspections;
 
   bool _isLoading = false;
   bool get isLoading => _isLoading;
@@ -23,51 +23,47 @@ class InspectionProvider extends ChangeNotifier {
     _error = null;
     notifyListeners();
 
-    try {
-      _inspections = await _repository.getInspections();
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    final result = await _repository.getInspections();
+    result.fold(
+      (failure) => _error = failure.message,
+      (data) => _inspections = data,
+    );
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> saveInspection(
-    Inspection inspection, {
+    DVIRReport inspection, {
     Uint8List? signatureBytes,
   }) async {
     _isLoading = true;
     _error = null;
     notifyListeners();
 
-    try {
-      await _repository.saveInspection(
-        inspection,
-        signatureBytes: signatureBytes,
-      );
-      await loadInspections(); // Refresh list
-    } catch (e) {
-      _error = e.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
+    final result = await _repository.saveInspection(
+      inspection,
+      signatureBytes: signatureBytes,
+    );
+
+    result.fold(
+      (failure) => _error = failure.message,
+      (_) async => await loadInspections(),
+    );
+
+    _isLoading = false;
+    notifyListeners();
   }
 
   Future<void> syncInspections() async {
-    // Don't set global loading state to avoid blocking UI,
-    // but we could have a separate `isSyncing` flag if needed.
-    try {
-      final count = await _repository.syncPendingInspections();
+    final result = await _repository.syncPendingInspections();
+    result.fold((failure) => debugPrint('Sync failed: ${failure.message}'), (
+      count,
+    ) async {
       if (count > 0) {
-        await loadInspections(); // Refresh to show updated sync status if UI shows it
-        // Optionally show a toast/notification
+        await loadInspections();
       }
-    } catch (e) {
-      // Log error but don't disrupt user
-      debugPrint('Sync failed: $e');
-    }
+    });
   }
 
   Future<void> deleteInspection(String id) async {

@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../dispatch/domain/models/load.dart';
+import 'package:milow_core/milow_core.dart';
 import '../../domain/models/invoice.dart';
 import '../providers/invoice_providers.dart';
 

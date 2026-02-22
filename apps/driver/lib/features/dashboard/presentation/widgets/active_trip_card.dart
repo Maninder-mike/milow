@@ -455,12 +455,35 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       ],
                     ),
                   ),
-                  Text(
-                    '#${widget.trip.tripNumber}',
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: tokens.textSecondary,
-                    ),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '#${widget.trip.tripNumber}',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          fontWeight: FontWeight.bold,
+                          color: tokens.textSecondary,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(
+                          Icons.chat_bubble_outline,
+                          size: 18,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        onPressed: () {
+                          context.push(
+                            '/chat',
+                            extra: {
+                              'loadId': widget.trip.id,
+                              'partnerName': 'Load #${widget.trip.tripNumber}',
+                            },
+                          );
+                        },
+                        constraints: const BoxConstraints(),
+                        padding: EdgeInsets.only(left: tokens.spacingS),
+                      ),
+                    ],
                   ),
                 ],
               ),

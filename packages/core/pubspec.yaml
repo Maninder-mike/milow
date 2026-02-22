@@ -18,12 +18,15 @@ dependencies:
   url_launcher: ^6.3.2
   connectivity_plus: ^7.0.0
   json_annotation: ^4.9.0
+  freezed_annotation: ^3.1.0
+  collection: ^1.18.0
 
   # Phase 1: Foundation
   fpdart: ^1.1.0 # Result/Either pattern
   retry: ^3.1.2 # Exponential backoff for network calls
   firebase_crashlytics: ^5.0.7 # Logging sink
   firebase_remote_config: ^6.1.4
+  uuid: ^4.5.3
 
 
 dev_dependencies:
@@ -33,6 +36,7 @@ dev_dependencies:
   mockito: ^5.6.3
   build_runner: ^2.10.5
   json_serializable: ^6.9.0
+  freezed: ^3.2.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

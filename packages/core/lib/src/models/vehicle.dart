@@ -26,6 +26,9 @@ class Vehicle {
   /// The type of vehicle (e.g., "truck", "van").
   final String? vehicleType;
 
+  /// A constant empty vehicle instance.
+  static const empty = Vehicle(id: '', truckNumber: '');
+
   /// Converts this [Vehicle] to a JSON map.
   Map<String, dynamic> toJson() {
     return {'id': id, 'truck_number': truckNumber, 'vehicle_type': vehicleType};

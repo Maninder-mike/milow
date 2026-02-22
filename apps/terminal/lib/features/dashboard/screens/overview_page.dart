@@ -5,10 +5,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 
-import '../../../../core/widgets/entrance_fader.dart';
-import '../presentation/providers/dashboard_config_provider.dart';
-import '../presentation/providers/dashboard_metrics_provider.dart';
-import '../presentation/widgets/dashboard_widgets.dart';
+import 'package:terminal/features/dashboard/presentation/widgets/dashboard_widgets.dart';
+import 'package:terminal/features/dashboard/presentation/widgets/fleet_map_view.dart';
+import 'package:terminal/core/widgets/entrance_fader.dart';
+import 'package:terminal/features/dashboard/presentation/providers/dashboard_config_provider.dart';
+import 'package:terminal/features/dashboard/presentation/providers/dashboard_metrics_provider.dart';
 
 class OverviewPage extends ConsumerStatefulWidget {
   const OverviewPage({super.key});
@@ -337,7 +338,7 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
               ref.read(dashboardConfigProvider.notifier).removeWidget(type),
         );
       case DashboardWidgetType.operationalMap:
-        return _buildMapPlaceholder(context, type);
+        return _buildMapContainer(const FleetMapView(), type);
       case DashboardWidgetType.loadVolumeTrend:
         return DashboardCard(
           label: 'VOLUME TRENDS (7D)',
@@ -351,88 +352,28 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
     }
   }
 
-  Widget _buildMapPlaceholder(BuildContext context, DashboardWidgetType type) {
-    final theme = FluentTheme.of(context);
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-        border: Border.all(
-          color: theme.resources.dividerStrokeColorDefault,
-          width: 0.5,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Stack(
-          children: [
-            // Decorative Tech Grid
-            CustomPaint(
-              size: Size.infinite,
-              painter: _GridPainter(theme.accentColor.withValues(alpha: 0.05)),
-            ),
-            Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: theme.accentColor.withValues(alpha: 0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      FluentIcons.map_24_regular,
-                      size: 28,
-                      color: theme.accentColor,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Fleet Map View',
-                    style: GoogleFonts.outfit(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  Text(
-                    'Integrated operational awareness',
-                    style: GoogleFonts.outfit(
-                      fontSize: 11,
-                      color: theme.resources.textFillColorSecondary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (_isEditMode)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: IconButton(
-                  icon: const Icon(FluentIcons.dismiss_12_filled, size: 10),
-                  onPressed: () => ref
-                      .read(dashboardConfigProvider.notifier)
-                      .removeWidget(type),
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.all(
-                      Colors.red.withValues(alpha: 0.9),
-                    ),
-                    foregroundColor: WidgetStateProperty.all(Colors.white),
-                    shape: WidgetStateProperty.all(const CircleBorder()),
-                  ),
+  Widget _buildMapContainer(Widget child, DashboardWidgetType type) {
+    return Stack(
+      children: [
+        child,
+        if (_isEditMode)
+          Positioned(
+            top: 8,
+            right: 8,
+            child: IconButton(
+              icon: const Icon(FluentIcons.dismiss_12_filled, size: 10),
+              onPressed: () =>
+                  ref.read(dashboardConfigProvider.notifier).removeWidget(type),
+              style: ButtonStyle(
+                backgroundColor: WidgetStateProperty.all(
+                  Colors.red.withValues(alpha: 0.9),
                 ),
+                foregroundColor: WidgetStateProperty.all(Colors.white),
+                shape: WidgetStateProperty.all(const CircleBorder()),
               ),
-          ],
-        ),
-      ),
+            ),
+          ),
+      ],
     );
   }
 
@@ -551,28 +492,4 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
       }),
     );
   }
-}
-
-class _GridPainter extends CustomPainter {
-  final Color color;
-
-  _GridPainter(this.color);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = color
-      ..strokeWidth = 1.0;
-
-    const spacing = 20.0;
-    for (var x = 0.0; x <= size.width; x += spacing) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), paint);
-    }
-    for (var y = 0.0; y <= size.height; y += spacing) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

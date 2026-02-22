@@ -76,11 +76,50 @@ Future<List<SearchResult>> searchResults(Ref ref) async {
       icon: sys_icons.FluentIcons.add_24_regular,
       route: '/highway-dispatch', // Page handles state
     ),
+    const SearchResult(
+      title: 'Go to Settings',
+      subtitle: 'App configuration and preferences',
+      type: SearchResultType.action,
+      icon: sys_icons.FluentIcons.settings_24_regular,
+      route: '/settings',
+    ),
+    const SearchResult(
+      title: 'Go to Profile',
+      subtitle: 'View user profile',
+      type: SearchResultType.action,
+      icon: sys_icons.FluentIcons.person_24_regular,
+      route: '/profile',
+    ),
+    const SearchResult(
+      title: 'Toggle Dark Mode',
+      subtitle: 'Switch application theme to dark',
+      type: SearchResultType.action,
+      icon: sys_icons.FluentIcons.dark_theme_24_regular,
+      data: 'toggle_dark_mode',
+    ),
+    const SearchResult(
+      title: 'Toggle Light Mode',
+      subtitle: 'Switch application theme to light',
+      type: SearchResultType.action,
+      icon: sys_icons.FluentIcons.brightness_high_24_regular,
+      data: 'toggle_light_mode',
+    ),
+    const SearchResult(
+      title: 'Sign Out',
+      subtitle: 'Log out of current session',
+      type: SearchResultType.action,
+      icon: sys_icons.FluentIcons.sign_out_24_regular,
+      data: 'sign_out',
+    ),
   ];
 
+  // Smart filtering for commands
   for (final cmd in commands) {
-    if (cmd.title.toLowerCase().contains(query) ||
-        cmd.subtitle.toLowerCase().contains(query)) {
+    final title = cmd.title.toLowerCase();
+    final subtitle = cmd.subtitle.toLowerCase();
+    
+    // Exact match or starts with gets priority (could sort later if needed)
+    if (title.contains(query) || subtitle.contains(query)) {
       results.add(cmd);
     }
   }

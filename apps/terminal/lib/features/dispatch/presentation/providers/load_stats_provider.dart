@@ -56,17 +56,26 @@ Future<LoadStats> loadStats(Ref ref) async {
       .gte('pickup_date', startOfDay)
       .lte('pickup_date', endOfDay);
 
-  // 2. Active (Assigned or In Transit)
-  final activeFuture = client.from('loads').count(CountOption.exact).inFilter(
-    'status',
-    ['assigned', 'in_transit'],
-  );
+  // 2. Active (Assigned, Dispatch, Tendered, enRoute, atPickup, loaded, atStop, atDelivery)
+  final activeFuture = client
+      .from('loads')
+      .count(CountOption.exact)
+      .inFilter('status', [
+        'assigned',
+        'dispatched',
+        'tendered',
+        'enRoute',
+        'atPickup',
+        'loaded',
+        'atStop',
+        'atDelivery',
+      ]);
 
-  // 3. Completed (Delivered)
+  // 3. Completed (Delivered, Completed)
   final completedFuture = client
       .from('loads')
       .count(CountOption.exact)
-      .ilike('status', 'delivered');
+      .inFilter('status', ['delivered', 'completed']);
 
   // 4. Delayed
   final delayedFuture = client

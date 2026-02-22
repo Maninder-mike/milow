@@ -12,18 +12,15 @@ import 'package:terminal/features/dispatch/presentation/providers/quote_provider
 import 'package:terminal/features/dispatch/presentation/providers/load_stats_provider.dart';
 import 'package:terminal/features/users/data/user_repository_provider.dart';
 import 'package:terminal/features/dashboard/services/vehicle_service.dart';
-import 'package:terminal/features/dispatch/domain/models/load.dart';
 
-import 'package:terminal/features/dispatch/domain/models/quote.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/load_entry_form.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/broker_entry_dialog.dart';
-import 'package:terminal/features/dispatch/domain/models/broker.dart';
 import 'package:terminal/core/constants/app_colors.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/dispatch_stat_card.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/load_assignment_dialog.dart';
-import 'package:terminal/features/dispatch/presentation/widgets/load_quote_dialog.dart'
-    hide QuoteLineItem;
+import 'package:terminal/features/dispatch/presentation/widgets/load_quote_dialog.dart';
 import 'package:terminal/features/billing/presentation/widgets/invoice_builder_dialog.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/messages_sidebar.dart';
 
 class LoadsPage extends ConsumerStatefulWidget {
   const LoadsPage({super.key});
@@ -131,6 +128,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
   @override
   Widget build(BuildContext context) {
     final isCreatingLoad = ref.watch(isCreatingLoadProvider);
+    final selectedLoadId = ref.watch(selectedLoadIdProvider);
     final theme = FluentTheme.of(context);
     final paginationStateAsync = ref.watch(paginatedLoadsProvider);
 
@@ -188,142 +186,184 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                     final users = usersAsync.value ?? [];
                     final vehicles = vehiclesAsync.value ?? [];
 
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                    return Row(
                       children: [
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0,
-                            vertical: 16.0,
-                          ),
-                          child: Row(
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              Expanded(
-                                child: DispatchStatCard(
-                                  title: 'Loads (Visible)',
-                                  value: loads.length.toString(),
-                                  icon: FluentIcons.box_24_regular,
-                                  iconColor: const Color(0xFF00ACC1),
-                                  iconBackgroundColor: const Color(0xFFE0F7FA),
-                                  breakdown: [
-                                    StatBreakdownItem(
-                                      label: 'Completed',
-                                      value: stats.completedCount.toString(),
-                                    ),
-                                    StatBreakdownItem(
-                                      label: 'Active',
-                                      value: stats.activeCount.toString(),
-                                    ),
-                                    StatBreakdownItem(
-                                      label: 'Delayed',
-                                      value: stats.delayedCount.toString(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              Expanded(
-                                child: DispatchStatCard(
-                                  title: 'Today',
-                                  value: stats.todayCount.toString(),
-                                  icon: FluentIcons.calendar_ltr_24_regular,
-                                  iconColor: const Color(0xFFFB8C00),
-                                  iconBackgroundColor: const Color(0xFFFFF3E0),
-                                ),
-                              ),
-                              const SizedBox(width: 24),
-                              Expanded(
-                                child: DispatchStatCard(
-                                  title: 'Completed',
-                                  value: stats.completedCount.toString(),
-                                  icon: FluentIcons.checkmark_circle_24_regular,
-                                  iconColor: const Color(0xFF43A047),
-                                  iconBackgroundColor: const Color(0xFFE8F5E9),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 24.0,
-                            vertical: 8.0,
-                          ),
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: TextBox(
-                                  placeholder:
-                                      'Search by reference or status...',
-                                  onChanged: (value) {
-                                    ref
-                                        .read(paginatedLoadsProvider.notifier)
-                                        .updateSearch(value);
-                                  },
-                                  prefix: const Padding(
-                                    padding: EdgeInsets.symmetric(
-                                      horizontal: 12.0,
-                                    ),
-                                    child: Icon(FluentIcons.search_16_regular),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              FilledButton(
-                                onPressed: () {
-                                  ref
-                                      .read(isCreatingLoadProvider.notifier)
-                                      .toggle(true);
-                                },
-                                style: ButtonStyle(
-                                  backgroundColor: WidgetStateProperty.all(
-                                    const Color(0xFF009688),
-                                  ),
-                                  padding: WidgetStateProperty.all(
-                                    const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 10,
-                                    ),
-                                  ),
-                                  shape: WidgetStateProperty.all(
-                                    RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24.0,
+                                  vertical: 16.0,
                                 ),
                                 child: Row(
-                                  mainAxisSize: MainAxisSize.min,
                                   children: [
-                                    const Icon(
-                                      FluentIcons.add_24_regular,
-                                      size: 18,
+                                    Expanded(
+                                      child: DispatchStatCard(
+                                        title: 'Loads (Visible)',
+                                        value: loads.length.toString(),
+                                        icon: FluentIcons.box_24_regular,
+                                        iconColor: const Color(0xFF00ACC1),
+                                        iconBackgroundColor: const Color(
+                                          0xFFE0F7FA,
+                                        ),
+                                        breakdown: [
+                                          StatBreakdownItem(
+                                            label: 'Completed',
+                                            value: stats.completedCount
+                                                .toString(),
+                                          ),
+                                          StatBreakdownItem(
+                                            label: 'Active',
+                                            value: stats.activeCount.toString(),
+                                          ),
+                                          StatBreakdownItem(
+                                            label: 'Delayed',
+                                            value: stats.delayedCount
+                                                .toString(),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                    const SizedBox(width: 8),
-                                    Text(
-                                      'Add Load',
-                                      style: GoogleFonts.outfit(
-                                        fontWeight: FontWeight.w600,
+                                    const SizedBox(width: 24),
+                                    Expanded(
+                                      child: DispatchStatCard(
+                                        title: 'Today',
+                                        value: stats.todayCount.toString(),
+                                        icon:
+                                            FluentIcons.calendar_ltr_24_regular,
+                                        iconColor: const Color(0xFFFB8C00),
+                                        iconBackgroundColor: const Color(
+                                          0xFFFFF3E0,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 24),
+                                    Expanded(
+                                      child: DispatchStatCard(
+                                        title: 'Completed',
+                                        value: stats.completedCount.toString(),
+                                        icon: FluentIcons
+                                            .checkmark_circle_24_regular,
+                                        iconColor: const Color(0xFF43A047),
+                                        iconBackgroundColor: const Color(
+                                          0xFFE8F5E9,
+                                        ),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 24.0,
+                                  vertical: 8.0,
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextBox(
+                                        placeholder:
+                                            'Search by reference or status...',
+                                        onChanged: (value) {
+                                          ref
+                                              .read(
+                                                paginatedLoadsProvider.notifier,
+                                              )
+                                              .updateSearch(value);
+                                        },
+                                        prefix: const Padding(
+                                          padding: EdgeInsets.symmetric(
+                                            horizontal: 12.0,
+                                          ),
+                                          child: Icon(
+                                            FluentIcons.search_16_regular,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    FilledButton(
+                                      onPressed: () {
+                                        ref
+                                            .read(
+                                              isCreatingLoadProvider.notifier,
+                                            )
+                                            .toggle(true);
+                                      },
+                                      style: ButtonStyle(
+                                        backgroundColor:
+                                            WidgetStateProperty.all(
+                                              const Color(0xFF009688),
+                                            ),
+                                        padding: WidgetStateProperty.all(
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 16,
+                                            vertical: 10,
+                                          ),
+                                        ),
+                                        shape: WidgetStateProperty.all(
+                                          RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(
+                                              4,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            FluentIcons.add_24_regular,
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            'Add Load',
+                                            style: GoogleFonts.outfit(
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Expanded(
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    24,
+                                    8,
+                                    24,
+                                    24,
+                                  ),
+                                  child: _buildDispatchTable(
+                                    loads,
+                                    theme,
+                                    users: users,
+                                    vehicles: vehicles,
+                                    hasMore: paginationState.hasMore,
+                                    isLoadingMore:
+                                        paginationState.isLoadingMore,
+                                    selectedLoadId: selectedLoadId,
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                        Expanded(
-                          child: Padding(
-                            padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-                            child: _buildDispatchTable(
-                              loads,
-                              theme,
-                              users: users,
-                              vehicles: vehicles,
-                              hasMore: paginationState.hasMore,
-                              isLoadingMore: paginationState.isLoadingMore,
-                            ),
+                        if (selectedLoadId != null)
+                          MessagesSidebar(
+                            loadId: selectedLoadId,
+                            loadReference:
+                                loads
+                                    .where((l) => l.id == selectedLoadId)
+                                    .firstOrNull
+                                    ?.loadReference ??
+                                'Unknown',
                           ),
-                        ),
                       ],
                     );
                   },
@@ -354,7 +394,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     );
   }
 
-  Future<void> _updateStatus(Load load, String newStatus) async {
+  Future<void> _updateStatus(Load load, LoadStatus newStatus) async {
     final updatedLoad = load.copyWith(status: newStatus);
     await ref.read(loadControllerProvider.notifier).updateLoad(updatedLoad);
 
@@ -388,7 +428,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
               assignedDriverId: primaryDriverId,
               assignedTruckId: truckId,
               assignedTrailerId: trailerId,
-              status: 'Assigned',
+              status: LoadStatus.assigned,
             );
 
             await ref
@@ -507,18 +547,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                       .updateLoad(updatedLoad);
                 }
 
-                // Convert dialog line items to Quote model format
-                final quoteLineItems = lineItems
-                    .map(
-                      (item) => QuoteLineItem(
-                        type: item.type,
-                        description: item.description,
-                        rate: item.rate,
-                        quantity: item.quantity,
-                        unit: item.unit,
-                      ),
-                    )
-                    .toList();
+                final quoteLineItems = lineItems;
 
                 final total = quoteLineItems.fold<double>(
                   0.0,
@@ -580,6 +609,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     required List<Map<String, dynamic>> vehicles,
     bool hasMore = false,
     bool isLoadingMore = false,
+    String? selectedLoadId,
   }) {
     if (loads.isEmpty && !isLoadingMore) return _buildEmptyState();
 
@@ -654,6 +684,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                       index + 1,
                       theme,
                       isFocused: isFocused,
+                      isSelected: load.id == selectedLoadId,
                       users: users,
                       vehicles: vehicles,
                     );
@@ -699,6 +730,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     int seq,
     FluentThemeData theme, {
     required bool isFocused,
+    required bool isSelected,
     required List<UserProfile> users,
     required List<Map<String, dynamic>> vehicles,
   }) {
@@ -707,12 +739,13 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
       seq: seq,
       theme: theme,
       isFocused: isFocused,
+      isSelected: isSelected,
       users: users,
       vehicles: vehicles,
       onEdit: () => _onEditLoad(load),
       onBuildQuote: () => _openQuoteDialog(load),
       onStatusUpdate: (status) {
-        if (status == 'Assigned') {
+        if (status == LoadStatus.assigned) {
           _openAssignmentDialog(load);
         } else {
           _updateStatus(load, status);
@@ -779,16 +812,17 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
   }
 }
 
-class _LoadRowItem extends StatefulWidget {
+class _LoadRowItem extends ConsumerStatefulWidget {
   final Load load;
   final int seq;
   final FluentThemeData theme;
   final bool isFocused;
+  final bool isSelected;
   final List<UserProfile> users;
   final List<Map<String, dynamic>> vehicles;
   final VoidCallback onEdit;
   final VoidCallback onBuildQuote;
-  final Function(String) onStatusUpdate;
+  final Function(LoadStatus) onStatusUpdate;
   final VoidCallback onDelete;
 
   const _LoadRowItem({
@@ -796,6 +830,7 @@ class _LoadRowItem extends StatefulWidget {
     required this.seq,
     required this.theme,
     required this.isFocused,
+    required this.isSelected,
     required this.users,
     required this.vehicles,
     required this.onEdit,
@@ -805,10 +840,10 @@ class _LoadRowItem extends StatefulWidget {
   });
 
   @override
-  State<_LoadRowItem> createState() => _LoadRowItemState();
+  ConsumerState<_LoadRowItem> createState() => _LoadRowItemState();
 }
 
-class _LoadRowItemState extends State<_LoadRowItem> {
+class _LoadRowItemState extends ConsumerState<_LoadRowItem> {
   final FlyoutController _flyoutController = FlyoutController();
   Offset _targetPosition = Offset.zero;
 
@@ -832,18 +867,27 @@ class _LoadRowItemState extends State<_LoadRowItem> {
       child: Stack(
         children: [
           HoverButton(
-            onPressed: widget.onEdit,
+            onPressed: () {
+              ref.read(selectedLoadIdProvider.notifier).select(widget.load.id);
+            },
             builder: (context, states) {
               return Container(
                 height: 72,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
-                color: states.isHovered
+                color: widget.isSelected
+                    ? widget.theme.accentColor.withValues(alpha: 0.1)
+                    : states.isHovered
                     ? widget.theme.resources.subtleFillColorSecondary
                     : Colors.transparent,
                 child: Container(
                   decoration: BoxDecoration(
-                    border: widget.isFocused
-                        ? Border.all(color: widget.theme.accentColor, width: 2)
+                    border: widget.isSelected
+                        ? Border(
+                            left: BorderSide(
+                              color: widget.theme.accentColor,
+                              width: 4,
+                            ),
+                          )
                         : null,
                   ),
                   child: Row(
@@ -1170,7 +1214,7 @@ class _LoadRowItemState extends State<_LoadRowItem> {
   }
 
   Widget _buildStatusChip(Load load) {
-    final loadStatus = LoadStatus.fromString(load.status);
+    final loadStatus = load.status;
     String label = loadStatus.displayName.toUpperCase();
     Color color;
 
@@ -1182,21 +1226,28 @@ class _LoadRowItemState extends State<_LoadRowItem> {
       switch (loadStatus) {
         case LoadStatus.pending:
         case LoadStatus.booked:
+        case LoadStatus.assigned:
           color = AppColors.info;
           break;
         case LoadStatus.dispatched:
         case LoadStatus.tendered:
           color = const Color(0xFF8B5CF6); // Purple
           break;
-        case LoadStatus.inTransit:
+        case LoadStatus.enRoute:
+        case LoadStatus.atPickup:
+        case LoadStatus.loaded:
+        case LoadStatus.atStop:
+        case LoadStatus.atDelivery:
           color = AppColors.purple;
           break;
         case LoadStatus.delivered:
+        case LoadStatus.completed:
         case LoadStatus.invoiced:
           color = AppColors.success;
           break;
         case LoadStatus.rejected:
         case LoadStatus.cancelled:
+        case LoadStatus.delayed:
           color = AppColors.error;
           break;
         case LoadStatus.archived:
@@ -1248,7 +1299,8 @@ class _LoadRowItemState extends State<_LoadRowItem> {
                 widget.onBuildQuote();
               },
             ),
-            if (widget.load.status.toLowerCase() == 'delivered')
+            if (widget.load.status == LoadStatus.delivered ||
+                widget.load.status == LoadStatus.completed)
               MenuFlyoutItem(
                 leading: const Icon(FluentIcons.money_24_regular),
                 text: const Text('Generate Invoice'),
@@ -1268,7 +1320,7 @@ class _LoadRowItemState extends State<_LoadRowItem> {
               onPressed: () {
                 Navigator.pop(context);
                 widget.onStatusUpdate(
-                  'Assigned',
+                  LoadStatus.assigned,
                 ); // This now triggers dialog via callback logic
               },
             ),
@@ -1277,7 +1329,7 @@ class _LoadRowItemState extends State<_LoadRowItem> {
               text: const Text('Mark as In Transit'),
               onPressed: () {
                 Navigator.pop(context);
-                widget.onStatusUpdate('In Transit');
+                widget.onStatusUpdate(LoadStatus.enRoute);
               },
             ),
             MenuFlyoutItem(
@@ -1285,7 +1337,7 @@ class _LoadRowItemState extends State<_LoadRowItem> {
               text: const Text('Mark as Delivered'),
               onPressed: () {
                 Navigator.pop(context);
-                widget.onStatusUpdate('Delivered');
+                widget.onStatusUpdate(LoadStatus.delivered);
               },
             ),
             const MenuFlyoutSeparator(),
@@ -1315,7 +1367,7 @@ class _LoadRowItemState extends State<_LoadRowItem> {
                       FilledButton(
                         onPressed: () {
                           Navigator.pop(context);
-                          widget.onStatusUpdate('Cancelled');
+                          widget.onStatusUpdate(LoadStatus.cancelled);
                         },
                         style: ButtonStyle(
                           backgroundColor: WidgetStateProperty.all(

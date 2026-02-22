@@ -25,9 +25,11 @@ import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
 import 'package:milow/features/dashboard/presentation/widgets/active_trip_card.dart';
+import 'package:milow/features/dashboard/presentation/widgets/load_progress_card.dart';
 import 'package:milow/core/widgets/sync_status_indicator.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/core/services/fuel_repository.dart';
+import 'package:milow/core/services/load_repository.dart';
 import 'package:intl/intl.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -52,6 +54,9 @@ class _DashboardPageState extends State<DashboardPage>
 
   // Active trip (trip without end odometer)
   Trip? _activeTrip;
+
+  // Loads state
+  List<Load> _assignedLoads = [];
 
   // Notification state
   int _unreadNotificationCount = 0;
@@ -99,6 +104,7 @@ class _DashboardPageState extends State<DashboardPage>
       forceRefresh: false,
     ); // Use prefetched data if available
     _loadRecentEntries();
+    _loadLoads();
     _loadNotificationCount();
 
     // Refresh border wait times every 5 minutes
@@ -127,6 +133,7 @@ class _DashboardPageState extends State<DashboardPage>
     await Future.wait([
       _loadBorderWaitTimes(forceRefresh: true),
       _loadRecentEntries(),
+      _loadLoads(),
     ]);
   }
 
@@ -140,7 +147,6 @@ class _DashboardPageState extends State<DashboardPage>
             setState(() {
               _unreadNotificationCount = count;
             });
-            _updateBellAnimation(count);
             _updateBellAnimation(count);
           }
         });
@@ -352,6 +358,21 @@ class _DashboardPageState extends State<DashboardPage>
     }
   }
 
+  Future<void> _loadLoads() async {
+    try {
+      final loads = await LoadRepository.getLoads(refresh: true);
+      if (mounted) {
+        setState(() {
+          _assignedLoads = loads;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        // Load fetch failed, no state to update
+      }
+    }
+  }
+
   String _getErrorMessage(dynamic error) {
     final errorStr = error.toString().toLowerCase();
     if (errorStr.contains('socketexception') ||
@@ -385,6 +406,19 @@ class _DashboardPageState extends State<DashboardPage>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              // Show 'Available Load' if there are assigned loads
+              if (_assignedLoads.any(
+                (l) => l.status == LoadStatus.assigned,
+              )) ...[
+                _buildAvailableLoadBanner(
+                  context,
+                  _assignedLoads.firstWhere(
+                    (l) => l.status == LoadStatus.assigned,
+                  ),
+                ),
+                SizedBox(height: context.tokens.spacingM),
+              ],
+
               // Show 'Start Trip' if no active trip OR active trip is completed
               if (showStartTrip) ...[
                 Text(
@@ -433,27 +467,55 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
                 SizedBox(height: context.tokens.spacingL),
               ],
+
+              // Phase 3: Load Progress Tracking
+              if (_assignedLoads.any(
+                (l) =>
+                    l.status == LoadStatus.enRoute ||
+                    l.status == LoadStatus.atStop,
+              ))
+                LoadProgressCard(
+                  load: _assignedLoads.firstWhere(
+                    (l) =>
+                        l.status == LoadStatus.enRoute ||
+                        l.status == LoadStatus.atStop,
+                  ),
+                  onRefresh: _onRefresh,
+                ),
+
               // Only show active trip card if trip exists AND deliveries are pending
               if (activeTrip != null && !activeTrip.allDeliveriesCompleted)
-                GestureDetector(
-                  onLongPressStart: (details) {
-                    _showActivityMenu(
-                      context,
-                      activeTrip,
-                      details.globalPosition,
-                    );
-                  },
-                  child: ActiveTripCard(
-                    trip: activeTrip,
-                    onComplete: () async {
-                      final result = await context.push(
-                        '/add-entry',
-                        extra: {'editingTrip': activeTrip},
+                Padding(
+                  padding: EdgeInsets.only(
+                    top:
+                        _assignedLoads.any(
+                          (l) =>
+                              l.status == LoadStatus.enRoute ||
+                              l.status == LoadStatus.atStop,
+                        )
+                        ? context.tokens.spacingM
+                        : 0,
+                  ),
+                  child: GestureDetector(
+                    onLongPressStart: (details) {
+                      _showActivityMenu(
+                        context,
+                        activeTrip,
+                        details.globalPosition,
                       );
-                      if (result == true) {
-                        unawaited(_onRefresh());
-                      }
                     },
+                    child: ActiveTripCard(
+                      trip: activeTrip,
+                      onComplete: () async {
+                        final result = await context.push(
+                          '/add-entry',
+                          extra: {'editingTrip': activeTrip},
+                        );
+                        if (result == true) {
+                          unawaited(_onRefresh());
+                        }
+                      },
+                    ),
                   ),
                 )
               else
@@ -519,9 +581,7 @@ class _DashboardPageState extends State<DashboardPage>
                   subtitle: 'Map & Loads',
                   icon: Icons.explore_outlined,
                   color: Theme.of(context).colorScheme.tertiaryContainer,
-                  onTap: () => ResponsiveLayout.isMobile(context)
-                      ? context.push('/explore')
-                      : context.go('/explore'),
+                  onTap: () => context.push('/available-loads'),
                 ),
               ),
               ResponsiveColumn(
@@ -554,6 +614,84 @@ class _DashboardPageState extends State<DashboardPage>
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildAvailableLoadBanner(BuildContext context, Load load) {
+    return Container(
+      padding: EdgeInsets.all(context.tokens.spacingM),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primaryContainer,
+        borderRadius: BorderRadius.circular(context.tokens.shapeM),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.assignment_ind_outlined,
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+              SizedBox(width: context.tokens.spacingS),
+              Expanded(
+                child: Text(
+                  'New Load Assigned',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Theme.of(context).colorScheme.onPrimaryContainer,
+                  ),
+                ),
+              ),
+              M3SpringButton(
+                onTap: () async {
+                  // TODO: Show Load Detail or Accept flow
+                  await LoadRepository.updateLoadStatus(
+                    load.id,
+                    LoadStatus.enRoute,
+                  );
+                  unawaited(_onRefresh());
+                },
+                child: Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.tokens.spacingM,
+                    vertical: context.tokens.spacingS,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.primary,
+                    borderRadius: BorderRadius.circular(
+                      context.tokens.shapeFull,
+                    ),
+                  ),
+                  child: Text(
+                    'ACCEPT',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: Theme.of(context).colorScheme.onPrimary,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: context.tokens.spacingS),
+          Text(
+            '${load.loadReference} • ${load.goods}',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              color: Theme.of(context).colorScheme.onPrimaryContainer,
+            ),
+          ),
+          if (load.stops.isNotEmpty) ...[
+            SizedBox(height: context.tokens.spacingXS),
+            Text(
+              'Pickup: ${load.stops.first.location.city}, ${load.stops.first.location.state}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onPrimaryContainer,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

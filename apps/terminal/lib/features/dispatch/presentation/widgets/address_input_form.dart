@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import '../../domain/models/load.dart';
+import 'package:milow_core/milow_core.dart';
 
 class AddressInputForm extends StatefulWidget {
   final String title;

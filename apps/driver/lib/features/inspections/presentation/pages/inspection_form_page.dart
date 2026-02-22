@@ -35,7 +35,7 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
 
   // Form Fields
   String _driverId = '';
-  String _type = 'pre-trip'; // pre-trip, post-trip
+  DVIRInspectionType _type = DVIRInspectionType.preTrip;
 
   // Signature
   Uint8List? _signatureBytes;
@@ -45,12 +45,12 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
   String _odometerUnit = 'mi'; // 'mi' or 'km'
 
   // Defects
-  // Map of Category -> List of selected defect names
-  final Map<String, List<String>> _selectedDefects = {};
+  // Map of DVIRCategory -> DVIRDefect
+  final Map<DVIRCategory, DVIRDefect> _selectedDefects = {};
 
   // Photo Evidence Types
-  // Map of "Category-Item" -> Defect ID (UUID)
-  final Map<String, String> _defectIds = {};
+  // Map of DVIRCategory -> Defect ID (UUID)
+  final Map<DVIRCategory, String> _defectIds = {};
   // Map of Defect ID -> List of local image files
   final Map<String, List<File>> _defectPhotos = {};
 
@@ -64,29 +64,70 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
 
   final List<String> _vehicles = ['Truck 101', 'Truck 102', 'Trailer 505'];
 
+  // Map UI strings to DVIRCategory
+  DVIRCategory _mapToCategory(String item) {
+    switch (item) {
+      case 'Service Brakes':
+      case 'Parking Brake':
+      case 'Brake Connections':
+      case 'Brake Lines':
+        return DVIRCategory.brakes;
+      case 'Headlights':
+      case 'Tail/Stop Lights':
+      case 'Turn Signals':
+      case 'Clearance/Marker':
+        return DVIRCategory.lights;
+      case 'Tires':
+        return DVIRCategory.tires;
+      case 'Wheels/Rims':
+      case 'Lug Nuts':
+        return DVIRCategory.tires;
+      case 'Mud Flaps':
+        return DVIRCategory.body;
+      case 'Fluid Leaks':
+      case 'Oil Level':
+      case 'Coolant Level':
+      case 'Belts/Hoses':
+        return DVIRCategory.other;
+      case 'Fire Extinguisher':
+      case 'Triangles/Flares':
+        return DVIRCategory.emergency;
+      case 'Horn':
+        return DVIRCategory.horn;
+      case 'Mirrors':
+        return DVIRCategory.mirrors;
+      case 'Wipers':
+        return DVIRCategory.wipers;
+      default:
+        return DVIRCategory.other;
+    }
+  }
+
   // Defect Categories
-  final Map<String, List<String>> _defectCategories = {
-    'Brakes': [
+  final Map<DVIRCategory, List<String>> _defectCategories = {
+    DVIRCategory.brakes: [
       'Service Brakes',
       'Parking Brake',
       'Brake Connections',
       'Brake Lines',
     ],
-    'Lights': [
+    DVIRCategory.lights: [
       'Headlights',
       'Tail/Stop Lights',
       'Turn Signals',
       'Clearance/Marker',
     ],
-    'Tires': ['Tires', 'Wheels/Rims', 'Lug Nuts', 'Mud Flaps'],
-    'Engine': ['Fluid Leaks', 'Oil Level', 'Coolant Level', 'Belts/Hoses'],
-    'Safety': [
-      'Fire Extinguisher',
-      'Triangles/Flares',
-      'Horn',
-      'Mirrors',
-      'Wipers',
-    ],
+    DVIRCategory.tires: ['Tires', 'Wheels/Rims', 'Lug Nuts', 'Mud Flaps'],
+    DVIRCategory.other: [
+      'Fluid Leaks',
+      'Oil Level',
+      'Coolant Level',
+      'Belts/Hoses',
+    ], // Engine simplified to other
+    DVIRCategory.emergency: ['Fire Extinguisher', 'Triangles/Flares'],
+    DVIRCategory.horn: ['Horn'],
+    DVIRCategory.mirrors: ['Mirrors'],
+    DVIRCategory.wipers: ['Wipers'],
   };
 
   @override
@@ -142,33 +183,28 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
     super.dispose();
   }
 
-  String _getDefectKey(String category, String defect) => '$category-$defect';
-
-  String _getOrCreateDefectId(String category, String defect) {
-    final key = _getDefectKey(category, defect);
-    if (!_defectIds.containsKey(key)) {
-      _defectIds[key] = const Uuid().v4();
+  String _getOrCreateDefectId(DVIRCategory category) {
+    if (!_defectIds.containsKey(category)) {
+      _defectIds[category] = const Uuid().v4();
     }
-    return _defectIds[key]!;
+    return _defectIds[category]!;
   }
 
-  void _populateForm(Inspection inspection) {
-    debugPrint('Populating form with inspection type: ${inspection.type}');
-    _driverId = inspection.driverId;
-    _type = inspection.type;
+  void _populateForm(DVIRReport inspection) {
+    debugPrint(
+      'Populating form with inspection type: ${inspection.inspectionType}',
+    );
+    _driverId = inspection.driverId ?? '';
+    _type = inspection.inspectionType;
     _vehicleController.text = inspection.vehicleId;
-    _odometerController.text = inspection.odometer.toString();
+    _odometerController.text = inspection.odometer?.toString() ?? '0';
     _notesController.text = inspection.notes ?? '';
-    _existingSignatureUrl = inspection.signatureUrl;
+    _existingSignatureUrl = inspection.driverSignatureUrl;
 
     // Populate Defects
     for (var defect in inspection.defects) {
-      if (!_selectedDefects.containsKey(defect.category)) {
-        _selectedDefects[defect.category] = [];
-      }
-      _selectedDefects[defect.category]!.add(defect.item);
-      // Map existing defect ID
-      _defectIds[_getDefectKey(defect.category, defect.item)] = defect.id;
+      _selectedDefects[defect.category] = defect;
+      _defectIds[defect.category] = defect.id;
     }
   }
 
@@ -192,26 +228,23 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
     await prefs.setString('last_odometer_unit', _odometerUnit);
   }
 
-  void _toggleDefect(String category, String defect) {
+  void _toggleDefect(DVIRCategory category, String defectName) {
     setState(() {
-      if (!_selectedDefects.containsKey(category)) {
-        _selectedDefects[category] = [];
-      }
-
-      if (_selectedDefects[category]!.contains(defect)) {
-        _selectedDefects[category]!.remove(defect);
-        if (_selectedDefects[category]!.isEmpty) {
-          _selectedDefects.remove(category);
-        }
+      final category = _mapToCategory(defectName);
+      if (_selectedDefects.containsKey(category)) {
+        _selectedDefects.remove(category);
       } else {
-        _selectedDefects[category]!.add(defect);
-        // Ensure ID is created when selected
-        _getOrCreateDefectId(category, defect);
+        final defectId = _getOrCreateDefectId(category);
+        _selectedDefects[category] = DVIRDefect(
+          id: defectId,
+          category: category,
+          description: defectName,
+        );
       }
     });
   }
 
-  Future<void> _takePhoto(String category, String defect) async {
+  Future<void> _takePhoto(DVIRCategory category, String defectName) async {
     try {
       final XFile? photo = await _picker.pickImage(
         source: ImageSource.camera,
@@ -220,7 +253,8 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
 
       if (photo == null) return;
 
-      final defectId = _getOrCreateDefectId(category, defect);
+      final category = _mapToCategory(defectName);
+      final defectId = _getOrCreateDefectId(category);
       final file = File(photo.path);
 
       setState(() {
@@ -231,10 +265,11 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
 
         // Auto-select defect if adding photo
         if (!_selectedDefects.containsKey(category)) {
-          _selectedDefects[category] = [];
-        }
-        if (!_selectedDefects[category]!.contains(defect)) {
-          _selectedDefects[category]!.add(defect);
+          _selectedDefects[category] = DVIRDefect(
+            id: defectId,
+            category: category,
+            description: defectName,
+          );
         }
       });
 
@@ -317,25 +352,7 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
     try {
       final inspectionId = widget.inspectionId ?? const Uuid().v4();
 
-      // Convert selected defects map to List<InspectionDefect>
-      final List<InspectionDefect> defectsList = [];
-      _selectedDefects.forEach((category, defects) {
-        for (final defectName in defects) {
-          final defectId = _getOrCreateDefectId(category, defectName);
-          defectsList.add(
-            InspectionDefect(
-              id: defectId,
-              inspectionId: inspectionId,
-              category: category,
-              item: defectName,
-              comment: null,
-              isRepaired: false,
-              createdAt: DateTime.now(),
-              updatedAt: DateTime.now(),
-            ),
-          );
-        }
-      });
+      // Convert selected defects map to List<DVIRDefect> (used in inspection below)
 
       // Fetch current location
       String locationStr = 'Unknown Location';
@@ -365,18 +382,19 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
         // Continue with 'Unknown Location'
       }
 
-      final inspection = Inspection(
+      final inspection = DVIRReport(
         id: inspectionId,
         driverId: _driverId,
         vehicleId: _vehicleController.text,
-        type: _type,
-        odometer: double.tryParse(_odometerController.text) ?? 0,
+        inspectionType: _type,
+        odometer: int.tryParse(_odometerController.text) ?? 0,
         location: locationStr,
-        signedAt: DateTime.now(),
-        updatedAt: DateTime.now(), // Always update timestamp
         notes: _notesController.text,
-        defects: defectsList,
+        defects: _selectedDefects.values.toList(),
+        defectsFound: _selectedDefects.isNotEmpty,
+        isSafeToOperate: _selectedDefects.isEmpty, // Simplified for now
         createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
       );
 
       if (!mounted) return;
@@ -561,21 +579,21 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
                   borderRadius: BorderRadius.circular(tokens.shapeS),
                   border: Border.all(color: tokens.inputBorder),
                 ),
-                child: SegmentedButton<String>(
+                child: SegmentedButton<DVIRInspectionType>(
                   segments: const [
-                    ButtonSegment(
-                      value: 'pre-trip',
+                    ButtonSegment<DVIRInspectionType>(
+                      value: DVIRInspectionType.preTrip,
                       label: Text('Pre-Trip'),
                       icon: Icon(Icons.start),
                     ),
-                    ButtonSegment(
-                      value: 'post-trip',
+                    ButtonSegment<DVIRInspectionType>(
+                      value: DVIRInspectionType.postTrip,
                       label: Text('Post-Trip'),
                       icon: Icon(Icons.flag),
                     ),
                   ],
                   selected: {_type},
-                  onSelectionChanged: (Set<String> newSelection) {
+                  onSelectionChanged: (newSelection) {
                     if (newSelection.isNotEmpty) {
                       setState(() {
                         _type = newSelection.first;
@@ -690,7 +708,7 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
               ),
               child: ExpansionTile(
                 title: Text(
-                  category,
+                  category.displayName,
                   style: GoogleFonts.outfit(
                     fontWeight: FontWeight.w600,
                     color: hasDefects ? tokens.error : colorScheme.onSurface,
@@ -703,9 +721,11 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
                 childrenPadding: EdgeInsets.all(tokens.spacingM),
                 children: [
                   ...defects.map((defect) {
+                    final category = _mapToCategory(defect);
                     final isSelected =
-                        _selectedDefects[category]?.contains(defect) ?? false;
-                    final defectId = _getOrCreateDefectId(category, defect);
+                        _selectedDefects.containsKey(category) &&
+                        _selectedDefects[category]!.description == defect;
+                    final defectId = _getOrCreateDefectId(category);
                     final photos = _defectPhotos[defectId] ?? [];
 
                     return Column(

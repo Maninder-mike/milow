@@ -2,8 +2,6 @@ import 'package:fpdart/fpdart.dart';
 import 'package:milow_core/milow_core.dart';
 // Needed for Postgrest updates
 
-import '../../domain/models/load.dart';
-
 /// Repository for Load operations.
 ///
 /// Uses [CoreNetworkClient] for resilient network calls and returns

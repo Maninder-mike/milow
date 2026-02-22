@@ -1,10 +1,10 @@
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 
 import '../../data/repositories/load_repository.dart';
-import '../../domain/models/load.dart';
 
 import '../../../../core/providers/network_provider.dart';
 import '../../../../core/providers/supabase_provider.dart';
@@ -295,6 +295,19 @@ class IsCreatingLoad extends _$IsCreatingLoad {
 
   void toggle(bool value) => state = value;
 }
+
+/// Provider to track the currently selected load for details/chat sidebar
+class SelectedLoadIdNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void select(String? id) => state = id;
+}
+
+final selectedLoadIdProvider =
+    NotifierProvider<SelectedLoadIdNotifier, String?>(
+      SelectedLoadIdNotifier.new,
+    );
 
 /// Provider to store the draft load data across navigation
 @Riverpod(keepAlive: true)

@@ -1,8 +1,6 @@
 import 'package:milow_core/milow_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../../core/providers/network_provider.dart';
-import '../../domain/models/maintenance_record.dart';
-import '../../domain/models/maintenance_schedule.dart';
 
 part 'maintenance_repository.g.dart';
 

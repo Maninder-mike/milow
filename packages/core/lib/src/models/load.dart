@@ -1,15 +1,12 @@
-import 'load_location.dart';
+import 'load_status.dart';
 import 'stop.dart';
+import 'load_location.dart';
 import 'accessorial_charge.dart';
-
-export 'load_location.dart';
-export 'load_status.dart'; // Export LoadStatus enum
-export 'stop.dart'; // Export for convenience
 
 class Load {
   final String id;
   final String loadReference;
-  final String? brokerId; // Foregin Key
+  final String? brokerId;
   final String brokerName;
   final double rate;
   final String currency;
@@ -17,8 +14,8 @@ class Load {
   final double weight;
   final String quantity;
   final String weightUnit;
-  final List<Stop> stops; // Replaces pickup/delivery fields
-  final String status;
+  final List<Stop> stops;
+  final LoadStatus status;
   final String loadNotes;
   final String companyNotes;
   final String? assignedDriverId;
@@ -85,15 +82,16 @@ class Load {
           ),
         ),
       ],
-      status: 'Pending',
+      status: LoadStatus.pending,
       loadNotes: '',
       companyNotes: '',
       tripNumber: '',
       poNumber: null,
+      accessorials: [],
     );
   }
 
-  // Convenience getters for backward compatibility
+  // Convenience getters
   LoadLocation get pickup => stops.isNotEmpty
       ? stops
             .firstWhere(
@@ -113,8 +111,7 @@ class Load {
       : LoadLocation.empty();
 
   bool get isDelayed {
-    if (status.toLowerCase() == 'delivered' ||
-        status.toLowerCase() == 'cancelled') {
+    if (status == LoadStatus.delivered || status == LoadStatus.cancelled) {
       return false;
     }
     return DateTime.now().isAfter(delivery.date);
@@ -132,7 +129,7 @@ class Load {
     String? quantity,
     String? weightUnit,
     List<Stop>? stops,
-    String? status,
+    LoadStatus? status,
     String? loadNotes,
     String? companyNotes,
     String? assignedDriverId,
@@ -173,7 +170,6 @@ class Load {
   }
 
   Map<String, dynamic> toJson() {
-    // Database normalization: Store weight as Kgs
     double? weightDb = weight;
     if (weightUnit == 'Lbs') {
       weightDb = weight * 0.45359237;
@@ -189,7 +185,7 @@ class Load {
       'weight': weightDb,
       'weight_unit': weightUnit,
       'quantity': quantity,
-      'status': status,
+      'status': status.name,
       'load_notes': loadNotes,
       'company_notes': companyNotes,
       'assigned_driver_id': assignedDriverId,
@@ -199,56 +195,19 @@ class Load {
       'po_number': poNumber,
       'company_id': companyId,
       'accessorials': accessorials.map((e) => e.toJson()).toList(),
-      // Stops handled separately ideally, or nested based on requirement
     };
   }
 
   factory Load.fromJson(Map<String, dynamic> json) {
-    // Phase 4 Migration: Handle 'stops' list if available, else fallback to legacy fields
-
     List<Stop> stops = [];
     if (json['stops'] != null && (json['stops'] as List).isNotEmpty) {
       stops = (json['stops'] as List).map((e) => Stop.fromJson(e)).toList();
-      // Sort by sequence
       stops.sort((a, b) => a.sequence.compareTo(b.sequence));
-    } else {
-      // Fallback: Construct stops from legacy columns
-      final pickupData = json['pickups'] as Map<String, dynamic>?;
-      final receiverData = json['receivers'] as Map<String, dynamic>?;
-
-      // Pickup Stop (Seq 1)
-      stops.add(
-        Stop(
-          id: json['pickup_id'] ?? 'temp_p',
-          loadId: json['id'] ?? '',
-          sequence: 1,
-          type: StopType.pickup,
-          location: pickupData != null
-              ? LoadLocation.fromMap(pickupData, json['pickup_date'])
-              : LoadLocation.empty().copyWith(id: json['pickup_id']),
-        ),
-      );
-
-      // Delivery Stop (Seq 2)
-      stops.add(
-        Stop(
-          id: json['receiver_id'] ?? 'temp_d',
-          loadId: json['id'] ?? '',
-          sequence: 2,
-          type: StopType.delivery,
-          location: receiverData != null
-              ? LoadLocation.fromMap(receiverData, json['delivery_date'])
-              : LoadLocation.empty().copyWith(id: json['receiver_id']),
-        ),
-      );
     }
-
-    final brokerData = json['customers'] as Map<String, dynamic>?;
 
     final weightUnit = json['weight_unit'] as String? ?? 'Lbs';
     double weightApp = (json['weight'] as num?)?.toDouble() ?? 0.0;
 
-    // Database normalization: Load as Lbs if unit was Lbs
     if (weightUnit == 'Lbs') {
       weightApp = weightApp / 0.45359237;
     }
@@ -257,7 +216,9 @@ class Load {
       id: json['id'] as String,
       loadReference: json['load_reference'] as String? ?? '',
       brokerId: json['broker_id'] as String?,
-      brokerName: brokerData?['name'] as String? ?? '',
+      brokerName:
+          (json['customers'] as Map<String, dynamic>?)?['name'] as String? ??
+          '',
       rate: (json['rate'] as num?)?.toDouble() ?? 0.0,
       currency: json['currency'] as String? ?? 'CAD',
       goods: json['goods'] as String? ?? '',
@@ -265,7 +226,7 @@ class Load {
       quantity: json['quantity'] as String? ?? '',
       weightUnit: weightUnit,
       stops: stops,
-      status: json['status'] as String? ?? 'Pending',
+      status: LoadStatusX.fromString(json['status'] as String? ?? 'pending'),
       loadNotes: json['load_notes'] as String? ?? '',
       companyNotes: json['company_notes'] as String? ?? '',
       assignedDriverId: json['assigned_driver_id'] as String?,
@@ -274,6 +235,11 @@ class Load {
       tripNumber: json['trip_number'] as String? ?? '',
       poNumber: json['po_number'] as String?,
       companyId: json['company_id'] as String?,
+      accessorials: json['accessorials'] != null
+          ? (json['accessorials'] as List)
+                .map((e) => AccessorialCharge.fromJson(e))
+                .toList()
+          : [],
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'])
           : null,

@@ -1,6 +1,20 @@
 import 'load_location.dart';
+import 'appointment_window.dart';
 
-enum StopType { pickup, delivery }
+enum StopType {
+  pickup,
+  delivery,
+  other;
+
+  String get value => name;
+
+  static StopType? fromValue(String? value) {
+    if (value == 'pickup') return StopType.pickup;
+    if (value == 'delivery') return StopType.delivery;
+    if (value == 'other') return StopType.other;
+    return null;
+  }
+}
 
 class Stop {
   final String id;
@@ -10,7 +24,7 @@ class Stop {
   final LoadLocation location;
   final String? notes;
 
-  // Phase 4.1: Enhanced Details
+  // Enhanced Details
   final String? commodity;
   final String? quantity;
   final double? weight;
@@ -18,6 +32,10 @@ class Stop {
   final String? stopReference; // PO#, Pickup#, etc.
   final String? instructions; // Driver instructions
   final DateTime? appointmentTime;
+  final AppointmentWindow? appointmentWindow;
+  final bool isCompleted;
+  final DateTime? completedAt;
+  final DateTime? arrivedAt;
 
   Stop({
     required this.id,
@@ -33,6 +51,10 @@ class Stop {
     this.stopReference,
     this.instructions,
     this.appointmentTime,
+    this.appointmentWindow,
+    this.isCompleted = false,
+    this.completedAt,
+    this.arrivedAt,
   });
 
   factory Stop.empty() {
@@ -59,6 +81,9 @@ class Stop {
     String? stopReference,
     String? instructions,
     DateTime? appointmentTime,
+    AppointmentWindow? appointmentWindow,
+    bool? isCompleted,
+    DateTime? completedAt,
   }) {
     return Stop(
       id: id ?? this.id,
@@ -74,6 +99,9 @@ class Stop {
       stopReference: stopReference ?? this.stopReference,
       instructions: instructions ?? this.instructions,
       appointmentTime: appointmentTime ?? this.appointmentTime,
+      appointmentWindow: appointmentWindow ?? this.appointmentWindow,
+      isCompleted: isCompleted ?? this.isCompleted,
+      completedAt: completedAt ?? this.completedAt,
     );
   }
 
@@ -99,9 +127,11 @@ class Stop {
       'weight_unit': weightUnit,
       'stop_reference': stopReference,
       'instructions': instructions,
-      // Prefer appointmentTime, fall back to location.date
       'appointment_time':
           appointmentTime?.toIso8601String() ?? location.date.toIso8601String(),
+      'appointment_window': appointmentWindow?.toJson(),
+      'is_completed': isCompleted,
+      'completed_at': completedAt?.toIso8601String(),
       ...locMap,
     };
   }
@@ -133,6 +163,18 @@ class Stop {
       instructions: json['instructions'] as String?,
       appointmentTime: json['appointment_time'] != null
           ? DateTime.parse(json['appointment_time'] as String)
+          : null,
+      appointmentWindow: json['appointment_window'] != null
+          ? AppointmentWindow.fromJson(
+              json['appointment_window'] as Map<String, dynamic>,
+            )
+          : null,
+      isCompleted: json['is_completed'] as bool? ?? false,
+      completedAt: json['completed_at'] != null
+          ? DateTime.parse(json['completed_at'] as String)
+          : null,
+      arrivedAt: json['arrived_at'] != null
+          ? DateTime.parse(json['arrived_at'] as String)
           : null,
     );
   }

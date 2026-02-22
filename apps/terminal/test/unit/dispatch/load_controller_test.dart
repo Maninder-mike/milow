@@ -3,7 +3,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:fpdart/fpdart.dart';
 import 'package:mockito/mockito.dart';
 import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
-import 'package:terminal/features/dispatch/domain/models/load.dart';
 import 'package:milow_core/milow_core.dart';
 
 import '../../helpers/mocks.mocks.dart';

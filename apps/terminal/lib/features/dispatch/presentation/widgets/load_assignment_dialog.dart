@@ -4,7 +4,6 @@ import 'package:milow_core/milow_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../features/users/data/user_repository_provider.dart';
 import '../../../../features/dashboard/services/vehicle_service.dart';
-import '../../domain/models/load.dart';
 
 class LoadAssignmentDialog extends ConsumerStatefulWidget {
   final Load load;
@@ -159,7 +158,11 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                                   IconButton(
                                     icon: Icon(
                                       FluentIcons.chrome_close,
-                                      size: 12,
+                                      size:
+                                          widget.load.status ==
+                                              LoadStatus.assigned
+                                          ? 12
+                                          : 12,
                                     ),
                                     onPressed: () {
                                       setState(() {

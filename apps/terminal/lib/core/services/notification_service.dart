@@ -100,12 +100,16 @@ class NotificationService {
           badge: true,
           sound: true,
         );
-        debugPrint('User granted permission: ${settings.authorizationStatus}');
+        if (kDebugMode) {
+          debugPrint('User granted permission: ${settings.authorizationStatus}');
+        }
 
         // Listen to foreground messages
         FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-          debugPrint('Got a message whilst in the foreground!');
-          debugPrint('Message data: ${message.data}');
+          if (kDebugMode) {
+            debugPrint('Got a message whilst in the foreground!');
+            debugPrint('Message data: ${message.data}');
+          }
 
           if (message.notification != null) {
             final notification = message.notification!;
@@ -123,7 +127,9 @@ class NotificationService {
           }
         });
       } catch (e) {
-        debugPrint('FCM Init failed: $e');
+        if (kDebugMode) {
+          debugPrint('FCM Init failed: $e');
+        }
       }
     }
 
@@ -194,7 +200,9 @@ class SystemNotificationNotifier extends _$SystemNotificationNotifier {
           ref.read(notificationListProvider.notifier).add(n);
         }
       } catch (e) {
-        debugPrint('Error fetching notification history: $e');
+        if (kDebugMode) {
+          debugPrint('Error fetching notification history: $e');
+        }
       }
 
       _subscribeToMessages(user.id);
@@ -264,7 +272,9 @@ class SystemNotificationNotifier extends _$SystemNotificationNotifier {
             ),
           );
     } catch (e) {
-      debugPrint('Error showing notification: $e');
+      if (kDebugMode) {
+        debugPrint('Error showing notification: $e');
+      }
     }
   }
 

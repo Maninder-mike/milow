@@ -1,142 +1,73 @@
 import 'dart:async';
-
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/services/messaging_provider.dart';
+import 'package:milow_core/milow_core.dart';
 
-/// Chat detail page showing full conversation with a specific person
 class ChatDetailPage extends StatefulWidget {
-  final String partnerId;
+  final String? partnerId;
   final String partnerName;
   final String? partnerAvatarUrl;
+  final String? loadId;
 
   const ChatDetailPage({
-    required this.partnerId,
     required this.partnerName,
+    this.partnerId,
     this.partnerAvatarUrl,
+    this.loadId,
     super.key,
-  });
+  }) : assert(partnerId != null || loadId != null);
 
   @override
   State<ChatDetailPage> createState() => _ChatDetailPageState();
 }
 
 class _ChatDetailPageState extends State<ChatDetailPage> {
-  Future<List<Map<String, dynamic>>>? _messagesFuture;
-  StreamSubscription? _realtimeSubscription;
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-  bool _isSending = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _messagesFuture = _fetchMessages();
-    _subscribeToRealtime();
-  }
 
   @override
   void dispose() {
-    _realtimeSubscription?.cancel();
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
   }
 
-  void _subscribeToRealtime() {
-    final myId = Supabase.instance.client.auth.currentUser?.id;
-    if (myId == null) return;
-
-    _realtimeSubscription = Supabase.instance.client
-        .from('messages')
-        .stream(primaryKey: ['id'])
-        .listen((data) {
-          // Refresh when new messages arrive
-          if (mounted) {
-            setState(() {
-              _messagesFuture = _fetchMessages();
-            });
-          }
-        });
-  }
-
-  Future<List<Map<String, dynamic>>> _fetchMessages() async {
-    final myId = Supabase.instance.client.auth.currentUser?.id;
-    if (myId == null) return [];
-
-    try {
-      // Fetch messages between me and the partner
-      final List<dynamic> response = await Supabase.instance.client
-          .from('messages')
-          .select(
-            '*, sender:profiles!messages_sender_id_fkey(full_name, role, avatar_url)',
-          )
-          .or(
-            'and(sender_id.eq.$myId,receiver_id.eq.${widget.partnerId}),and(sender_id.eq.${widget.partnerId},receiver_id.eq.$myId)',
-          )
-          .order('created_at', ascending: true);
-
-      var messages = List<Map<String, dynamic>>.from(response);
-
-      // Filter based on local prefs
-      final prefs = await SharedPreferences.getInstance();
-
-      // Filter deleted message IDs
-      final deletedIds = prefs.getStringList('deleted_message_ids') ?? [];
-      if (deletedIds.isNotEmpty) {
-        messages = messages
-            .where((m) => !deletedIds.contains(m['id']))
-            .toList();
-      }
-
-      // Filter based on clear timestamp
-      final clearedAtStr = prefs.getString('inbox_cleared_at');
-      if (clearedAtStr != null) {
-        final clearedAt = DateTime.parse(clearedAtStr);
-        messages = messages.where((m) {
-          final createdAt = DateTime.tryParse(m['created_at'] ?? '');
-          if (createdAt == null) return true;
-          return createdAt.isAfter(clearedAt);
-        }).toList();
-      }
-
-      return messages;
-    } catch (e) {
-      debugPrint('Error fetching messages: $e');
-      return [];
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    final initials = widget.partnerName
-        .split(' ')
-        .take(2)
-        .map((e) => e.isNotEmpty ? e[0].toUpperCase() : '')
-        .join();
+    final messagingProvider = context.watch<MessagingProvider>();
+    final myId = Supabase.instance.client.auth.currentUser?.id;
+
+    if (myId == null) {
+      return const Scaffold(body: Center(child: Text('Not logged in')));
+    }
+
+    // Filter messages for this chat
+    final messages = messagingProvider.inbox.where((msg) {
+      if (widget.loadId != null) {
+        return msg.loadId == widget.loadId;
+      } else {
+        return (msg.senderId == myId && msg.receiverId == widget.partnerId) ||
+            (msg.senderId == widget.partnerId && msg.receiverId == myId);
+      }
+    }).toList();
+
+    // Sort by date ascending for the list view
+    messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
 
     return Scaffold(
       appBar: AppBar(
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(
-            Icons.arrow_back_ios_new_rounded,
-            color: Theme.of(context).colorScheme.onSurface,
-            size: 20,
-          ),
-          onPressed: () {
-            if (context.canPop()) {
-              context.pop();
-            } else {
-              context.go('/inbox');
-            }
-          },
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 20),
+          onPressed: () => context.pop(),
         ),
         titleSpacing: 0,
         title: Row(
@@ -149,211 +80,130 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
                   : null,
               child: widget.partnerAvatarUrl == null
                   ? Text(
-                      initials,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      widget.partnerName.isNotEmpty
+                          ? widget.partnerName[0].toUpperCase()
+                          : '?',
+                      style: TextStyle(
                         color: Theme.of(context).colorScheme.onPrimaryContainer,
                         fontWeight: FontWeight.bold,
                       ),
                     )
                   : null,
             ),
-            SizedBox(width: tokens.spacingM),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  widget.partnerName,
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    widget.partnerName,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                    overflow: TextOverflow.ellipsis,
                   ),
-                ),
-                Text(
-                  'Dispatcher',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  Text(
+                    widget.loadId != null ? 'Load Chat' : 'Direct Message',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),
-        actions: [
-          PopupMenuButton<String>(
-            icon: Icon(
-              Icons.more_vert,
-              color: Theme.of(context).colorScheme.onSurface,
-            ),
-            onSelected: (value) {
-              if (value == 'delete') {
-                _confirmDeleteChat();
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: 'delete',
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.delete_outline,
-                      color: Theme.of(context).colorScheme.error,
-                      size: 20,
-                    ),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Delete Chat',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.error,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(width: 4),
-        ],
       ),
       body: Column(
         children: [
-          Expanded(child: _buildMessageList()),
-          // Message input (placeholder for now)
-          _buildMessageInput(),
+          Expanded(
+            child: ListView.builder(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(16),
+              itemCount: messages.length,
+              itemBuilder: (context, index) {
+                final msg = messages[index];
+                final isMe = msg.senderId == myId;
+                return _buildMessageBubble(msg, isMe, tokens);
+              },
+            ),
+          ),
+          _buildMessageInput(messagingProvider),
         ],
       ),
     );
   }
 
-  Widget _buildMessageList() {
-    final myId = Supabase.instance.client.auth.currentUser?.id;
-    if (myId == null) {
-      return const Center(child: Text('Not logged in'));
-    }
-
-    return FutureBuilder<List<Map<String, dynamic>>>(
-      future: _messagesFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        if (snapshot.hasError) {
-          return Center(child: Text('Error: ${snapshot.error}'));
-        }
-
-        final messages = snapshot.data ?? [];
-
-        if (messages.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.chat_bubble_outline_rounded,
-                  size: 64,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                SizedBox(height: context.tokens.spacingM),
-                Text(
-                  'No messages yet',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
-
-        return ListView.builder(
-          controller: _scrollController,
-          padding: EdgeInsets.all(context.tokens.spacingM),
-          itemCount: messages.length,
-          itemBuilder: (context, index) {
-            final msg = messages[index];
-            final isMe = msg['sender_id'] == myId;
-            return _buildMessageBubble(msg, isMe);
-          },
-        );
-      },
-    );
-  }
-
-  Widget _buildMessageBubble(Map<String, dynamic> msg, bool isMe) {
-    final tokens = context.tokens;
-    final content = msg['content'] ?? '';
-    final date = (DateTime.tryParse(msg['created_at'] ?? '') ?? DateTime.now())
-        .toLocal();
+  Widget _buildMessageBubble(Message msg, bool isMe, DesignTokens tokens) {
+    // Check if the message is synced (if it's a local message, we marked it is_synced=0)
+    // We'll trust the provider to have enriched the data.
+    // For now, let's assume if it has a valid uuid-like ID and is in local database, it might have isSynced.
+    // Actually, I should probably expose isSynced in the Message model or handle it differently.
+    // For simplicity, let's just show the bubble.
 
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: EdgeInsets.only(
-          bottom: tokens.spacingS,
-          left: isMe ? 48 : 0,
-          right: isMe ? 0 : 48,
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.75,
         ),
         decoration: BoxDecoration(
           color: isMe
               ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.surfaceContainerHighest,
+              : Theme.of(context).colorScheme.surfaceContainerHigh,
           borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(tokens.shapeL),
-            topRight: Radius.circular(tokens.shapeL),
-            bottomLeft: Radius.circular(isMe ? tokens.shapeL : tokens.shapeXS),
-            bottomRight: Radius.circular(isMe ? tokens.shapeXS : tokens.shapeL),
+            topLeft: const Radius.circular(16),
+            topRight: const Radius.circular(16),
+            bottomLeft: Radius.circular(isMe ? 16 : 4),
+            bottomRight: Radius.circular(isMe ? 4 : 16),
           ),
         ),
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: tokens.spacingM,
-            vertical: tokens.spacingS + 4,
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(
-                content,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: isMe
-                      ? Colors.white
-                      : Theme.of(context).colorScheme.onSurface,
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              msg.content,
+              style: TextStyle(
+                color: isMe
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurface,
               ),
-              SizedBox(height: tokens.spacingXS),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    DateFormat.Hm().format(date),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                      fontSize: 10,
-                      color: isMe
-                          ? Colors.white.withValues(alpha: 0.7)
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+            ),
+            const SizedBox(height: 4),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  DateFormat.Hm().format(msg.createdAt),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: isMe
+                        ? Colors.white.withValues(alpha: 0.7)
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                  if (isMe) ...[
-                    SizedBox(width: tokens.spacingXS),
-                    Icon(
-                      Icons.done_all,
-                      size: 14,
-                      color: Colors.white.withValues(alpha: 0.7),
-                    ),
-                  ],
+                ),
+                if (isMe) ...[
+                  const SizedBox(width: 4),
+                  Icon(
+                    Icons.done_all,
+                    size: 14,
+                    color: Colors.white.withValues(alpha: 0.7),
+                  ),
                 ],
-              ),
-            ],
-          ),
+              ],
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildMessageInput() {
-    final tokens = context.tokens;
-
+  Widget _buildMessageInput(MessagingProvider provider) {
     return Container(
-      padding: EdgeInsets.all(tokens.spacingM),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surface,
         border: Border(
@@ -361,75 +211,33 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
         ),
       ),
       child: SafeArea(
-        top: false,
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            // Attachment button
-            IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Attachments coming soon')),
-                );
-              },
-              icon: Icon(
-                Icons.attach_file_rounded,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            // Message input
             Expanded(
-              child: Container(
-                constraints: const BoxConstraints(maxHeight: 120),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(tokens.shapeL),
-                ),
-                child: TextField(
-                  controller: _messageController,
-                  maxLines: null,
-                  textCapitalization: TextCapitalization.sentences,
-                  decoration: InputDecoration(
-                    hintText: 'Type a message...',
-                    hintStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(
-                      horizontal: tokens.spacingM,
-                      vertical: tokens.spacingS + 4,
-                    ),
+              child: TextField(
+                controller: _messageController,
+                maxLines: null,
+                decoration: InputDecoration(
+                  hintText: 'Type a message...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
                   ),
-                  onChanged: (_) => setState(() {}),
-                ),
-              ),
-            ),
-            SizedBox(width: tokens.spacingS),
-            // Send button
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              child: IconButton.filled(
-                onPressed: _messageController.text.trim().isEmpty || _isSending
-                    ? null
-                    : _sendMessage,
-                icon: _isSending
-                    ? SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          color: Theme.of(context).colorScheme.onPrimary,
-                        ),
-                      )
-                    : const Icon(Icons.send_rounded),
-                style: IconButton.styleFrom(
-                  backgroundColor: Theme.of(context).colorScheme.primary,
-                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                  disabledBackgroundColor: Theme.of(
+                  filled: true,
+                  fillColor: Theme.of(
                     context,
                   ).colorScheme.surfaceContainerHighest,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                 ),
               ),
+            ),
+            const SizedBox(width: 8),
+            IconButton.filled(
+              onPressed: () => _handleSend(provider),
+              icon: const Icon(Icons.send_rounded),
             ),
           ],
         ),
@@ -437,104 +245,27 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
-  Future<void> _sendMessage() async {
+  void _handleSend(MessagingProvider provider) async {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
 
-    final myId = Supabase.instance.client.auth.currentUser?.id;
-    if (myId == null) return;
+    _messageController.clear();
 
-    setState(() => _isSending = true);
+    await provider.sendMessage(
+      content: content,
+      loadId: widget.loadId,
+      receiverId: widget.partnerId,
+    );
 
-    try {
-      await Supabase.instance.client.from('messages').insert({
-        'sender_id': myId,
-        'receiver_id': widget.partnerId,
-        'content': content,
-      });
-
-      _messageController.clear();
-
-      // Refresh messages
-      setState(() {
-        _messagesFuture = _fetchMessages();
-      });
-
-      // Scroll to bottom after messages load
-      await _messagesFuture;
-      if (mounted && _scrollController.hasClients) {
-        await Future.delayed(const Duration(milliseconds: 100));
-        await _scrollController.animateTo(
+    // Scroll to bottom
+    if (_scrollController.hasClients) {
+      unawaited(
+        _scrollController.animateTo(
           _scrollController.position.maxScrollExtent,
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
-        );
-      }
-    } catch (e) {
-      debugPrint('Error sending message: $e');
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to send: $e'),
-            backgroundColor: context.tokens.error,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      }
-    } finally {
-      if (mounted) {
-        setState(() => _isSending = false);
-      }
-    }
-  }
-
-  Future<void> _confirmDeleteChat() async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('Delete Chat'),
-          content: const Text(
-            'Are you sure you want to delete this conversation?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: Text(
-                'Delete',
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Theme.of(context).colorScheme.error,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-
-    if (confirmed == true) {
-      // Mark chat as cleared from this timestamp
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(
-        'inbox_cleared_at',
-        DateTime.now().toIso8601String(),
+        ),
       );
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Chat deleted'),
-            backgroundColor: context.tokens.success,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-        context.pop();
-      }
     }
   }
 }

@@ -2,19 +2,18 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:milow_core/milow_core.dart';
+import 'package:terminal/core/constants/app_colors.dart';
 
-import '../../../../core/constants/app_colors.dart';
-import '../../domain/models/load.dart';
-
-/// Line item for quote
-class QuoteLineItem {
+/// Local mutable representation for editing
+class _MutableQuoteLineItem {
   String type;
   String description;
   double rate;
   double quantity;
-  String unit; // per mile, flat, per hour, percentage
+  String unit;
 
-  QuoteLineItem({
+  _MutableQuoteLineItem({
     this.type = 'Linehaul',
     this.description = '',
     this.rate = 0.0,
@@ -23,6 +22,23 @@ class QuoteLineItem {
   });
 
   double get total => rate * quantity;
+
+  QuoteLineItem toCore() => QuoteLineItem(
+    type: type,
+    description: description,
+    rate: rate,
+    quantity: quantity,
+    unit: unit,
+  );
+
+  factory _MutableQuoteLineItem.fromCore(QuoteLineItem item) =>
+      _MutableQuoteLineItem(
+        type: item.type,
+        description: item.description,
+        rate: item.rate,
+        quantity: item.quantity,
+        unit: item.unit,
+      );
 }
 
 /// Dialog for building a quote for a load
@@ -37,7 +53,7 @@ class LoadQuoteDialog extends StatefulWidget {
   final Load load;
 
   /// If provided, the dialog will be pre-populated for editing
-  final dynamic existingQuote; // Quote from quote.dart (avoid circular import)
+  final Quote? existingQuote;
   final Future<void> Function({
     required List<QuoteLineItem> lineItems,
     required DateTime? deliveryStartDate,
@@ -56,7 +72,7 @@ class LoadQuoteDialog extends StatefulWidget {
 
 class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
   // Quote Line Items
-  late List<QuoteLineItem> _lineItems;
+  late List<_MutableQuoteLineItem> _lineItems;
 
   // Quote metadata
   DateTime? _pickupDate;
@@ -85,9 +101,9 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
 
     // Pre-populate from existing quote if editing
     if (widget.existingQuote != null) {
-      final existing = widget.existingQuote;
-      _quoteStatus = existing.status ?? 'draft';
-      _notesController.text = existing.notes ?? '';
+      final existing = widget.existingQuote!;
+      _quoteStatus = existing.status;
+      _notesController.text = existing.notes;
       _expiresOn = existing.expiresOn;
       // Inherit loading reference from load if quote doesn't have it (or override)
       if (existing.loadReference.isNotEmpty) {
@@ -95,26 +111,15 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
       }
 
       // Convert existing line items
-      final existingItems = existing.lineItems as List<dynamic>?;
-      if (existingItems != null && existingItems.isNotEmpty) {
-        _lineItems = existingItems.map((item) {
-          // Check if item is already QuoteLineItem or needs conversion (from JSON/Map)
-          if (item is QuoteLineItem) return item;
-          // If it's from JSON it might be a Map, or passed as object depending on how it's stored.
-          // The Quote model definition suggests List<QuoteLineItem> but let's be safe.
-          return QuoteLineItem(
-            type: item.type ?? 'Linehaul',
-            description: item.description ?? '',
-            rate: item.rate ?? 0.0,
-            quantity: item.quantity ?? 1.0,
-            unit: item.unit ?? 'flat',
-          );
-        }).toList();
+      if (existing.lineItems.isNotEmpty) {
+        _lineItems = existing.lineItems
+            .map((item) => _MutableQuoteLineItem.fromCore(item))
+            .toList();
       } else {
-        _lineItems = [QuoteLineItem()];
+        _lineItems = [_MutableQuoteLineItem()];
       }
     } else {
-      _lineItems = [QuoteLineItem()];
+      _lineItems = [_MutableQuoteLineItem()];
     }
   }
 
@@ -128,7 +133,7 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
 
   void _addLineItem() {
     setState(() {
-      _lineItems.add(QuoteLineItem());
+      _lineItems.add(_MutableQuoteLineItem());
     });
   }
 
@@ -690,7 +695,7 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
           onPressed: () async {
             final navigator = Navigator.of(context);
             await widget.onPublish(
-              lineItems: _lineItems,
+              lineItems: _lineItems.map((e) => e.toCore()).toList(),
               deliveryStartDate: _pickupDate,
               deliveryEndDate: _deliveryDate,
               notes: _notesController.text,
@@ -731,7 +736,7 @@ class _LoadQuoteDialogState extends State<LoadQuoteDialog> {
 }
 
 class _ChargeRow extends StatefulWidget {
-  final QuoteLineItem item;
+  final _MutableQuoteLineItem item;
   final VoidCallback onDelete;
   final VoidCallback onChanged;
 
@@ -808,10 +813,10 @@ class _ChargeRowState extends State<_ChargeRow> {
                 .map((t) => ComboBoxItem<String>(value: t, child: Text(t)))
                 .toList(),
             onChanged: (v) {
-              if (v != null) {
-                setState(() => widget.item.type = v);
-                widget.onChanged();
-              }
+              setState(() {
+                widget.item.type = v ?? 'Linehaul';
+              });
+              widget.onChanged();
             },
             isExpanded: true,
           ),
@@ -821,7 +826,7 @@ class _ChargeRowState extends State<_ChargeRow> {
         Expanded(
           flex: 5,
           child: TextBox(
-            placeholder: 'Description',
+            placeholder: 'Charge description...',
             controller: _descController,
           ),
         ),
@@ -829,13 +834,13 @@ class _ChargeRowState extends State<_ChargeRow> {
         // Rate
         Expanded(
           flex: 2,
-          child: TextBox(placeholder: '\$0.00', controller: _rateController),
+          child: TextBox(placeholder: 'Rate', controller: _rateController),
         ),
         const SizedBox(width: 8),
         // Quantity
         Expanded(
           flex: 1,
-          child: TextBox(placeholder: '1', controller: _qtyController),
+          child: TextBox(placeholder: 'Qty', controller: _qtyController),
         ),
         const SizedBox(width: 8),
         // Unit
@@ -847,10 +852,10 @@ class _ChargeRowState extends State<_ChargeRow> {
                 .map((u) => ComboBoxItem<String>(value: u, child: Text(u)))
                 .toList(),
             onChanged: (v) {
-              if (v != null) {
-                setState(() => widget.item.unit = v);
-                widget.onChanged();
-              }
+              setState(() {
+                widget.item.unit = v ?? 'flat';
+              });
+              widget.onChanged();
             },
             isExpanded: true,
           ),

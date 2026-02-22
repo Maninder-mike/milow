@@ -107,7 +107,7 @@ class _InspectionsPageState extends State<InspectionsPage> {
     );
   }
 
-  Widget _buildInspectionCard(BuildContext context, Inspection inspection) {
+  Widget _buildInspectionCard(BuildContext context, DVIRReport inspection) {
     final tokens = context.tokens;
     return Dismissible(
       key: Key(inspection.id),
@@ -189,31 +189,24 @@ class _InspectionsPageState extends State<InspectionsPage> {
         margin: EdgeInsets.only(bottom: tokens.spacingS),
         child: ListTile(
           leading: Icon(
-            inspection.type == 'pre-trip'
+            inspection.inspectionType == DVIRInspectionType.preTrip
                 ? Icons.start_rounded
                 : Icons.stop_rounded,
             color: Theme.of(context).colorScheme.primary,
           ),
           title: Text(
-            DateFormat.yMMMd().add_jm().format(inspection.signedAt),
+            DateFormat.yMMMd().add_jm().format(
+              inspection.createdAt ?? DateTime.now(),
+            ),
             style: const TextStyle(fontWeight: FontWeight.bold),
           ),
           subtitle: Text(
-            '${inspection.type.toUpperCase()} • ${inspection.vehicleId}',
+            '${inspection.inspectionType.displayName.toUpperCase()} • ${inspection.vehicleId}',
           ),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (!inspection.isSynced)
-                Padding(
-                  padding: EdgeInsets.only(right: tokens.spacingXS),
-                  child: Icon(
-                    Icons.cloud_off,
-                    color: Theme.of(context).colorScheme.outline,
-                    size: 20,
-                  ),
-                ),
-              inspection.hasDefects
+              inspection.defectsFound
                   ? Chip(
                       label: const Text('Defects'),
                       backgroundColor: Theme.of(
@@ -233,7 +226,7 @@ class _InspectionsPageState extends State<InspectionsPage> {
 
   Future<bool?> _showDeleteConfirmationDialog(
     BuildContext context,
-    Inspection inspection,
+    DVIRReport inspection,
   ) {
     return showModalBottomSheet<bool>(
       context: context,

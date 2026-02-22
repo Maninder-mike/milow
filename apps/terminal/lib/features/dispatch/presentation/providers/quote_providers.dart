@@ -3,7 +3,6 @@ import 'package:milow_core/milow_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/repositories/quote_repository.dart';
-import '../../domain/models/quote.dart';
 import '../../../../core/providers/network_provider.dart';
 
 part 'quote_providers.g.dart';

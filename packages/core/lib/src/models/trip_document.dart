@@ -1,3 +1,5 @@
+import 'stop.dart';
+
 /// Document types for trip documents
 enum TripDocumentType {
   ace,
@@ -134,17 +136,19 @@ enum TripDocumentType {
   }
 }
 
-/// Stop type for document association
-enum StopType {
-  pickup,
-  delivery;
+/// Status of a document in the workflow
+enum DocumentStatus {
+  pending,
+  approved,
+  rejected;
 
   String get value => name;
 
-  static StopType? fromValue(String? value) {
-    if (value == 'pickup') return StopType.pickup;
-    if (value == 'delivery') return StopType.delivery;
-    return null;
+  static DocumentStatus fromValue(String value) {
+    return DocumentStatus.values.firstWhere(
+      (e) => e.name == value,
+      orElse: () => DocumentStatus.pending,
+    );
   }
 }
 
@@ -168,6 +172,9 @@ class TripDocument {
   final String? url;
   final bool isDeletable;
   final bool isSystemGenerated;
+  final DocumentStatus status;
+  final String? reviewNotes;
+  final String? reviewedBy;
   final DateTime? createdAt;
   final DateTime? updatedAt;
 
@@ -190,6 +197,9 @@ class TripDocument {
     this.url,
     this.isDeletable = true,
     this.isSystemGenerated = false,
+    this.status = DocumentStatus.pending,
+    this.reviewNotes,
+    this.reviewedBy,
     this.createdAt,
     this.updatedAt,
   });
@@ -217,6 +227,9 @@ class TripDocument {
       url: json['url'] as String?,
       isDeletable: json['is_deletable'] as bool? ?? true,
       isSystemGenerated: json['is_system_generated'] as bool? ?? false,
+      status: DocumentStatus.fromValue(json['status'] as String? ?? 'pending'),
+      reviewNotes: json['review_notes'] as String?,
+      reviewedBy: json['reviewed_by'] as String?,
       createdAt: json['created_at'] != null
           ? DateTime.parse(json['created_at'] as String)
           : null,
@@ -247,6 +260,9 @@ class TripDocument {
       if (url != null) 'url': url,
       'is_deletable': isDeletable,
       'is_system_generated': isSystemGenerated,
+      'status': status.value,
+      if (reviewNotes != null) 'review_notes': reviewNotes,
+      if (reviewedBy != null) 'reviewed_by': reviewedBy,
     };
   }
 
@@ -270,6 +286,9 @@ class TripDocument {
     String? url,
     bool? isDeletable,
     bool? isSystemGenerated,
+    DocumentStatus? status,
+    String? reviewNotes,
+    String? reviewedBy,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -292,6 +311,9 @@ class TripDocument {
       url: url ?? this.url,
       isDeletable: isDeletable ?? this.isDeletable,
       isSystemGenerated: isSystemGenerated ?? this.isSystemGenerated,
+      status: status ?? this.status,
+      reviewNotes: reviewNotes ?? this.reviewNotes,
+      reviewedBy: reviewedBy ?? this.reviewedBy,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

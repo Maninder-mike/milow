@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import 'package:milow/core/services/theme_service.dart';
 import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/services/logging_service.dart';
+import 'package:milow/core/services/messaging_provider.dart';
 import 'package:milow/core/services/locale_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -51,6 +52,10 @@ import 'package:milow/features/settings/presentation/pages/language_page.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/features/documents/presentation/pages/documents_page.dart';
 import 'package:milow/features/documents/presentation/pages/shared_documents_page.dart';
+
+import 'package:milow/features/loads/presentation/pages/available_loads_page.dart';
+import 'package:milow/features/loads/presentation/pages/load_details_page.dart';
+
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/expenses/presentation/pages/expenses_list_page.dart';
 import 'package:milow/features/expenses/presentation/pages/add_expense_page.dart';
@@ -66,7 +71,10 @@ import 'package:milow/features/inspections/data/repositories/inspection_reposito
 import 'package:milow/features/inspections/presentation/pages/inspections_page.dart';
 import 'package:milow/features/inspections/presentation/pages/inspection_form_page.dart';
 import 'package:milow/features/offline/data/database/driver_database.dart';
+import 'package:milow/core/services/location/location_tracking_service.dart';
+import 'package:milow/core/services/location/location_repository.dart';
 
+import 'package:milow/features/inbox/presentation/pages/chat_detail_page.dart';
 import 'package:milow/features/auth/presentation/pages/email_verified_page.dart';
 import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart';
@@ -237,6 +245,14 @@ Future<void> main() async {
                 ),
               ),
             ),
+            Provider(create: (_) => LocationTrackingService(driverDatabase)),
+            Provider(
+              create: (_) =>
+                  LocationRepository(driverDatabase, Supabase.instance.client),
+            ),
+            ChangeNotifierProvider(
+              create: (_) => MessagingProvider(driverDatabase)..init(),
+            ),
           ],
           child: const MyApp(),
         ),
@@ -271,6 +287,20 @@ Future<void> _initBackgroundServices() async {
 
     // Initialize auth resilience for proactive token refresh
     authResilienceService.init();
+
+    // Start location tracking if user is logged in
+    final session = Supabase.instance.client.auth.currentSession;
+    if (session != null) {
+      final driverId = session.user.id;
+      final trackingService = LocationTrackingService(driverDatabase);
+      final locationRepo = LocationRepository(
+        driverDatabase,
+        Supabase.instance.client,
+      );
+
+      unawaited(trackingService.startTracking(driverId: driverId));
+      locationRepo.startSyncTimer();
+    }
 
     debugPrint('✅ Background services initialized');
   } catch (e, stack) {
@@ -368,6 +398,17 @@ final GoRouter _router = GoRouter(
         state,
         const AuthWrapper(child: TabsShell(initialIndex: 0)),
       ),
+    ),
+    GoRoute(
+      path: '/load-details/:id',
+      pageBuilder: (context, state) {
+        final id = state.pathParameters['id']!;
+        return _buildTransitionPage(
+          context,
+          state,
+          AuthWrapper(child: LoadDetailsPage(loadId: id)),
+        );
+      },
     ),
     GoRoute(
       path: '/settings',
@@ -564,6 +605,32 @@ final GoRouter _router = GoRouter(
           },
         ),
       ],
+    ),
+    GoRoute(
+      path: '/chat',
+      pageBuilder: (context, state) {
+        final extra = state.extra as Map<String, dynamic>;
+        return _buildTransitionPage(
+          context,
+          state,
+          AuthWrapper(
+            child: ChatDetailPage(
+              partnerId: extra['partnerId'] as String?,
+              partnerName: extra['partnerName'] as String,
+              partnerAvatarUrl: extra['partnerAvatarUrl'] as String?,
+              loadId: extra['loadId'] as String?,
+            ),
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: '/available-loads',
+      pageBuilder: (context, state) => _buildTransitionPage(
+        context,
+        state,
+        const AuthWrapper(child: AvailableLoadsPage()),
+      ),
     ),
   ],
 );

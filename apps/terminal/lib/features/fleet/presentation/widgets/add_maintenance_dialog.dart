@@ -1,6 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/models/maintenance_record.dart';
+import 'package:milow_core/milow_core.dart';
 import '../../data/repositories/maintenance_repository.dart';
 
 /// Dialog to add a new maintenance/service record
