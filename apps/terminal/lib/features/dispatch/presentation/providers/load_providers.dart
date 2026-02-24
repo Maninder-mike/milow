@@ -297,17 +297,13 @@ class IsCreatingLoad extends _$IsCreatingLoad {
 }
 
 /// Provider to track the currently selected load for details/chat sidebar
-class SelectedLoadIdNotifier extends Notifier<String?> {
+@riverpod
+class SelectedLoadIdNotifier extends _$SelectedLoadIdNotifier {
   @override
   String? build() => null;
 
   void select(String? id) => state = id;
 }
-
-final selectedLoadIdProvider =
-    NotifierProvider<SelectedLoadIdNotifier, String?>(
-      SelectedLoadIdNotifier.new,
-    );
 
 /// Provider to store the draft load data across navigation
 @Riverpod(keepAlive: true)

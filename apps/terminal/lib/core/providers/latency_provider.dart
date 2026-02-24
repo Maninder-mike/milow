@@ -1,64 +1,38 @@
-import 'dart:async';
-import 'package:http/http.dart' as http;
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:terminal/core/providers/supabase_provider.dart';
 
-/// Provider that emits the network latency (RTT) in milliseconds.
-/// Pings a reliable server (Google) every 30 seconds.
-/// Returns null if the ping fails or times out.
-final latencyProvider = StreamProvider<int?>((ref) {
-  // Config
-  const pingUrl = 'https://www.google.com';
-  const interval = Duration(seconds: 30);
-  const timeout = Duration(seconds: 5);
-
-  // Initial ping
-  final controller = StreamController<int?>();
-
-  Future<void> ping() async {
-    final stopwatch = Stopwatch()..start();
-    try {
-      await http.head(Uri.parse(pingUrl)).timeout(timeout);
-      stopwatch.stop();
-      controller.add(stopwatch.elapsedMilliseconds);
-    } catch (e) {
-      // On error (timeout, no net, etc), emit null to indicate issue
-      controller.add(null);
-    }
-  }
-
-  // Run immediately
-  ping();
-
-  // Run periodically
-  final timer = Timer.periodic(interval, (_) => ping());
-
-  ref.onDispose(() {
-    timer.cancel();
-    controller.close();
-  });
-
-  return controller.stream;
-});
-
-/// Returns a color based on latency value.
-/// Green: < 100ms
-/// Orange: 100ms - 300ms
-/// Red: > 300ms (or null/error)
-final latencyStatusProvider = Provider.family<LatencyStatus, int?>((
-  ref,
-  latency,
-) {
-  if (latency == null) return LatencyStatus.error;
-  if (latency < 100) return LatencyStatus.good;
-  if (latency < 300) return LatencyStatus.fair;
-  return LatencyStatus.poor;
-});
+part 'latency_provider.g.dart';
 
 enum LatencyStatus {
   good,
   fair,
   poor,
-  error;
+  disconnected;
 
   bool get isGood => this == LatencyStatus.good;
+}
+
+@Riverpod(keepAlive: true)
+Stream<int?> latency(Ref ref) {
+  final client = ref.watch(supabaseClientProvider);
+  return Stream.periodic(const Duration(seconds: 10)).asyncMap((_) async {
+    final start = DateTime.now();
+    try {
+      await client.rpc('ping');
+      return DateTime.now().difference(start).inMilliseconds;
+    } catch (_) {
+      return null;
+    }
+  });
+}
+
+@Riverpod(keepAlive: true)
+LatencyStatus latencyStatus(Ref ref) {
+  final latencyValue = ref.watch(latencyProvider).valueOrNull;
+
+  if (latencyValue == null) return LatencyStatus.disconnected;
+  if (latencyValue < 100) return LatencyStatus.good;
+  if (latencyValue < 300) return LatencyStatus.fair;
+  return LatencyStatus.poor;
 }

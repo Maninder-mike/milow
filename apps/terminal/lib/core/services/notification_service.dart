@@ -1,6 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -29,13 +28,8 @@ class AppNotification {
   });
 }
 
-/// Provider to hold the list of notifications for the Bell Icon
-final notificationListProvider =
-    NotifierProvider<NotificationListNotifier, List<AppNotification>>(
-      NotificationListNotifier.new,
-    );
-
-class NotificationListNotifier extends Notifier<List<AppNotification>> {
+@riverpod
+class NotificationList extends _$NotificationList {
   @override
   List<AppNotification> build() => [];
 
@@ -101,7 +95,9 @@ class NotificationService {
           sound: true,
         );
         if (kDebugMode) {
-          debugPrint('User granted permission: ${settings.authorizationStatus}');
+          debugPrint(
+            'User granted permission: ${settings.authorizationStatus}',
+          );
         }
 
         // Listen to foreground messages

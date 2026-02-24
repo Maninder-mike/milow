@@ -1,57 +1,36 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import 'supabase_provider.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:milow_core/milow_core.dart';
+import 'package:terminal/core/providers/supabase_provider.dart';
 
-// Simple model or use Map for now since we just need 'role' and 'is_verified'
-typedef ProfileData = Map<String, dynamic>;
+part 'profile_provider.g.dart';
 
-final profileProvider = AsyncNotifierProvider<ProfileNotifier, ProfileData?>(
-  ProfileNotifier.new,
-);
-
-class ProfileNotifier extends AsyncNotifier<ProfileData?> {
-  SupabaseClient get _client => ref.read(supabaseClientProvider);
-
+@riverpod
+class ProfileNotifier extends _$ProfileNotifier {
   @override
-  Future<ProfileData?> build() async {
-    final user = _client.auth.currentUser;
+  Future<UserProfile?> build() async {
+    final user = ref.watch(supabaseClientProvider).auth.currentUser;
     if (user == null) return null;
-    return _fetchProfile(user.id);
+
+    final response = await ref
+        .watch(supabaseClientProvider)
+        .from('profiles')
+        .select()
+        .eq('id', user.id)
+        .maybeSingle();
+
+    if (response == null) return null;
+    return UserProfile.fromJson(response);
   }
 
-  Future<ProfileData?> _fetchProfile(String userId) async {
-    try {
-      final data = await _client
-          .from('profiles')
-          .select('*, company_staff_profiles(*), driver_profiles(*)')
-          .eq('id', userId)
-          .maybeSingle(); // Use maybeSingle to avoid 406/JSON error if not found
-
-      if (data == null) return null;
-
-      // Flatten details
-      if (data['company_staff_profiles'] != null) {
-        data.addAll(data['company_staff_profiles'] as Map<String, dynamic>);
-        data.remove('company_staff_profiles');
-      }
-      if (data['driver_profiles'] != null) {
-        data.addAll(data['driver_profiles'] as Map<String, dynamic>);
-        data.remove('driver_profiles');
-      }
-
-      return data;
-    } catch (e) {
-      // Return null on error so we can retry or handle gracefully
-      return null;
-    }
-  }
-
-  Future<void> refresh() async {
+  Future<void> updateProfile(UserProfile profile) async {
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
-      final user = _client.auth.currentUser;
-      if (user == null) return null;
-      return _fetchProfile(user.id);
+      await ref
+          .read(supabaseClientProvider)
+          .from('profiles')
+          .update(profile.toJson())
+          .eq('id', profile.id);
+      return profile;
     });
   }
 }

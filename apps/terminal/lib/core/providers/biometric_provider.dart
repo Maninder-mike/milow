@@ -1,6 +1,9 @@
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:terminal/features/auth/services/biometric_service.dart';
 
-final biometricServiceProvider = Provider<BiometricService>((ref) {
+part 'biometric_provider.g.dart';
+
+@Riverpod(keepAlive: true)
+BiometricService biometricService(Ref ref) {
   return BiometricService();
-});
+}

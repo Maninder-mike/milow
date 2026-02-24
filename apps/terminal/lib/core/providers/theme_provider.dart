@@ -1,13 +1,12 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'shared_preferences_provider.dart';
 
-final themeProvider = NotifierProvider<ThemeNotifier, ThemeMode>(
-  ThemeNotifier.new,
-);
+part 'theme_provider.g.dart';
 
-class ThemeNotifier extends Notifier<ThemeMode> {
+@riverpod
+class ThemeNotifier extends _$ThemeNotifier {
   late SharedPreferences _prefs;
 
   @override
