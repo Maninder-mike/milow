@@ -1,22 +1,25 @@
 import 'dart:async';
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/core/constants/design_tokens.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 
 class MockGoTrueClient extends Mock implements GoTrueClient {}
 
-class MockUser extends Mock implements User {}
-
 class MockSupabaseQueryBuilder extends Mock implements SupabaseQueryBuilder {}
 
 class MockPostgrestFilterBuilder extends Mock
     implements PostgrestFilterBuilder<List<Map<String, dynamic>>> {}
+
+class MockUser extends Mock implements User {}
 
 class FakePostgrestTransformBuilder<T> extends Fake
     implements PostgrestTransformBuilder<T> {
@@ -31,40 +34,44 @@ class FakePostgrestTransformBuilder<T> extends Fake
 
 void main() {
   late MockSupabaseClient mockSupabaseClient;
-  late MockGoTrueClient mockAuth;
-  late MockUser mockUser;
+  late MockGoTrueClient mockGoTrueClient;
   late MockSupabaseQueryBuilder mockQueryBuilder;
   late MockPostgrestFilterBuilder mockFilterBuilder;
+  late MockUser mockUser;
+  // ignore: unused_local_variable
+  late Directory tempDir;
 
   setUpAll(() async {
+    tempDir = await Directory.systemTemp.createTemp();
+
+    const channel = MethodChannel('plugins.flutter.io/path_provider');
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
+          return tempDir.path;
+        });
+
     SharedPreferences.setMockInitialValues({});
+
     await Supabase.initialize(
       url: 'https://dummy.supabase.co',
       anonKey: 'dummy-key',
     );
+
+    registerFallbackValue(Uri.parse('http://localhost'));
   });
 
   setUp(() {
     mockSupabaseClient = MockSupabaseClient();
-    mockAuth = MockGoTrueClient();
-    mockUser = MockUser();
+    mockGoTrueClient = MockGoTrueClient();
     mockQueryBuilder = MockSupabaseQueryBuilder();
     mockFilterBuilder = MockPostgrestFilterBuilder();
+    mockUser = MockUser();
 
-    when(() => mockUser.id).thenReturn('user1');
-    when(() => mockUser.appMetadata).thenReturn({'company_id': 'comp1'});
-    when(() => mockAuth.currentUser).thenReturn(mockUser);
-    when(() => mockAuth.currentSession).thenReturn(
-      Session(
-        accessToken: 'abc',
-        refreshToken: 'def',
-        expiresIn: 3600,
-        tokenType: 'bearer',
-        user: mockUser,
-      ),
-    );
-    when(() => mockSupabaseClient.auth).thenReturn(mockAuth);
+    when(() => mockSupabaseClient.auth).thenReturn(mockGoTrueClient);
+    when(() => mockGoTrueClient.currentUser).thenReturn(mockUser);
+    when(() => mockUser.id).thenReturn('user123');
 
+    // Mock profiles query
     when(
       () => mockSupabaseClient.from(any()),
     ).thenAnswer((_) => mockQueryBuilder);
@@ -74,33 +81,30 @@ void main() {
     when(
       () => mockFilterBuilder.eq(any(), any()),
     ).thenAnswer((_) => mockFilterBuilder);
+    when(() => mockFilterBuilder.maybeSingle()).thenAnswer(
+      (_) => FakePostgrestTransformBuilder<Map<String, dynamic>?>({
+        'id': 'user123',
+        'full_name': 'John Doe',
+        'driver_type': 'company',
+      }),
+    );
+
+    // Mock order and other transform builders
     when(
       () => mockFilterBuilder.order(any(), ascending: any(named: 'ascending')),
     ).thenAnswer(
       (_) => FakePostgrestTransformBuilder<List<Map<String, dynamic>>>([]),
     );
 
-    when(() => mockFilterBuilder.maybeSingle()).thenAnswer(
-      (_) => FakePostgrestTransformBuilder<Map<String, dynamic>?>(null),
-    );
-
-    when(() => mockFilterBuilder.single()).thenAnswer(
-      (_) => FakePostgrestTransformBuilder<Map<String, dynamic>>({}),
+    when(() => mockFilterBuilder.limit(any())).thenAnswer(
+      (_) => FakePostgrestTransformBuilder<List<Map<String, dynamic>>>([]),
     );
   });
 
   Widget createTestWidget() {
     return MaterialApp(
-      theme: ThemeData(
-        extensions: const [DesignTokens.light],
-        useMaterial3: true,
-      ),
-      home: Material(
-        child: RootRestorationScope(
-          restorationId: 'root',
-          child: AddEntryPage(supabaseClient: mockSupabaseClient),
-        ),
-      ),
+      theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
+      home: AddEntryPage(supabaseClient: mockSupabaseClient),
     );
   }
 
@@ -109,11 +113,22 @@ void main() {
     tester.view.devicePixelRatio = 3.0;
 
     await tester.pumpWidget(createTestWidget());
-    await tester.pumpAndSettle();
+    await tester.pump(); // Start building
+    await tester.pump(const Duration(milliseconds: 500)); // Allow async loading
 
-    expect(find.text('Trailer Number'), findsOneWidget);
-    expect(find.text('Pickup Location'), findsOneWidget);
-    expect(find.text('Delivery Location'), findsOneWidget);
+    final tripTab = find.byType(SingleChildScrollView).at(0);
+    expect(
+      find.descendant(of: tripTab, matching: find.text('Trailer 1')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tripTab, matching: find.text('Pickup Location')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: tripTab, matching: find.text('Delivery Location')),
+      findsOneWidget,
+    );
 
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -124,33 +139,64 @@ void main() {
     tester.view.devicePixelRatio = 3.0;
 
     await tester.pumpWidget(createTestWidget());
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
-    // Verify initial "Trailer Number" field
-    expect(find.widgetWithText(TextField, 'Trailer Number'), findsOneWidget);
+    final tripTab = find.byType(SingleChildScrollView).at(0);
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Trailer 1'),
+      ),
+      findsOneWidget,
+    );
 
-    // Find Add buttons. Index 0 is Trailer Add.
-    final addIcon = find.byIcon(Icons.add);
+    final addIcon = find.descendant(
+      of: tripTab,
+      matching: find.byIcon(Icons.add_circle_outline),
+    );
 
-    // Tap Trailer Add (Index 0) - Usually visible at top
     await tester.tap(addIcon.at(0));
     await tester.pumpAndSettle();
 
-    // Should now have 2 trailer fields
-    expect(find.widgetWithText(TextField, 'Trailer Number'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Trailer 2'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Trailer 1'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Trailer 2'),
+      ),
+      findsOneWidget,
+    );
 
-    // Remove buttons should appear.
-    final removeIcon = find.byIcon(Icons.remove);
+    final removeIcon = find.descendant(
+      of: tripTab,
+      matching: find.byIcon(Icons.remove_circle_outline),
+    );
     expect(removeIcon, findsNWidgets(2));
 
-    // Remove the second trailer
     await tester.tap(removeIcon.at(1));
     await tester.pumpAndSettle();
 
-    // Back to 1
-    expect(find.widgetWithText(TextField, 'Trailer Number'), findsOneWidget);
-    expect(find.widgetWithText(TextField, 'Trailer 2'), findsNothing);
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Trailer 1'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Trailer 2'),
+      ),
+      findsNothing,
+    );
 
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -161,39 +207,46 @@ void main() {
     tester.view.devicePixelRatio = 3.0;
 
     await tester.pumpWidget(createTestWidget());
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.widgetWithText(TextField, 'Pickup Location'), findsOneWidget);
+    final tripTab = find.byType(SingleChildScrollView).at(0);
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Pickup Location'),
+      ),
+      findsOneWidget,
+    );
 
-    // Index 0: Trailer, 1: Border, 2: Pickup
-    // We need to scroll to it.
-    final addIconFinder = find.byIcon(Icons.add).at(2);
+    // Pickup Add button is index 1 (index 0 is Border Crossing)
+    final addIconFinder = find
+        .descendant(of: tripTab, matching: find.byIcon(Icons.add))
+        .at(1);
 
-    // Scroll until visible. The main scrollable is SingleChildScrollView.
-    // Finding it might be generic.
     await tester.dragUntilVisible(
       addIconFinder,
-      find.byType(SingleChildScrollView),
-      const Offset(0, -500), // Drag up
+      tripTab,
+      const Offset(0, -500),
     );
     await tester.pumpAndSettle();
 
     await tester.tap(addIconFinder);
     await tester.pumpAndSettle();
 
-    // Verify remove icons appear.
-    // Note: Trailer is 1. Border 0. Pickup 2.
-    // But remove icons?
-    // Trailer (1) -> 0 remove icons.
-    // Pickup (2) -> 2 remove icons.
-    final removeIcon = find.byIcon(Icons.remove);
+    final removeIcon = find.descendant(
+      of: tripTab,
+      matching: find.byIcon(Icons.remove),
+    );
     expect(removeIcon, findsNWidgets(2));
 
-    // Remove the second pickup (index 1 of the visible remove icons)
     await tester.tap(removeIcon.at(1));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.remove), findsNothing);
+    expect(
+      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove)),
+      findsNothing,
+    );
 
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -204,17 +257,26 @@ void main() {
     tester.view.devicePixelRatio = 3.0;
 
     await tester.pumpWidget(createTestWidget());
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.widgetWithText(TextField, 'Delivery Location'), findsOneWidget);
+    final tripTab = find.byType(SingleChildScrollView).at(0);
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Delivery Location'),
+      ),
+      findsOneWidget,
+    );
 
-    // Index 0: Trailer, 1: Border, 2: Pickup, 3: Delivery
-    final addIconFinder = find.byIcon(Icons.add).at(3);
+    // Delivery Add button is index 2
+    final addIconFinder = find
+        .descendant(of: tripTab, matching: find.byIcon(Icons.add))
+        .at(2);
 
-    // Scroll deep
     await tester.dragUntilVisible(
       addIconFinder,
-      find.byType(SingleChildScrollView),
+      tripTab,
       const Offset(0, -500),
     );
     await tester.pumpAndSettle();
@@ -222,13 +284,19 @@ void main() {
     await tester.tap(addIconFinder);
     await tester.pumpAndSettle();
 
-    final removeIcon = find.byIcon(Icons.remove);
+    final removeIcon = find.descendant(
+      of: tripTab,
+      matching: find.byIcon(Icons.remove),
+    );
     expect(removeIcon, findsNWidgets(2));
 
     await tester.tap(removeIcon.at(1));
     await tester.pumpAndSettle();
 
-    expect(find.byIcon(Icons.remove), findsNothing);
+    expect(
+      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove)),
+      findsNothing,
+    );
 
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);

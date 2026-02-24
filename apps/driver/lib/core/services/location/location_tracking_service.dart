@@ -69,7 +69,7 @@ class LocationTrackingService {
         Variable(
           now.millisecondsSinceEpoch ~/ 1000,
         ), // Drift stores Dates as unix timestamps
-        Variable(false),
+        const Variable(false),
       ],
     );
   }

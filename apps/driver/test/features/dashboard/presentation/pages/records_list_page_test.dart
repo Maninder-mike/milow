@@ -12,6 +12,7 @@ import 'package:milow/features/dashboard/presentation/pages/records_list_page.da
 import 'package:milow/features/offline/data/database/driver_database.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Mock Connectivity Service
 class MockConnectivityService extends ConnectivityService {
@@ -36,6 +37,15 @@ void main() {
         .setMockMethodCallHandler(channel, (MethodCall methodCall) async {
           return tempDir.path;
         });
+
+    // Mock SharedPreferences
+    SharedPreferences.setMockInitialValues({});
+
+    // Initialize Supabase for testing (to avoid Supabase.instance error)
+    await Supabase.initialize(
+      url: 'https://dummy.supabase.co',
+      anonKey: 'dummy-key',
+    );
   });
 
   tearDownAll(() async {
@@ -43,8 +53,6 @@ void main() {
   });
 
   setUp(() async {
-    SharedPreferences.setMockInitialValues({});
-
     // Inject Mock Connectivity
     ConnectivityService.instance = MockConnectivityService();
 
