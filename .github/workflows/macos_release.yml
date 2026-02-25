@@ -113,6 +113,11 @@ jobs:
           flutter pub get
           cd ../../packages/core && flutter pub get
 
+      - name: Install Flutterfire CLI
+        run: |
+          dart pub global activate flutterfire_cli
+          echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
+
       - name: Generate code
         run: |
           (cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs)
