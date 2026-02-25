@@ -1,5 +1,5 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+
 import 'package:terminal/core/providers/supabase_provider.dart';
 
 part 'latency_provider.g.dart';
@@ -8,7 +8,8 @@ enum LatencyStatus {
   good,
   fair,
   poor,
-  disconnected;
+  disconnected,
+  error;
 
   bool get isGood => this == LatencyStatus.good;
 }
@@ -29,7 +30,7 @@ Stream<int?> latency(Ref ref) {
 
 @Riverpod(keepAlive: true)
 LatencyStatus latencyStatus(Ref ref) {
-  final latencyValue = ref.watch(latencyProvider).valueOrNull;
+  final latencyValue = ref.watch(latencyProvider).value;
 
   if (latencyValue == null) return LatencyStatus.disconnected;
   if (latencyValue < 100) return LatencyStatus.good;

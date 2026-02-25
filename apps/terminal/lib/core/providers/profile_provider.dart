@@ -1,5 +1,4 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:milow_core/milow_core.dart';
 import 'package:terminal/core/providers/supabase_provider.dart';
 
 part 'profile_provider.g.dart';
@@ -7,7 +6,7 @@ part 'profile_provider.g.dart';
 @riverpod
 class ProfileNotifier extends _$ProfileNotifier {
   @override
-  Future<UserProfile?> build() async {
+  Future<Map<String, dynamic>?> build() async {
     final user = ref.watch(supabaseClientProvider).auth.currentUser;
     if (user == null) return null;
 
@@ -18,18 +17,20 @@ class ProfileNotifier extends _$ProfileNotifier {
         .eq('id', user.id)
         .maybeSingle();
 
-    if (response == null) return null;
-    return UserProfile.fromJson(response);
+    return response;
   }
 
-  Future<void> updateProfile(UserProfile profile) async {
+  Future<void> updateProfile(Map<String, dynamic> profile) async {
+    final id = profile['id'];
+    if (id == null) return;
+
     state = const AsyncValue.loading();
     state = await AsyncValue.guard(() async {
       await ref
           .read(supabaseClientProvider)
           .from('profiles')
-          .update(profile.toJson())
-          .eq('id', profile.id);
+          .update(profile)
+          .eq('id', id);
       return profile;
     });
   }

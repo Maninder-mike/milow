@@ -57,7 +57,10 @@ class TripRepository {
 
     // Return cached data immediately
     final query = driverDatabase.select(driverDatabase.trips)
-      ..where((t) => t.userId.equals(userId));
+      ..where((t) => t.userId.equals(userId))
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.tripDate, mode: OrderingMode.desc),
+      ]);
     final List<TripData> tripDataList = await query.get();
     final List<Trip> cached = tripDataList.map((d) => _fromData(d)).toList();
 

@@ -443,15 +443,23 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
   }
 
   Widget? _buildBottomAction(Load load) {
+    if (load.status == LoadStatus.delivered ||
+        load.status == LoadStatus.cancelled) {
+      return null;
+    }
+
+    // If the load needs to be accepted
+    final isUnaccepted =
+        load.status == LoadStatus.assigned ||
+        load.status == LoadStatus.pending ||
+        load.status == LoadStatus.dispatched ||
+        load.status == LoadStatus.tendered;
+
     // Determine the first pending stop
     final nextStop = load.stops.firstWhere(
       (s) => !s.isCompleted,
       orElse: () => load.stops.last,
     );
-
-    if (load.status == LoadStatus.delivered) {
-      return null;
-    }
 
     final bool isArrived = nextStop.arrivedAt != null;
 
@@ -461,22 +469,47 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
         child: SizedBox(
           width: double.infinity,
           height: 56,
-          child: FilledButton.icon(
-            onPressed: () {
-              if (isArrived) {
-                _updateStopCompletion(nextStop, true);
-              } else {
-                _updateStopArrival(nextStop);
-              }
-            },
-            icon: Icon(isArrived ? Icons.done : Icons.near_me),
-            label: Text(
-              isArrived
-                  ? 'Complete ${nextStop.type.name} at ${nextStop.location.city}'
-                  : 'Arrived at ${nextStop.type.name} in ${nextStop.location.city}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
-            ),
-          ),
+          child: isUnaccepted
+              ? FilledButton.icon(
+                  onPressed: () async {
+                    setState(() => _isLoading = true);
+                    try {
+                      await LoadRepository.updateLoadStatus(
+                        load.id,
+                        LoadStatus.enRoute,
+                      );
+                      await _loadData();
+                    } catch (e) {
+                      if (mounted) {
+                        setState(() => _isLoading = false);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Failed to accept load: $e')),
+                        );
+                      }
+                    }
+                  },
+                  icon: const Icon(Icons.check_circle_outline),
+                  label: const Text(
+                    'ACCEPT LOAD',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                )
+              : FilledButton.icon(
+                  onPressed: () {
+                    if (isArrived) {
+                      _updateStopCompletion(nextStop, true);
+                    } else {
+                      _updateStopArrival(nextStop);
+                    }
+                  },
+                  icon: Icon(isArrived ? Icons.done : Icons.near_me),
+                  label: Text(
+                    isArrived
+                        ? 'Complete ${nextStop.type.name} at ${nextStop.location.city}'
+                        : 'Arrived at ${nextStop.type.name} in ${nextStop.location.city}',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
         ),
       ),
     );

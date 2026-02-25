@@ -7,7 +7,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'dart:io';
 import 'package:open_file/open_file.dart';
-// csv import removed — ListToCsvConverter usage is commented out (TODO)
 import 'package:milow_core/milow_core.dart';
 
 import 'package:milow/core/services/trip_repository.dart';
@@ -1559,9 +1558,22 @@ class _RecordsListPageState extends State<RecordsListPage> {
         }
       }
 
-      // TODO: Fix ListToCsvConverter (package:csv) compilation error.
-      // final csvData = const ListToCsvConverter().convert(rows);
-      final csvData = ''; // Placeholder for compilation
+      // Convert rows to CSV string natively
+      final csvData = rows
+          .map((row) {
+            return row
+                .map((cell) {
+                  final cellStr = cell.toString();
+                  if (cellStr.contains(',') ||
+                      cellStr.contains('"') ||
+                      cellStr.contains('\n')) {
+                    return '"${cellStr.replaceAll('"', '""')}"';
+                  }
+                  return cellStr;
+                })
+                .join(',');
+          })
+          .join('\r\n');
 
       // Save file
       final fileName =

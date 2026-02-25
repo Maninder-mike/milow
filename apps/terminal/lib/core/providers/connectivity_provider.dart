@@ -12,11 +12,16 @@ Stream<List<ConnectivityResult>> connectivity(Ref ref) {
 
 /// Provider that returns true if the device is connected to the internet.
 /// Note: This only checks if there is a network interface, not actual internet access.
-      // If any result is not none, we are connected to some network.
-      final isConnected = !results.contains(ConnectivityResult.none);
-      return isConnected;
+@riverpod
+bool isConnected(Ref ref) {
+  final connectivityResult = ref.watch(connectivityProvider);
+
+  return connectivityResult.when(
+    data: (results) {
+      if (results.isEmpty) return false;
+      return !results.contains(ConnectivityResult.none);
     },
     loading: () => true, // Assume connected while loading
-    error: (error, stack) => false, // Assume connected on error
+    error: (error, stackTrace) => false,
   );
-});
+}

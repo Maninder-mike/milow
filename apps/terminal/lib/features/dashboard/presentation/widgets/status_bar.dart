@@ -114,14 +114,13 @@ class _StatusBarState extends ConsumerState<StatusBar>
                                 return const SizedBox.shrink();
                               }
 
-                              final status = ref.read(
-                                latencyStatusProvider(latency),
-                              );
+                              final status = ref.read(latencyStatusProvider);
                               final color = switch (status) {
                                 LatencyStatus.good => AppColors.success,
                                 LatencyStatus.fair => AppColors.warning,
                                 LatencyStatus.poor ||
-                                LatencyStatus.error => AppColors.error,
+                                LatencyStatus.error ||
+                                LatencyStatus.disconnected => AppColors.error,
                               };
 
                               return Text(

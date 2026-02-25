@@ -471,7 +471,12 @@ class InspectionRepositoryImpl implements IInspectionRepository {
       updatedAt: data.updatedAt,
       defects: defects,
       defectsFound: defects.isNotEmpty,
-      isSafeToOperate: true, // TODO: Derive from defects
+      isSafeToOperate: !defects.any(
+        (d) =>
+            !d.isRepaired &&
+            (d.severity == domain.DefectSeverity.major ||
+                d.severity == domain.DefectSeverity.critical),
+      ),
     );
   }
 

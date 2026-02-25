@@ -644,13 +644,8 @@ class _DashboardPageState extends State<DashboardPage>
                 ),
               ),
               M3SpringButton(
-                onTap: () async {
-                  // TODO: Show Load Detail or Accept flow
-                  await LoadRepository.updateLoadStatus(
-                    load.id,
-                    LoadStatus.enRoute,
-                  );
-                  unawaited(_onRefresh());
+                onTap: () {
+                  context.push('/load-details/${load.id}');
                 },
                 child: Container(
                   padding: EdgeInsets.symmetric(
@@ -664,7 +659,7 @@ class _DashboardPageState extends State<DashboardPage>
                     ),
                   ),
                   child: Text(
-                    'ACCEPT',
+                    'VIEW DETAILS',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: Theme.of(context).colorScheme.onPrimary,
                       fontWeight: FontWeight.bold,

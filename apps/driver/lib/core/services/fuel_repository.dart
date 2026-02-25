@@ -37,7 +37,10 @@ class FuelRepository {
 
     // Return cached data immediately
     final query = driverDatabase.select(driverDatabase.fuelEntries)
-      ..where((f) => f.userId.equals(userId));
+      ..where((f) => f.userId.equals(userId))
+      ..orderBy([
+        (f) => OrderingTerm(expression: f.fuelDate, mode: OrderingMode.desc),
+      ]);
     final dataList = await query.get();
     final List<FuelEntry> cached = dataList.map((d) => _fromData(d)).toList();
 
