@@ -198,12 +198,17 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
     targetList.insert(newIndex, item);
 
     // Reconstruct full list: ALWAYS Pickups then Deliveries
-    final newStops = [...pickups, ...deliveries];
+    final List<Stop> newStops = <Stop>[...pickups, ...deliveries];
 
     // Re-sequence globally
-    final resequencedStops = newStops.asMap().entries.map((e) {
-      return e.value.copyWith(sequence: e.key + 1);
-    }).toList();
+    final List<Stop> resequencedStops = newStops
+        .asMap()
+        .entries
+        .map((e) {
+          return e.value.copyWith(sequence: e.key + 1);
+        })
+        .toList()
+        .cast<Stop>();
 
     _updateDraft((l) => l.copyWith(stops: resequencedStops));
   }

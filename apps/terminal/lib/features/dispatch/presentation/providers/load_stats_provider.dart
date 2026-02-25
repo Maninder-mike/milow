@@ -52,14 +52,15 @@ Future<LoadStats> loadStats(Ref ref) async {
 
   final todayFuture = client
       .from('loads')
-      .count(CountOption.exact)
+      .select('id')
       .gte('pickup_date', startOfDay)
-      .lte('pickup_date', endOfDay);
+      .lte('pickup_date', endOfDay)
+      .count(CountOption.exact);
 
   // 2. Active (Assigned, Dispatch, Tendered, enRoute, atPickup, loaded, atStop, atDelivery)
   final activeFuture = client
       .from('loads')
-      .count(CountOption.exact)
+      .select('id')
       .inFilter('status', [
         'assigned',
         'dispatched',
@@ -69,19 +70,22 @@ Future<LoadStats> loadStats(Ref ref) async {
         'loaded',
         'atStop',
         'atDelivery',
-      ]);
+      ])
+      .count(CountOption.exact);
 
   // 3. Completed (Delivered, Completed)
   final completedFuture = client
       .from('loads')
-      .count(CountOption.exact)
-      .inFilter('status', ['delivered', 'completed']);
+      .select('id')
+      .inFilter('status', ['delivered', 'completed'])
+      .count(CountOption.exact);
 
   // 4. Delayed
   final delayedFuture = client
       .from('loads')
-      .count(CountOption.exact)
-      .eq('is_delayed', true);
+      .select('id')
+      .eq('is_delayed', true)
+      .count(CountOption.exact);
 
   final results = await Future.wait([
     todayFuture,
@@ -91,9 +95,9 @@ Future<LoadStats> loadStats(Ref ref) async {
   ]);
 
   return LoadStats(
-    todayCount: results[0],
-    activeCount: results[1],
-    completedCount: results[2],
-    delayedCount: results[3],
+    todayCount: results[0].count,
+    activeCount: results[1].count,
+    completedCount: results[2].count,
+    delayedCount: results[3].count,
   );
 }
