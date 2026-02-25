@@ -87,7 +87,7 @@ Future<LoadStats> loadStats(Ref ref) async {
       .eq('is_delayed', true)
       .count(CountOption.exact);
 
-  final results = await Future.wait([
+  final results = await Future.wait<PostgrestResponse>([
     todayFuture,
     activeFuture,
     completedFuture,

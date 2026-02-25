@@ -59,7 +59,7 @@ jobs:
 
       - name: Generate Mocks & Code
         run: |
-          cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs
+          (cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs)
           dart run build_runner build --delete-conflicting-outputs --verbose
           echo "Listing generated files:"
           Get-ChildItem -Path lib -Recurse -Filter "*.g.dart"
@@ -159,7 +159,7 @@ jobs:
 
       - name: Generate code
         run: |
-          cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs
+          (cd ../../packages/core && dart run build_runner build --delete-conflicting-outputs)
           dart run build_runner build --delete-conflicting-outputs
 
       # 🏗️ Build
