@@ -2135,7 +2135,6 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   Widget _buildAddTripTab() {
-    final prefService = context.watch<PreferencesService>();
     return SingleChildScrollView(
       controller: _tripScrollController,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
