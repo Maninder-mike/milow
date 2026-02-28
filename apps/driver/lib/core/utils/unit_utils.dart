@@ -50,6 +50,9 @@ class UnitUtils {
     if (countryLower == 'germany' || countryLower == 'de') {
       return 'EUR';
     }
+    if (countryLower == 'india' || countryLower == 'in') {
+      return 'INR';
+    }
     return 'USD'; // Default for USA and others
   }
 
@@ -58,6 +61,12 @@ class UnitUtils {
     switch (currency) {
       case 'CAD':
         return 'C\$';
+      case 'EUR':
+        return '€';
+      case 'GBP':
+        return '£';
+      case 'INR':
+        return '₹';
       case 'USD':
       default:
         return '\$';

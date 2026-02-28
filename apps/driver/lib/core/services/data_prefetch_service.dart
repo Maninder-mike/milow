@@ -137,8 +137,9 @@ class DataPrefetchService {
 
   Future<void> _prefetchPreferences() async {
     try {
-      _cachedDistanceUnit = await PreferencesService.getDistanceUnit();
-      _cachedVolumeUnit = await PreferencesService.getVolumeUnit();
+      final prefService = await PreferencesService.init();
+      _cachedDistanceUnit = prefService.getDistanceUnit();
+      _cachedVolumeUnit = prefService.getVolumeUnit();
     } catch (e) {
       if (kDebugMode) {
         debugPrint('DataPrefetchService: Failed to prefetch preferences: $e');

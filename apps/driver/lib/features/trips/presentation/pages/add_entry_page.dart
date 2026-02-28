@@ -1,5 +1,6 @@
 import 'package:milow/features/trips/presentation/dialogs/detention_dialog.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:flutter/services.dart';
 import 'package:milow/core/mixins/form_restoration_mixin.dart';
 import 'package:milow/core/constants/design_tokens.dart';
@@ -386,6 +387,13 @@ class _AddEntryPageState extends State<AddEntryPage>
           if (v != null) _selectedTripVehicleId.value = v.id;
         }
         _selectedBorderCrossing.value = trip.borderCrossing;
+        
+        // Ensure the trip's border crossing is in the list
+        if (trip.borderCrossing != null && trip.borderCrossing!.isNotEmpty) {
+          if (!_borderCrossings.contains(trip.borderCrossing)) {
+            _borderCrossings.insert(0, trip.borderCrossing!);
+          }
+        }
       });
     }
 
@@ -506,18 +514,15 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
 
     // Fill odometer readings (localized)
+    final prefService = Provider.of<PreferencesService>(context, listen: false);
     if (trip.startOdometer != null) {
-      final startOdo = await PreferencesService.localizeDistance(
-        trip.startOdometer!,
-      );
+      final startOdo = prefService.localizeDistance(trip.startOdometer!);
       if (mounted) {
         _tripStartOdometerController.value.text = startOdo.toStringAsFixed(0);
       }
     }
     if (trip.endOdometer != null) {
-      final endOdo = await PreferencesService.localizeDistance(
-        trip.endOdometer!,
-      );
+      final endOdo = prefService.localizeDistance(trip.endOdometer!);
       if (mounted) {
         _tripEndOdometerController.value.text = endOdo.toStringAsFixed(0);
       }
@@ -529,8 +534,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
 
     // Set distance unit (from preferences, not DB)
-    // Set distance unit (from preferences, not DB)
-    final distUnit = await PreferencesService.getDistanceUnit();
+    final distUnit = prefService.getDistanceUnit();
     if (mounted) {
       setState(() {
         _distanceUnit.value = distUnit;
@@ -543,7 +547,7 @@ class _AddEntryPageState extends State<AddEntryPage>
       _commodityController.value.text = trip.commodity ?? '';
       // Localize weight
       if (trip.weight != null) {
-        final weightVal = await PreferencesService.localizeWeight(trip.weight!);
+        final weightVal = prefService.localizeWeight(trip.weight!);
         if (mounted) {
           _weightController.value.text = weightVal.toString().replaceAll(
             '.0',
@@ -552,7 +556,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         }
       }
       // Set weight unit (from preferences)
-      _weightUnit.value = await PreferencesService.getWeightUnit();
+      _weightUnit.value = prefService.getWeightUnit();
       _piecesController.value.text = trip.pieces?.toString() ?? '';
 
       // Clear and populate reference numbers
@@ -569,9 +573,13 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   Future<void> _loadUnitPreferences() async {
     try {
-      final prefDistanceUnit = await PreferencesService.getDistanceUnit();
-      final prefFuelUnit = await PreferencesService.getVolumeUnit();
-      final prefWeightUnit = await PreferencesService.getWeightUnit();
+      final prefService = Provider.of<PreferencesService>(
+        context,
+        listen: false,
+      );
+      final prefDistanceUnit = prefService.getDistanceUnit();
+      final prefFuelUnit = prefService.getVolumeUnit();
+      final prefWeightUnit = prefService.getWeightUnit();
 
       // Get currency from user profile country
       final profile = await ProfileService.getProfile();
@@ -583,20 +591,11 @@ class _AddEntryPageState extends State<AddEntryPage>
           if (!_isEditMode) {
             // New Entry: Set currency from profile, but allow override
             _currency.value = prefCurrency;
-            if (prefCurrency == 'USD') {
-              _fuelUnit.value = 'gal';
-              _distanceUnit.value = 'mi';
-              _weightUnit.value = 'lb';
-            } else if (prefCurrency == 'CAD') {
-              _fuelUnit.value = 'L';
-              _distanceUnit.value = 'km';
-              _weightUnit.value = 'kg';
-            } else {
-              // Fallback to preferences for other currencies
-              _distanceUnit.value = prefDistanceUnit;
-              _fuelUnit.value = prefFuelUnit;
-              _weightUnit.value = prefWeightUnit;
-            }
+
+            // Use global preferences for units
+            _distanceUnit.value = prefDistanceUnit;
+            _fuelUnit.value = prefFuelUnit;
+            _weightUnit.value = prefWeightUnit;
           } else {
             // Edit Mode: Convert units if they differ from preference
             // (Data is already loaded, potentially we normally re-localize here if we wanted live switching)
@@ -1627,21 +1626,19 @@ class _AddEntryPageState extends State<AddEntryPage>
     String query, {
     String? filter,
   }) async {
-    if (query.isEmpty) return const Iterable<String>.empty();
     final lowercaseQuery = query.toLowerCase();
 
     return _vehicles
         .where((v) {
           if (filter != null) {
             final type = v.vehicleType?.toLowerCase();
-            // If filter is provided, key off match.
-            // Special handling for 'reefer' which includes trailers
             if (filter == 'reefer') {
               if (type != 'reefer' && type != 'trailer') return false;
             } else if (type != null && type != filter) {
               return false;
             }
           }
+          if (lowercaseQuery.isEmpty) return true;
           return v.truckNumber.toLowerCase().contains(lowercaseQuery);
         })
         .map((v) => v.truckNumber);
@@ -1827,6 +1824,34 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   @override
   Widget build(BuildContext context) {
+    final prefService = context.watch<PreferencesService>();
+    final String distanceUnit = prefService.getDistanceUnit();
+    final String fuelUnit = prefService.getVolumeUnit();
+    final String weightUnit = prefService.getWeightUnit();
+
+    // Sync restorable units with preferences securely
+    if (_distanceUnit.value != distanceUnit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _distanceUnit.value = distanceUnit);
+      });
+    }
+    if (_fuelUnit.value != fuelUnit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _fuelUnit.value = fuelUnit);
+      });
+    }
+    if (_weightUnit.value != weightUnit) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _weightUnit.value = weightUnit);
+      });
+    }
+
+    final String title = widget.editingTrip != null
+        ? 'Edit Trip'
+        : widget.editingFuel != null
+        ? 'Edit Fuel Entry'
+        : 'Add Entry';
+
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       body: SafeArea(
@@ -1875,10 +1900,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                         CrossAxisAlignment.start,
                                     children: [
                                       Text(
-                                        _fetchedTrip != null ||
-                                                widget.editingTrip != null
-                                            ? 'Edit Entry'
-                                            : 'Add Entry',
+                                        title,
                                         style: Theme.of(context)
                                             .textTheme
                                             .headlineSmall
@@ -2113,6 +2135,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   Widget _buildAddTripTab() {
+    final prefService = context.watch<PreferencesService>();
     return SingleChildScrollView(
       controller: _tripScrollController,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
@@ -2218,6 +2241,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   Widget _buildAddFuelTab() {
+    final prefService = context.watch<PreferencesService>();
     // Implement the fuel form UI here
     return SingleChildScrollView(
       controller: _fuelScrollController,
@@ -2277,40 +2301,28 @@ class _AddEntryPageState extends State<AddEntryPage>
           ),
           const SizedBox(height: 16),
 
-          // Vehicle Selector
-          DropdownMenu<String>(
-            initialSelection: _selectedFuelVehicleId.value,
-            label: Text(_isReeferFuel.value ? 'Reefer Unit' : 'Truck'),
-            expandedInsets: EdgeInsets.zero,
-            leadingIcon: Icon(
-              _isReeferFuel.value ? Icons.ac_unit : Icons.local_shipping,
+          // Vehicle Selector (Addable Input)
+          CustomAutocompleteField(
+            controller: _truckNumberController.value,
+            focusNode: _truckFocusNode,
+            label: _isReeferFuel.value ? 'Reefer Unit' : 'Truck Number',
+            hint: _isReeferFuel.value ? 'e.g. R-123' : 'e.g. T-123',
+            prefixIcon: _isReeferFuel.value
+                ? Icons.ac_unit
+                : Icons.local_shipping,
+            optionsBuilder: (v) => _getVehicleSuggestions(
+              v.text,
+              filter: _isReeferFuel.value ? 'reefer' : 'truck',
             ),
-            dropdownMenuEntries: _vehicles
-                .where(
-                  (v) =>
-                      v.vehicleType ==
-                      (_isReeferFuel.value ? 'trailer' : 'truck'),
-                )
-                .map(
-                  (v) => DropdownMenuEntry<String>(
-                    value: v.id,
-                    label: v.truckNumber,
-                    leadingIcon: Icon(
-                      _isReeferFuel.value
-                          ? Icons.ac_unit
-                          : Icons.local_shipping,
-                    ),
-                  ),
-                )
-                .toList(),
             onSelected: (value) {
               setState(() {
-                _selectedFuelVehicleId.value = value;
                 final selectedVehicle = _vehicles.firstWhere(
-                  (v) => v.id == value,
+                  (v) => v.truckNumber == value,
                   orElse: () => Vehicle.empty,
                 );
-                _truckNumberController.value.text = selectedVehicle.truckNumber;
+                _selectedFuelVehicleId.value = selectedVehicle.id.isNotEmpty
+                    ? selectedVehicle.id
+                    : null;
               });
             },
           ),
@@ -2371,7 +2383,8 @@ class _AddEntryPageState extends State<AddEntryPage>
                   decoration: InputDecoration(
                     labelText: 'Price per Unit',
                     hintText: 'e.g., 3.50',
-                    prefixText: '${_currency.value} ',
+                    prefixText:
+                        '${UnitUtils.getCurrencySymbol(prefService.getCurrency())} ',
                     prefixIcon: const Icon(Icons.attach_money),
                   ),
                   keyboardType: TextInputType.number,
@@ -2414,7 +2427,8 @@ class _AddEntryPageState extends State<AddEntryPage>
                     decoration: InputDecoration(
                       labelText: 'DEF Price',
                       hintText: 'e.g., 2.50',
-                      prefixText: '${_currency.value} ',
+                      prefixText:
+                          '${UnitUtils.getCurrencySymbol(prefService.getCurrency())} ',
                       prefixIcon: const Icon(Icons.attach_money),
                     ),
                     keyboardType: TextInputType.number,

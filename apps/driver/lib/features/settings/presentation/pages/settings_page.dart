@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'package:milow/l10n/app_localizations.dart';
 import 'package:go_router/go_router.dart';
@@ -63,7 +64,8 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _loadPreferences() async {
-    final dUnit = await PreferencesService.getDistanceUnit();
+    final prefService = Provider.of<PreferencesService>(context, listen: false);
+    final dUnit = prefService.getDistanceUnit();
 
     // Fetch app version info
     final packageInfo = await PackageInfo.fromPlatform();

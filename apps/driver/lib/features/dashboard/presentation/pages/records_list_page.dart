@@ -19,6 +19,8 @@ import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/features/dashboard/presentation/widgets/records_export_sheet.dart';
+import 'package:milow/core/utils/unit_utils.dart';
+import 'package:provider/provider.dart';
 
 class RecordsListPage extends StatefulWidget {
   const RecordsListPage({super.key});
@@ -93,8 +95,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
   }
 
   Future<void> _loadColumnPreferences() async {
-    final savedTripCols = await PreferencesService.getTripColumns();
-    final savedFuelCols = await PreferencesService.getFuelColumns();
+    final prefService = context.read<PreferencesService>();
+    final savedTripCols = prefService.getTripColumns();
+    final savedFuelCols = prefService.getFuelColumns();
 
     if (savedTripCols.isNotEmpty) {
       setState(() {
@@ -112,8 +115,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
   }
 
   Future<void> _saveColumnPreferences() async {
-    await PreferencesService.setTripColumns(_selectedTripColumns);
-    await PreferencesService.setFuelColumns(_selectedFuelColumns);
+    final prefService = context.read<PreferencesService>();
+    await prefService.setTripColumns(_selectedTripColumns);
+    await prefService.setFuelColumns(_selectedFuelColumns);
   }
 
   /// Pull-to-refresh handler
@@ -130,48 +134,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
       final List<Map<String, dynamic>> combined = [];
 
       for (final trip in trips) {
-        final pickups = trip.pickupLocations;
-        final deliveries = trip.deliveryLocations;
-        final route = pickups.isNotEmpty && deliveries.isNotEmpty
-            ? '${AddressUtils.extractCityState(pickups.first)} → ${AddressUtils.extractCityState(deliveries.last)}'
-            : 'No route';
-        final distance = trip.totalDistance;
-        final distanceStr = distance != null
-            ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
-            : '-';
-
-        combined.add({
-          'id': 'Trip #${trip.tripNumber}',
-          'type': 'trip',
-          'description': route,
-          'date': DateFormat('MMM d, yyyy').format(trip.tripDate),
-          'value': distanceStr,
-          'rawDate': trip.tripDate,
-          'rawDistance': distance ?? 0,
-          'data': trip,
-        });
+        combined.add({'type': 'trip', 'rawDate': trip.tripDate, 'data': trip});
       }
 
       for (final fuel in fuelEntries) {
-        final location = fuel.location != null
-            ? AddressUtils.extractCityState(fuel.location!)
-            : 'Unknown location';
-        final quantity =
-            '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
-        final identifier = fuel.isTruckFuel
-            ? fuel.truckNumber ?? 'Truck'
-            : fuel.reeferNumber ?? 'Reefer';
-
-        combined.add({
-          'id': '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
-          'type': 'fuel',
-          'description': location,
-          'date': DateFormat('MMM d, yyyy').format(fuel.fuelDate),
-          'value': quantity,
-          'rawDate': fuel.fuelDate,
-          'rawQuantity': fuel.fuelQuantity,
-          'data': fuel,
-        });
+        combined.add({'type': 'fuel', 'rawDate': fuel.fuelDate, 'data': fuel});
       }
 
       // Sort by date descending
@@ -195,29 +162,67 @@ class _RecordsListPageState extends State<RecordsListPage> {
     }
   }
 
-  List<Map<String, dynamic>> get _filteredRecords {
+  List<Map<String, dynamic>> _filteredRecords(
+    String distanceUnit,
+    String fuelUnit,
+  ) {
     return _allRecords.where((record) {
+      final isTrip = record['type'] == 'trip';
+      final data = record['data'];
+
+      // Search matching logic
+      String id = '';
+      String description = '';
+
+      if (isTrip) {
+        final trip = data as Trip;
+        id = 'Trip #${trip.tripNumber}';
+        final pickups = trip.pickupLocations;
+        final deliveries = trip.deliveryLocations;
+        description = pickups.isNotEmpty && deliveries.isNotEmpty
+            ? '${AddressUtils.extractCityState(pickups.first)} → ${AddressUtils.extractCityState(deliveries.last)}'
+            : 'No route';
+      } else {
+        final fuel = data as FuelEntry;
+        final identifier = fuel.isTruckFuel
+            ? fuel.truckNumber ?? 'Truck'
+            : fuel.reeferNumber ?? 'Reefer';
+        id = '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier';
+        description = fuel.location != null
+            ? AddressUtils.extractCityState(fuel.location!)
+            : 'Unknown location';
+      }
+
       final matchesSearch =
-          _searchQuery.isEmpty ||
-          (record['id'] as String).toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          ) ||
-          (record['description'] as String).toLowerCase().contains(
-            _searchQuery.toLowerCase(),
-          );
+          id.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+          description.toLowerCase().contains(_searchQuery.toLowerCase());
 
       // Parse value for distance-based filtering (trips only)
       bool matchesFilter = true;
       if (_selectedFilter != 'All') {
-        if (record['type'] == 'trip') {
-          final distance = (record['rawDistance'] as num?)?.toDouble() ?? 0;
-          matchesFilter =
-              (_selectedFilter == 'Short (<100 mi)' && distance < 100) ||
-              (_selectedFilter == 'Medium (100-200 mi)' &&
-                  distance >= 100 &&
-                  distance <= 200) ||
-              (_selectedFilter == 'Long (>200 mi)' && distance > 200) ||
-              (_selectedFilter == 'Trips Only');
+        if (isTrip) {
+          final trip = data as Trip;
+          final distance = trip.totalDistance;
+          if (distance == null) {
+            matchesFilter = _selectedFilter == 'Trips Only';
+          } else {
+            double displayDistance = distance;
+            if (trip.distanceUnit != distanceUnit) {
+              displayDistance = distanceUnit == 'km'
+                  ? UnitUtils.milesToKm(distance)
+                  : UnitUtils.kmToMiles(distance);
+            }
+
+            matchesFilter =
+                (_selectedFilter == 'Short (<100 mi)' &&
+                    displayDistance < 100) ||
+                (_selectedFilter == 'Medium (100-200 mi)' &&
+                    displayDistance >= 100 &&
+                    displayDistance <= 200) ||
+                (_selectedFilter == 'Long (>200 mi)' &&
+                    displayDistance > 200) ||
+                (_selectedFilter == 'Trips Only');
+          }
         } else if (record['type'] == 'fuel') {
           matchesFilter = _selectedFilter == 'Fuel Only';
         }
@@ -227,24 +232,36 @@ class _RecordsListPageState extends State<RecordsListPage> {
     }).toList();
   }
 
-  /// Get records for export with specific filter and date range
   List<Map<String, dynamic>> _getExportRecords(
     String filter,
     DateTimeRange? dateRange,
+    String distanceUnit,
+    String fuelUnit,
   ) {
     return _allRecords.where((record) {
       // Filter by type
       bool matchesFilter = true;
       if (filter != 'All') {
         if (record['type'] == 'trip') {
-          final distance = (record['rawDistance'] as num?)?.toDouble() ?? 0;
-          matchesFilter =
-              (filter == 'Short (<100 mi)' && distance < 100) ||
-              (filter == 'Medium (100-200 mi)' &&
-                  distance >= 100 &&
-                  distance <= 200) ||
-              (filter == 'Long (>200 mi)' && distance > 200) ||
-              (filter == 'Trips Only');
+          final trip = record['data'] as Trip;
+          final distance = trip.totalDistance;
+          if (distance == null) {
+            matchesFilter = filter == 'Trips Only';
+          } else {
+            double displayDistance = distance;
+            if (trip.distanceUnit != distanceUnit) {
+              displayDistance = distanceUnit == 'km'
+                  ? UnitUtils.milesToKm(distance)
+                  : UnitUtils.kmToMiles(distance);
+            }
+            matchesFilter =
+                (filter == 'Short (<100 mi)' && displayDistance < 100) ||
+                (filter == 'Medium (100-200 mi)' &&
+                    displayDistance >= 100 &&
+                    displayDistance <= 200) ||
+                (filter == 'Long (>200 mi)' && displayDistance > 200) ||
+                (filter == 'Trips Only');
+          }
         } else if (record['type'] == 'fuel') {
           matchesFilter = filter == 'Fuel Only';
         }
@@ -293,6 +310,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
     final secondaryTextColor = tokens.textSecondary;
     final cardColor = tokens.surfaceContainer;
     final borderColor = tokens.subtleBorderColor;
+
+    final prefService = context.watch<PreferencesService>();
+    final distanceUnit = prefService.getDistanceUnit();
+    final fuelUnit = prefService.getVolumeUnit();
+
+    final filteredRecords = _filteredRecords(distanceUnit, fuelUnit);
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -406,7 +429,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                     ..addAll(fuelCols);
                                 });
                                 _saveColumnPreferences();
-                                _downloadCSV(filter, dateRange);
+                                _downloadCSV(
+                                  filter,
+                                  dateRange,
+                                  distanceUnit,
+                                  fuelUnit,
+                                );
                               },
                           onDownloadPDF:
                               (
@@ -430,6 +458,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 _downloadPDF(
                                   filter,
                                   dateRange,
+                                  distanceUnit,
+                                  fuelUnit,
                                   includeSummaryBanner: includeSummary,
                                 );
                               },
@@ -512,7 +542,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                 ? const Center(
                     child: CircularProgressIndicator(strokeWidth: 3.0),
                   )
-                : _filteredRecords.isEmpty
+                : filteredRecords.isEmpty
                 ? ListView(
                     children: [
                       SizedBox(
@@ -558,16 +588,21 @@ class _RecordsListPageState extends State<RecordsListPage> {
                       context.tokens.spacingM,
                       context.tokens.spacingL, // Reduced bottom padding
                     ),
-                    itemCount: _filteredRecords.length,
+                    itemCount: filteredRecords.length,
                     itemBuilder: (context, index) {
-                      final record = _filteredRecords[index];
+                      final record = filteredRecords[index];
+                      final dynamic data = record['data'];
+                      final String recordId = (data is Trip)
+                          ? (data.id ?? '')
+                          : (data is FuelEntry ? (data.id ?? '') : '');
+
                       // Add spacing between items - Reduced to spacingXS (4) or spacingS (8)
                       return Padding(
                         padding: EdgeInsets.only(
                           bottom: context.tokens.spacingS,
                         ),
                         child: Dismissible(
-                          key: Key('${record['type']}_${record['id']}'),
+                          key: Key('${record['type']}_$recordId'),
                           background: Container(
                             decoration: BoxDecoration(
                               color: Theme.of(context).colorScheme.primary,
@@ -711,7 +746,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                             horizontal: 24,
                                           ),
                                           child: Text(
-                                            'Are you sure you want to delete ${record['id']}? This action cannot be undone.',
+                                            'Are you sure you want to delete $recordId? This action cannot be undone.',
                                             textAlign: TextAlign.center,
                                             style: Theme.of(dialogContext)
                                                 .textTheme
@@ -858,16 +893,31 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
                                   // Remove from local list
                                   setState(() {
-                                    _allRecords.removeWhere(
-                                      (r) =>
-                                          r['type'] == record['type'] &&
-                                          r['id'] == record['id'],
-                                    );
+                                    final dynamic data = record['data'];
+                                    final String? targetId = (data is Trip)
+                                        ? data.id
+                                        : (data is FuelEntry ? data.id : null);
+
+                                    _allRecords.removeWhere((r) {
+                                      final dynamic rData = r['data'];
+                                      final String? currentId = (rData is Trip)
+                                          ? rData.id
+                                          : (rData is FuelEntry
+                                                ? rData.id
+                                                : null);
+                                      return r['type'] == record['type'] &&
+                                          currentId == targetId;
+                                    });
                                   });
+
+                                  final dynamic dd = record['data'];
+                                  final String displayId = (dd is Trip)
+                                      ? dd.tripNumber
+                                      : 'Entry';
 
                                   scaffoldMessenger.showSnackBar(
                                     SnackBar(
-                                      content: Text('${record['id']} deleted'),
+                                      content: Text('$displayId deleted'),
                                       backgroundColor: tokens.success,
                                     ),
                                   );
@@ -895,12 +945,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               return false;
                             }
                           },
+                          // No change needed for sync
                           child: _buildExpandableCard(
                             record,
                             cardColor,
                             borderColor,
                             textColor,
                             secondaryTextColor,
+                            distanceUnit,
+                            fuelUnit,
                           ),
                         ),
                       );
@@ -957,12 +1010,60 @@ class _RecordsListPageState extends State<RecordsListPage> {
     Color borderColor,
     Color textColor,
     Color secondaryTextColor,
+    String distanceUnit,
+    String fuelUnit,
   ) {
     final tokens = context.tokens;
-    final cardKey = '${record['type']}_${record['id']}';
-    final isExpanded = _expandedCards.contains(cardKey);
     final isTrip = record['type'] == 'trip';
     final data = record['data'];
+
+    String id = '';
+    String description = '';
+    String value = '';
+    final dateStr = DateFormat('MMM d, yyyy').format(record['rawDate']);
+
+    if (isTrip) {
+      final trip = data as Trip;
+      id = 'Trip #${trip.tripNumber}';
+      final pickups = trip.pickupLocations;
+      final deliveries = trip.deliveryLocations;
+      description = pickups.isNotEmpty && deliveries.isNotEmpty
+          ? '${AddressUtils.extractCityState(pickups.first)} → ${AddressUtils.extractCityState(deliveries.last)}'
+          : 'No route';
+
+      final distance = trip.totalDistance;
+      if (distance != null) {
+        double displayDistance = distance;
+        if (trip.distanceUnit != distanceUnit) {
+          displayDistance = distanceUnit == 'km'
+              ? UnitUtils.milesToKm(distance)
+              : UnitUtils.kmToMiles(distance);
+        }
+        value = '${displayDistance.toStringAsFixed(0)} $distanceUnit';
+      } else {
+        value = '-';
+      }
+    } else {
+      final fuel = data as FuelEntry;
+      final identifier = fuel.isTruckFuel
+          ? fuel.truckNumber ?? 'Truck'
+          : fuel.reeferNumber ?? 'Reefer';
+      id = '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier';
+      description = fuel.location != null
+          ? AddressUtils.extractCityState(fuel.location!)
+          : 'Unknown location';
+
+      double displayQuantity = fuel.fuelQuantity;
+      if (fuel.fuelUnit != fuelUnit) {
+        displayQuantity = fuelUnit == 'L'
+            ? UnitUtils.gallonsToLiters(fuel.fuelQuantity)
+            : UnitUtils.litersToGallons(fuel.fuelQuantity);
+      }
+      value = '${displayQuantity.toStringAsFixed(1)} $fuelUnit';
+    }
+
+    final cardKey = '${record['type']}_$id';
+    final isExpanded = _expandedCards.contains(cardKey);
 
     // Premium Design Logic
     final theme = Theme.of(context);
@@ -1054,7 +1155,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           children: [
                             Expanded(
                               child: Text(
-                                record['id'] as String? ?? '',
+                                id,
                                 style: theme.textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: textColor,
@@ -1080,7 +1181,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                 ),
                               ),
                               child: Text(
-                                record['value'] as String? ?? '',
+                                value,
                                 style: theme.textTheme.labelSmall?.copyWith(
                                   fontWeight: FontWeight.bold,
                                   color: iconColor,
@@ -1097,7 +1198,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                           children: [
                             Expanded(
                               child: Text(
-                                record['description'] as String? ?? '',
+                                description,
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: secondaryTextColor,
                                   fontSize: 13,
@@ -1108,7 +1209,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              record['date'] as String? ?? '',
+                              dateStr,
                               style: theme.textTheme.labelSmall?.copyWith(
                                 color: secondaryTextColor,
                                 fontWeight: FontWeight.w500,
@@ -1146,11 +1247,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             data as Trip,
                             textColor,
                             secondaryTextColor,
+                            distanceUnit,
                           )
                         : _buildFuelDetails(
                             data as FuelEntry,
                             textColor,
                             secondaryTextColor,
+                            fuelUnit,
+                            distanceUnit,
                           ),
                   ),
                   // Collapse handle area - reduced height
@@ -1180,6 +1284,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
     Trip trip,
     Color textColor,
     Color secondaryTextColor,
+    String distanceUnit,
   ) {
     final tokens = context.tokens;
     return Column(
@@ -1209,7 +1314,23 @@ class _RecordsListPageState extends State<RecordsListPage> {
           _buildDetailRow(
             Icons.speed,
             'Odometer',
-            '${trip.startOdometer?.toStringAsFixed(0) ?? '-'} → ${trip.endOdometer?.toStringAsFixed(0) ?? '-'} ${trip.distanceUnitLabel}',
+            () {
+              double? start = trip.startOdometer;
+              double? end = trip.endOdometer;
+              if (trip.distanceUnit != distanceUnit) {
+                if (start != null) {
+                  start = distanceUnit == 'km'
+                      ? UnitUtils.milesToKm(start)
+                      : UnitUtils.kmToMiles(start);
+                }
+                if (end != null) {
+                  end = distanceUnit == 'km'
+                      ? UnitUtils.milesToKm(end)
+                      : UnitUtils.kmToMiles(end);
+                }
+              }
+              return '${start?.toStringAsFixed(0) ?? '-'} → ${end?.toStringAsFixed(0) ?? '-'} $distanceUnit';
+            }(),
             textColor,
             secondaryTextColor,
           ),
@@ -1257,6 +1378,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
     FuelEntry fuel,
     Color textColor,
     Color secondaryTextColor,
+    String fuelUnit,
+    String distanceUnit,
   ) {
     final tokens = context.tokens;
     return Column(
@@ -1288,7 +1411,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
         _buildDetailRow(
           Icons.local_gas_station,
           'Quantity',
-          '${fuel.fuelQuantity.toStringAsFixed(2)} ${fuel.fuelUnitLabel}',
+          () {
+            double qty = fuel.fuelQuantity;
+            if (fuel.fuelUnit != fuelUnit) {
+              qty = fuelUnit == 'L'
+                  ? UnitUtils.gallonsToLiters(qty)
+                  : UnitUtils.litersToGallons(qty);
+            }
+            return '${qty.toStringAsFixed(2)} $fuelUnit';
+          }(),
           textColor,
           secondaryTextColor,
         ),
@@ -1315,7 +1446,15 @@ class _RecordsListPageState extends State<RecordsListPage> {
           _buildDetailRow(
             Icons.speed,
             'Odometer',
-            '${fuel.odometerReading!.toStringAsFixed(0)} ${fuel.distanceUnitLabel}',
+            () {
+              double odo = fuel.odometerReading!;
+              if (fuel.distanceUnit != distanceUnit) {
+                odo = distanceUnit == 'km'
+                    ? UnitUtils.milesToKm(odo)
+                    : UnitUtils.kmToMiles(odo);
+              }
+              return '${odo.toStringAsFixed(0)} $distanceUnit';
+            }(),
             textColor,
             secondaryTextColor,
           ),
@@ -1460,7 +1599,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 
-  Future<void> _downloadCSV(String filter, DateTimeRange? dateRange) async {
+  Future<void> _downloadCSV(
+    String filter,
+    DateTimeRange? dateRange,
+    String distanceUnit,
+    String fuelUnit,
+  ) async {
     // Show loading indicator
     unawaited(
       showDialog(
@@ -1476,8 +1620,20 @@ class _RecordsListPageState extends State<RecordsListPage> {
     );
 
     try {
+      final prefService = Provider.of<PreferencesService>(
+        context,
+        listen: false,
+      );
+      final distanceUnit = prefService.getDistanceUnit();
+      final fuelUnit = prefService.getVolumeUnit();
+
       // Get records to export
-      final recordsToExport = _getExportRecords(filter, dateRange);
+      final recordsToExport = _getExportRecords(
+        filter,
+        dateRange,
+        distanceUnit,
+        fuelUnit,
+      );
 
       // Prepare CSV data
       final List<List<dynamic>> rows = [];
@@ -1505,8 +1661,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
         if (record['type'] == 'trip') {
           final trip = data as Trip;
-          final distance = trip.totalDistance?.toStringAsFixed(1) ?? '';
-          final unit = trip.distanceUnitLabel;
+          double distanceVal = trip.totalDistance ?? 0;
+          if (trip.distanceUnit != distanceUnit) {
+            distanceVal = distanceUnit == 'km'
+                ? UnitUtils.milesToKm(distanceVal)
+                : UnitUtils.kmToMiles(distanceVal);
+          }
+          final distance = trip.totalDistance != null
+              ? distanceVal.toStringAsFixed(1)
+              : '';
+          final unit = distanceUnit;
           final from = trip.pickupLocations.isNotEmpty
               ? AddressUtils.formatForPdf(trip.pickupLocations.first)
               : '';
@@ -1531,8 +1695,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
           ]);
         } else {
           final fuel = data as FuelEntry;
-          final quantity = fuel.fuelQuantity.toStringAsFixed(1);
-          final unit = fuel.fuelUnitLabel;
+          double qty = fuel.fuelQuantity;
+          if (fuel.fuelUnit != fuelUnit) {
+            qty = fuelUnit == 'L'
+                ? UnitUtils.gallonsToLiters(qty)
+                : UnitUtils.litersToGallons(qty);
+          }
+          final quantity = qty.toStringAsFixed(1);
+          final unit = fuelUnit;
           final cost = fuel.totalCost.toStringAsFixed(2);
           final truck = fuel.isTruckFuel
               ? (fuel.truckNumber ?? 'Truck')
@@ -1622,7 +1792,9 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
   Future<void> _downloadPDF(
     String filter,
-    DateTimeRange? dateRange, {
+    DateTimeRange? dateRange,
+    String distanceUnit,
+    String fuelUnit, {
     bool includeSummaryBanner = true,
   }) async {
     // Show loading indicator
@@ -1640,11 +1812,17 @@ class _RecordsListPageState extends State<RecordsListPage> {
     );
 
     try {
+      final prefService = context.read<PreferencesService>();
       // Create PDF document
       final pdf = pw.Document();
 
       // Get records to export using the proper filter method
-      final recordsToExport = _getExportRecords(filter, dateRange);
+      final recordsToExport = _getExportRecords(
+        filter,
+        dateRange,
+        distanceUnit,
+        fuelUnit,
+      );
 
       // Separate trips and fuel entries, then sort in ascending order by date
       final tripRecords =
@@ -1670,7 +1848,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
             });
 
       // Get unit system
-      final unitSystem = await PreferencesService.getUnitSystem();
+      final unitSystem = prefService.getUnitSystem();
       final unitSystemLabel = unitSystem == UnitSystem.metric
           ? 'Metric (km, L)'
           : 'Imperial (mi, gal)';
@@ -1859,14 +2037,18 @@ class _RecordsListPageState extends State<RecordsListPage> {
                     ),
                     _buildPdfSummaryDivider(),
                     _buildPdfSummaryCard(
-                      'Total Miles',
+                      'Total $distanceUnit',
                       tripRecords
-                          .fold<double>(
-                            0,
-                            (sum, r) =>
-                                sum +
-                                ((r['rawDistance'] as num?)?.toDouble() ?? 0),
-                          )
+                          .fold<double>(0, (sum, r) {
+                            final trip = r['data'] as Trip;
+                            double d = trip.totalDistance ?? 0;
+                            if (trip.distanceUnit != distanceUnit) {
+                              d = distanceUnit == 'km'
+                                  ? UnitUtils.milesToKm(d)
+                                  : UnitUtils.kmToMiles(d);
+                            }
+                            return sum + d;
+                          })
                           .toStringAsFixed(0),
                       PdfColors.green700,
                     ),

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 import 'package:go_router/go_router.dart';
@@ -154,7 +155,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
 
   Future<void> _updateDistances() async {
     try {
-      final unitSystem = await PreferencesService.getUnitSystem();
+      final unitSystem = context.read<PreferencesService>().getUnitSystem();
       if (mounted) {
         setState(() => _unitSystem = unitSystem);
       }

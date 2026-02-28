@@ -8,6 +8,9 @@ sealed class RecentEntry {
 
   /// The type label for display purposes.
   String get typeLabel;
+
+  /// Unique identifier for the entry.
+  String get id;
 }
 
 /// A trip entry in the recent entries list.
@@ -21,6 +24,9 @@ class TripRecentEntry extends RecentEntry {
 
   @override
   String get typeLabel => 'trip';
+
+  @override
+  String get id => trip.id ?? '';
 }
 
 /// A fuel entry in the recent entries list.
@@ -34,4 +40,7 @@ class FuelRecentEntry extends RecentEntry {
 
   @override
   String get typeLabel => 'fuel';
+
+  @override
+  String get id => fuel.id ?? '';
 }

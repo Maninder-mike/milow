@@ -7,9 +7,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/fuel_repository.dart';
+import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/offline/data/database/driver_database.dart';
+import 'package:provider/provider.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -66,10 +68,18 @@ void main() {
   });
 
   Future<void> pumpPage(WidgetTester tester) async {
+    final prefs = await SharedPreferences.getInstance();
+    final prefService = PreferencesService(prefs);
+
     await tester.pumpWidget(
-      MaterialApp(
-        theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
-        home: const RecordsListPage(),
+      MultiProvider(
+        providers: [
+          ChangeNotifierProvider<PreferencesService>.value(value: prefService),
+        ],
+        child: MaterialApp(
+          theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
+          home: const RecordsListPage(),
+        ),
       ),
     );
     // Trigger initState and first frame

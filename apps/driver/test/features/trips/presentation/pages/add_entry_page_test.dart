@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/services/preferences_service.dart';
+import 'package:provider/provider.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
 
@@ -101,10 +103,17 @@ void main() {
     );
   });
 
-  Widget createTestWidget() {
-    return MaterialApp(
-      theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
-      home: AddEntryPage(supabaseClient: mockSupabaseClient),
+  Widget createTestWidget(SharedPreferences prefs) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider<PreferencesService>(
+          create: (_) => PreferencesService(prefs),
+        ),
+      ],
+      child: MaterialApp(
+        theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
+        home: AddEntryPage(supabaseClient: mockSupabaseClient),
+      ),
     );
   }
 
@@ -112,7 +121,8 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
 
-    await tester.pumpWidget(createTestWidget());
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(createTestWidget(prefs));
     await tester.pump(); // Start building
     await tester.pump(const Duration(milliseconds: 500)); // Allow async loading
 
@@ -138,7 +148,8 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
 
-    await tester.pumpWidget(createTestWidget());
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(createTestWidget(prefs));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -206,7 +217,8 @@ void main() {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
 
-    await tester.pumpWidget(createTestWidget());
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(createTestWidget(prefs));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
@@ -219,59 +231,9 @@ void main() {
       findsOneWidget,
     );
 
-    // Pickup Add button is index 1 (index 0 is Border Crossing)
+    // Pickup Add button is index 2 (index 0: Trailer, index 1: Border Crossing)
     final addIconFinder = find
-        .descendant(of: tripTab, matching: find.byIcon(Icons.add))
-        .at(1);
-
-    await tester.dragUntilVisible(
-      addIconFinder,
-      tripTab,
-      const Offset(0, -500),
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(addIconFinder);
-    await tester.pumpAndSettle();
-
-    final removeIcon = find.descendant(
-      of: tripTab,
-      matching: find.byIcon(Icons.remove),
-    );
-    expect(removeIcon, findsNWidgets(2));
-
-    await tester.tap(removeIcon.at(1));
-    await tester.pumpAndSettle();
-
-    expect(
-      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove)),
-      findsNothing,
-    );
-
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-  });
-
-  testWidgets('Can add and remove Delivery Location fields', (tester) async {
-    tester.view.physicalSize = const Size(1080, 2400);
-    tester.view.devicePixelRatio = 3.0;
-
-    await tester.pumpWidget(createTestWidget());
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 500));
-
-    final tripTab = find.byType(SingleChildScrollView).at(0);
-    expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Delivery Location'),
-      ),
-      findsOneWidget,
-    );
-
-    // Delivery Add button is index 2
-    final addIconFinder = find
-        .descendant(of: tripTab, matching: find.byIcon(Icons.add))
+        .descendant(of: tripTab, matching: find.byIcon(Icons.add_circle_outline))
         .at(2);
 
     await tester.dragUntilVisible(
@@ -286,7 +248,61 @@ void main() {
 
     final removeIcon = find.descendant(
       of: tripTab,
-      matching: find.byIcon(Icons.remove),
+      matching: find.byIcon(Icons.remove_circle_outline),
+    );
+    // 2 locations now, each has a remove icon. Trailers also have icons if many, but we have 1 trailer.
+    // 1 trailer: no remove icon (length > 1 check).
+    // 2 locations: 2 remove icons.
+    expect(removeIcon, findsNWidgets(2));
+
+    await tester.tap(removeIcon.at(1));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove_circle_outline)),
+      findsNothing,
+    );
+
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+  });
+
+  testWidgets('Can add and remove Delivery Location fields', (tester) async {
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+
+    final prefs = await SharedPreferences.getInstance();
+    await tester.pumpWidget(createTestWidget(prefs));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    final tripTab = find.byType(SingleChildScrollView).at(0);
+    expect(
+      find.descendant(
+        of: tripTab,
+        matching: find.widgetWithText(TextField, 'Delivery Location'),
+      ),
+      findsOneWidget,
+    );
+
+    // Delivery Add button is index 3
+    final addIconFinder = find
+        .descendant(of: tripTab, matching: find.byIcon(Icons.add_circle_outline))
+        .at(3);
+
+    await tester.dragUntilVisible(
+      addIconFinder,
+      tripTab,
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(addIconFinder);
+    await tester.pumpAndSettle();
+
+    final removeIcon = find.descendant(
+      of: tripTab,
+      matching: find.byIcon(Icons.remove_circle_outline),
     );
     expect(removeIcon, findsNWidgets(2));
 
@@ -294,7 +310,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove)),
+      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove_circle_outline)),
       findsNothing,
     );
 

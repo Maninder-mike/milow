@@ -13,6 +13,7 @@ import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/widgets/border_wait_time_card.dart';
 import 'package:milow/core/widgets/m3_spring_button.dart';
 import 'package:milow/core/widgets/shimmer_loading.dart';
+import 'package:provider/provider.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow/core/models/recent_entry.dart';
 import 'package:milow_core/milow_core.dart';
@@ -24,6 +25,8 @@ import 'package:milow/core/services/border_wait_time_service.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
+import 'package:milow/core/utils/unit_utils.dart';
+import 'package:milow/core/services/location/location_preferences_helper.dart';
 import 'package:milow/features/dashboard/presentation/widgets/active_trip_card.dart';
 import 'package:milow/features/dashboard/presentation/widgets/load_progress_card.dart';
 import 'package:milow/core/widgets/sync_status_indicator.dart';
@@ -106,6 +109,13 @@ class _DashboardPageState extends State<DashboardPage>
     _loadRecentEntries();
     _loadLoads();
     _loadNotificationCount();
+
+    // Sync units with location if enabled
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        LocationPreferencesHelper.syncLocationPreferences(context);
+      }
+    });
 
     // Refresh border wait times every 5 minutes
     _borderRefreshTimer = Timer.periodic(
@@ -201,6 +211,7 @@ class _DashboardPageState extends State<DashboardPage>
         );
       }
     });
+
     if (mounted) {
       setState(() {});
     }
@@ -309,8 +320,21 @@ class _DashboardPageState extends State<DashboardPage>
         fuelEntries = allFuel.take(5).toList();
       }
 
+      if (!mounted) return;
+
       // Filter out hidden trips
-      final hiddenTripIds = await PreferencesService.getHiddenTripIds();
+      final prefService = Provider.of<PreferencesService>(
+        context,
+        listen: false,
+      );
+      final hiddenTripIds = prefService.getHiddenTripIds();
+      final allEntries = [
+        ...trips.map((trip) => TripRecentEntry(trip)),
+        ...fuelEntries.map((fuel) => FuelRecentEntry(fuel)),
+      ];
+      final visibleEntries = allEntries
+          .where((e) => !hiddenTripIds.contains(e.id))
+          .toList();
 
       // Determine active trip manually to support "Next Active" and filtering
       // An active trip is one without an end odometer.
@@ -330,11 +354,8 @@ class _DashboardPageState extends State<DashboardPage>
         computedActiveTrip = null;
       }
 
-      // Combine and sort by date using typed RecentEntry
-      final List<RecentEntry> combined = [
-        ...trips.map((trip) => TripRecentEntry(trip)),
-        ...fuelEntries.map((fuel) => FuelRecentEntry(fuel)),
-      ];
+      // Combined and sort by date using filtered visibleEntries
+      final List<RecentEntry> combined = List.from(visibleEntries);
 
       // Sort by date descending
       combined.sort((a, b) => b.date.compareTo(a.date));
@@ -725,6 +746,10 @@ class _DashboardPageState extends State<DashboardPage>
 
   @override
   Widget build(BuildContext context) {
+    final prefService = context.watch<PreferencesService>();
+    final distanceUnit = prefService.getDistanceUnit();
+    final fuelUnit = prefService.getVolumeUnit();
+
     final margin = ResponsiveLayout.getMargin(context);
     final baseColor = Theme.of(context).scaffoldBackgroundColor;
 
@@ -793,6 +818,22 @@ class _DashboardPageState extends State<DashboardPage>
                                     const SyncStatusIndicator(),
                                     SizedBox(width: context.tokens.spacingS),
                                     _buildNotificationBell(context),
+                                    SizedBox(width: context.tokens.spacingXS),
+                                    IconButton(
+                                      onPressed: () async {
+                                        final result = await context.push(
+                                          '/add-entry',
+                                        );
+                                        if (result == true) {
+                                          unawaited(_onRefresh());
+                                        }
+                                      },
+                                      icon: const Icon(Icons.add),
+                                      style: IconButton.styleFrom(
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      tooltip: 'New Entry',
+                                    ),
                                   ],
                                 ),
                               ),
@@ -1124,10 +1165,24 @@ class _DashboardPageState extends State<DashboardPage>
                                                   : 'No route';
                                               final distance =
                                                   trip.totalDistance;
-                                              final distanceStr =
-                                                  distance != null
-                                                  ? '${distance.toStringAsFixed(0)} ${trip.distanceUnitLabel}'
-                                                  : '-';
+                                              String distanceStr = '-';
+                                              if (distance != null) {
+                                                double displayDistance =
+                                                    distance;
+                                                if (trip.distanceUnit !=
+                                                    distanceUnit) {
+                                                  displayDistance =
+                                                      distanceUnit == 'km'
+                                                      ? UnitUtils.milesToKm(
+                                                          distance,
+                                                        )
+                                                      : UnitUtils.kmToMiles(
+                                                          distance,
+                                                        );
+                                                }
+                                                distanceStr =
+                                                    '${displayDistance.toStringAsFixed(0)} $distanceUnit';
+                                              }
 
                                               return (
                                                 _buildRecordEntry(
@@ -1167,13 +1222,26 @@ class _DashboardPageState extends State<DashboardPage>
                                                       fuel.location!,
                                                     )
                                                   : 'Unknown location';
-                                              final quantity =
-                                                  '${fuel.fuelQuantity.toStringAsFixed(1)} ${fuel.fuelUnitLabel}';
                                               final identifier =
                                                   fuel.isTruckFuel
                                                   ? fuel.truckNumber ?? 'Truck'
                                                   : fuel.reeferNumber ??
                                                         'Reefer';
+
+                                              double displayQuantity =
+                                                  fuel.fuelQuantity;
+                                              if (fuel.fuelUnit != fuelUnit) {
+                                                displayQuantity =
+                                                    fuelUnit == 'L'
+                                                    ? UnitUtils.gallonsToLiters(
+                                                        fuel.fuelQuantity,
+                                                      )
+                                                    : UnitUtils.litersToGallons(
+                                                        fuel.fuelQuantity,
+                                                      );
+                                              }
+                                              final quantityStr =
+                                                  '${displayQuantity.toStringAsFixed(1)} $fuelUnit';
 
                                               return (
                                                 _buildRecordEntry(
@@ -1183,7 +1251,7 @@ class _DashboardPageState extends State<DashboardPage>
                                                   DateFormat(
                                                     'MMM d, yyyy',
                                                   ).format(fuel.fuelDate),
-                                                  quantity,
+                                                  quantityStr,
                                                 ),
                                                 () async {
                                                   final result = await context
@@ -1710,8 +1778,11 @@ class _DashboardPageState extends State<DashboardPage>
     if (trip == null) return;
 
     if (value == 'hide_activity_bar') {
-      if (_activeTrip!.id != null) {
-        await PreferencesService.addHiddenTripId(_activeTrip!.id!);
+      if (trip.id != null) {
+        await Provider.of<PreferencesService>(
+          context,
+          listen: false,
+        ).addHiddenTripId(trip.id!);
         // Refresh to apply filter
         unawaited(_loadRecentEntries());
       }

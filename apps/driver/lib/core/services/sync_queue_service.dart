@@ -174,10 +174,14 @@ class SyncQueueService {
               .update(payload)
               .eq('id', id);
 
-          if (payload.containsKey('updated_at') &&
-              payload['updated_at'] != null) {
-            query = query.lt('updated_at', payload['updated_at']);
-          }
+          // Note: Removing the 'lt' check temporarily to fix the issue where
+          // edits are not being applied because the local updated_at might not
+          // always be strictly greater than the server's if clocks are slightly out of sync
+          // or if multiple updates happen rapidly.
+          // if (payload.containsKey('updated_at') &&
+          //     payload['updated_at'] != null) {
+          //   query = query.lt('updated_at', payload['updated_at']);
+          // }
 
           await query;
           break;

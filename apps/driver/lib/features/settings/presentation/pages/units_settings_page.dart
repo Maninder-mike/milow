@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'dart:async';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/preferences_service.dart';
@@ -14,6 +15,7 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
   String _distanceUnit = 'km';
   String _volumeUnit = 'L';
   String _weightUnit = 'lb';
+  bool _autoDetect = false;
 
   @override
   void initState() {
@@ -22,15 +24,18 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
   }
 
   Future<void> _loadPreferences() async {
-    final dUnit = await PreferencesService.getDistanceUnit();
-    final vUnit = await PreferencesService.getVolumeUnit();
-    final wUnit = await PreferencesService.getWeightUnit();
+    final prefService = Provider.of<PreferencesService>(context, listen: false);
+    final dUnit = prefService.getDistanceUnit();
+    final vUnit = prefService.getVolumeUnit();
+    final weightUnit = prefService.getWeightUnit();
+    final autoDetect = prefService.getAutoUpdateUnits();
 
     if (mounted) {
       setState(() {
         _distanceUnit = dUnit;
         _volumeUnit = vUnit;
-        _weightUnit = wUnit;
+        _weightUnit = weightUnit;
+        _autoDetect = autoDetect;
       });
     }
   }
@@ -82,12 +87,41 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
               ),
             ),
             const SizedBox(height: 8),
+            SwitchListTile(
+              title: Text(
+                'Auto-detect Units & Currency',
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
+              ),
+              subtitle: Text(
+                'Set units based on your current location',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+              value: _autoDetect,
+              activeColor: Theme.of(context).colorScheme.primary,
+              onChanged: (val) async {
+                final prefService = context.read<PreferencesService>();
+                await prefService.setAutoUpdateUnits(val);
+                if (mounted) {
+                  setState(() => _autoDetect = val);
+                  if (val) {
+                    // Trigger immediate sync if enabled
+                    // ignore: use_build_context_synchronously
+                    await _loadPreferences();
+                  }
+                }
+              },
+            ),
+            _buildDivider(),
             _buildUnitRow(
               title: 'Distance',
               options: ['mi', 'km'],
               currentValue: _distanceUnit,
+              enabled: !_autoDetect,
               onChanged: (val) async {
-                await PreferencesService.setDistanceUnit(val);
+                final prefService = context.read<PreferencesService>();
+                await prefService.setDistanceUnit(val);
                 if (mounted) setState(() => _distanceUnit = val);
               },
             ),
@@ -96,8 +130,10 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
               title: 'Volume',
               options: ['gal', 'L'],
               currentValue: _volumeUnit,
+              enabled: !_autoDetect,
               onChanged: (val) async {
-                await PreferencesService.setVolumeUnit(val);
+                final prefService = context.read<PreferencesService>();
+                await prefService.setVolumeUnit(val);
                 if (mounted) setState(() => _volumeUnit = val);
               },
             ),
@@ -106,8 +142,10 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
               title: 'Weight',
               options: ['lb', 'kg'],
               currentValue: _weightUnit,
+              enabled: !_autoDetect,
               onChanged: (val) async {
-                await PreferencesService.setWeightUnit(val);
+                final prefService = context.read<PreferencesService>();
+                await prefService.setWeightUnit(val);
                 if (mounted) setState(() => _weightUnit = val);
               },
             ),
@@ -131,44 +169,51 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
     required List<String> options,
     required String currentValue,
     required Function(String) onChanged,
+    bool enabled = true,
   }) {
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.tokens.spacingL,
-        vertical: 16,
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              title,
-              style: Theme.of(
-                context,
-              ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-            ),
+    return IgnorePointer(
+      ignoring: !enabled,
+      child: Opacity(
+        opacity: enabled ? 1.0 : 0.5,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: context.tokens.spacingL,
+            vertical: 16,
           ),
-          Container(
-            padding: const EdgeInsets.all(2),
-            decoration: BoxDecoration(
-              color: Theme.of(
-                context,
-              ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
-              borderRadius: BorderRadius.circular(context.tokens.shapeM),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: options
-                  .map(
-                    (opt) => _buildSegmentButton(
-                      opt.toUpperCase(),
-                      currentValue == opt,
-                      () => onChanged(opt),
-                    ),
-                  )
-                  .toList(),
-            ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  title,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  color: Theme.of(
+                    context,
+                  ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                  borderRadius: BorderRadius.circular(context.tokens.shapeM),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: options
+                      .map(
+                        (opt) => _buildSegmentButton(
+                          opt.toUpperCase(),
+                          currentValue == opt,
+                          () => onChanged(opt),
+                        ),
+                      )
+                      .toList(),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

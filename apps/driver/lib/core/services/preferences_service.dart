@@ -1,159 +1,214 @@
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milow/core/utils/unit_utils.dart';
 
 enum UnitSystem { metric, imperial }
 
-class PreferencesService {
+class PreferencesService extends ChangeNotifier {
   static const String _unitSystemKey = 'unit_system';
   static const String _distanceUnitKey = 'distance_unit_pref';
   static const String _volumeUnitKey = 'volume_unit_pref';
   static const String _weightUnitKey = 'weight_unit_pref';
   static const String _hiddenTripsKey = 'hidden_trips';
+  static const String _autoUpdateUnitsKey = 'auto_update_units';
+  static const String _currencyKey = 'currency_pref';
+
+  final SharedPreferences _prefs;
+
+  PreferencesService(this._prefs);
+
+  static Future<PreferencesService> init() async {
+    final prefs = await SharedPreferences.getInstance();
+    return PreferencesService(prefs);
+  }
 
   // Unit System preference (Metric/Imperial)
-  static Future<UnitSystem> getUnitSystem() async {
-    final prefs = await SharedPreferences.getInstance();
-    final value = prefs.getString(_unitSystemKey);
+  UnitSystem getUnitSystem() {
+    final value = _prefs.getString(_unitSystemKey);
     if (value == 'imperial') {
       return UnitSystem.imperial;
     }
     return UnitSystem.metric; // Default: metric
   }
 
-  static Future<void> setUnitSystem(UnitSystem system) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(
+  Future<void> setUnitSystem(UnitSystem system) async {
+    await _prefs.setString(
       _unitSystemKey,
       system == UnitSystem.imperial ? 'imperial' : 'metric',
     );
     // When changing global system, also set granular defaults to keep them in sync
-    await setDistanceUnit(system == UnitSystem.imperial ? 'mi' : 'km');
-    await setVolumeUnit(system == UnitSystem.imperial ? 'gal' : 'L');
-    await setWeightUnit(system == UnitSystem.imperial ? 'lb' : 'kg');
+    await setDistanceUnit(
+      system == UnitSystem.imperial ? 'mi' : 'km',
+      notify: false,
+    );
+    await setVolumeUnit(
+      system == UnitSystem.imperial ? 'gal' : 'L',
+      notify: false,
+    );
+    await setWeightUnit(
+      system == UnitSystem.imperial ? 'lb' : 'kg',
+      notify: false,
+    );
+
+    notifyListeners();
+  }
+
+  // Auto-detect setting
+  bool getAutoUpdateUnits() {
+    return _prefs.getBool(_autoUpdateUnitsKey) ?? false;
+  }
+
+  Future<void> setAutoUpdateUnits(bool value) async {
+    await _prefs.setBool(_autoUpdateUnitsKey, value);
+    notifyListeners();
+  }
+
+  // Currency preference
+  String getCurrency() {
+    return _prefs.getString(_currencyKey) ?? 'USD';
+  }
+
+  Future<void> setCurrency(String currency) async {
+    await _prefs.setString(_currencyKey, currency);
+    notifyListeners();
+  }
+
+  /// Update all units and currency based on country string
+  Future<void> updateFromCountry(String country) async {
+    final system = UnitUtils.isImperial(country)
+        ? UnitSystem.imperial
+        : UnitSystem.metric;
+
+    // Update global system (which updates granular defaults)
+    await setUnitSystem(system);
+
+    // Update currency
+    final currency = UnitUtils.getCurrency(country);
+    await setCurrency(currency);
+
+    notifyListeners();
   }
 
   // Granular Unit setters
-  static Future<void> setDistanceUnit(String unit) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_distanceUnitKey, unit);
+  Future<void> setDistanceUnit(String unit, {bool notify = true}) async {
+    await _prefs.setString(_distanceUnitKey, unit);
+    if (notify) notifyListeners();
   }
 
-  static Future<void> setVolumeUnit(String unit) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_volumeUnitKey, unit);
+  Future<void> setVolumeUnit(String unit, {bool notify = true}) async {
+    await _prefs.setString(_volumeUnitKey, unit);
+    if (notify) notifyListeners();
   }
 
-  static Future<void> setWeightUnit(String unit) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_weightUnitKey, unit);
+  Future<void> setWeightUnit(String unit, {bool notify = true}) async {
+    // Standardize 'lb' instead of 'lbs' for consistency
+    final sanitizedUnit = unit.toLowerCase() == 'lbs' ? 'lb' : unit;
+    await _prefs.setString(_weightUnitKey, sanitizedUnit);
+    if (notify) notifyListeners();
   }
 
   // Hidden Trips
-  static Future<List<String>> getHiddenTripIds() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_hiddenTripsKey) ?? [];
+  List<String> getHiddenTripIds() {
+    return _prefs.getStringList(_hiddenTripsKey) ?? [];
   }
 
-  static Future<void> addHiddenTripId(String tripId) async {
-    final prefs = await SharedPreferences.getInstance();
-    final hidden = prefs.getStringList(_hiddenTripsKey) ?? [];
+  Future<void> addHiddenTripId(String tripId) async {
+    final hidden = _prefs.getStringList(_hiddenTripsKey) ?? [];
     if (!hidden.contains(tripId)) {
       hidden.add(tripId);
-      await prefs.setStringList(_hiddenTripsKey, hidden);
+      await _prefs.setStringList(_hiddenTripsKey, hidden);
+      notifyListeners();
     }
   }
 
   // Helper methods for unit conversion
-  static Future<String> getDistanceUnit() async {
-    final prefs = await SharedPreferences.getInstance();
-    final granular = prefs.getString(_distanceUnitKey);
+  String getDistanceUnit() {
+    final granular = _prefs.getString(_distanceUnitKey);
     if (granular != null) return granular;
 
-    final system = await getUnitSystem();
+    final system = getUnitSystem();
     return system == UnitSystem.imperial ? 'mi' : 'km';
   }
 
-  static Future<String> getWeightUnit() async {
-    final prefs = await SharedPreferences.getInstance();
-    final granular = prefs.getString(_weightUnitKey);
-    if (granular != null) return granular;
+  String getWeightUnit() {
+    final granular = _prefs.getString(_weightUnitKey);
+    if (granular != null) {
+      // Auto-correct 'lbs' to 'lb' if it exists in storage
+      if (granular == 'lbs') return 'lb';
+      return granular;
+    }
 
-    final system = await getUnitSystem();
+    final system = getUnitSystem();
     return system == UnitSystem.imperial ? 'lb' : 'kg';
   }
 
-  static Future<String> getVolumeUnit() async {
-    final prefs = await SharedPreferences.getInstance();
-    final granular = prefs.getString(_volumeUnitKey);
+  String getVolumeUnit() {
+    final granular = _prefs.getString(_volumeUnitKey);
     if (granular != null) return granular;
 
-    final system = await getUnitSystem();
+    final system = getUnitSystem();
     return system == UnitSystem.imperial ? 'gal' : 'L';
   }
 
   // ================= CONVERSION HELPERS =================
 
   /// Convert value from User Pref to Metric (for Saving)
-  static Future<double> standardizeDistance(double val) async {
-    return (await getUnitSystem()) == UnitSystem.imperial
+  double standardizeDistance(double val) {
+    return getUnitSystem() == UnitSystem.imperial
         ? UnitUtils.milesToKm(val)
         : val;
   }
 
-  static Future<double> standardizeVolume(double val) async {
-    return (await getUnitSystem()) == UnitSystem.imperial
+  double standardizeVolume(double val) {
+    return getUnitSystem() == UnitSystem.imperial
         ? UnitUtils.gallonsToLiters(val)
         : val;
   }
 
-  static Future<double> standardizeWeight(double val) async {
-    return (await getUnitSystem()) == UnitSystem.imperial
+  double standardizeWeight(double val) {
+    return getUnitSystem() == UnitSystem.imperial
         ? UnitUtils.lbsToKg(val)
         : val;
   }
 
   /// Convert value from Metric to User Pref (for Loading/Display)
-  static Future<double> localizeDistance(double val) async {
-    return (await getUnitSystem()) == UnitSystem.imperial
+  double localizeDistance(double val) {
+    return getUnitSystem() == UnitSystem.imperial
         ? UnitUtils.kmToMiles(val)
         : val;
   }
 
-  static Future<double> localizeVolume(double val) async {
-    return (await getUnitSystem()) == UnitSystem.imperial
+  double localizeVolume(double val) {
+    return getUnitSystem() == UnitSystem.imperial
         ? UnitUtils.litersToGallons(val)
         : val;
   }
 
-  static Future<double> localizeWeight(double val) async {
-    return (await getUnitSystem()) == UnitSystem.imperial
+  double localizeWeight(double val) {
+    return getUnitSystem() == UnitSystem.imperial
         ? UnitUtils.kgToLbs(val)
         : val;
   }
-
-  // Weather display preference
 
   // PDF Export Column Order preferences
   static const String _tripColumnsKey = 'pdf_trip_columns';
   static const String _fuelColumnsKey = 'pdf_fuel_columns';
 
-  static Future<List<String>> getTripColumns() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_tripColumnsKey) ?? [];
+  List<String> getTripColumns() {
+    return _prefs.getStringList(_tripColumnsKey) ?? [];
   }
 
-  static Future<void> setTripColumns(List<String> columns) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_tripColumnsKey, columns);
+  Future<void> setTripColumns(List<String> columns) async {
+    await _prefs.setStringList(_tripColumnsKey, columns);
+    notifyListeners();
   }
 
-  static Future<List<String>> getFuelColumns() async {
-    final prefs = await SharedPreferences.getInstance();
-    return prefs.getStringList(_fuelColumnsKey) ?? [];
+  List<String> getFuelColumns() {
+    return _prefs.getStringList(_fuelColumnsKey) ?? [];
   }
 
-  static Future<void> setFuelColumns(List<String> columns) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setStringList(_fuelColumnsKey, columns);
+  Future<void> setFuelColumns(List<String> columns) async {
+    await _prefs.setStringList(_fuelColumnsKey, columns);
+    notifyListeners();
   }
 }

@@ -15,6 +15,7 @@ import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/services/logging_service.dart';
 import 'package:milow/core/services/messaging_provider.dart';
 import 'package:milow/core/services/locale_service.dart';
+import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
@@ -81,6 +82,7 @@ import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart
 import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
 
 Future<void> main() async {
+  PreferencesService? prefService;
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   // Keep native splash screen up until we're ready
   widgetsBinding.deferFirstFrame();
@@ -213,6 +215,8 @@ Future<void> main() async {
     unawaited(_initBackgroundServices());
 
     unawaited(logger.cleanOldLogs());
+    final service = await PreferencesService.init();
+    prefService = service;
     await logger.logLifecycle('App initialization complete');
   } catch (e, stack) {
     debugPrint('❌ [Init] Fatal error during initialization: $e');
@@ -253,6 +257,8 @@ Future<void> main() async {
             ChangeNotifierProvider(
               create: (_) => MessagingProvider(driverDatabase)..init(),
             ),
+            if (prefService != null)
+              ChangeNotifierProvider.value(value: prefService),
           ],
           child: const MyApp(),
         ),
