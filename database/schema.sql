@@ -85,26 +85,40 @@ COMMENT ON COLUMN profiles.citizenship IS 'Citizenship country';
 COMMENT ON COLUMN profiles.fast_id IS 'FAST card ID for border crossing';
 
 
--- 2.3 TRIPS
-create table if not exists public.trips (
+-- 2.3 DRIVER TRIPS
+create table if not exists public.driver_trips (
     id uuid default gen_random_uuid() primary key,
     user_id uuid references auth.users not null,
     company_id uuid references public.companies(id), -- Inferred relation
+    vehicle_id uuid, -- References vehicles, but added after vehicles table
     trip_number text not null,
     truck_number text not null,
     trailers text[] default '{}',
     trip_date timestamptz not null,
     pickup_locations text[] not null,
     delivery_locations text[] not null,
+    pickup_times jsonb default '[]'::jsonb,
+    delivery_times jsonb default '[]'::jsonb,
+    pickup_completed jsonb default '[]'::jsonb,
+    delivery_completed jsonb default '[]'::jsonb,
+    pickup_detention jsonb default '[]'::jsonb,
+    delivery_detention jsonb default '[]'::jsonb,
     start_odometer numeric,
     end_odometer numeric,
     distance_unit text not null default 'mi',
     border_crossing text,
     notes text,
+    is_empty_leg boolean default false,
+    commodity text,
+    weight numeric,
+    weight_unit text default 'lbs',
+    pieces integer,
+    reference_numbers text[] default '{}',
+    deleted_at timestamptz,
     created_at timestamptz default now(),
     updated_at timestamptz default now()
 );
-comment on column trips.border_crossing is 'Optional border crossing location (e.g., Windsor-Detroit, Laredo)';
+comment on column driver_trips.border_crossing is 'Optional border crossing location (e.g., Windsor-Detroit, Laredo)';
 
 
 -- 2.4 FUEL ENTRIES
@@ -112,6 +126,7 @@ create table if not exists public.fuel_entries (
     id uuid default gen_random_uuid() primary key,
     user_id uuid references auth.users not null,
     company_id uuid references public.companies(id), -- Inferred relation
+    vehicle_id uuid, -- References vehicles
     fuel_date timestamptz not null,
     fuel_type text not null check (fuel_type in ('truck', 'reefer')),
     truck_number text,
@@ -179,7 +194,7 @@ create unique index if not exists app_version_platform_idx on app_version (platf
 -- ============================================
 alter table public.companies enable row level security;
 alter table public.profiles enable row level security;
-alter table public.trips enable row level security;
+alter table public.driver_trips enable row level security;
 alter table public.fuel_entries enable row level security;
 alter table public.messages enable row level security;
 alter table public.notifications enable row level security;
@@ -337,20 +352,20 @@ create policy "Admins can update all profiles" on profiles
 
 
 -- TRIPS (Updated Policy)
-drop policy if exists "Users can view own trips" on trips;
-create policy "Users can view own trips" on trips 
+drop policy if exists "Users can view own trips" on driver_trips;
+create policy "Users can view own trips" on driver_trips 
   for select to authenticated using (auth.uid() = user_id);
 
-drop policy if exists "Users can insert own trips" on trips;
-create policy "Users can insert own trips" on trips 
+drop policy if exists "Users can insert own trips" on driver_trips;
+create policy "Users can insert own trips" on driver_trips 
   for insert to authenticated with check (auth.uid() = user_id);
 
-drop policy if exists "Users can update own trips" on trips;
-create policy "Users can update own trips" on trips 
+drop policy if exists "Users can update own trips" on driver_trips;
+create policy "Users can update own trips" on driver_trips 
   for update to authenticated using (auth.uid() = user_id);
 
-drop policy if exists "Users can delete own trips" on trips;
-create policy "Users can delete own trips" on trips 
+drop policy if exists "Users can delete own trips" on driver_trips;
+create policy "Users can delete own trips" on driver_trips 
   for delete to authenticated using (auth.uid() = user_id);
 
 
@@ -415,10 +430,10 @@ create index if not exists idx_messages_receiver_id on public.messages(receiver_
 create index if not exists idx_notifications_user_id on public.notifications(user_id);
 create index if not exists idx_notifications_is_read on public.notifications(is_read);
 
-create index if not exists trips_user_id_idx on trips(user_id);
-create index if not exists trips_company_id_idx on trips(company_id);
-create index if not exists trips_trip_date_idx on trips(trip_date desc);
-create index if not exists trips_truck_number_idx on trips(truck_number);
+create index if not exists trips_user_id_idx on driver_trips(user_id);
+create index if not exists trips_company_id_idx on driver_trips(company_id);
+create index if not exists trips_trip_date_idx on driver_trips(trip_date desc);
+create index if not exists trips_truck_number_idx on driver_trips(truck_number);
 
 create index if not exists fuel_entries_user_id_idx on fuel_entries(user_id);
 create index if not exists fuel_entries_company_id_idx on fuel_entries(company_id);
@@ -434,7 +449,7 @@ create index if not exists vehicles_company_id_idx on public.vehicles(company_id
 create or replace function public.get_total_trip_distance(user_uuid uuid)
 returns numeric as $$
   select coalesce(sum(end_odometer - start_odometer), 0)
-  from trips
+  from driver_trips
   where user_id = user_uuid
   and end_odometer is not null 
   and start_odometer is not null;
@@ -662,6 +677,16 @@ create trigger set_vehicle_doc_company_id_trigger
 drop trigger if exists set_customer_company_id_trigger on public.customers;
 create trigger set_customer_company_id_trigger
   before insert on public.customers
+  for each row execute procedure public.set_company_id();
+
+drop trigger if exists set_trip_company_id_trigger on public.driver_trips;
+create trigger set_trip_company_id_trigger
+  before insert on public.driver_trips
+  for each row execute procedure public.set_company_id();
+
+drop trigger if exists set_fuel_entry_company_id_trigger on public.fuel_entries;
+create trigger set_fuel_entry_company_id_trigger
+  before insert on public.fuel_entries
   for each row execute procedure public.set_company_id();
 -- 2.11 PICKUPS
 create table if not exists public.pickups (

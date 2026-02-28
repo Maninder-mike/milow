@@ -65,7 +65,11 @@ class TripRepository {
     final List<Trip> cached = tripDataList.map((d) => _fromData(d)).toList();
 
     if (refresh && connectivityService.isOnline) {
-      // Fire-and-forget refresh
+      if (cached.isEmpty) {
+        // Cache is empty (fresh install / flutter clean) — await server data
+        return await _refreshFromServer(userId);
+      }
+      // Cache has data — fire-and-forget refresh in background
       unawaited(_refreshFromServer(userId));
     }
 
@@ -88,7 +92,7 @@ class TripRepository {
 
       // Get pending sync operations to prevent overwriting/deleting unsynced data
       final pendingOps = syncQueueService.pendingOperations
-          .where((op) => op.tableName == 'trips')
+          .where((op) => op.tableName == 'driver_trips')
           .toList();
 
       final pendingCreateIds = pendingOps
@@ -202,7 +206,7 @@ class TripRepository {
     payload.remove('id'); // Server will generate its own ID
 
     await syncQueueService.enqueue(
-      tableName: 'trips',
+      tableName: 'driver_trips',
       operationType: 'create',
       payload: payload,
       localId: localId,
@@ -239,7 +243,7 @@ class TripRepository {
     payload['updated_at'] = DateTime.now().toIso8601String();
 
     await syncQueueService.enqueue(
-      tableName: 'trips',
+      tableName: 'driver_trips',
       operationType: 'update',
       payload: payload,
       localId: trip.id!,
@@ -267,7 +271,7 @@ class TripRepository {
 
     // Queue sync operation (Soft Delete)
     await syncQueueService.enqueue(
-      tableName: 'trips',
+      tableName: 'driver_trips',
       operationType: 'update',
       payload: {
         'id': tripId,
@@ -319,7 +323,7 @@ class TripRepository {
     final result = await _getNetworkClient(client).query(() async {
       final response = await client
           .from('trip_documents')
-          .select('*, trips(trip_number)')
+          .select('*, driver_trips(trip_number)')
           .eq('company_id', companyId)
           .neq('user_id', userId)
           .order('created_at', ascending: false);
@@ -383,7 +387,7 @@ class TripRepository {
 
     return _getNetworkClient(client).query(() async {
       final response = await client
-          .from('trips')
+          .from('driver_trips')
           .select('id')
           .eq('trip_number', tripNumber)
           .maybeSingle();
@@ -494,7 +498,7 @@ class TripRepository {
     final result = await _getNetworkClient(client).query(() async {
       final response = await client
           .from('trip_documents')
-          .select('*, trips(trip_number)')
+          .select('*, driver_trips(trip_number)')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
       return response;
@@ -599,6 +603,7 @@ class TripRepository {
       pieces: data.pieces,
       referenceNumbers: (jsonDecode(data.referenceNumbers) as List)
           .cast<String>(),
+      companyId: data.companyId,
       // lastUpdated is used for sync internal logic, but we map it if needed
     );
   }
@@ -607,6 +612,7 @@ class TripRepository {
     return TripsCompanion(
       id: Value(trip.id!),
       userId: Value(trip.userId),
+      companyId: Value(trip.companyId),
       vehicleId: Value(trip.vehicleId),
       tripNumber: Value(trip.tripNumber),
       truckNumber: Value(trip.truckNumber),

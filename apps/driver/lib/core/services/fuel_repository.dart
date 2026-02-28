@@ -45,7 +45,11 @@ class FuelRepository {
     final List<FuelEntry> cached = dataList.map((d) => _fromData(d)).toList();
 
     if (refresh && connectivityService.isOnline) {
-      // Fire-and-forget refresh
+      if (cached.isEmpty) {
+        // Cache is empty (fresh install / flutter clean) — await server data
+        return await _refreshFromServer(userId, supabaseClient: client);
+      }
+      // Cache has data — fire-and-forget refresh in background
       unawaited(_refreshFromServer(userId, supabaseClient: client));
     }
 
@@ -305,6 +309,7 @@ class FuelRepository {
       defFromYard: data.defFromYard,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
+      companyId: data.companyId,
     );
   }
 
@@ -312,6 +317,7 @@ class FuelRepository {
     return FuelEntriesCompanion(
       id: Value(entry.id!),
       userId: Value(entry.userId),
+      companyId: Value(entry.companyId),
       vehicleId: Value(entry.vehicleId),
       fuelDate: Value(entry.fuelDate),
       fuelType: Value(entry.fuelType),

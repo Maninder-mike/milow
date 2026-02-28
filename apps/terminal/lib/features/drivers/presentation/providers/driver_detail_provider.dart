@@ -35,7 +35,7 @@ Future<DriverDetailState> driverDetail(Ref ref, String driverId) async {
   // Let's assume we want to be scalable: separate queries.
 
   final recentTripsFuture = supabase
-      .from('trips')
+      .from('driver_trips')
       .select()
       .eq('user_id', driverId)
       .order('trip_date', ascending: false)
@@ -45,7 +45,7 @@ Future<DriverDetailState> driverDetail(Ref ref, String driverId) async {
   // or just fetch lightweight objects.
   // We calculate distance from odometer readings as total_distance column is missing.
   final statsFuture = supabase
-      .from('trips')
+      .from('driver_trips')
       .select('start_odometer, end_odometer, distance_unit')
       .eq('user_id', driverId);
 

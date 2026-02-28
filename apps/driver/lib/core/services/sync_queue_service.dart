@@ -230,8 +230,8 @@ class SyncQueueService {
       if (operation.canRetry) {
         operation.markFailed(e.toString());
       } else {
-        // Max retries reached, keep in queue as failed for user review
-        operation.markFailed('Max retries reached: $e');
+        // Max retries reached, keep in queue as failed for user to see
+        operation.markFailed(e.toString());
       }
     }
   }

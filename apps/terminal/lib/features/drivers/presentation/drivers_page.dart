@@ -835,7 +835,7 @@ class _OverviewTab extends ConsumerWidget {
           width: 400,
           child: FutureBuilder(
             future: Supabase.instance.client
-                .from('trips')
+                .from('driver_trips')
                 .select()
                 .filter('user_id', 'is', null)
                 .order('created_at', ascending: false)
@@ -865,7 +865,7 @@ class _OverviewTab extends ConsumerWidget {
                       onPressed: () async {
                         try {
                           await Supabase.instance.client
-                              .from('trips')
+                              .from('driver_trips')
                               .update({'user_id': driver.id})
                               .eq('id', trip['id']);
                           if (context.mounted) {
@@ -1381,7 +1381,7 @@ class _TripsTab extends StatelessWidget {
   Widget build(BuildContext context) {
     return FutureBuilder(
       future: Supabase.instance.client
-          .from('trips')
+          .from('driver_trips')
           .select()
           .eq('user_id', driver.id)
           .order('trip_date', ascending: false),

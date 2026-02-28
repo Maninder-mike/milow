@@ -29,6 +29,7 @@ class Trip {
   final DateTime? createdAt;
   final DateTime? updatedAt;
   final bool isEmptyLeg;
+  final String? companyId;
 
   // Load details (owner-operator features)
   final String? commodity;
@@ -67,6 +68,7 @@ class Trip {
     this.weightUnit = 'lbs',
     this.pieces,
     this.referenceNumbers = const [],
+    this.companyId,
   });
 
   /// Calculate total distance if both odometer readings are available
@@ -183,6 +185,7 @@ class Trip {
               ?.map((e) => e as String)
               .toList() ??
           [],
+      companyId: json['company_id'] as String?,
     );
   }
 
@@ -218,6 +221,7 @@ class Trip {
       'weight_unit': weightUnit,
       if (pieces != null) 'pieces': pieces,
       if (referenceNumbers.isNotEmpty) 'reference_numbers': referenceNumbers,
+      if (companyId != null) 'company_id': companyId,
     };
   }
 
@@ -252,6 +256,7 @@ class Trip {
     String? weightUnit,
     int? pieces,
     List<String>? referenceNumbers,
+    String? companyId,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -283,6 +288,7 @@ class Trip {
       weightUnit: weightUnit ?? this.weightUnit,
       pieces: pieces ?? this.pieces,
       referenceNumbers: referenceNumbers ?? this.referenceNumbers,
+      companyId: companyId ?? this.companyId,
     );
   }
 

@@ -20,6 +20,7 @@ class FuelEntry {
   final bool defFromYard;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final String? companyId;
 
   FuelEntry({
     required this.fuelDate,
@@ -42,6 +43,7 @@ class FuelEntry {
     this.defFromYard = false,
     this.createdAt,
     this.updatedAt,
+    this.companyId,
   });
 
   /// Calculate total cost
@@ -114,6 +116,7 @@ class FuelEntry {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : null,
+      companyId: json['company_id'] as String?,
     );
   }
 
@@ -138,6 +141,7 @@ class FuelEntry {
       'def_quantity': defQuantity,
       'def_price': defPrice,
       'def_from_yard': defFromYard,
+      if (companyId != null) 'company_id': companyId,
     };
   }
 
@@ -163,6 +167,7 @@ class FuelEntry {
     bool? defFromYard,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? companyId,
   }) {
     return FuelEntry(
       id: id ?? this.id,
@@ -185,6 +190,7 @@ class FuelEntry {
       defFromYard: defFromYard ?? this.defFromYard,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      companyId: companyId ?? this.companyId,
     );
   }
 

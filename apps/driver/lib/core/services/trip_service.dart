@@ -33,7 +33,7 @@ class TripService {
       data.remove('id'); // Let database generate ID
 
       final response = await client
-          .from('trips')
+          .from('driver_trips')
           .insert(data)
           .select()
           .single();
@@ -62,7 +62,7 @@ class TripService {
 
     try {
       var query = client
-          .from('trips')
+          .from('driver_trips')
           .select('id')
           .eq('user_id', userId)
           .eq('trip_number', tripNumber.toUpperCase());
@@ -97,7 +97,7 @@ class TripService {
     final networkClient = _getNetworkClient(client);
     final result = await networkClient.query(
       () async {
-        var query = client.from('trips').select().eq('user_id', userId);
+        var query = client.from('driver_trips').select().eq('user_id', userId);
 
         if (fromDate != null) {
           query = query.gte('trip_date', fromDate.toIso8601String());
@@ -141,7 +141,7 @@ class TripService {
     final result = await networkClient.query(
       () async {
         final response = await client
-            .from('trips')
+            .from('driver_trips')
             .select()
             .eq('id', tripId)
             .eq('user_id', userId)
@@ -190,7 +190,7 @@ class TripService {
       data['updated_at'] = DateTime.now().toIso8601String();
 
       final response = await client
-          .from('trips')
+          .from('driver_trips')
           .update(data)
           .eq('id', trip.id!)
           .eq('user_id', userId)
@@ -216,7 +216,7 @@ class TripService {
 
     try {
       await client
-          .from('trips')
+          .from('driver_trips')
           .delete()
           .eq('id', tripId)
           .eq('user_id', userId);
@@ -235,7 +235,7 @@ class TripService {
 
     try {
       final response = await client
-          .from('trips')
+          .from('driver_trips')
           .select()
           .eq('user_id', userId)
           .count(CountOption.exact);
@@ -280,7 +280,7 @@ class TripService {
 
     try {
       final response = await client
-          .from('trips')
+          .from('driver_trips')
           .select()
           .eq('user_id', userId)
           .or('trip_number.ilike.%$query%,truck_number.ilike.%$query%')
@@ -303,7 +303,7 @@ class TripService {
 
     try {
       final response = await client
-          .from('trips')
+          .from('driver_trips')
           .select()
           .eq('user_id', userId)
           .isFilter('end_odometer', null)

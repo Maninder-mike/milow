@@ -23,7 +23,7 @@ class DocumentRepository {
     final result = await _getNetworkClient(client).query(() async {
       final response = await client
           .from('documents')
-          .select('*, trips(trip_number)')
+          .select('*, driver_trips(trip_number)')
           .eq('user_id', userId)
           .order('created_at', ascending: false);
       return response;
@@ -70,7 +70,7 @@ class DocumentRepository {
             'reviewed_by': user.id,
           })
           .eq('id', documentId)
-          .select('*, trips(trip_number)')
+          .select('*, driver_trips(trip_number)')
           .single();
 
       // 2. Insert review log (No await here to avoid blocking if not critical,

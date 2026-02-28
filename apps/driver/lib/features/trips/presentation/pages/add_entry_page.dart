@@ -11,11 +11,13 @@ import 'package:geocoding/geocoding.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 
+import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/profile_service.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/trip_repository.dart';
+import 'package:milow/core/services/fuel_repository.dart';
 
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/prediction_service.dart';
@@ -139,6 +141,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   final List<Detention?> _deliveryDetention = [];
 
   DriverType? _currentDriverType;
+  String? _companyId;
   List<Vehicle> _vehicles = [];
 
   Trip? _fetchedTrip;
@@ -300,6 +303,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         final profile = UserProfile.fromJson(profileMap);
         setState(() {
           _currentDriverType = profile.driverType;
+          _companyId = profile.companyId;
         });
       }
     } catch (e) {
@@ -1129,7 +1133,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             },
           ),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 4),
         _buildAddButton(
           _showAddBorderCrossingDialog,
           tooltip: 'Add Border Crossing',
@@ -1338,60 +1342,34 @@ class _AddEntryPageState extends State<AddEntryPage>
                           .getLocationSuggestions(v.text),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 4),
                   // Detention Button
-                  Padding(
-                    padding: const EdgeInsets.only(top: 4),
-                    child: _buildDetentionButton(
-                      detention: detention[i],
-                      onTap: () async {
-                        final result = await showDialog<Detention>(
-                          context: context,
-                          builder: (context) =>
-                              DetentionDialog(initialDetention: detention[i]),
-                        );
-                        if (result != null) {
-                          setState(() {
-                            detention[i] = result;
-                          });
-                        }
-                      },
-                    ),
+                  _buildDetentionButton(
+                    detention: detention[i],
+                    onTap: () async {
+                      final result = await showDialog<Detention>(
+                        context: context,
+                        builder: (context) =>
+                            DetentionDialog(initialDetention: detention[i]),
+                      );
+                      if (result != null) {
+                        setState(() {
+                          detention[i] = result;
+                        });
+                      }
+                    },
                   ),
                   if (canRemove) ...[
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: InkWell(
-                        onTap: () => _removeLocation(type, i),
-                        borderRadius: BorderRadius.circular(8),
-                        child: Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: Theme.of(context).colorScheme.error,
-                            ),
-                          ),
-                          child: Icon(
-                            Icons.remove,
-                            size: 20,
-                            color: Theme.of(context).colorScheme.error,
-                          ),
-                        ),
-                      ),
+                    const SizedBox(width: 4),
+                    IconButton(
+                      icon: const Icon(Icons.remove_circle_outline),
+                      color: Theme.of(context).colorScheme.error,
+                      onPressed: () => _removeLocation(type, i),
                     ),
                   ],
                   if (isLast && canAdd) ...[
-                    const SizedBox(width: 8),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: _buildAddButton(() => _addLocation(type)),
-                      ),
-                    ),
+                    const SizedBox(width: 4),
+                    _buildAddButton(() => _addLocation(type)),
                   ],
                 ],
               ),
@@ -1410,34 +1388,17 @@ class _AddEntryPageState extends State<AddEntryPage>
     final hasDetention = detention != null;
     final isLayover = detention?.isLayover ?? false;
     final primaryColor = Theme.of(context).colorScheme.primary;
-    final surfaceContainer = Theme.of(context).colorScheme.surfaceContainer;
 
-    return Tooltip(
-      message: hasDetention
+    return IconButton(
+      tooltip: hasDetention
           ? (isLayover
                 ? 'Overnight Stay (Edit)'
                 : 'Waiting Time: ${detention.duration.inMinutes}m (Edit)')
           : 'Add Waiting Time / Overnight',
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: hasDetention ? primaryColor : surfaceContainer,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: hasDetention ? primaryColor : context.tokens.inputBorder,
-            ),
-          ),
-          child: Icon(
-            isLayover ? Icons.hotel : Icons.timer,
-            size: 20,
-            color: hasDetention
-                ? Theme.of(context).colorScheme.onPrimary
-                : context.tokens.textSecondary,
-          ),
-        ),
+      onPressed: onTap,
+      icon: Icon(
+        isLayover ? Icons.hotel : Icons.timer_outlined,
+        color: hasDetention ? primaryColor : context.tokens.textSecondary,
       ),
     );
   }
@@ -1455,25 +1416,27 @@ class _AddEntryPageState extends State<AddEntryPage>
   // }
 
   String _formatDateTime(DateTime dateTime) {
-    final months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    final hour = dateTime.hour == 0
-        ? 12
-        : (dateTime.hour > 12 ? dateTime.hour - 12 : dateTime.hour);
-    final period = dateTime.hour >= 12 ? 'PM' : 'AM';
-    return '${months[dateTime.month - 1]} ${dateTime.day}, ${dateTime.year}, $hour:${dateTime.minute.toString().padLeft(2, '0')} $period';
+    return DateFormat('MMM d, yyyy, h:mm a').format(dateTime);
+  }
+
+  Future<DateTime?> _pickDateTime(DateTime initial) async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: initial,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (date == null) return null;
+
+    if (!mounted) return date;
+
+    final time = await showTimePicker(
+      context: context,
+      initialTime: TimeOfDay.fromDateTime(initial),
+    );
+    if (time == null) return date;
+
+    return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
   Future<void> _getLocationFor(TextEditingController controller) async {
@@ -1713,7 +1676,7 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   List<Widget> _buildTripDetailsSection() {
     return [
-      // Trip Number & Date Row
+      // Trip Number & Truck Number Row
       Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -1733,38 +1696,6 @@ class _AddEntryPageState extends State<AddEntryPage>
           ),
           const SizedBox(width: 16),
           Expanded(
-            child: TextFormField(
-              controller: _tripDateController.value,
-              decoration: const InputDecoration(
-                labelText: 'Date',
-                prefixIcon: Icon(Icons.calendar_today),
-              ),
-              readOnly: true,
-              onTap: () async {
-                final DateTime? pickedDate = await showDatePicker(
-                  context: context,
-                  initialDate: DateTime.now(),
-                  firstDate: DateTime(2000),
-                  lastDate: DateTime(2101),
-                );
-                if (pickedDate != null && mounted) {
-                  setState(() {
-                    _tripDateController.value.text = _formatDateTime(
-                      pickedDate,
-                    );
-                  });
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-
-      // Truck & Trailer
-      Row(
-        children: [
-          Expanded(
             child: CustomAutocompleteField(
               controller: _tripTruckNumberController.value,
               focusNode: _tripTruckFocusNode,
@@ -1778,6 +1709,39 @@ class _AddEntryPageState extends State<AddEntryPage>
       ),
       const SizedBox(height: 16),
 
+      // Date Row
+      Row(
+        children: [
+          Expanded(
+            child: TextFormField(
+              controller: _tripDateController.value,
+              decoration: const InputDecoration(
+                labelText: 'Date',
+                prefixIcon: Icon(Icons.calendar_today),
+              ),
+              readOnly: true,
+              onTap: () async {
+                final currentText = _tripDateController.value.text;
+                DateTime initialDate = DateTime.now();
+                try {
+                  initialDate = DateFormat(
+                    'MMM d, yyyy, h:mm a',
+                  ).parse(currentText);
+                } catch (_) {}
+
+                final DateTime? picked = await _pickDateTime(initialDate);
+                if (picked != null && mounted) {
+                  setState(() {
+                    _tripDateController.value.text = _formatDateTime(picked);
+                  });
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+      const SizedBox(height: 16),
+
       // Trailers
       ..._buildTrailerFields(),
 
@@ -1785,40 +1749,39 @@ class _AddEntryPageState extends State<AddEntryPage>
 
       // Border Crossing
       _buildBorderCrossingDropdown(),
-
-      const SizedBox(height: 16),
-
-      // Odometer
-      Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: _tripStartOdometerController.value,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'Start Odometer',
-                suffixText: _distanceUnit.value,
-                prefixIcon: const Icon(Icons.speed),
-              ),
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: TextFormField(
-              controller: _tripEndOdometerController.value,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'End Odometer',
-                suffixText: _distanceUnit.value,
-                prefixIcon: const Icon(Icons.speed),
-              ),
-              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-            ),
-          ),
-        ],
-      ),
     ];
+  }
+
+  Widget _buildOdometerFields() {
+    return Row(
+      children: [
+        Expanded(
+          child: TextFormField(
+            controller: _tripStartOdometerController.value,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'Start Odometer',
+              suffixText: _distanceUnit.value,
+              prefixIcon: const Icon(Icons.speed),
+            ),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: TextFormField(
+            controller: _tripEndOdometerController.value,
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: 'End Odometer',
+              suffixText: _distanceUnit.value,
+              prefixIcon: const Icon(Icons.speed),
+            ),
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          ),
+        ),
+      ],
+    );
   }
 
   List<Widget> _buildTrailerFields() {
@@ -1840,6 +1803,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                       _getVehicleSuggestions(v.text, filter: 'trailer'),
                 ),
               ),
+              const SizedBox(width: 4),
               if (_trailerControllers.length > 1)
                 IconButton(
                   icon: const Icon(Icons.remove_circle_outline),
@@ -2207,6 +2171,11 @@ class _AddEntryPageState extends State<AddEntryPage>
 
           const SizedBox(height: 24),
 
+          // Odometer
+          _buildOdometerFields(),
+
+          const SizedBox(height: 24),
+
           // Quick Actions Section (Capsules)
           // Moved from above to avoid duplication, now part of _buildAddTripTab
           // _buildQuickActions(), // Already handled above or should be inside form
@@ -2266,51 +2235,71 @@ class _AddEntryPageState extends State<AddEntryPage>
             ),
             readOnly: true,
             onTap: () async {
-              final DateTime? pickedDate = await showDatePicker(
-                context: context,
-                initialDate: DateTime.now(),
-                firstDate: DateTime(2000),
-                lastDate: DateTime(2101),
-              );
-              if (pickedDate != null) {
-                if (mounted) {
-                  final TimeOfDay? pickedTime = await showTimePicker(
-                    context: context,
-                    initialTime: TimeOfDay.now(),
-                  );
-                  if (pickedTime != null) {
-                    final DateTime fullDateTime = DateTime(
-                      pickedDate.year,
-                      pickedDate.month,
-                      pickedDate.day,
-                      pickedTime.hour,
-                      pickedTime.minute,
-                    );
-                    setState(() {
-                      _fuelDateController.value.text = _formatDateTime(
-                        fullDateTime,
-                      );
-                    });
-                  }
-                }
+              final currentText = _fuelDateController.value.text;
+              DateTime initialDate = DateTime.now();
+              try {
+                initialDate = DateFormat(
+                  'MMM d, yyyy, h:mm a',
+                ).parse(currentText);
+              } catch (_) {}
+
+              final DateTime? picked = await _pickDateTime(initialDate);
+              if (picked != null && mounted) {
+                setState(() {
+                  _fuelDateController.value.text = _formatDateTime(picked);
+                });
               }
             },
+          ),
+          const SizedBox(height: 16),
+
+          // Fuel Type Toggle
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment<bool>(
+                value: false,
+                label: Text('Truck Fuel'),
+                icon: Icon(Icons.local_shipping),
+              ),
+              ButtonSegment<bool>(
+                value: true,
+                label: Text('Reefer Fuel'),
+                icon: Icon(Icons.ac_unit),
+              ),
+            ],
+            selected: {_isReeferFuel.value},
+            onSelectionChanged: (Set<bool> newSelection) {
+              setState(() {
+                _isReeferFuel.value = newSelection.first;
+              });
+            },
+            showSelectedIcon: false,
           ),
           const SizedBox(height: 16),
 
           // Vehicle Selector
           DropdownMenu<String>(
             initialSelection: _selectedFuelVehicleId.value,
-            label: const Text('Vehicle'),
+            label: Text(_isReeferFuel.value ? 'Reefer Unit' : 'Truck'),
             expandedInsets: EdgeInsets.zero,
-            leadingIcon: const Icon(Icons.local_shipping),
+            leadingIcon: Icon(
+              _isReeferFuel.value ? Icons.ac_unit : Icons.local_shipping,
+            ),
             dropdownMenuEntries: _vehicles
-                .where((v) => v.vehicleType == 'truck')
+                .where(
+                  (v) =>
+                      v.vehicleType ==
+                      (_isReeferFuel.value ? 'trailer' : 'truck'),
+                )
                 .map(
                   (v) => DropdownMenuEntry<String>(
                     value: v.id,
                     label: v.truckNumber,
-                    leadingIcon: const Icon(Icons.local_shipping),
+                    leadingIcon: Icon(
+                      _isReeferFuel.value
+                          ? Icons.ac_unit
+                          : Icons.local_shipping,
+                    ),
                   ),
                 )
                 .toList(),
@@ -2397,8 +2386,8 @@ class _AddEntryPageState extends State<AddEntryPage>
           ),
           const SizedBox(height: 16),
 
-          // DEF Fuel (Reefer only)
-          if (_isReeferFuel.value) ...[
+          // DEF Fuel (Truck only)
+          if (!_isReeferFuel.value) ...[
             Row(
               children: [
                 Expanded(
@@ -2468,41 +2457,6 @@ class _AddEntryPageState extends State<AddEntryPage>
               ],
             ),
           ),
-          const SizedBox(height: 24),
-
-          // Submit Button
-          M3SpringButton(
-            onTap: _isSaving
-                ? null
-                : _validateAndSaveFuel, // Call the save function
-            child: FilledButton(
-              onPressed: null,
-              style: FilledButton.styleFrom(
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                foregroundColor: Theme.of(context).colorScheme.onPrimary,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(context.tokens.shapeL),
-                ),
-              ),
-              child: _isSaving
-                  ? const SizedBox(
-                      width: 16,
-                      height: 16,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        strokeCap: StrokeCap.round,
-                      ),
-                    )
-                  : Text(
-                      'Save Fuel Entry',
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                        color: Theme.of(context).colorScheme.onPrimary,
-                      ),
-                    ),
-            ),
-          ),
         ],
       ),
     );
@@ -2520,24 +2474,12 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   // Helper function to build Add/Remove buttons for dynamic lists
   Widget _buildAddButton(VoidCallback onPressed, {String? tooltip}) {
-    return Tooltip(
-      message: tooltip ?? 'Add New',
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Theme.of(context).colorScheme.primary),
-          ),
-          child: Icon(
-            Icons.add,
-            size: 20,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
+    return IconButton(
+      tooltip: tooltip ?? 'Add New',
+      onPressed: onPressed,
+      icon: Icon(
+        Icons.add_circle_outline,
+        color: Theme.of(context).colorScheme.primary,
       ),
     );
   }
@@ -2573,56 +2515,190 @@ class _AddEntryPageState extends State<AddEntryPage>
 
   // Validation and Save functions (Placeholders)
   Future<void> _validateAndSaveTrip() async {
-    // Add trip validation logic here
-    if (!_isSaving) {
-      setState(() => _isSaving = true);
-      try {
-        // Example: Save trip data
-        await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Trip Saved!')));
-        }
-        if (mounted) {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/dashboard');
-          }
-        }
-      } catch (e) {
-        if (mounted) ErrorHandler.showError(context, e);
-      } finally {
-        if (mounted) setState(() => _isSaving = false);
+    if (_isSaving) return;
+
+    if (_tripNumberController.value.text.isEmpty) {
+      ErrorHandler.showError(context, 'Trip number is required');
+      return;
+    }
+
+    if (_tripTruckNumberController.value.text.isEmpty) {
+      ErrorHandler.showError(context, 'Truck number is required');
+      return;
+    }
+
+    final pickups = _pickupControllers
+        .map((c) => c.value.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (pickups.isEmpty) {
+      ErrorHandler.showError(
+        context,
+        'At least one pickup location is required',
+      );
+      return;
+    }
+
+    final deliveries = _deliveryControllers
+        .map((c) => c.value.text.trim())
+        .where((t) => t.isNotEmpty)
+        .toList();
+    if (deliveries.isEmpty) {
+      ErrorHandler.showError(
+        context,
+        'At least one delivery location is required',
+      );
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final tripDate = DateFormat(
+        'MMM d, yyyy, h:mm a',
+      ).parse(_tripDateController.value.text);
+
+      final newTrip = Trip(
+        id: widget.editingTrip?.id,
+        userId: userId,
+        companyId: _companyId,
+        vehicleId: _selectedTripVehicleId.value,
+        tripNumber: _tripNumberController.value.text.trim(),
+        truckNumber: _tripTruckNumberController.value.text.trim(),
+        trailers: _trailerControllers
+            .map((c) => c.value.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+        tripDate: tripDate,
+        pickupLocations: pickups,
+        deliveryLocations: deliveries,
+        pickupTimes: _pickupTimes,
+        deliveryTimes: _deliveryTimes,
+        pickupCompleted: _pickupCompleted,
+        deliveryCompleted: _deliveryCompleted,
+        pickupDetention: _pickupDetention,
+        deliveryDetention: _deliveryDetention,
+        startOdometer: double.tryParse(_tripStartOdometerController.value.text),
+        endOdometer: double.tryParse(_tripEndOdometerController.value.text),
+        distanceUnit: _distanceUnit.value,
+        borderCrossing:
+            _selectedBorderCrossing.value ??
+            _borderCrossingController.value.text.trim(),
+        notes: _tripNotesController.value.text.trim(),
+        isEmptyLeg: _isEmptyLeg.value,
+        commodity: _commodityController.value.text.trim(),
+        weight: double.tryParse(_weightController.value.text),
+        weightUnit: _weightUnit.value,
+        pieces: int.tryParse(_piecesController.value.text),
+        referenceNumbers: _referenceNumberControllers
+            .map((c) => c.value.text.trim())
+            .where((t) => t.isNotEmpty)
+            .toList(),
+      );
+
+      if (widget.editingTrip != null) {
+        await TripRepository.updateTrip(newTrip);
+      } else {
+        await TripRepository.createTrip(newTrip);
       }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.editingTrip != null ? 'Trip Updated!' : 'Trip Saved!',
+            ),
+          ),
+        );
+        if (context.canPop()) {
+          context.pop(true);
+        } else {
+          context.go('/dashboard');
+        }
+      }
+    } catch (e) {
+      if (mounted) ErrorHandler.showError(context, e);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 
   Future<void> _validateAndSaveFuel() async {
-    // Add fuel validation logic here
-    if (!_isSaving) {
-      setState(() => _isSaving = true);
-      try {
-        // Example: Save fuel data
-        await Future.delayed(const Duration(seconds: 1)); // Simulate API call
-        if (mounted) {
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text('Fuel Entry Saved!')));
-        }
-        if (mounted) {
-          if (context.canPop()) {
-            context.pop();
-          } else {
-            context.go('/dashboard');
-          }
-        }
-      } catch (e) {
-        if (mounted) ErrorHandler.showError(context, e);
-      } finally {
-        if (mounted) setState(() => _isSaving = false);
+    if (_isSaving) return;
+
+    if (_fuelQuantityController.value.text.isEmpty) {
+      ErrorHandler.showError(context, 'Fuel quantity is required');
+      return;
+    }
+
+    if (_fuelPriceController.value.text.isEmpty) {
+      ErrorHandler.showError(context, 'Fuel price is required');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final userId = Supabase.instance.client.auth.currentUser?.id;
+      if (userId == null) throw Exception('User not authenticated');
+
+      final fuelDate = DateFormat(
+        'MMM d, yyyy, h:mm a',
+      ).parse(_fuelDateController.value.text);
+
+      final newFuel = FuelEntry(
+        id: widget.editingFuel?.id,
+        userId: userId,
+        companyId: _companyId,
+        vehicleId: _selectedFuelVehicleId.value,
+        fuelDate: fuelDate,
+        fuelType: _isReeferFuel.value ? 'reefer' : 'truck',
+        truckNumber: _isReeferFuel.value
+            ? null
+            : _truckNumberController.value.text.trim(),
+        reeferNumber: _isReeferFuel.value
+            ? _truckNumberController.value.text.trim()
+            : null,
+        location: _locationController.value.text.trim(),
+        odometerReading: double.tryParse(_odometerController.value.text),
+        fuelQuantity:
+            double.tryParse(_fuelQuantityController.value.text) ?? 0.0,
+        pricePerUnit: double.tryParse(_fuelPriceController.value.text) ?? 0.0,
+        fuelUnit: _fuelUnit.value,
+        distanceUnit: _distanceUnit.value,
+        currency: _currency.value,
+        defQuantity: double.tryParse(_defQuantityController.value.text) ?? 0.0,
+        defPrice: double.tryParse(_defPriceController.value.text) ?? 0.0,
+        defFromYard: _defFromYard.value,
+      );
+
+      if (widget.editingFuel != null) {
+        await FuelRepository.updateFuelEntry(newFuel);
+      } else {
+        await FuelRepository.createFuelEntry(newFuel);
       }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              widget.editingFuel != null
+                  ? 'Fuel Entry Updated!'
+                  : 'Fuel Entry Saved!',
+            ),
+          ),
+        );
+        if (context.canPop()) {
+          context.pop(true);
+        } else {
+          context.go('/dashboard');
+        }
+      }
+    } catch (e) {
+      if (mounted) ErrorHandler.showError(context, e);
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
     }
   }
 }

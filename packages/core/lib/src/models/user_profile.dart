@@ -57,6 +57,7 @@ class UserProfile {
   final String? phone;
   final String? avatarUrl;
   final String? roleId; // New: FK to roles table
+  final String? companyId;
   final UserRole role; // Legacy: Keep for backwards compat
   final bool isVerified;
   final DateTime? createdAt;
@@ -84,6 +85,7 @@ class UserProfile {
     this.licenseType,
     this.citizenship,
     this.fastId,
+    this.companyId,
     this.driverType = DriverType.companyDriver,
   });
 
@@ -111,6 +113,7 @@ class UserProfile {
       licenseType: json['license_type'] as String?,
       citizenship: json['citizenship'] as String?,
       fastId: json['fast_id'] as String?,
+      companyId: json['company_id'] as String?,
       driverType: _parseDriverType(json['driver_type'] as String?),
     );
   }
@@ -131,6 +134,7 @@ class UserProfile {
       'license_type': licenseType,
       'citizenship': citizenship,
       'fast_id': fastId,
+      'company_id': companyId,
       'driver_type': driverType.name,
     };
   }
@@ -169,6 +173,7 @@ class UserProfile {
     String? licenseType,
     String? citizenship,
     String? fastId,
+    String? companyId,
     DriverType? driverType,
   }) {
     return UserProfile(
@@ -187,6 +192,7 @@ class UserProfile {
       licenseType: licenseType ?? this.licenseType,
       citizenship: citizenship ?? this.citizenship,
       fastId: fastId ?? this.fastId,
+      companyId: companyId ?? this.companyId,
       driverType: driverType ?? this.driverType,
     );
   }

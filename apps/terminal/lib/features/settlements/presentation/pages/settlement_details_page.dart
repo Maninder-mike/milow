@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:terminal/features/settlements/domain/models/driver_settlement.dart';
 import '../../domain/models/settlement_item.dart';
 import '../providers/settlement_providers.dart';
 
@@ -24,17 +25,17 @@ class SettlementDetailsPage extends ConsumerWidget {
             CommandBarButton(
               icon: const Icon(FluentIcons.print_24_regular),
               label: const Text('Print'),
-              onPressed: () {},
+              onPressed: () => _showNotImplemented(context, 'Print'),
             ),
             CommandBarButton(
               icon: const Icon(FluentIcons.send_24_regular),
               label: const Text('Email'),
-              onPressed: () {},
+              onPressed: () => _showNotImplemented(context, 'Email'),
             ),
             CommandBarButton(
               icon: const Icon(FluentIcons.arrow_download_24_regular),
               label: const Text('Export PDF'),
-              onPressed: () {},
+              onPressed: () => _showNotImplemented(context, 'Export PDF'),
             ),
           ],
         ),
@@ -75,32 +76,7 @@ class SettlementDetailsPage extends ConsumerWidget {
                             ),
                           ],
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 6,
-                          ),
-                          decoration: BoxDecoration(
-                            color: settlement.status.name == 'paid'
-                                ? Colors.green.withValues(alpha: 0.1)
-                                : Colors.orange.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(4),
-                            border: Border.all(
-                              color: settlement.status.name == 'paid'
-                                  ? Colors.green
-                                  : Colors.orange,
-                            ),
-                          ),
-                          child: Text(
-                            settlement.status.name.toUpperCase(),
-                            style: TextStyle(
-                              color: settlement.status.name == 'paid'
-                                  ? Colors.green
-                                  : Colors.orange,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                        _StatusBadgeLarge(status: settlement.status),
                       ],
                     ),
                   ),
@@ -224,7 +200,7 @@ class SettlementDetailsPage extends ConsumerWidget {
                                   currencyFormat.format(item.amount),
                                   textAlign: TextAlign.end,
                                   style: const TextStyle(
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
@@ -316,7 +292,7 @@ class SettlementDetailsPage extends ConsumerWidget {
                                   textAlign: TextAlign.end,
                                   style: TextStyle(
                                     color: Colors.red,
-                                    fontWeight: FontWeight.w500,
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
                               ),
@@ -327,6 +303,55 @@ class SettlementDetailsPage extends ConsumerWidget {
                     ],
                   ),
                 ),
+
+                // Status Actions
+                if (settlement.status != SettlementStatus.voided &&
+                    settlement.status != SettlementStatus.paid) ...[
+                  const SizedBox(height: 48),
+                  const Divider(),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Settlement Actions',
+                    style: FluentTheme.of(context).typography.subtitle,
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      if (settlement.status == SettlementStatus.draft)
+                        FilledButton(
+                          onPressed: () => _updateStatus(
+                            context,
+                            ref,
+                            settlement,
+                            SettlementStatus.approved,
+                          ),
+                          child: const Text('Approve Settlement'),
+                        ),
+                      if (settlement.status == SettlementStatus.approved)
+                        FilledButton(
+                          onPressed: () => _updateStatus(
+                            context,
+                            ref,
+                            settlement,
+                            SettlementStatus.paid,
+                          ),
+                          child: const Text('Mark as Paid'),
+                        ),
+                      const SizedBox(width: 12),
+                      Button(
+                        onPressed: () => _updateStatus(
+                          context,
+                          ref,
+                          settlement,
+                          SettlementStatus.voided,
+                        ),
+                        child: const Text('Void Settlement'),
+                      ),
+                    ],
+                  ),
+                ],
+
+                const SizedBox(height: 48),
               ],
             ),
           );
@@ -335,6 +360,63 @@ class SettlementDetailsPage extends ConsumerWidget {
         error: (e, s) => Center(child: Text('Error: $e')),
       ),
     );
+  }
+
+  void _showNotImplemented(BuildContext context, String action) {
+    displayInfoBar(
+      context,
+      builder: (context, close) {
+        return InfoBar(
+          title: Text('$action not implemented'),
+          content: const Text(
+            'This feature will be available in a future update.',
+          ),
+          severity: InfoBarSeverity.warning,
+          onClose: close,
+        );
+      },
+    );
+  }
+
+  Future<void> _updateStatus(
+    BuildContext context,
+    WidgetRef ref,
+    DriverSettlement settlement,
+    SettlementStatus status,
+  ) async {
+    try {
+      await ref
+          .read(settlementControllerProvider.notifier)
+          .updateStatus(settlement.id, settlement.driverId, status);
+
+      if (context.mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Status updated'),
+              content: Text('Settlement is now ${status.name}.'),
+              severity: InfoBarSeverity.success,
+              onClose: close,
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (context.mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) {
+            return InfoBar(
+              title: const Text('Update failed'),
+              content: Text(e.toString()),
+              severity: InfoBarSeverity.error,
+              onClose: close,
+            );
+          },
+        );
+      }
+    }
   }
 
   Widget _buildSummaryCard(
@@ -369,6 +451,48 @@ class SettlementDetailsPage extends ConsumerWidget {
                 : theme.typography.title,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _StatusBadgeLarge extends StatelessWidget {
+  final SettlementStatus status;
+
+  const _StatusBadgeLarge({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    Color color;
+    switch (status) {
+      case SettlementStatus.draft:
+        color = Colors.orange;
+        break;
+      case SettlementStatus.approved:
+        color = Colors.blue;
+        break;
+      case SettlementStatus.paid:
+        color = Colors.green;
+        break;
+      case SettlementStatus.voided:
+        color = Colors.grey;
+        break;
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Text(
+        status.name.toUpperCase(),
+        style: TextStyle(
+          color: color,
+          fontSize: 14,
+          fontWeight: FontWeight.bold,
+        ),
       ),
     );
   }

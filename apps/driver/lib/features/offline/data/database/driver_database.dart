@@ -13,6 +13,7 @@ part 'driver_database.g.dart';
 class Trips extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text().nullable().named('user_id')();
+  TextColumn get companyId => text().nullable().named('company_id')();
   TextColumn get vehicleId => text().nullable().named('vehicle_id')();
   TextColumn get tripNumber => text().named('trip_number')();
   TextColumn get truckNumber => text().named('truck_number')();
@@ -69,6 +70,7 @@ class Trips extends Table {
 class FuelEntries extends Table {
   TextColumn get id => text()();
   TextColumn get userId => text().nullable().named('user_id')();
+  TextColumn get companyId => text().nullable().named('company_id')();
   TextColumn get vehicleId => text().nullable().named('vehicle_id')();
   DateTimeColumn get fuelDate => dateTime().named('fuel_date')();
   TextColumn get fuelType =>
@@ -305,7 +307,7 @@ class DriverDatabase extends _$DriverDatabase {
   DriverDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   @override
   MigrationStrategy get migration {
@@ -383,6 +385,14 @@ class DriverDatabase extends _$DriverDatabase {
             ')',
           );
         }
+        if (from < 12) {
+          // Schema v12: Add company_id to trips and fuel_entries
+          await m.addColumn(trips, trips.companyId as GeneratedColumn<Object>);
+          await m.addColumn(
+            fuelEntries,
+            fuelEntries.companyId as GeneratedColumn<Object>,
+          );
+        }
       },
     );
   }
@@ -391,7 +401,7 @@ class DriverDatabase extends _$DriverDatabase {
     return LazyDatabase(() async {
       final dbFolder = await getApplicationDocumentsDirectory();
       final file = File(p.join(dbFolder.path, 'driver_offline.db'));
-      return NativeDatabase(file);
+      return NativeDatabase.createInBackground(file);
     });
   }
 }
