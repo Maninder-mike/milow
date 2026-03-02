@@ -146,6 +146,15 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: BoxDecoration(
+                                      color: driver.driverStatus.color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
                                   Text(
                                     driver.fullName ?? 'Unknown',
                                     style: TextStyle(
@@ -156,13 +165,9 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                                   ),
                                   const SizedBox(width: 4),
                                   IconButton(
-                                    icon: Icon(
+                                    icon: const Icon(
                                       FluentIcons.chrome_close,
-                                      size:
-                                          widget.load.status ==
-                                              LoadStatus.assigned
-                                          ? 12
-                                          : 12,
+                                      size: 12,
                                     ),
                                     onPressed: () {
                                       setState(() {
@@ -185,7 +190,29 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                           .map((driver) {
                             return AutoSuggestBoxItem<String>(
                               value: driver.id,
-                              label: driver.fullName ?? 'Unknown Driver',
+                              label: '${driver.fullName} (${driver.driverStatus.label})',
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: driver.driverStatus.color,
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(driver.fullName ?? 'Unknown Driver'),
+                                  const Spacer(),
+                                  Text(
+                                    driver.driverStatus.label,
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      color: FluentTheme.of(context).resources.textFillColorSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             );
                           })
                           .toList(),

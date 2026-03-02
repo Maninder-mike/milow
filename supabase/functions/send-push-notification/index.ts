@@ -62,6 +62,7 @@ serve(async (req) => {
     }
 
     // 3. Get Access Token for FCM HTTP v1
+    // Note: FIREBASE_SERVICE_ACCOUNT_KEY must be a JSON string in Supabase Vault
     const serviceAccount = JSON.parse(Deno.env.get('FIREBASE_SERVICE_ACCOUNT_KEY') || '{}')
     const jwt = new JWT({
       email: serviceAccount.client_email,

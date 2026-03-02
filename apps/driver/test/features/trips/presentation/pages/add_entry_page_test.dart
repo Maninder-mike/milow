@@ -10,6 +10,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/services/sync_queue_service.dart';
+import 'package:milow_core/milow_core.dart';
 import 'package:provider/provider.dart';
 
 class MockSupabaseClient extends Mock implements SupabaseClient {}
@@ -22,6 +24,8 @@ class MockPostgrestFilterBuilder extends Mock
     implements PostgrestFilterBuilder<List<Map<String, dynamic>>> {}
 
 class MockUser extends Mock implements User {}
+
+class MockSyncQueueService extends Mock implements SyncQueueService {}
 
 class FakePostgrestTransformBuilder<T> extends Fake
     implements PostgrestTransformBuilder<T> {
@@ -40,6 +44,7 @@ void main() {
   late MockSupabaseQueryBuilder mockQueryBuilder;
   late MockPostgrestFilterBuilder mockFilterBuilder;
   late MockUser mockUser;
+  late MockSyncQueueService mockSyncQueueService;
   // ignore: unused_local_variable
   late Directory tempDir;
 
@@ -59,15 +64,23 @@ void main() {
       anonKey: 'dummy-key',
     );
 
-    registerFallbackValue(Uri.parse('http://localhost'));
+    // Optimize NetworkClient for tests to fail fast and avoid hangs
+    NetworkClientConfig.defaultConfig = NetworkClientConfig.test;
   });
 
-  setUp(() {
+  setUp(() async {
     mockSupabaseClient = MockSupabaseClient();
     mockGoTrueClient = MockGoTrueClient();
     mockQueryBuilder = MockSupabaseQueryBuilder();
     mockFilterBuilder = MockPostgrestFilterBuilder();
     mockUser = MockUser();
+    mockSyncQueueService = MockSyncQueueService();
+
+    // Inject Mock Sync Queue
+    SyncQueueService.instance = mockSyncQueueService;
+    when(() => mockSyncQueueService.pendingOperations).thenReturn([]);
+
+    registerFallbackValue(Uri.parse('http://localhost'));
 
     when(() => mockSupabaseClient.auth).thenReturn(mockGoTrueClient);
     when(() => mockGoTrueClient.currentUser).thenReturn(mockUser);
@@ -111,7 +124,10 @@ void main() {
         ),
       ],
       child: MaterialApp(
-        theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
+        theme: ThemeData(
+          useMaterial3: true,
+          extensions: const [DesignTokens.light],
+        ),
         home: AddEntryPage(supabaseClient: mockSupabaseClient),
       ),
     );
@@ -233,7 +249,10 @@ void main() {
 
     // Pickup Add button is index 2 (index 0: Trailer, index 1: Border Crossing)
     final addIconFinder = find
-        .descendant(of: tripTab, matching: find.byIcon(Icons.add_circle_outline))
+        .descendant(
+          of: tripTab,
+          matching: find.byIcon(Icons.add_circle_outline),
+        )
         .at(2);
 
     await tester.dragUntilVisible(
@@ -259,7 +278,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove_circle_outline)),
+      find.descendant(
+        of: tripTab,
+        matching: find.byIcon(Icons.remove_circle_outline),
+      ),
       findsNothing,
     );
 
@@ -287,7 +309,10 @@ void main() {
 
     // Delivery Add button is index 3
     final addIconFinder = find
-        .descendant(of: tripTab, matching: find.byIcon(Icons.add_circle_outline))
+        .descendant(
+          of: tripTab,
+          matching: find.byIcon(Icons.add_circle_outline),
+        )
         .at(3);
 
     await tester.dragUntilVisible(
@@ -310,7 +335,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(of: tripTab, matching: find.byIcon(Icons.remove_circle_outline)),
+      find.descendant(
+        of: tripTab,
+        matching: find.byIcon(Icons.remove_circle_outline),
+      ),
       findsNothing,
     );
 

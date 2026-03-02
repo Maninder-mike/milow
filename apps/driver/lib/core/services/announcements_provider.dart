@@ -13,8 +13,8 @@ class Announcement {
     required this.id,
     required this.title,
     required this.body,
-    this.companyId,
     required this.createdAt,
+    this.companyId,
   });
 
   factory Announcement.fromJson(Map<String, dynamic> json) {
@@ -36,7 +36,8 @@ class AnnouncementsProvider extends ChangeNotifier {
 
   List<Announcement> get announcements => _announcements;
   bool get isLoading => _isLoading;
-  Announcement? get latestAnnouncement => _announcements.isNotEmpty ? _announcements.first : null;
+  Announcement? get latestAnnouncement =>
+      _announcements.isNotEmpty ? _announcements.first : null;
 
   void init(String? companyId) {
     if (companyId == null) {
@@ -56,15 +57,20 @@ class AnnouncementsProvider extends ChangeNotifier {
         .stream(primaryKey: ['id'])
         .eq('company_id', companyId)
         .order('created_at', ascending: false)
-        .listen((data) {
-          _announcements = data.map((json) => Announcement.fromJson(json)).toList();
-          _isLoading = false;
-          notifyListeners();
-        }, onError: (error) {
-          debugPrint('Error in announcements stream: $error');
-          _isLoading = false;
-          notifyListeners();
-        });
+        .listen(
+          (data) {
+            _announcements = data
+                .map((json) => Announcement.fromJson(json))
+                .toList();
+            _isLoading = false;
+            notifyListeners();
+          },
+          onError: (error) {
+            debugPrint('Error in announcements stream: $error');
+            _isLoading = false;
+            notifyListeners();
+          },
+        );
   }
 
   Future<void> _fetchAnnouncements(String companyId) async {
@@ -75,7 +81,9 @@ class AnnouncementsProvider extends ChangeNotifier {
           .eq('company_id', companyId)
           .order('created_at', ascending: false);
 
-      _announcements = (response as List).map((json) => Announcement.fromJson(json)).toList();
+      _announcements = (response as List)
+          .map((json) => Announcement.fromJson(json))
+          .toList();
       _isLoading = false;
       notifyListeners();
     } catch (e) {

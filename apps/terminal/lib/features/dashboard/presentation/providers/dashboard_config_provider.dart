@@ -12,6 +12,7 @@ enum DashboardWidgetType {
   loadVolumeTrend,
   criticalAlerts,
   operationalMap,
+  announcements,
 }
 
 @riverpod

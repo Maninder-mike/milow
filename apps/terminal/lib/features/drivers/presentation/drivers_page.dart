@@ -241,7 +241,11 @@ class _OverviewTab extends ConsumerWidget {
             ],
 
             // 3. KPI Cards Row
-            _buildKPIRow(context, driverDetail.assignedVehicle),
+            _buildKPIRow(
+              context,
+              driverDetail.assignedVehicle,
+              driverDetail.profile,
+            ),
             const SizedBox(height: 24),
 
             // 4. Main Content Grid (Activity Feed vs Details Sidebar)
@@ -478,7 +482,11 @@ class _OverviewTab extends ConsumerWidget {
     );
   }
 
-  Widget _buildKPIRow(BuildContext context, Map<String, dynamic>? vehicle) {
+  Widget _buildKPIRow(
+    BuildContext context,
+    Map<String, dynamic>? vehicle,
+    UserProfile? detailedProfile,
+  ) {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Use Grid or Wrap based on width
@@ -492,6 +500,8 @@ class _OverviewTab extends ConsumerWidget {
             : 'None';
         final vehicleType = vehicle != null ? vehicle['vehicle_type'] : null;
 
+        final status = detailedProfile?.driverStatus ?? DriverStatus.offDuty;
+
         return Wrap(
           spacing: 16,
           runSpacing: 16,
@@ -500,10 +510,10 @@ class _OverviewTab extends ConsumerWidget {
               width: (width - (columns - 1) * 16) / columns,
               child: _buildKPIStatCard(
                 context,
-                'Current Status',
-                'Active Trip',
+                'Availability',
+                status.label,
                 FluentIcons.check_mark,
-                Colors.green,
+                status.color,
               ),
             ),
             SizedBox(

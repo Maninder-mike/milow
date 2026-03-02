@@ -32,7 +32,7 @@ class DocumentCaptureButton extends StatelessWidget {
   List<TripDocumentType> _getDocumentTypes() {
     if (stopType == StopType.pickup) {
       return [
-        TripDocumentType.billOfLading,
+        TripDocumentType.billOfLading, // Smart default for Pickups
         TripDocumentType.proofOfPickup,
         TripDocumentType.scaleTicket,
         TripDocumentType.commercialInvoice,
@@ -40,7 +40,7 @@ class DocumentCaptureButton extends StatelessWidget {
       ];
     } else {
       return [
-        TripDocumentType.proofOfDelivery,
+        TripDocumentType.proofOfDelivery, // Smart default for Deliveries
         TripDocumentType.billOfLading,
         TripDocumentType.scaleTicket,
         TripDocumentType.other,

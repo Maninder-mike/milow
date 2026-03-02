@@ -11,6 +11,7 @@ class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onInvoicesTap;
   final VoidCallback onCrmTap;
   final VoidCallback onSettlementsTap;
+  final VoidCallback onInboxTap;
 
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
@@ -27,6 +28,7 @@ class PrimarySidebar extends ConsumerWidget {
     required this.onInvoicesTap,
     required this.onCrmTap,
     required this.onSettlementsTap,
+    required this.onInboxTap,
     required this.onProfileTap,
     required this.onDashboardTap,
     required this.onAnalyticsTap,
@@ -108,6 +110,16 @@ class PrimarySidebar extends ConsumerWidget {
                       label: 'CRM',
                       onTap: onCrmTap,
                       isActive: currentLocation.startsWith('/crm'),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Inbox (Announcements & Messages)
+                    _buildNavItem(
+                      context,
+                      FluentIcons.mail_24_regular,
+                      label: 'Inbox',
+                      onTap: onInboxTap,
+                      isActive: currentLocation.startsWith('/inbox'),
                     ),
                     const SizedBox(height: 8),
 

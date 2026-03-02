@@ -18,6 +18,8 @@ import 'package:milow/features/offline/data/database/driver_database.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/sync_queue_service.dart';
 import 'package:milow/core/services/trip_service.dart';
+import 'package:milow/core/services/logging_service.dart';
+import 'package:milow/core/services/local_document_store.dart';
 
 /// Repository for trips with offline-first support.
 ///
@@ -376,7 +378,7 @@ class TripRepository {
     }, operationName: 'downloadDocument');
   }
 
-  /// Resolve trip ID from trip number
+  /// Resolve trip ID from trip number, checking local cache first
   static Future<Result<String?>> resolveTripId(
     String tripNumber, {
     SupabaseClient? supabaseClient,
@@ -384,6 +386,26 @@ class TripRepository {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) return const Left(UnauthorizedFailure());
+
+    // 1. Check local cache first
+    try {
+      final query = driverDatabase.select(driverDatabase.trips)
+        ..where((t) => t.tripNumber.equals(tripNumber));
+      final localTrip = await query.getSingleOrNull();
+      if (localTrip != null && localTrip.id.isNotEmpty) {
+        debugPrint(
+          '[TripRepository] Resolved trip $tripNumber locally: ${localTrip.id}',
+        );
+        return Right(localTrip.id);
+      }
+    } catch (e) {
+      debugPrint('[TripRepository] Local resolve warning: $e');
+    }
+
+    // 2. Fallback to server if online
+    if (!connectivityService.isOnline) {
+      return const Right(null);
+    }
 
     return _getNetworkClient(client).query(() async {
       final response = await client
@@ -407,19 +429,50 @@ class TripRepository {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) return const Left(UnauthorizedFailure());
+    if (tripId == null) {
+      return const Left(
+        ValidationFailure(
+          'A valid trip could not be found. Please ensure the trip is synced before attaching documents.',
+        ),
+      );
+    }
 
     // Logic:
     // 1. Generate path/filename
-    // 2. If Offline -> Queue
-    // 3. If Online -> Upload & Insert
+    // 2. Save locally to LocalDocumentStore as pendingUpload
+    // 3. If Offline -> Queue
+    // 4. If Online -> Upload & Insert
 
-    final dateStr = DateFormat('yyyyMMdd').format(DateTime.now());
-    // Format: BOL-TR12345-20240401.pdf
+    final dateStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    // Format: BOL-TR12345-20240401_134530.pdf
     final shortType = type.name.toUpperCase().substring(0, 3);
     final fileName = '$shortType-$tripNumber-$dateStr.pdf';
-    final folderId = tripId ?? tripNumber;
+    final folderId = tripId;
     final storagePath = '$userId/$folderId/$fileName';
     const mimeType = 'application/pdf';
+
+    // Generate local ID and save as pending upload
+    final localId = const Uuid().v4();
+    final localDoc = TripDocument(
+      id: localId,
+      tripId: tripId,
+      tripNumber: tripNumber,
+      userId: userId,
+      companyId: null, // Depending on if company id is retrievable here
+      documentType: type,
+      filePath: storagePath,
+      fileName: fileName,
+      fileSize: await file.length(),
+      mimeType: mimeType,
+      notes: notes,
+      description: notes,
+      status: DocumentStatus.pendingUpload,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+
+    // Persist immediately for UI visibility
+    await LocalDocumentStore.put(localDoc);
 
     if (!connectivityService.isOnline) {
       // Offline
@@ -469,24 +522,69 @@ class TripRepository {
           .upload(
             storagePath,
             file,
-            fileOptions: const FileOptions(
-              contentType: mimeType,
-              upsert: false,
+            fileOptions: const FileOptions(contentType: mimeType, upsert: true),
+          );
+
+      try {
+        await client.from('trip_documents').insert({
+          'trip_id': tripId,
+          'user_id': userId,
+          'document_type': type.value,
+          'file_path': storagePath,
+          'file_name': fileName,
+          'file_size': await file.length(),
+          'mime_type': mimeType,
+          'notes': notes,
+          'description': notes,
+          'object_key': type.name, // Simplified object key logic
+        });
+      } on PostgrestException catch (e) {
+        if (e.code == '23503') {
+          // Foreign key violation: local trip has not synced yet.
+          unawaited(
+            LoggingService.instance.warning(
+              'ScanDocument',
+              'Trip $tripId not synced to Supabase yet. Queuing document $fileName locally.',
             ),
           );
 
-      await client.from('trip_documents').insert({
-        'trip_id': tripId,
-        'user_id': userId,
-        'document_type': type.value,
-        'file_path': storagePath,
-        'file_name': fileName,
-        'file_size': await file.length(),
-        'mime_type': mimeType,
-        'notes': notes,
-        'description': notes,
-        'object_key': type.name,
-      });
+          final localId = _uuid.v4();
+          final appDocsDir = await getApplicationDocumentsDirectory();
+          final pendingDir = Directory('${appDocsDir.path}/pending_uploads');
+          if (!await pendingDir.exists()) {
+            await pendingDir.create(recursive: true);
+          }
+          final localFile = File('${pendingDir.path}/$fileName');
+          await file.copy(localFile.path);
+
+          final dbData = {
+            'trip_id': tripId,
+            'user_id': userId,
+            'document_type': type.value,
+            'file_path': storagePath,
+            'file_name': fileName,
+            'file_size': await file.length(),
+            'mime_type': mimeType,
+            'notes': notes,
+            'description': notes,
+            'object_key': type.name,
+          };
+
+          await syncQueueService.enqueue(
+            tableName: 'trip_documents',
+            operationType: 'upload_document',
+            payload: {
+              'local_file_path': localFile.path,
+              'storage_path': storagePath,
+              'db_data': dbData,
+              'mime_type': mimeType,
+            },
+            localId: localId,
+          );
+        } else {
+          rethrow;
+        }
+      }
     }, operationName: 'uploadDocument');
   }
 

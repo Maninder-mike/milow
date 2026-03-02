@@ -77,3 +77,42 @@ final activeChatMessagesProvider = Provider<List<Message>>((ref) {
     return false;
   }).toList();
 });
+
+final userProfileProvider = FutureProvider.family<UserProfile?, String>((
+  ref,
+  userId,
+) async {
+  final client = ref.watch(coreNetworkClientProvider).supabase;
+  final response = await client
+      .from('profiles')
+      .select()
+      .eq('id', userId)
+      .maybeSingle();
+
+  if (response == null) return null;
+  return UserProfile.fromJson(response);
+});
+
+final companyUsersProvider = FutureProvider<List<UserProfile>>((ref) async {
+  final client = ref.watch(coreNetworkClientProvider).supabase;
+  final myId = client.auth.currentUser?.id;
+  if (myId == null) return [];
+
+  final myProfile = await client
+      .from('profiles')
+      .select('company_id')
+      .eq('id', myId)
+      .single();
+
+  final companyId = myProfile['company_id'];
+  if (companyId == null) return [];
+
+  final response = await client
+      .from('profiles')
+      .select()
+      .eq('company_id', companyId)
+      .neq('id', myId)
+      .order('full_name');
+
+  return (response as List).map((json) => UserProfile.fromJson(json)).toList();
+});

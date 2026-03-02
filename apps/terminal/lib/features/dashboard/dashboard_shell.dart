@@ -248,6 +248,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                           onInvoicesTap: () => _navigateTo('/invoices'),
                           onCrmTap: () => _navigateTo('/crm'),
                           onSettlementsTap: () => _navigateTo('/settlements'),
+                          onInboxTap: () => _navigateTo('/inbox'),
 
                           onProfileTap: () => _navigateTo('/profile'),
                           onDashboardTap: () => _navigateTo('/dashboard'),

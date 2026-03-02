@@ -5,6 +5,7 @@ import 'package:milow/features/offline/data/database/driver_database.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
+import 'package:milow/core/services/notification_service.dart';
 
 class MessagingProvider extends ChangeNotifier {
   final DriverDatabase _db;
@@ -94,7 +95,25 @@ class MessagingProvider extends ChangeNotifier {
               if (message.senderId == myId ||
                   message.receiverId == myId ||
                   message.loadId != null) {
+                final isNew = !inbox.any((m) => m.id == message.id);
                 await _saveToLocal(message, isSynced: true);
+
+                // Trigger local notification if it's a new message from someone else
+                if (isNew && message.senderId != myId) {
+                  unawaited(
+                    notificationService.showNotification(
+                      id: message.id.hashCode,
+                      title:
+                          'New Message from ${message.senderName ?? 'Someone'}',
+                      body: message.content,
+                      payload: {
+                        'type': 'new_message',
+                        'loadId': message.loadId,
+                      }.toString(),
+                      type: NotificationType.message,
+                    ),
+                  );
+                }
               }
             } catch (e) {
               debugPrint('Error parsing realtime message: $e');

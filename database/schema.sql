@@ -354,7 +354,13 @@ create policy "Admins can update all profiles" on profiles
 -- TRIPS (Updated Policy)
 drop policy if exists "Users can view own trips" on driver_trips;
 create policy "Users can view own trips" on driver_trips 
-  for select to authenticated using (auth.uid() = user_id);
+  for select to authenticated 
+  using (
+    auth.uid() = user_id OR 
+    (company_id IS NOT NULL AND company_id IN (
+        SELECT company_id FROM public.profiles WHERE id = auth.uid()
+    ))
+  );
 
 drop policy if exists "Users can insert own trips" on driver_trips;
 create policy "Users can insert own trips" on driver_trips 
@@ -372,7 +378,13 @@ create policy "Users can delete own trips" on driver_trips
 -- FUEL ENTRIES (Updated Policy)
 drop policy if exists "Users can view own fuel entries" on fuel_entries;
 create policy "Users can view own fuel entries" on fuel_entries 
-  for select to authenticated using (auth.uid() = user_id);
+  for select to authenticated 
+  using (
+    auth.uid() = user_id OR 
+    (company_id IS NOT NULL AND company_id IN (
+        SELECT company_id FROM public.profiles WHERE id = auth.uid()
+    ))
+  );
 
 drop policy if exists "Users can insert own fuel entries" on fuel_entries;
 create policy "Users can insert own fuel entries" on fuel_entries 
@@ -684,10 +696,6 @@ create trigger set_trip_company_id_trigger
   before insert on public.driver_trips
   for each row execute procedure public.set_company_id();
 
-drop trigger if exists set_fuel_entry_company_id_trigger on public.fuel_entries;
-create trigger set_fuel_entry_company_id_trigger
-  before insert on public.fuel_entries
-  for each row execute procedure public.set_company_id();
 -- 2.11 PICKUPS
 create table if not exists public.pickups (
     id uuid default gen_random_uuid() primary key,

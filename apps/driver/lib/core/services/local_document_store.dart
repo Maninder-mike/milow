@@ -64,11 +64,27 @@ class LocalDocumentStore {
 
   /// Save multiple documents (usually from a sync/fetch)
   static Future<void> putAll(List<TripDocument> documents) async {
-    // Note: We might want to be careful not to overwrite "Pending" local docs
-    // if we implement a local-only indicator. For now, full sync.
+    // Note: We want to be careful not to overwrite "Pending Upload" local docs
+    // with server sync data.
     final Map<String, String> data = {};
     for (final doc in documents) {
       if (doc.id != null) {
+        // Check if we already have this document locally in a pending/failed state
+        final existingStr = _ensureBox.get(doc.id);
+        if (existingStr != null) {
+          try {
+            final existingDoc = TripDocument.fromJson(
+              json.decode(existingStr) as Map<String, dynamic>,
+            );
+            if (existingDoc.status == DocumentStatus.pendingUpload ||
+                existingDoc.status == DocumentStatus.uploadFailed) {
+              // Skip overwriting local pending/failed documents with server data
+              continue;
+            }
+          } catch (e) {
+            debugPrint('[LocalDocumentStore] Error parsing existing doc: $e');
+          }
+        }
         data[doc.id!] = json.encode(doc.toJson());
       }
     }

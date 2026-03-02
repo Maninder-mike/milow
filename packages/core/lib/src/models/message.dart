@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 /// Types of messages in the system
 enum MessageType {
   text,
@@ -12,6 +14,39 @@ enum MessageType {
       (e) => e.name == value,
       orElse: () => MessageType.text,
     );
+  }
+}
+
+/// Payload for structured quick actions in chat
+class QuickActionPayload {
+  final String actionType; // e.g., 'request_eta', 'confirm_arrival', 'upload_pod'
+  final String label;
+  final String status; // 'pending', 'completed'
+  final Map<String, dynamic>? metadata;
+
+  QuickActionPayload({
+    required this.actionType,
+    required this.label,
+    this.status = 'pending',
+    this.metadata,
+  });
+
+  factory QuickActionPayload.fromJson(Map<String, dynamic> json) {
+    return QuickActionPayload(
+      actionType: json['actionType'] as String,
+      label: json['label'] as String,
+      status: json['status'] as String? ?? 'pending',
+      metadata: json['metadata'] as Map<String, dynamic>?,
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'actionType': actionType,
+      'label': label,
+      'status': status,
+      if (metadata != null) 'metadata': metadata,
+    };
   }
 }
 
@@ -46,6 +81,16 @@ class Message {
     this.senderRole,
     this.senderAvatarUrl,
   });
+
+  /// Get the structured payload if this is a quick action message
+  QuickActionPayload? get quickActionPayload {
+    if (type != MessageType.quickAction) return null;
+    try {
+      return QuickActionPayload.fromJson(jsonDecode(content));
+    } catch (_) {
+      return null;
+    }
+  }
 
   factory Message.fromJson(Map<String, dynamic> json) {
     // Handle sender metadata if joined in Supabase query

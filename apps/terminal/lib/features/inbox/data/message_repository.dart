@@ -15,14 +15,16 @@ class MessageRepository {
   Future<Result<void>> sendMessage({
     String? receiverId,
     String? loadId,
+    String? companyId,
     required String content,
   }) async {
     return _client.query<void>(() async {
       final myId = _client.supabase.auth.currentUser!.id;
       await _client.supabase.from('messages').insert({
         'sender_id': myId,
-        'receiver_id': ?receiverId,
-        'load_id': ?loadId,
+        'receiver_id': receiverId,
+        'load_id': loadId,
+        'company_id': companyId,
         'content': content,
         'created_at': DateTime.now().toIso8601String(),
       });
@@ -36,7 +38,7 @@ class MessageRepository {
       final response = await _client.supabase
           .from('messages')
           .select(
-            '*, sender:profiles!messages_sender_id_fkey(full_name, email)',
+            '*, sender:profiles!messages_sender_id_fkey(full_name, email, avatar_url)',
           )
           .or('sender_id.eq.$userId,receiver_id.eq.$userId')
           .order('created_at', ascending: false);

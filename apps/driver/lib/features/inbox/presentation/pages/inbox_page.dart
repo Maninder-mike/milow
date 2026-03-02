@@ -8,6 +8,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/profile_provider.dart';
 import 'package:milow/core/services/messaging_provider.dart';
+import 'package:milow/features/inbox/presentation/widgets/announcements_list_view.dart';
 import 'package:milow_core/milow_core.dart';
 
 class InboxPage extends StatefulWidget {
@@ -26,7 +27,21 @@ class _InboxPageState extends State<InboxPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
+
+    // Check for initial tab in post-frame callback to allow GoRouter to be available
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final state = GoRouterState.of(context);
+        final tab = state.uri.queryParameters['tab'];
+        if (tab != null) {
+          final index = int.tryParse(tab);
+          if (index != null && index >= 0 && index < _tabController.length) {
+            _tabController.animateTo(index);
+          }
+        }
+      }
+    });
   }
 
   @override
@@ -82,6 +97,7 @@ class _InboxPageState extends State<InboxPage>
           tabs: const [
             Tab(text: 'Conversations'),
             Tab(text: 'Loads'),
+            Tab(text: 'Announcements'),
           ],
         ),
       ),
@@ -114,6 +130,7 @@ class _InboxPageState extends State<InboxPage>
                   messagingProvider: messagingProvider,
                   isLoadChat: true,
                 ),
+                const AnnouncementsListView(),
               ],
             ),
           ),

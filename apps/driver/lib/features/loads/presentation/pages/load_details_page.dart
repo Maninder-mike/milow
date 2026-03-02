@@ -6,6 +6,7 @@ import 'package:milow/core/widgets/m3_spring_button.dart';
 import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:milow/core/services/profile_repository.dart';
 
 class LoadDetailsPage extends StatefulWidget {
   final String loadId;
@@ -70,6 +71,14 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
     if (_load == null) return;
     try {
       await LoadRepository.updateStopStatus(stop.id, _load!.id, isCompleted);
+      
+      // Auto-set status to available if this was the last stop
+      if (isCompleted && stop.id == _load!.stops.last.id) {
+        await ProfileRepository.updateOptimistic({
+          'driver_status': 'available',
+        });
+      }
+      
       await _loadData();
     } catch (e) {
       if (mounted) {
@@ -478,6 +487,12 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
                         load.id,
                         LoadStatus.enRoute,
                       );
+                      
+                      // Auto-set status to driving when load is accepted
+                      await ProfileRepository.updateOptimistic({
+                        'driver_status': 'driving',
+                      });
+
                       await _loadData();
                     } catch (e) {
                       if (mounted) {

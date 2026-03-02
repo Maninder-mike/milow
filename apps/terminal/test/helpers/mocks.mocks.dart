@@ -3345,8 +3345,8 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
 
   @override
   _i4.Future<_i7.Either<_i8.Failure, List<_i3.Load>>> fetchLoads({
-    int? page = 0,
-    int? pageSize = 20,
+    required int? page,
+    required int? pageSize,
     String? statusFilter,
     String? searchQuery,
   }) =>

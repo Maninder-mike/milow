@@ -140,7 +140,9 @@ enum TripDocumentType {
 enum DocumentStatus {
   pending,
   approved,
-  rejected;
+  rejected,
+  pendingUpload,
+  uploadFailed;
 
   String get value => name;
 
@@ -263,6 +265,8 @@ class TripDocument {
       'status': status.value,
       if (reviewNotes != null) 'review_notes': reviewNotes,
       if (reviewedBy != null) 'reviewed_by': reviewedBy,
+      if (createdAt != null) 'created_at': createdAt?.toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt?.toIso8601String(),
     };
   }
 

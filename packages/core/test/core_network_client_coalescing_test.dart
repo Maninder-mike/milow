@@ -1,22 +1,37 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 @GenerateMocks([SupabaseClient])
 import 'core_network_client_coalescing_test.mocks.dart';
 
+class FakeConnectivity extends Fake implements Connectivity {
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async => [
+    ConnectivityResult.wifi,
+  ];
+}
+
 void main() {
   late MockSupabaseClient mockSupabase;
+  late FakeConnectivity fakeConnectivity;
   late CoreNetworkClient client;
   late NetworkCoalescer coalescer;
 
   setUp(() {
     mockSupabase = MockSupabaseClient();
+    fakeConnectivity = FakeConnectivity();
     coalescer = NetworkCoalescer();
-    client = CoreNetworkClient(mockSupabase, coalescer: coalescer);
+    client = CoreNetworkClient(
+      mockSupabase,
+      coalescer: coalescer,
+      connectivity: fakeConnectivity,
+    );
   });
 
   group('CoreNetworkClient Coalescing', () {
@@ -32,6 +47,9 @@ void main() {
       // Launch two requests in parallel with the same key
       final future1 = client.query(delayedOperation, coalesceKey: 'test-key');
       final future2 = client.query(delayedOperation, coalesceKey: 'test-key');
+
+      // Yield to allow async connection check and coalescing logic to start
+      await Future.delayed(Duration.zero);
 
       // Verify only one operation started
       expect(callCount, 1);

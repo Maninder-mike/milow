@@ -24,6 +24,7 @@ import 'package:milow/core/services/border_wait_time_service.dart';
 
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/notification_service.dart';
+import 'package:milow/core/services/announcements_provider.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/location/location_preferences_helper.dart';
@@ -33,6 +34,7 @@ import 'package:milow/core/widgets/sync_status_indicator.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/load_repository.dart';
+import 'package:milow/core/services/profile_repository.dart';
 import 'package:intl/intl.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -60,6 +62,9 @@ class _DashboardPageState extends State<DashboardPage>
 
   // Loads state
   List<Load> _assignedLoads = [];
+
+  // Profile state
+  UserProfile? _userProfile;
 
   // Notification state
   int _unreadNotificationCount = 0;
@@ -109,6 +114,7 @@ class _DashboardPageState extends State<DashboardPage>
     _loadRecentEntries();
     _loadLoads();
     _loadNotificationCount();
+    _loadProfile();
 
     // Sync units with location if enabled
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -144,7 +150,40 @@ class _DashboardPageState extends State<DashboardPage>
       _loadBorderWaitTimes(forceRefresh: true),
       _loadRecentEntries(),
       _loadLoads(),
+      _loadProfile(),
     ]);
+  }
+
+  Future<void> _loadProfile() async {
+    final profileData = await ProfileRepository.getCachedFirst();
+    if (profileData != null && mounted) {
+      final profile = UserProfile.fromJson(profileData);
+      setState(() {
+        _userProfile = profile;
+      });
+
+      // Initialize announcements for this company
+      if (mounted) {
+        context.read<AnnouncementsProvider>().init(profile.companyId);
+      }
+    }
+  }
+
+  Future<void> _updateDriverStatus(DriverStatus status) async {
+    if (_userProfile == null) return;
+
+    // Optimistic update
+    setState(() {
+      _userProfile = _userProfile!.copyWith(driverStatus: status);
+    });
+
+    try {
+      await ProfileRepository.updateOptimistic({'driver_status': status.name});
+    } catch (e) {
+      debugPrint('Failed to update driver status: $e');
+      // Revert on error
+      await _loadProfile();
+    }
   }
 
   Future<void> _loadNotificationCount() async {
@@ -412,6 +451,86 @@ class _DashboardPageState extends State<DashboardPage>
     return 'Something went wrong. Please try again.';
   }
 
+  Widget _buildStatusToggle() {
+    final status = _userProfile?.driverStatus ?? DriverStatus.offDuty;
+    final tokens = context.tokens;
+
+    return MenuAnchor(
+      builder: (context, controller, child) {
+        return M3SpringButton(
+          onTap: () {
+            if (controller.isOpen) {
+              controller.close();
+            } else {
+              controller.open();
+            }
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(tokens.shapeFull),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: status.color,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: status.color.withValues(alpha: 0.5),
+                        blurRadius: 4,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  status.label,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                const Icon(
+                  Icons.keyboard_arrow_down_rounded,
+                  color: Colors.white,
+                  size: 16,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      menuChildren: DriverStatus.values.map((DriverStatus s) {
+        final isSelected = s == status;
+        return MenuItemButton(
+          onPressed: () => _updateDriverStatus(s),
+          leadingIcon: Container(
+            width: 10,
+            height: 10,
+            decoration: BoxDecoration(color: s.color, shape: BoxShape.circle),
+          ),
+          child: Text(
+            s.label,
+            style: TextStyle(
+              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              color: isSelected ? Theme.of(context).colorScheme.primary : null,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
   Widget _buildHeroContent(BuildContext context, double margin) {
     // ENTERPRISE PATTERN: Capture nullable state in local final variable
     final activeTrip = _activeTrip;
@@ -427,6 +546,13 @@ class _DashboardPageState extends State<DashboardPage>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
+              // Show Announcement Banner if available
+              _buildAnnouncementBanner(context),
+
+              if (context.watch<AnnouncementsProvider>().latestAnnouncement !=
+                  null)
+                SizedBox(height: context.tokens.spacingM),
+
               // Show 'Available Load' if there are assigned loads
               if (_assignedLoads.any(
                 (l) => l.status == LoadStatus.assigned,
@@ -638,6 +764,92 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
+  Widget _buildAnnouncementBanner(BuildContext context) {
+    final announcement = context
+        .watch<AnnouncementsProvider>()
+        .latestAnnouncement;
+    if (announcement == null) return const SizedBox.shrink();
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => context.push('/inbox?tab=2'),
+        borderRadius: BorderRadius.circular(context.tokens.shapeM),
+        child: Container(
+          padding: EdgeInsets.all(context.tokens.spacingM),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(context.tokens.shapeM),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(
+                    Icons.campaign_rounded,
+                    color: Colors.orangeAccent,
+                    size: 20,
+                  ),
+                  SizedBox(width: context.tokens.spacingS),
+                  Expanded(
+                    child: Text(
+                      announcement.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ),
+                  Text(
+                    _formatTimestamp(announcement.createdAt),
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Expanded(
+                    child: Text(
+                      announcement.body,
+                      style: const TextStyle(color: Colors.white, fontSize: 13),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'View all →',
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.8),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatTimestamp(DateTime timestamp) {
+    final now = DateTime.now();
+    final difference = now.difference(timestamp);
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    return DateFormat('MMM d').format(timestamp);
+  }
+
   Widget _buildAvailableLoadBanner(BuildContext context, Load load) {
     return Container(
       padding: EdgeInsets.all(context.tokens.spacingM),
@@ -813,7 +1025,9 @@ class _DashboardPageState extends State<DashboardPage>
                                       style: IconButton.styleFrom(
                                         foregroundColor: Colors.white,
                                       ),
+                                      tooltip: 'Search',
                                     ),
+                                    _buildStatusToggle(),
                                     const Spacer(),
                                     const SyncStatusIndicator(),
                                     SizedBox(width: context.tokens.spacingS),
@@ -1886,6 +2100,10 @@ class _DashboardPageState extends State<DashboardPage>
         return Icons.newspaper;
       case NotificationType.message:
         return Icons.chat_bubble_outline;
+      case NotificationType.loadAssigned:
+        return Icons.assignment_ind_outlined;
+      case NotificationType.loadStatusChanged:
+        return Icons.sync_rounded;
     }
   }
 

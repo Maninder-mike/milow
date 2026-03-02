@@ -99,7 +99,7 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               value: _autoDetect,
-              activeColor: Theme.of(context).colorScheme.primary,
+              activeThumbColor: Theme.of(context).colorScheme.primary,
               onChanged: (val) async {
                 final prefService = context.read<PreferencesService>();
                 await prefService.setAutoUpdateUnits(val);

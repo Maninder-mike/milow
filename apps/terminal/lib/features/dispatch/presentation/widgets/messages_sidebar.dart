@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,23 +25,29 @@ class MessagesSidebar extends ConsumerStatefulWidget {
 class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
   final _messageController = TextEditingController();
   final _scrollController = ScrollController();
+  final _flyoutController = FlyoutController();
 
   @override
   void dispose() {
     _messageController.dispose();
     _scrollController.dispose();
+    _flyoutController.dispose();
     super.dispose();
   }
 
-  Future<void> _sendMessage() async {
-    final text = _messageController.text.trim();
+  Future<void> _sendMessage({
+    String? content,
+    MessageType type = MessageType.text,
+  }) async {
+    final text = content ?? _messageController.text.trim();
     if (text.isEmpty) return;
 
-    _messageController.clear();
+    if (content == null) _messageController.clear();
 
     final result = await MessagingRepository.sendMessage(
       content: text,
       loadId: widget.loadId,
+      type: type,
     );
 
     result.fold(
@@ -61,6 +68,60 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
         // Scroll to bottom after sending
         _scrollToBottom();
       },
+    );
+  }
+
+  void _showQuickActionMenu() {
+    _flyoutController.showFlyout(
+      autoModeConfiguration: FlyoutAutoConfiguration(
+        preferredMode: FlyoutPlacementMode.topCenter,
+      ),
+      builder: (context) => MenuFlyout(
+        items: [
+          MenuFlyoutItem(
+            leading: const Icon(FluentIcons.clock_24_regular),
+            text: const Text('Request ETA'),
+            onPressed: () {
+              final payload = QuickActionPayload(
+                actionType: 'request_eta',
+                label: 'Dispatch is requesting your current ETA.',
+              );
+              _sendMessage(
+                content: jsonEncode(payload.toJson()),
+                type: MessageType.quickAction,
+              );
+            },
+          ),
+          MenuFlyoutItem(
+            leading: const Icon(FluentIcons.location_24_regular),
+            text: const Text('Confirm Arrival'),
+            onPressed: () {
+              final payload = QuickActionPayload(
+                actionType: 'confirm_arrival',
+                label: 'Please confirm arrival at next stop.',
+              );
+              _sendMessage(
+                content: jsonEncode(payload.toJson()),
+                type: MessageType.quickAction,
+              );
+            },
+          ),
+          MenuFlyoutItem(
+            leading: const Icon(FluentIcons.document_search_24_regular),
+            text: const Text('Request POD'),
+            onPressed: () {
+              final payload = QuickActionPayload(
+                actionType: 'upload_pod',
+                label: 'Please scan and upload the POD.',
+              );
+              _sendMessage(
+                content: jsonEncode(payload.toJson()),
+                type: MessageType.quickAction,
+              );
+            },
+          ),
+        ],
+      ),
     );
   }
 
@@ -225,6 +286,26 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
             ),
             child: Row(
               children: [
+                FlyoutTarget(
+                  controller: _flyoutController,
+                  child: GestureDetector(
+                    onTap: _showQuickActionMenu,
+                    child: Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: theme.accentColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Icon(
+                        FluentIcons.add_24_regular,
+                        size: 16,
+                        color: theme.accentColor,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
                 Expanded(
                   child: TextBox(
                     controller: _messageController,
@@ -268,6 +349,10 @@ class _MessageBubble extends ConsumerWidget {
     final theme = FluentTheme.of(context);
     final user = Supabase.instance.client.auth.currentUser;
     final isMe = message.senderId == user?.id;
+
+    if (message.type == MessageType.quickAction) {
+      return _buildQuickActionPreview(context, theme, isMe);
+    }
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
@@ -326,6 +411,70 @@ class _MessageBubble extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildQuickActionPreview(
+    BuildContext context,
+    FluentThemeData theme,
+    bool isMe,
+  ) {
+    final payload = message.quickActionPayload;
+    if (payload == null) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12.0),
+      child: Align(
+        alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: theme.accentColor.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: theme.accentColor.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    FluentIcons.flash_24_regular,
+                    size: 14,
+                    color: theme.accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'QUICK ACTION',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: theme.accentColor,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                payload.label,
+                style: const TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                DateFormat.jm().format(message.createdAt),
+                style: TextStyle(
+                  fontSize: 9,
+                  color: theme.resources.textFillColorSecondary,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

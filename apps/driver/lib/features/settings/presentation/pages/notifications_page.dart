@@ -77,6 +77,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Icons.newspaper;
       case NotificationType.message:
         return Icons.chat_bubble_outline;
+      case NotificationType.loadAssigned:
+        return Icons.assignment_ind_outlined;
+      case NotificationType.loadStatusChanged:
+        return Icons.sync_rounded;
     }
   }
 
@@ -92,6 +96,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return Theme.of(
           context,
         ).colorScheme.primary; // Violet/Primary for messages
+      case NotificationType.loadAssigned:
+        return context.tokens.info;
+      case NotificationType.loadStatusChanged:
+        return context.tokens.warning;
     }
   }
 
@@ -105,6 +113,10 @@ class _NotificationsPageState extends State<NotificationsPage> {
         return 'News';
       case NotificationType.message:
         return 'Message';
+      case NotificationType.loadAssigned:
+        return 'Load Assigned';
+      case NotificationType.loadStatusChanged:
+        return 'Load Updated';
     }
   }
 
@@ -781,8 +793,12 @@ class NotificationItem {
       type = NotificationType.reminder;
     } else if (typeStr == 'company' || typeStr == 'company_invite') {
       type = NotificationType.company;
-    } else if (typeStr == 'message') {
+    } else if (typeStr == 'message' || typeStr == 'new_message') {
       type = NotificationType.message;
+    } else if (typeStr == 'load_assigned') {
+      type = NotificationType.loadAssigned;
+    } else if (typeStr == 'load_status_changed') {
+      type = NotificationType.loadStatusChanged;
     } else {
       type = NotificationType.news;
     }

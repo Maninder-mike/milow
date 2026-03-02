@@ -5,7 +5,9 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class UserRepository {
   final CoreNetworkClient _client;
 
-  UserRepository(this._client);
+  final String? companyId;
+
+  UserRepository(this._client, {this.companyId});
 
   /// Fetch all user profiles for the current user's company.
   /// Filters by company_id to ensure multi-tenant isolation.
@@ -17,19 +19,6 @@ class UserRepository {
     return _client.query<List<UserProfile>>(() async {
       final start = page * pageSize;
       final end = start + pageSize - 1;
-
-      // Get current user's company_id to filter by company
-      final currentUserId = _client.supabase.auth.currentUser?.id;
-      String? companyId;
-
-      if (currentUserId != null) {
-        final currentProfile = await _client.supabase
-            .from('profiles')
-            .select('company_id')
-            .eq('id', currentUserId)
-            .maybeSingle();
-        companyId = currentProfile?['company_id'] as String?;
-      }
 
       // Select base profile + joined details from both tables
       var query = _client.supabase

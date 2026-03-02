@@ -4,8 +4,16 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:milow/core/services/logging_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:go_router/go_router.dart';
 
-enum NotificationType { reminder, company, news, message }
+enum NotificationType {
+  reminder,
+  company,
+  news,
+  message,
+  loadAssigned,
+  loadStatusChanged,
+}
 
 class ServiceNotificationItem {
   final String id;
@@ -41,6 +49,7 @@ class NotificationService {
 
   bool _initialized = false;
   int _currentUnreadCount = 0;
+  GoRouter? _router;
 
   // Streams for compatibility with Dashboard/Settings
   final _unreadCountController = StreamController<int>.broadcast();
@@ -51,6 +60,10 @@ class NotificationService {
       StreamController<ServiceNotificationItem>.broadcast();
   Stream<ServiceNotificationItem> get incomingStream =>
       _incomingController.stream;
+
+  void setRouter(GoRouter router) {
+    _router = router;
+  }
 
   Future<void> init() async {
     if (_initialized) return;
@@ -80,6 +93,9 @@ class NotificationService {
       settings: initializationSettings,
       onDidReceiveNotificationResponse: (details) {
         logger.info('Notification', 'Notification clicked: ${details.payload}');
+        if (details.payload != null) {
+          _handleNotificationTap(details.payload!);
+        }
       },
     );
 
@@ -152,10 +168,51 @@ class NotificationService {
     // 4. Handle Background Messages
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-    // 5. Initial unread count
+    // 5. Handle when the app is opened from a notification
+    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
+      logger.info('FCM', 'Notification caused app to open from background');
+      _handleDataPayload(message.data);
+    });
+
+    // Check if app was opened from a terminated state via notification
+    final initialMessage = await _fcm.getInitialMessage();
+    if (initialMessage != null) {
+      _handleDataPayload(initialMessage.data);
+    }
+
+    // 6. Initial unread count
     unawaited(refreshUnreadCount());
 
     _initialized = true;
+  }
+
+  void _handleNotificationTap(String payload) {
+    // Basic parser for the stringified map payload
+    // In a real app, you might use JSON strings instead of toString()
+    try {
+      // Very crude parsing logic for demo purposes
+      if (payload.contains('loadId:')) {
+        final loadId = payload.split('loadId:')[1].split(',')[0].trim();
+        _router?.push('/load-details/$loadId');
+      } else if (payload.contains('type: new_message')) {
+        _router?.push('/inbox');
+      }
+    } catch (e) {
+      logger.error('Notification', 'Error handling tap payload', error: e);
+    }
+  }
+
+  void _handleDataPayload(Map<String, dynamic> data) {
+    final type = data['type'];
+    final loadId = data['loadId'];
+
+    if (type == 'load_assigned' || type == 'load_status_changed') {
+      if (loadId != null) {
+        _router?.push('/load-details/$loadId');
+      }
+    } else if (type == 'new_message') {
+      _router?.push('/inbox');
+    }
   }
 
   Future<void> refreshUnreadCount() async {
@@ -227,6 +284,41 @@ class NotificationService {
     }
   }
 
+  /// Shows a local notification for general use (e.g. new messages)
+  Future<void> showNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+    NotificationType type = NotificationType.news,
+  }) async {
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      'high_importance_channel',
+      'High Importance Notifications',
+      importance: Importance.max,
+    );
+
+    await _localNotifications.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: NotificationDetails(
+        android: AndroidNotificationDetails(
+          channel.id,
+          channel.name,
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: const DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      payload: payload,
+    );
+  }
+
   /// Shows a local notification when driver arrives at a trip location
   Future<void> showArrivalNotification({
     required String locationType, // 'Pickup' or 'Delivery'
@@ -263,7 +355,12 @@ class NotificationService {
       case 'company':
         return NotificationType.company;
       case 'message':
+      case 'new_message':
         return NotificationType.message;
+      case 'load_assigned':
+        return NotificationType.loadAssigned;
+      case 'load_status_changed':
+        return NotificationType.loadStatusChanged;
       default:
         return NotificationType.news;
     }

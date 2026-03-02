@@ -169,7 +169,7 @@ class SyncQueueService {
 
           // Implement Last-Write-Wins (LWW) with Optimistic Locking
           // Only update if server's updated_at is OLDER than our payload's updated_at
-          var query = client
+          final query = client
               .from(operation.tableName)
               .update(payload)
               .eq('id', id);
@@ -228,15 +228,30 @@ class SyncQueueService {
       // Success - remove from queue
       await operation.delete();
       debugPrint('[SyncQueueService] Completed: ${operation.id}');
+    } on PostgrestException catch (e) {
+      debugPrint(
+        '[SyncQueueService] PostgrestException: ${operation.id}, error: $e',
+      );
+      if (e.code == '401' || e.code == '403') {
+        // Stop processing the queue immediately on auth errors to prevent hammering
+        operation.markFailed('Authentication error: ${e.message}');
+        _isProcessing = false;
+        _emitStatus();
+        return; // Early return stops the queue
+      }
+      _handleOperationFailure(operation, e);
     } catch (e) {
       debugPrint('[SyncQueueService] Failed: ${operation.id}, error: $e');
+      _handleOperationFailure(operation, e);
+    }
+  }
 
-      if (operation.canRetry) {
-        operation.markFailed(e.toString());
-      } else {
-        // Max retries reached, keep in queue as failed for user to see
-        operation.markFailed(e.toString());
-      }
+  void _handleOperationFailure(SyncOperation operation, Object e) {
+    if (operation.canRetry) {
+      operation.markFailed(e.toString());
+    } else {
+      // Max retries reached, keep in queue as failed for user to see
+      operation.markFailed(e.toString());
     }
   }
 

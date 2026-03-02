@@ -12,6 +12,7 @@ class DashboardCard extends StatelessWidget {
   final DashboardWidgetType type;
   final bool isEditMode;
   final VoidCallback onRemove;
+  final VoidCallback? onPressed;
   final Widget? extra;
 
   const DashboardCard({
@@ -24,6 +25,7 @@ class DashboardCard extends StatelessWidget {
     this.color,
     this.isEditMode = false,
     this.extra,
+    this.onPressed,
   });
 
   @override
@@ -31,117 +33,127 @@ class DashboardCard extends StatelessWidget {
     final theme = FluentTheme.of(context);
     final accentColor = color ?? theme.accentColor;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.cardColor,
-        borderRadius: BorderRadius.circular(8),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.02),
-            blurRadius: 2,
-            offset: const Offset(0, 1),
-          ),
-        ],
-        border: Border.all(
-          color: theme.resources.dividerStrokeColorDefault,
-          width: 0.5,
-        ),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Stack(
-          children: [
-            // Semantic Accent Bar
-            Positioned(
-              left: 0,
-              top: 0,
-              bottom: 0,
-              width: 4,
-              child: Container(color: accentColor),
+    return HoverButton(
+      onPressed: onPressed,
+      builder: (context, states) {
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
+              ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 2,
+                offset: const Offset(0, 1),
+              ),
+            ],
+            border: Border.all(
+              color: states.isHovered && onPressed != null
+                  ? theme.accentColor.withValues(alpha: 0.3)
+                  : theme.resources.dividerStrokeColorDefault,
+              width: 0.5,
             ),
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Stack(
+              children: [
+                // Semantic Accent Bar
+                Positioned(
+                  left: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: 4,
+                  child: Container(color: accentColor),
+                ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Text(
-                          label,
-                          style: GoogleFonts.outfit(
-                            fontSize: 11,
-                            letterSpacing: 0.5,
-                            fontWeight: FontWeight.bold,
-                            color: theme.resources.textFillColorSecondary,
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              label,
+                              style: GoogleFonts.outfit(
+                                fontSize: 11,
+                                letterSpacing: 0.5,
+                                fontWeight: FontWeight.bold,
+                                color: theme.resources.textFillColorSecondary,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
-                          overflow: TextOverflow.ellipsis,
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: accentColor.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Icon(icon, size: 16, color: accentColor),
+                          ),
+                        ],
+                      ),
+                      const Spacer(),
+                      FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          value,
+                          style: GoogleFonts.outfit(
+                            fontSize: 32,
+                            fontWeight: FontWeight.w700,
+                            color: theme.resources.textFillColorPrimary,
+                            letterSpacing: -0.5,
+                          ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: accentColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                      if (extra != null) ...[
+                        const SizedBox(height: 12),
+                        extra!,
+                      ],
+                      if (type == DashboardWidgetType.loadVolumeTrend) ...[
+                        const Spacer(),
+                        SizedBox(
+                          height: 40,
+                          child: SparklineWidget(
+                            data: const [12, 15, 13, 18, 14, 22, 19],
+                            color: accentColor,
+                          ),
                         ),
-                        child: Icon(icon, size: 16, color: accentColor),
-                      ),
+                      ],
                     ],
                   ),
-                  const Spacer(),
-                  FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      value,
-                      style: GoogleFonts.outfit(
-                        fontSize: 32,
-                        fontWeight: FontWeight.w700,
-                        color: theme.resources.textFillColorPrimary,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                  ),
-                  if (extra != null) ...[const SizedBox(height: 12), extra!],
-                  if (type == DashboardWidgetType.loadVolumeTrend) ...[
-                    const Spacer(),
-                    SizedBox(
-                      height: 40,
-                      child: SparklineWidget(
-                        data: const [12, 15, 13, 18, 14, 22, 19],
-                        color: accentColor,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            if (isEditMode)
-              Positioned(
-                top: 8,
-                right: 8,
-                child: IconButton(
-                  icon: const Icon(FluentIcons.dismiss_12_filled, size: 10),
-                  onPressed: onRemove,
-                  style: ButtonStyle(
-                    backgroundColor: WidgetStateProperty.all(
-                      Colors.red.withValues(alpha: 0.9),
-                    ),
-                    foregroundColor: WidgetStateProperty.all(Colors.white),
-                    shape: WidgetStateProperty.all(const CircleBorder()),
-                  ),
                 ),
-              ),
-          ],
-        ),
-      ),
+                if (isEditMode)
+                  Positioned(
+                    top: 8,
+                    right: 8,
+                    child: IconButton(
+                      icon: const Icon(FluentIcons.dismiss_12_filled, size: 10),
+                      onPressed: onRemove,
+                      style: ButtonStyle(
+                        backgroundColor: WidgetStateProperty.all(
+                          Colors.red.withValues(alpha: 0.9),
+                        ),
+                        foregroundColor: WidgetStateProperty.all(Colors.white),
+                        shape: WidgetStateProperty.all(const CircleBorder()),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -202,6 +214,8 @@ class WidgetGalleryDialog extends StatelessWidget {
         return 'Critical Alerts';
       case DashboardWidgetType.operationalMap:
         return 'Operational Map';
+      case DashboardWidgetType.announcements:
+        return 'Announcements';
     }
   }
 
@@ -221,6 +235,8 @@ class WidgetGalleryDialog extends StatelessWidget {
         return 'Vehicles requiring immediate attention';
       case DashboardWidgetType.operationalMap:
         return 'Real-time fleet position overview';
+      case DashboardWidgetType.announcements:
+        return 'Company-wide updates and news';
     }
   }
 
@@ -240,6 +256,8 @@ class WidgetGalleryDialog extends StatelessWidget {
         return FluentIcons.warning_24_regular;
       case DashboardWidgetType.operationalMap:
         return FluentIcons.map_24_regular;
+      case DashboardWidgetType.announcements:
+        return FluentIcons.megaphone_24_regular;
     }
   }
 }

@@ -164,34 +164,45 @@ class SystemNotificationNotifier extends _$SystemNotificationNotifier {
 
   @override
   Future<void> build() async {
-    // 1. Listen to Supabase (Realtime) - Works on ALL platforms including Windows
-    final user = Supabase.instance.client.auth.currentUser;
+    final client = Supabase.instance.client;
+    final user = client.auth.currentUser;
     if (user != null) {
-      // Fetch history first
+      // 1. Fetch user's company_id first
+      String? companyId;
       try {
-        final data = await Supabase.instance.client
-            .from('messages')
-            .select()
-            .eq('receiver_id', user.id)
+        final profile = await client
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        companyId = profile?['company_id'] as String?;
+      } catch (e) {
+        if (kDebugMode) debugPrint('Error fetching user company_id: $e');
+      }
+
+      // 2. Fetch history (messages in company or directed to user)
+      try {
+        final query = client.from('messages').select();
+
+        final filterQuery = (companyId != null)
+            ? query.eq('company_id', companyId)
+            : query.eq('receiver_id', user.id);
+
+        final data = await filterQuery
             .order('created_at', ascending: false)
             .limit(20);
 
         final notifications = data.map((record) {
           final content = record['content'] as String;
-          // Ideally fetch sender name here or just show generic
           return AppNotification(
             id: record['id'].hashCode,
-            title: 'Message', // Placeholder until we join
+            title: 'Message',
             body: content,
             timestamp: DateTime.parse(record['created_at']),
-            isRead:
-                true, // Assume history is read? Or check 'read_at'? Table 'messages' might not have it.
+            isRead: true,
           );
         }).toList();
 
-        // Update list
-        // Note: This is an async build, but notificationListProvider is separate.
-        // We push to the separate provider.
         for (final n in notifications.reversed) {
           ref.read(notificationListProvider.notifier).add(n);
         }
@@ -201,44 +212,67 @@ class SystemNotificationNotifier extends _$SystemNotificationNotifier {
         }
       }
 
-      _subscribeToMessages(user.id);
+      _subscribeToMessages(user.id, companyId);
     }
-
-    // 2. Listen to FCM (macOS only) - Integrated via main init,
-    // but here we could potentially listen to token refresh etc.
   }
 
-  void _subscribeToMessages(String userId) {
+  void _subscribeToMessages(String userId, String? companyId) {
     if (_subscription != null) return;
 
-    _subscription = Supabase.instance.client
-        .channel('public:messages')
-        .onPostgresChanges(
-          event: PostgresChangeEvent.insert,
-          schema: 'public',
-          table: 'messages',
-          filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq,
-            column: 'receiver_id',
-            value: userId,
-          ),
-          callback: (payload) {
-            _handleNewMessage(payload.newRecord);
-          },
-        )
-        .subscribe();
+    final client = Supabase.instance.client;
+    var channel = client.channel('public:messages');
+
+    if (companyId != null) {
+      // Listen to all messages in company
+      _subscription = channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'company_id',
+              value: companyId,
+            ),
+            callback: (payload) => _handleNewMessage(payload.newRecord, userId),
+          )
+          .subscribe();
+    } else {
+      // Fallback to direct messages only
+      _subscription = channel
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'messages',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'receiver_id',
+              value: userId,
+            ),
+            callback: (payload) => _handleNewMessage(payload.newRecord, userId),
+          )
+          .subscribe();
+    }
   }
 
-  Future<void> _handleNewMessage(Map<String, dynamic> record) async {
+  Future<void> _handleNewMessage(
+    Map<String, dynamic> record,
+    String currentUserId,
+  ) async {
     try {
+      final senderId = record['sender_id'] as String;
+
+      // 1. Ignore if sent by self
+      if (senderId == currentUserId) return;
+
       final prefs = await SharedPreferences.getInstance();
       final enabled = prefs.getBool('notifications_enabled') ?? true;
       if (!enabled) return;
 
-      final senderId = record['sender_id'] as String;
       final content = record['content'] as String;
+      final loadId = record['load_id'] as String?;
 
-      // Fetch sender name
+      // 2. Fetch sender name
       final senderData = await Supabase.instance.client
           .from('profiles')
           .select('full_name')
@@ -246,17 +280,17 @@ class SystemNotificationNotifier extends _$SystemNotificationNotifier {
           .maybeSingle();
 
       final senderName = senderData?['full_name'] as String? ?? 'Someone';
-      final title = 'New Message from $senderName';
+      final contextLabel = loadId != null ? ' (Load Message)' : '';
+      final title = 'Message from $senderName$contextLabel';
 
-      // 1. Show Toast
+      // 3. Show Toast
       await NotificationService().showNotification(
         id: record['id'].hashCode,
         title: title,
         body: content,
       );
 
-      // 2. Add to Bell List (Source of Truth)
-      // Accessing the provider via ref (available in Riverpod class)
+      // 4. Add to Bell List
       ref
           .read(notificationListProvider.notifier)
           .add(

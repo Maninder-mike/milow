@@ -98,6 +98,9 @@ void main() {
       anonKey: 'dummy-key',
     );
 
+    // Optimize NetworkClient for tests to fail fast and avoid hangs
+    NetworkClientConfig.defaultConfig = NetworkClientConfig.test;
+
     await Hive.initFlutter(tempDir.path);
     await LocalDocumentStore.init();
 

@@ -12,6 +12,7 @@ import 'package:milow/core/services/connectivity_service.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
+import 'package:milow/core/services/sync_queue_service.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:open_file/open_file.dart';
 
@@ -52,7 +53,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
   File? _scannedPdf;
   List<String> _scannedImages = [];
   int _scannedPageCount = 0;
-  bool _isUploading = false;
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _tripNumberController = TextEditingController();
 
@@ -88,6 +88,10 @@ class _DocumentsPageState extends State<DocumentsPage> {
     _tripNumber = widget.extra['tripNumber'] as String?;
     if (_tripNumber != null) {
       _tripNumberController.text = _tripNumber!;
+    }
+
+    if (_tripId == null) {
+      unawaited(_fetchActiveTrip());
     }
     unawaited(_loadDocuments());
   }
@@ -155,6 +159,19 @@ class _DocumentsPageState extends State<DocumentsPage> {
       );
     } else {
       if (mounted) setState(() => _isLoadingDocuments = false);
+    }
+  }
+
+  Future<void> _fetchActiveTrip() async {
+    final activeTrip = await TripRepository.getActiveTrip();
+    if (activeTrip != null && mounted) {
+      setState(() {
+        if (_tripId == null) {
+          _tripId = activeTrip.id;
+          _tripNumber = activeTrip.tripNumber;
+          _tripNumberController.text = _tripNumber!;
+        }
+      });
     }
   }
 
@@ -242,10 +259,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
       return;
     }
 
-    setState(() {
-      _isUploading = true;
-    });
-
     // 1. Prepare file to upload - Always force PDF
     final File fileToUpload;
 
@@ -301,12 +314,10 @@ class _DocumentsPageState extends State<DocumentsPage> {
               content: Text('Couldn\'t process images. Please rescan.'),
             ),
           );
-          setState(() => _isUploading = false);
         }
         return;
       }
     } else {
-      setState(() => _isUploading = false);
       return;
     }
 
@@ -320,7 +331,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Please add a trip number first.')),
           );
-          setState(() => _isUploading = false);
         }
         return;
       }
@@ -384,9 +394,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
         _loadDocuments();
       },
     );
-    if (mounted) {
-      setState(() => _isUploading = false);
-    }
   }
 
   void _resetUploadState() {
@@ -396,7 +403,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
       _scannedPageCount = 0;
       _selectedDocumentType = null;
       _notesController.clear();
-      _isLoadingDocuments = true;
       _changesMade = true;
     });
   }
@@ -412,15 +418,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
         }
       } else {
         _selectedIds.add(id);
-      }
-    });
-  }
-
-  void _enterSelectionMode(String? initialId) {
-    setState(() {
-      _isSelectionMode = true;
-      if (initialId != null) {
-        _selectedIds.add(initialId);
       }
     });
   }
@@ -456,8 +453,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
     if (confirm != true) return;
 
-    setState(() => _isUploading = true); // Use loading state
-
     // ... logic
     final docsToDelete = _existingDocuments.where((d) {
       final idMatch = _selectedIds.contains(d.id);
@@ -492,21 +487,15 @@ class _DocumentsPageState extends State<DocumentsPage> {
           setState(() {
             _selectedIds.clear();
             _isSelectionMode = false;
-            _isUploading = false;
             _changesMade = true;
             _existingDocuments.removeWhere((d) => docsToDelete.contains(d));
           });
         }
       },
     );
-    if (mounted) {
-      setState(() => _isUploading = false);
-    }
   }
 
   Future<void> _previewDocument(TripDocument doc) async {
-    setState(() => _isUploading = true);
-
     final result = await TripRepository.downloadDocument(doc);
 
     if (!mounted) return;
@@ -535,8 +524,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
         }
       },
     );
-
-    if (mounted) setState(() => _isUploading = false);
   }
 
   Widget _buildDetailRow(String label, dynamic value, DesignTokens tokens) {
@@ -754,8 +741,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
   /// Share document via system share sheet
   Future<void> _shareDocument(TripDocument doc) async {
-    setState(() => _isUploading = true);
-
     final result = await TripRepository.downloadDocument(doc);
 
     if (!mounted) return;
@@ -770,14 +755,10 @@ class _DocumentsPageState extends State<DocumentsPage> {
         await SharePlus.instance.share(ShareParams(files: [XFile(file.path)]));
       },
     );
-
-    if (mounted) setState(() => _isUploading = false);
   }
 
   /// Download document to device
   Future<void> _downloadDocument(TripDocument doc) async {
-    setState(() => _isUploading = true);
-
     final result = await TripRepository.downloadDocument(doc);
 
     if (!mounted) return;
@@ -809,8 +790,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
         }
       },
     );
-
-    if (mounted) setState(() => _isUploading = false);
   }
 
   /// Delete a single document
@@ -841,8 +820,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
     if (confirm != true || doc.id == null) return;
 
-    setState(() => _isUploading = true);
-
     // Assuming we can pass doc or ID. TripRepository.deleteDocuments takes List<TripDocument>
     final result = await TripRepository.deleteDocuments([doc]);
 
@@ -864,8 +841,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
         });
       },
     );
-
-    if (mounted) setState(() => _isUploading = false);
   }
 
   /// Show document details dialog
@@ -938,120 +913,110 @@ class _DocumentsPageState extends State<DocumentsPage> {
         }
       },
       child: Scaffold(
-        body: _isUploading
-            ? const Center(
-                child: CircularProgressIndicator(strokeCap: StrokeCap.round),
-              )
-            : CustomScrollView(
-                slivers: [
-                  SliverAppBar(
-                    pinned: true,
-                    floating: true,
-                    leading: _isSelectionMode
-                        ? IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () {
-                              setState(() {
-                                _isSelectionMode = false;
-                                _selectedIds.clear();
-                              });
-                            },
-                          )
-                        : IconButton(
-                            icon: const Icon(Icons.arrow_back),
-                            onPressed: () =>
-                                Navigator.pop(context, _changesMade),
-                          ),
-                    title: _isSelectionMode
-                        ? Text('${_selectedIds.length} Selected')
-                        : _isSearching
-                        ? TextField(
-                            controller: _searchController,
-                            autofocus: true,
-                            decoration: InputDecoration(
-                              hintText: 'Search documents...',
-                              border: InputBorder.none,
-                              hintStyle: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurface.withValues(alpha: 0.7),
-                              ),
-                            ),
-                            style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurface,
-                            ),
-                            cursorColor: Theme.of(
-                              context,
-                            ).colorScheme.onSurface,
-                            onChanged: (value) {
-                              setState(() {
-                                _searchQuery = value;
-                              });
-                            },
-                          )
-                        : const Text('Documents'),
-                    actions: [
-                      if (_isSelectionMode)
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline),
-                          onPressed: _deleteSelectedDocuments,
-                        )
-                      else ...[
-                        if (!_isSearching &&
-                            _scannedPdf == null &&
-                            _scannedImages.isEmpty)
-                          IconButton(
-                            icon: const Icon(Icons.search),
-                            onPressed: () {
-                              setState(() {
-                                _isSearching = true;
-                              });
-                            },
-                          ),
-                        PopupMenuButton<String>(
-                          onSelected: (value) {
-                            if (value == 'select') {
-                              setState(() => _isSelectionMode = true);
-                            } else if (value.startsWith('sort_')) {
-                              setState(() {
-                                _sortBy = value.substring(5);
-                                _sortDocuments(_existingDocuments);
-                              });
-                            }
-                          },
-                          itemBuilder: (context) => [
-                            PopupMenuItem(
-                              value: 'select',
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.checklist,
-                                    color: tokens.textPrimary,
-                                  ),
-                                  const SizedBox(width: 12),
-                                  const Text('Select Documents'),
-                                ],
-                              ),
-                            ),
-                            const PopupMenuDivider(),
-                            const PopupMenuItem(
-                              value: 'sort_date_desc',
-                              child: Text('Sort by Date (Newest)'),
-                            ),
-                            const PopupMenuItem(
-                              value: 'sort_date_asc',
-                              child: Text('Sort by Date (Oldest)'),
-                            ),
+        body: CustomScrollView(
+          slivers: [
+            SliverAppBar(
+              pinned: true,
+              floating: true,
+              leading: _isSelectionMode
+                  ? IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () {
+                        setState(() {
+                          _isSelectionMode = false;
+                          _selectedIds.clear();
+                        });
+                      },
+                    )
+                  : IconButton(
+                      icon: const Icon(Icons.arrow_back),
+                      onPressed: () => Navigator.pop(context, _changesMade),
+                    ),
+              title: _isSelectionMode
+                  ? Text('${_selectedIds.length} Selected')
+                  : _isSearching
+                  ? TextField(
+                      controller: _searchController,
+                      autofocus: true,
+                      decoration: InputDecoration(
+                        hintText: 'Search documents...',
+                        border: InputBorder.none,
+                        hintStyle: TextStyle(
+                          color: Theme.of(
+                            context,
+                          ).colorScheme.onSurface.withValues(alpha: 0.7),
+                        ),
+                      ),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                      cursorColor: Theme.of(context).colorScheme.onSurface,
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value;
+                        });
+                      },
+                    )
+                  : const Text('Documents'),
+              actions: [
+                if (_isSelectionMode)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    onPressed: _deleteSelectedDocuments,
+                  )
+                else ...[
+                  if (!_isSearching &&
+                      _scannedPdf == null &&
+                      _scannedImages.isEmpty)
+                    IconButton(
+                      icon: const Icon(Icons.search),
+                      onPressed: () {
+                        setState(() {
+                          _isSearching = true;
+                        });
+                      },
+                    ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'select') {
+                        setState(() => _isSelectionMode = true);
+                      } else if (value.startsWith('sort_')) {
+                        setState(() {
+                          _sortBy = value.substring(5);
+                          _sortDocuments(_existingDocuments);
+                        });
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'select',
+                        child: Row(
+                          children: [
+                            Icon(Icons.checklist, color: tokens.textPrimary),
+                            const SizedBox(width: 12),
+                            const Text('Select Documents'),
                           ],
                         ),
-                      ],
+                      ),
+                      const PopupMenuDivider(),
+                      const PopupMenuItem(
+                        value: 'sort_date_desc',
+                        child: Text('Sort by Date (Newest)'),
+                      ),
+                      const PopupMenuItem(
+                        value: 'sort_date_asc',
+                        child: Text('Sort by Date (Oldest)'),
+                      ),
                     ],
                   ),
-                  _scannedPdf == null && _scannedImages.isEmpty
-                      ? _buildDocumentListSlivers(tokens)
-                      : SliverToBoxAdapter(child: _buildReviewState(tokens)),
                 ],
-              ),
+              ],
+            ),
+            _scannedPdf == null && _scannedImages.isEmpty
+                ? _buildDocumentListSlivers(tokens)
+                : SliverToBoxAdapter(child: _buildReviewState(tokens)),
+          ],
+        ),
         floatingActionButton:
             !_isSelectionMode &&
                 !_isSearching &&
@@ -1153,20 +1118,36 @@ class _DocumentsPageState extends State<DocumentsPage> {
             child: Padding(
               padding: const EdgeInsets.only(bottom: 5),
               child: GestureDetector(
-                onLongPress: () {
-                  if (doc.id == null) return;
-                  if (!_isSelectionMode) {
-                    _enterSelectionMode(doc.id!);
-                  } else {
-                    _toggleSelection(doc.id!);
-                  }
-                },
                 onTap: () {
                   if (doc.id == null) return;
                   if (_isSelectionMode) {
                     _toggleSelection(doc.id!);
+                  } else if (doc.status == DocumentStatus.uploadFailed ||
+                      doc.status == DocumentStatus.pendingUpload) {
+                    if (doc.status == DocumentStatus.uploadFailed) {
+                      syncQueueService.retryFailed();
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Retrying document uploads...'),
+                        ),
+                      );
+                    }
                   } else {
                     _previewDocument(doc);
+                  }
+                },
+                onLongPress: () {
+                  if (doc.id == null) return;
+                  if (doc.status != DocumentStatus.pendingUpload &&
+                      doc.status != DocumentStatus.uploadFailed) {
+                    if (!_isSelectionMode) {
+                      setState(() {
+                        _isSelectionMode = true;
+                        _selectedIds.add(doc.id!);
+                      });
+                    } else {
+                      _toggleSelection(doc.id!);
+                    }
                   }
                 },
                 child: Card(
@@ -1186,7 +1167,10 @@ class _DocumentsPageState extends State<DocumentsPage> {
                     ),
                   ),
                   child: IgnorePointer(
-                    ignoring: _isSelectionMode,
+                    ignoring:
+                        _isSelectionMode ||
+                        doc.status == DocumentStatus.pendingUpload ||
+                        doc.status == DocumentStatus.uploadFailed,
                     child: ListTile(
                       contentPadding: const EdgeInsets.symmetric(
                         horizontal: 16,
@@ -1442,6 +1426,16 @@ class _DocumentsPageState extends State<DocumentsPage> {
         color = tokens.textTertiary;
         icon = Icons.access_time;
         label = 'Pending';
+        break;
+      case DocumentStatus.pendingUpload:
+        color = tokens.textTertiary;
+        icon = Icons.cloud_upload_outlined;
+        label = 'Pending Upload';
+        break;
+      case DocumentStatus.uploadFailed:
+        color = tokens.error;
+        icon = Icons.cloud_off;
+        label = 'Upload Failed';
         break;
     }
 

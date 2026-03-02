@@ -127,9 +127,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
   }
 
   Future<void> _loadRecords() async {
+    debugPrint('[RecordsListPage] _loadRecords started');
     try {
       final trips = await TripRepository.getTrips();
+      debugPrint(
+        '[RecordsListPage] _loadRecords: Trips loaded: ${trips.length}',
+      );
       final fuelEntries = await FuelRepository.getFuelEntries();
+      debugPrint(
+        '[RecordsListPage] _loadRecords: Fuel loaded: ${fuelEntries.length}',
+      );
 
       final List<Map<String, dynamic>> combined = [];
 
@@ -152,8 +159,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
           _allRecords = combined;
           _isLoading = false;
         });
+        debugPrint(
+          '[RecordsListPage] _loadRecords: State updated, total: ${combined.length}',
+        );
       }
     } catch (e) {
+      debugPrint('[RecordsListPage] _loadRecords: Error: $e');
       if (mounted) {
         setState(() {
           _isLoading = false;
@@ -199,7 +210,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
       // Parse value for distance-based filtering (trips only)
       bool matchesFilter = true;
-      if (_selectedFilter != 'All') {
+      if (_selectedFilter != 'All' && _selectedFilter != 'All Records') {
         if (isTrip) {
           final trip = data as Trip;
           final distance = trip.totalDistance;
@@ -552,7 +563,11 @@ class _RecordsListPageState extends State<RecordsListPage> {
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
                               Icon(
-                                Icons.filter_list_off_rounded,
+                                _searchQuery.isNotEmpty ||
+                                        (_selectedFilter != 'All' &&
+                                            _selectedFilter != 'All Records')
+                                    ? Icons.filter_list_off_rounded
+                                    : Icons.history_rounded,
                                 size: 64,
                                 color: secondaryTextColor.withValues(
                                   alpha: 0.5,
@@ -560,7 +575,12 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                'No matching records',
+                                key: const Key('empty_state_text'),
+                                _searchQuery.isNotEmpty ||
+                                        (_selectedFilter != 'All' &&
+                                            _selectedFilter != 'All Records')
+                                    ? 'No matching records'
+                                    : 'No trips or fuel entries yet',
                                 style: Theme.of(context).textTheme.titleMedium
                                     ?.copyWith(
                                       fontWeight: FontWeight.bold,
@@ -571,9 +591,13 @@ class _RecordsListPageState extends State<RecordsListPage> {
                               Text(
                                 _searchQuery.isNotEmpty
                                     ? 'Try a different search term'
-                                    : 'Try selecting a different filter',
+                                    : (_selectedFilter != 'All' &&
+                                          _selectedFilter != 'All Records')
+                                    ? 'Try selecting a different filter'
+                                    : 'Your completed trips and fuel entries will appear here',
                                 style: Theme.of(context).textTheme.bodyMedium
                                     ?.copyWith(color: secondaryTextColor),
+                                textAlign: TextAlign.center,
                               ),
                             ],
                           ),

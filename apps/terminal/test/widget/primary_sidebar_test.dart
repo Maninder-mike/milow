@@ -18,6 +18,7 @@ void main() {
           onInvoicesTap: () {},
           onCrmTap: () {},
           onSettlementsTap: () {},
+          onInboxTap: () {},
           onAnalyticsTap: () {},
 
           onProfileTap: () {},

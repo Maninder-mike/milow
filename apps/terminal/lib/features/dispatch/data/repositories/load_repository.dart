@@ -2,54 +2,52 @@ import 'package:fpdart/fpdart.dart';
 import 'package:milow_core/milow_core.dart';
 // Needed for Postgrest updates
 
-/// Repository for Load operations.
-///
-/// Uses [CoreNetworkClient] for resilient network calls and returns
-/// [Result] types for structured error handling.
+/// Repository for handling [Load] entities.
 class LoadRepository {
+  LoadRepository(this._client, {this.companyId});
+
   final CoreNetworkClient _client;
+  final String? companyId; // Inject companyId
 
-  LoadRepository(this._client);
-
-  /// Fetch loads with related data (broker, stops).
+  /// Fetch paginated list of loads, optionally filtered by status and search query.
   Future<Result<List<Load>>> fetchLoads({
-    int page = 0,
-    int pageSize = 20,
+    required int page,
+    required int pageSize,
     String? statusFilter,
     String? searchQuery,
   }) async {
-    final start = page * pageSize;
-    final end = start + pageSize - 1;
-
     return _client.query<List<Load>>(() async {
-      // Explicit field selection for performance
-      // Note: We need stops(*), pickups(*), receivers(*) to fully reconstruct the object
-      // until we have a dedicated LoadListItem DTO.
+      AppLogger.debug(
+        'Fetching loads (page: $page, pageSize: $pageSize, status: $statusFilter, search: $searchQuery)',
+      );
+
       var query = _client.supabase.from('loads').select('''
-          id, status, load_reference, rate, currency, goods, weight, quantity, weight_unit,
-          load_notes, company_notes, assigned_driver_id, assigned_truck_id, assigned_trailer_id,
+          id, load_reference, status, is_live,
           trip_number, po_number, created_at, updated_at, broker_id, pickup_date, delivery_date,
-          pickup_id, receiver_id,
-          customers(name),
+          pickup_id, receiver_id, company_id,
+          customers(*),
           stops(*),
           pickups(*),
           receivers(*),
           accessorials:accessorial_charges(*)
         ''');
 
+      if (companyId != null) {
+        query = query.eq('company_id', companyId!);
+      }
+
       if (statusFilter != null && statusFilter != 'All') {
         query = query.eq('status', statusFilter);
       }
 
       if (searchQuery != null && searchQuery.isNotEmpty) {
-        // Search by Trip Number, Broker Name (via flattened customer?), or specialized logic.
-        // Supabase foreign table filtering is tricky.
-        // For now, simpler fuzzy search on trip_number or load_reference or customer name (if possible)
-        // Note: Filtering on foreign table columns like customers.name requires !inner join usually.
         query = query.or(
           'trip_number.ilike.%$searchQuery%, load_reference.ilike.%$searchQuery%',
         );
       }
+
+      final start = page * pageSize;
+      final end = start + pageSize - 1;
 
       final response = await query
           .order('created_at', ascending: false)
@@ -78,7 +76,7 @@ class LoadRepository {
     return _client.query<void>(() async {
       AppLogger.debug('Creating load...');
 
-      final companyId = await _getMyCompanyId();
+      final fetchedCompanyId = await _getMyCompanyId();
       final brokerId = await _ensureBrokerExists(
         load.brokerId,
         load.brokerName,
@@ -86,7 +84,7 @@ class LoadRepository {
 
       final loadData = load.toJson();
       loadData['broker_id'] = brokerId;
-      loadData['company_id'] = companyId;
+      loadData['company_id'] = fetchedCompanyId;
 
       // Phase 4: Do NOT populate legacy pickup_id/receiver_id for new loads.
       // They are nullable.

@@ -29,4 +29,33 @@ class CompanyRepository {
         .update({'api_keys': apiKeys})
         .eq('id', companyId);
   }
+
+  /// Fetches all profiles associated with this company
+  Future<List<Map<String, dynamic>>> fetchCompanyMembers(
+    String companyId,
+  ) async {
+    final response = await _client
+        .from('profiles')
+        .select()
+        .eq('company_id', companyId)
+        .order('full_name');
+
+    return List<Map<String, dynamic>>.from(response);
+  }
+
+  /// Removes a driver/user from the company by setting their company_id to null
+  Future<void> removeMember(String profileId) async {
+    await _client
+        .from('profiles')
+        .update({'company_id': null})
+        .eq('id', profileId);
+  }
+
+  /// Updates a member's role within the company
+  Future<void> updateMemberRole(String profileId, String newRole) async {
+    await _client
+        .from('profiles')
+        .update({'role': newRole})
+        .eq('id', profileId);
+  }
 }

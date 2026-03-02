@@ -1,67 +1,62 @@
-// Supabase Edge Function: on-load-status-change
-// Triggered by Database Webhook when a Load is UPDATED
-// Checks if 'status' changed and sends notification
-
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 interface WebhookPayload {
-    type: 'INSERT' | 'UPDATE' | 'DELETE'
-    table: string
-    record: any
-    schema: string
-    old_record: any
+  type: 'INSERT' | 'UPDATE' | 'DELETE'
+  table: string
+  record: any
+  schema: string
+  old_record: any
 }
 
 serve(async (req) => {
-    try {
-        const payload: WebhookPayload = await req.json()
-        console.log('Webhook received:', payload.type)
+  try {
+    const payload: WebhookPayload = await req.json()
+    console.log('Load status webhook received:', payload.type)
 
-        // strict check for UPDATE on 'loads' table
-        if (payload.table !== 'loads') {
-            return new Response('Ignored: Not loads table', { status: 200 })
-        }
-
-        if (payload.type !== 'UPDATE') {
-            return new Response('Ignored: Not an UPDATE', { status: 200 })
-        }
-
-        const oldStatus = payload.old_record?.status
-        const newStatus = payload.record?.status
-
-        if (oldStatus === newStatus) {
-            console.log(`Status unchanged (${newStatus}). Skipping notification.`)
-            return new Response('Status unchanged', { status: 200 })
-        }
-
-        console.log(`Load ${payload.record.id} status changed: ${oldStatus} -> ${newStatus}`)
-
-        // Initialize Supabase Client (Service Role)
-        const supabaseAdmin = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-        )
-
-        // TODO: Fetch necessary details (Broker email, Customer contacts)
-        // const { data: load } = await supabaseAdmin.from('loads').select('*, customers(*)').eq('id', payload.record.id).single();
-
-        // TODO: Integrate with Email Provider (Resend, SendGrid, AWS SES)
-        // await sendEmail({ to: ..., subject: `Load Update: ${payload.record.load_reference}`, body: ... });
-
-        return new Response(
-            JSON.stringify({
-                message: `Notification processed for Load ${payload.record.id}`,
-                change: `${oldStatus} -> ${newStatus}`
-            }),
-            { headers: { 'Content-Type': 'application/json' }, status: 200 }
-        )
-
-    } catch (error) {
-        console.error('Error processing webhook:', error)
-        return new Response(
-            JSON.stringify({ error: error.message }),
-            { headers: { 'Content-Type': 'application/json' }, status: 400 }
-        )
+    if (payload.table !== 'loads' || payload.type !== 'UPDATE') {
+      return new Response('Ignored', { status: 200 })
     }
+
+    const oldStatus = payload.old_record?.status
+    const newStatus = payload.record?.status
+    const driverId = payload.record?.assigned_driver_id
+
+    if (oldStatus === newStatus || !driverId) {
+      console.log('Status unchanged or no driver assigned. Skipping.')
+      return new Response('No action needed', { status: 200 })
+    }
+
+    console.log(`Load ${payload.record.id} status changed: ${oldStatus} -> ${newStatus}`)
+
+    // Call send-push-notification
+    await fetch(
+      `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-push-notification`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+        },
+        body: JSON.stringify({
+          user_id: driverId,
+          title: `Load Update: ${payload.record.load_reference || payload.record.id}`,
+          body: `Status changed to ${newStatus}`,
+          data: {
+            type: 'load_status_changed',
+            loadId: payload.record.id,
+            newStatus: newStatus,
+          },
+        }),
+      }
+    )
+
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { 'Content-Type': 'application/json' },
+      status: 200,
+    })
+  } catch (error) {
+    console.error('Error processing load status push:', error)
+    return new Response(JSON.stringify({ error: error.message }), { status: 400 })
+  }
 })

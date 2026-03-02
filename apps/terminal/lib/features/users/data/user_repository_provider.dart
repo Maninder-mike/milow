@@ -4,8 +4,14 @@ import 'package:milow_core/milow_core.dart';
 import '../../../../core/providers/network_provider.dart';
 import 'user_repository.dart';
 
+import '../../settings/providers/company_provider.dart';
+
 final userRepositoryProvider = Provider<UserRepository>((ref) {
-  return UserRepository(ref.watch(coreNetworkClientProvider));
+  final companyIdOption = ref.watch(currentCompanyIdProvider);
+  return UserRepository(
+    ref.watch(coreNetworkClientProvider),
+    companyId: companyIdOption.value,
+  );
 });
 
 /// Provider that listens to real-time changes on the profiles table.

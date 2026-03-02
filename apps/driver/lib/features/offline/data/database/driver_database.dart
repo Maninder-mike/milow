@@ -399,6 +399,10 @@ class DriverDatabase extends _$DriverDatabase {
 
   static QueryExecutor _openConnection() {
     return LazyDatabase(() async {
+      // In-memory database for tests to prevent hangs and synchronization issues
+      if (Platform.environment.containsKey('FLUTTER_TEST')) {
+        return NativeDatabase.memory();
+      }
       final dbFolder = await getApplicationDocumentsDirectory();
       final file = File(p.join(dbFolder.path, 'driver_offline.db'));
       return NativeDatabase.createInBackground(file);

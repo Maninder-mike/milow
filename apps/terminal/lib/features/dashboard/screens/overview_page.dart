@@ -349,6 +349,17 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
           onRemove: () =>
               ref.read(dashboardConfigProvider.notifier).removeWidget(type),
         );
+      case DashboardWidgetType.announcements:
+        return DashboardCard(
+          label: 'ANNOUNCEMENTS',
+          value: 'LATEST',
+          icon: FluentIcons.megaphone_24_regular,
+          type: type,
+          isEditMode: _isEditMode,
+          onRemove: () =>
+              ref.read(dashboardConfigProvider.notifier).removeWidget(type),
+          onPressed: () => context.go('/inbox?tab=1'),
+        );
     }
   }
 

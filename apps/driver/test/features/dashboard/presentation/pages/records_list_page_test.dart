@@ -4,10 +4,12 @@ import 'package:drift/drift.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/services/sync_queue_service.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/features/dashboard/presentation/pages/records_list_page.dart';
 import 'package:milow/features/offline/data/database/driver_database.dart';
@@ -15,6 +17,7 @@ import 'package:provider/provider.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow_core/milow_core.dart';
 
 // Mock Connectivity Service
 class MockConnectivityService extends ConnectivityService {
@@ -26,6 +29,8 @@ class MockConnectivityService extends ConnectivityService {
   @override
   Stream<bool> get onConnectivityChanged => Stream.value(false);
 }
+
+class MockSyncQueueService extends Mock implements SyncQueueService {}
 
 void main() {
   late Directory tempDir;
@@ -48,6 +53,9 @@ void main() {
       url: 'https://dummy.supabase.co',
       anonKey: 'dummy-key',
     );
+
+    // Optimize NetworkClient for tests to fail fast and avoid hangs
+    NetworkClientConfig.defaultConfig = NetworkClientConfig.test;
   });
 
   tearDownAll(() async {
@@ -57,6 +65,11 @@ void main() {
   setUp(() async {
     // Inject Mock Connectivity
     ConnectivityService.instance = MockConnectivityService();
+
+    // Inject Mock Sync Queue
+    final mockSyncQueue = MockSyncQueueService();
+    when(() => mockSyncQueue.pendingOperations).thenReturn([]);
+    SyncQueueService.instance = mockSyncQueue;
 
     // Inject Mock User ID
     TripRepository.mockUserId = 'test-user';
@@ -77,18 +90,40 @@ void main() {
           ChangeNotifierProvider<PreferencesService>.value(value: prefService),
         ],
         child: MaterialApp(
-          theme: ThemeData(useMaterial3: true, extensions: [DesignTokens.light]),
+          theme: ThemeData(
+            useMaterial3: true,
+            extensions: const [DesignTokens.light],
+          ),
           home: const RecordsListPage(),
         ),
       ),
     );
+    tester.view.physicalSize = const Size(1080, 2400);
+    tester.view.devicePixelRatio = 3.0;
+
     // Trigger initState and first frame
     await tester.pump();
 
-    // Pump a fixed duration to allow async _loadRecords to complete.
-    // We avoid pumpAndSettle() because AnimatedContainer animations
-    // can cause timeouts. 500ms is plenty for local DB reads.
-    await tester.pump(const Duration(milliseconds: 500));
+    // Wait for the loading spinner to disappear and UI to settle
+    // Manual loop is safer than pumpAndSettle when infinite animations (spinners) are present.
+    bool isLoadingGone = false;
+    for (int i = 0; i < 50; i++) {
+      // Increase to 50 tries (2.5 seconds)
+      await tester.pump(const Duration(milliseconds: 50));
+      if (find.byType(CircularProgressIndicator).evaluate().isEmpty) {
+        isLoadingGone = true;
+        break;
+      }
+    }
+
+    if (!isLoadingGone) {
+      debugPrint(
+        '[pumpPage] WARNING: CircularProgressIndicator still visible after timeout',
+      );
+    }
+
+    // Final settle for any other transitions
+    await tester.pump(const Duration(milliseconds: 200));
   }
 
   testWidgets('renders successfully with empty state', (tester) async {
@@ -96,7 +131,13 @@ void main() {
 
     expect(find.text('All Records'), findsOneWidget);
     expect(find.byType(SliverAppBar), findsWidgets);
-    expect(find.text('No matching records'), findsOneWidget);
+
+    // Check for the mapped text using our new key
+    final emptyTextFinder = find.byKey(const Key('empty_state_text'));
+    expect(emptyTextFinder, findsOneWidget);
+
+    final Text emptyTextWidget = tester.widget<Text>(emptyTextFinder);
+    expect(emptyTextWidget.data, 'No trips or fuel entries yet');
   });
 
   testWidgets('loads and displays trips and fuel', (tester) async {

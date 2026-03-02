@@ -11,6 +11,9 @@ import 'network_coalescer.dart';
 
 /// Configuration for the [CoreNetworkClient].
 class NetworkClientConfig {
+  /// The global default configuration (useful to override in tests).
+  static NetworkClientConfig defaultConfig = const NetworkClientConfig();
+
   /// Maximum number of retry attempts.
   final int maxRetries;
 
@@ -33,6 +36,14 @@ class NetworkClientConfig {
     this.circuitBreakerThreshold = 5,
     this.circuitBreakerResetDuration = const Duration(seconds: 30),
   });
+
+  /// A configuration for testing that fails fast.
+  static const test = NetworkClientConfig(
+    maxRetries: 0,
+    initialDelay: Duration.zero,
+    maxDelay: Duration.zero,
+    circuitBreakerThreshold: 1,
+  );
 }
 
 /// State of the circuit breaker.
@@ -72,6 +83,7 @@ class CoreNetworkClient {
   final SupabaseClient _supabase;
   final NetworkClientConfig config;
   final NetworkCoalescer _coalescer;
+  final Connectivity _connectivity;
 
   // In-memory response cache
   final Map<String, _CacheEntry> _responseCache = {};
@@ -83,16 +95,19 @@ class CoreNetworkClient {
 
   CoreNetworkClient(
     this._supabase, {
-    this.config = const NetworkClientConfig(),
+    NetworkClientConfig? config,
     NetworkCoalescer? coalescer,
-  }) : _coalescer = coalescer ?? networkCoalescer;
+    Connectivity? connectivity,
+  }) : config = config ?? NetworkClientConfig.defaultConfig,
+       _coalescer = coalescer ?? networkCoalescer,
+       _connectivity = connectivity ?? Connectivity();
 
   /// Access the underlying Supabase client (for advanced use cases).
   SupabaseClient get supabase => _supabase;
 
   /// current connection status
   Future<bool> get hasConnection async {
-    final result = await Connectivity().checkConnectivity();
+    final result = await _connectivity.checkConnectivity();
     return !result.contains(ConnectivityResult.none);
   }
 
@@ -169,6 +184,15 @@ class CoreNetworkClient {
           ),
         );
       }
+    }
+
+    // 0. Check connectivity before attempting any network request
+    if (!await hasConnection) {
+      AppLogger.warning(
+        'No internet connection, skipping $operationName',
+        context: {'operation': operationName},
+      );
+      return left(const NetworkFailure('No internet connection.'));
     }
 
     // Retry logic with exponential backoff

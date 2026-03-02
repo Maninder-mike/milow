@@ -8,8 +8,7 @@ import 'package:milow/core/services/profile_repository.dart';
 import 'package:milow/core/models/country_code.dart';
 import 'package:milow/core/widgets/country_code_selector.dart';
 import 'package:milow/core/constants/design_tokens.dart';
-import 'package:milow/core/utils/image_utils.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:milow/core/widgets/performance_widgets.dart';
 import 'package:milow/core/mixins/form_restoration_mixin.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -574,25 +573,22 @@ class _EditProfilePageState extends State<EditProfilePage>
                 child: _imageFile != null
                     ? Image.file(_imageFile!, fit: BoxFit.cover)
                     : (_avatarUrl != null
-                          ? CachedNetworkImage(
+                          ? OptimizedImage(
                               imageUrl: _avatarUrl!,
                               fit: BoxFit.cover,
-                              memCacheHeight: ImageUtils.getCacheSize(
-                                120,
-                                context,
-                              ),
-                              memCacheWidth: ImageUtils.getCacheSize(
-                                120,
-                                context,
-                              ),
-                              placeholder: (context, url) => Center(
+                              height: 120,
+                              width: 120,
+                              placeholder: Center(
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: primaryColor.withValues(alpha: 0.3),
                                 ),
                               ),
-                              errorWidget: (context, url, error) =>
-                                  Icon(Icons.person, size: 60, color: subtext),
+                              errorWidget: Icon(
+                                Icons.person,
+                                size: 60,
+                                color: subtext,
+                              ),
                             )
                           : Icon(Icons.person, size: 60, color: subtext)),
               ),

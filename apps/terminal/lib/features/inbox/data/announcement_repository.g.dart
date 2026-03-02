@@ -96,4 +96,4 @@ final class AnnouncementsProvider
   }
 }
 
-String _$announcementsHash() => r'9aa05fa4edea5fde4bd05129434304a482b009be';
+String _$announcementsHash() => r'6512e6a8198984ef9d0e7a39c3a476cd0b5225a5';

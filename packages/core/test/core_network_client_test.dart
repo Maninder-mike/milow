@@ -1,7 +1,9 @@
 import 'dart:io';
 
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/annotations.dart';
+import 'package:mockito/mockito.dart';
 
 import 'package:milow_core/milow_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -9,13 +11,25 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 @GenerateMocks([SupabaseClient])
 import 'core_network_client_test.mocks.dart';
 
+class FakeConnectivity extends Fake implements Connectivity {
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async => [
+    ConnectivityResult.wifi,
+  ];
+}
+
 void main() {
   late MockSupabaseClient mockSupabaseClient;
+  late FakeConnectivity fakeConnectivity;
   late CoreNetworkClient client;
 
   setUp(() {
     mockSupabaseClient = MockSupabaseClient();
-    client = CoreNetworkClient(mockSupabaseClient);
+    fakeConnectivity = FakeConnectivity();
+    client = CoreNetworkClient(
+      mockSupabaseClient,
+      connectivity: fakeConnectivity,
+    );
   });
 
   group('CoreNetworkClient', () {

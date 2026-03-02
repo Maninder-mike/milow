@@ -17,6 +17,7 @@ import 'package:milow/core/services/messaging_provider.dart';
 import 'package:milow/core/services/locale_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/notification_service.dart';
+import 'package:milow/core/services/announcements_provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -257,6 +258,7 @@ Future<void> main() async {
             ChangeNotifierProvider(
               create: (_) => MessagingProvider(driverDatabase)..init(),
             ),
+            ChangeNotifierProvider(create: (_) => AnnouncementsProvider()),
             if (prefService != null)
               ChangeNotifierProvider.value(value: prefService),
           ],
@@ -678,6 +680,9 @@ class _MyAppState extends State<MyApp> {
     _setupMethodChannelListener();
     _checkForSharedText();
     _setupDeepLinkListener();
+    
+    // Pass router to notification service for deep linking
+    notificationService.setRouter(_router);
   }
 
   void _setupMethodChannelListener() {

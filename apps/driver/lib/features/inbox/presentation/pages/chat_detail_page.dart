@@ -125,7 +125,7 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
               itemBuilder: (context, index) {
                 final msg = messages[index];
                 final isMe = msg.senderId == myId;
-                return _buildMessageBubble(msg, isMe, tokens);
+                return _buildMessageItem(msg, isMe, tokens, messagingProvider);
               },
             ),
           ),
@@ -135,13 +135,170 @@ class _ChatDetailPageState extends State<ChatDetailPage> {
     );
   }
 
-  Widget _buildMessageBubble(Message msg, bool isMe, DesignTokens tokens) {
-    // Check if the message is synced (if it's a local message, we marked it is_synced=0)
-    // We'll trust the provider to have enriched the data.
-    // For now, let's assume if it has a valid uuid-like ID and is in local database, it might have isSynced.
-    // Actually, I should probably expose isSynced in the Message model or handle it differently.
-    // For simplicity, let's just show the bubble.
+  Widget _buildMessageItem(
+    Message msg,
+    bool isMe,
+    DesignTokens tokens,
+    MessagingProvider provider,
+  ) {
+    if (msg.type == MessageType.quickAction) {
+      final payload = msg.quickActionPayload;
+      if (payload != null) {
+        return _buildQuickActionCard(payload, msg, isMe, tokens, provider);
+      }
+    }
+    return _buildMessageBubble(msg, isMe, tokens);
+  }
 
+  Widget _buildQuickActionCard(
+    QuickActionPayload payload,
+    Message msg,
+    bool isMe,
+    DesignTokens tokens,
+    MessagingProvider provider,
+  ) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final bool isCompleted = payload.status == 'completed';
+
+    return Align(
+      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        constraints: BoxConstraints(
+          maxWidth: MediaQuery.of(context).size.width * 0.85,
+        ),
+        decoration: BoxDecoration(
+          color: colorScheme.surfaceContainerHigh,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isCompleted
+                ? tokens.success.withValues(alpha: 0.5)
+                : colorScheme.primary.withValues(alpha: 0.3),
+            width: 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  isCompleted ? Icons.check_circle_rounded : Icons.bolt_rounded,
+                  color: isCompleted ? tokens.success : colorScheme.primary,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isMe ? 'Sent Quick Action' : 'Action Required',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isCompleted ? tokens.success : colorScheme.primary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              payload.label,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+            ),
+            const SizedBox(height: 12),
+            if (!isMe && !isCompleted)
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton(
+                  onPressed: () => _handleQuickAction(payload, msg, provider),
+                  style: FilledButton.styleFrom(
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: Text(_getActionLabel(payload.actionType)),
+                ),
+              )
+            else if (isCompleted)
+              Row(
+                children: [
+                  Icon(Icons.done, size: 14, color: tokens.textSecondary),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Completed',
+                    style: TextStyle(fontSize: 12, color: tokens.textSecondary),
+                  ),
+                ],
+              ),
+            const SizedBox(height: 4),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text(
+                DateFormat.jm().format(msg.createdAt),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  String _getActionLabel(String actionType) {
+    switch (actionType) {
+      case 'request_eta':
+        return 'Send Current ETA';
+      case 'confirm_arrival':
+        return 'Confirm Arrival';
+      case 'upload_pod':
+        return 'Scan POD';
+      default:
+        return 'Confirm';
+    }
+  }
+
+  void _handleQuickAction(
+    QuickActionPayload payload,
+    Message msg,
+    MessagingProvider provider,
+  ) async {
+    // 1. Execute logic based on type
+    String responseContent = 'Confirmed: ${payload.label}';
+
+    if (payload.actionType == 'upload_pod') {
+      final result = await context.push(
+        '/scan-document',
+        extra: {'tripId': msg.loadId, 'initialDocumentType': 'pod'},
+      );
+      if (result == null) return; // Cancelled
+      responseContent = 'POD Uploaded';
+    } else if (payload.actionType == 'request_eta') {
+      // In a real app, calculate ETA or show picker
+      responseContent = 'ETA to next stop: 45 mins';
+    }
+
+    // 2. Mark action as completed locally/remotely
+    // In this MVP, we just send a reply. In a full implementation,
+    // we would update the original message status in DB.
+
+    // 3. Send reply
+    await provider.sendMessage(
+      content: responseContent,
+      loadId: msg.loadId,
+      receiverId: msg.senderId,
+    );
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Action completed!')));
+  }
+
+  Widget _buildMessageBubble(Message msg, bool isMe, DesignTokens tokens) {
     return Align(
       alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(

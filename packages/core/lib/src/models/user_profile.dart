@@ -1,3 +1,5 @@
+import 'package:flutter/material.dart';
+
 enum UserRole {
   admin,
   dispatcher,
@@ -49,6 +51,45 @@ enum DriverType {
       this == DriverType.ownerOperator || this == DriverType.leaseOperator;
 }
 
+/// Driver availability status
+enum DriverStatus {
+  available,
+  onDuty,
+  driving,
+  offDuty,
+  sleeper;
+
+  String get label {
+    switch (this) {
+      case DriverStatus.available:
+        return 'Available';
+      case DriverStatus.onDuty:
+        return 'On Duty';
+      case DriverStatus.driving:
+        return 'Driving';
+      case DriverStatus.offDuty:
+        return 'Off Duty';
+      case DriverStatus.sleeper:
+        return 'Sleeper';
+    }
+  }
+
+  Color get color {
+    switch (this) {
+      case DriverStatus.available:
+        return Colors.green;
+      case DriverStatus.onDuty:
+        return Colors.blue;
+      case DriverStatus.driving:
+        return Colors.orange;
+      case DriverStatus.offDuty:
+        return Colors.grey;
+      case DriverStatus.sleeper:
+        return Colors.purple;
+    }
+  }
+}
+
 /// Model representing a user profile
 class UserProfile {
   final String id;
@@ -68,6 +109,8 @@ class UserProfile {
   final String? citizenship;
   final String? fastId;
   final DriverType driverType;
+  final DriverStatus driverStatus;
+  final DateTime? driverStatusUpdatedAt;
 
   const UserProfile({
     required this.id,
@@ -87,6 +130,8 @@ class UserProfile {
     this.fastId,
     this.companyId,
     this.driverType = DriverType.companyDriver,
+    this.driverStatus = DriverStatus.offDuty,
+    this.driverStatusUpdatedAt,
   });
 
   /// Create UserProfile from JSON (Supabase response)
@@ -115,6 +160,10 @@ class UserProfile {
       fastId: json['fast_id'] as String?,
       companyId: json['company_id'] as String?,
       driverType: _parseDriverType(json['driver_type'] as String?),
+      driverStatus: _parseDriverStatus(json['driver_status'] as String?),
+      driverStatusUpdatedAt: json['driver_status_updated_at'] != null
+          ? DateTime.parse(json['driver_status_updated_at'] as String)
+          : null,
     );
   }
 
@@ -136,6 +185,7 @@ class UserProfile {
       'fast_id': fastId,
       'company_id': companyId,
       'driver_type': driverType.name,
+      'driver_status': _driverStatusToSnakeCase(driverStatus),
     };
   }
 
@@ -157,6 +207,26 @@ class UserProfile {
     );
   }
 
+  static DriverStatus _parseDriverStatus(String? status) {
+    if (status == null) return DriverStatus.offDuty;
+    final normalized = status.replaceAll('_', '').toLowerCase();
+    return DriverStatus.values.firstWhere(
+      (e) => e.name.toLowerCase() == normalized,
+      orElse: () => DriverStatus.offDuty,
+    );
+  }
+
+  String _driverStatusToSnakeCase(DriverStatus status) {
+    switch (status) {
+      case DriverStatus.onDuty:
+        return 'on_duty';
+      case DriverStatus.offDuty:
+        return 'off_duty';
+      default:
+        return status.name;
+    }
+  }
+
   UserProfile copyWith({
     String? id,
     String? email,
@@ -175,6 +245,8 @@ class UserProfile {
     String? fastId,
     String? companyId,
     DriverType? driverType,
+    DriverStatus? driverStatus,
+    DateTime? driverStatusUpdatedAt,
   }) {
     return UserProfile(
       id: id ?? this.id,
@@ -194,6 +266,8 @@ class UserProfile {
       fastId: fastId ?? this.fastId,
       companyId: companyId ?? this.companyId,
       driverType: driverType ?? this.driverType,
+      driverStatus: driverStatus ?? this.driverStatus,
+      driverStatusUpdatedAt: driverStatusUpdatedAt ?? this.driverStatusUpdatedAt,
     );
   }
 }
