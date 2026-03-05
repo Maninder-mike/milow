@@ -1,5 +1,4 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/models/driver_pay_config.dart';
 import '../../domain/models/driver_settlement.dart';
 import '../../domain/models/settlement_summary.dart';
@@ -9,45 +8,11 @@ import '../../../../core/providers/network_provider.dart';
 
 part 'settlement_providers.g.dart';
 
-// Fallback provider because of build_runner issues in the cloud environment
-final getSettlementSummaryProvider =
-    FutureProvider.family<SettlementSummary, String>((ref, driverId) async {
-      final settlements = await ref.watch(
-        driverSettlementsProvider(driverId).future,
-      );
-      final unsettledLoads = await ref.watch(
-        unsettledLoadsProvider(driverId).future,
-      );
-      final unsettledFuel = await ref.watch(
-        unsettledFuelProvider(driverId).future,
-      );
-
-      double totalPending = 0;
-      double totalPaid = 0;
-      double totalNetPayout = 0;
-      int paidCount = 0;
-
-      for (final s in settlements) {
-        if (s.status == SettlementStatus.draft ||
-            s.status == SettlementStatus.approved) {
-          totalPending += s.netPayout;
-        } else if (s.status == SettlementStatus.paid) {
-          totalPaid += s.netPayout;
-          totalNetPayout += s.netPayout;
-          paidCount++;
-        }
-      }
-
-      return SettlementSummary(
-        totalPending: totalPending,
-        totalPaid: totalPaid,
-        averagePayout: paidCount > 0 ? totalNetPayout / paidCount : 0,
-        unsettledItemsCount: unsettledLoads.length + unsettledFuel.length,
-      );
-    });
-
 @riverpod
-Future<SettlementSummary> getSettlementSummary(Ref ref, String driverId) async {
+Future<SettlementSummary> fetchSettlementSummaryData(
+  Ref ref,
+  String driverId,
+) async {
   final settlements = await ref.watch(
     driverSettlementsProvider(driverId).future,
   );

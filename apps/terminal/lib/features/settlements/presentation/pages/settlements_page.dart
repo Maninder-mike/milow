@@ -108,7 +108,7 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
       driverSettlementsProvider(selectedDriver.id),
     );
     final summaryAsync = ref.watch(
-      getSettlementSummaryProvider(selectedDriver.id),
+      fetchSettlementSummaryDataProvider(selectedDriver.id),
     );
 
     return ScaffoldPage(
