@@ -5,6 +5,9 @@ import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'dart:io';
+import 'dart:ffi';
+import 'package:sqlite3/open.dart';
 import 'package:milow/core/theme/app_theme.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow_core/milow_core.dart';
@@ -83,158 +86,175 @@ import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart
 import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
 
 Future<void> main() async {
-  PreferencesService? prefService;
-  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
-  // Keep native splash screen up until we're ready
-  widgetsBinding.deferFirstFrame();
-
-  // 2. Critical Base Services (Blocking)
-  try {
-    // 1. Initialize Firebase FIRST (PerformanceService depends on it)
-    debugPrint('🚀 [Init] Initializing Firebase...');
-    await Firebase.initializeApp().timeout(
-      const Duration(seconds: 10),
-      onTimeout: () {
-        debugPrint('⚠️ [Init] Firebase initialization timed out after 10s');
-        throw TimeoutException('Firebase initialization timed out');
-      },
-    );
-    debugPrint('✅ [Init] Firebase initialized');
-
-    // Start Cold Start Trace (after Firebase is ready)
-    await PerformanceService.instance.startColdStartTrace();
-    PerformanceService.instance.logStartupMilestone('app_launched');
-
-    FlutterError.onError = (errorDetails) {
-      FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
-    };
-
-    PlatformDispatcher.instance.onError = (error, stack) {
-      // Handle "refresh_token_already_used" error to prevent crash loop
-      if (error is AuthException &&
-          error.code == 'refresh_token_already_used') {
-        debugPrint('⚠️ Refresh token already used. Signing out...');
-        Supabase.instance.client.auth.signOut();
-        return true;
-      }
-
-      // Classify transient network errors as NON-FATAL
-      final errorStr = error.toString().toLowerCase();
-      if (errorStr.contains('socketexception') ||
-          errorStr.contains('failed host lookup') ||
-          errorStr.contains('clientexception') ||
-          errorStr.contains('authretryablefetchexception') ||
-          errorStr.contains('connection refused') ||
-          errorStr.contains('network is unreachable')) {
-        debugPrint('📵 Transient network error (non-fatal): $error');
-        FirebaseCrashlytics.instance.recordError(error, stack, fatal: false);
-        return true;
-      }
-
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-      return true;
-    };
-
-    // 3. Load environment and UI settings (Blocking)
-    SystemChrome.setSystemUIOverlayStyle(
-      const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        systemNavigationBarColor: Colors.transparent,
-      ),
-    );
-
-    debugPrint('🚀 [Init] Loading environment and base services...');
-    await Future.wait([
-      SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
-      dotenv
-          .load(fileName: '.env')
-          .then((_) => debugPrint('✅ [Init] .env loaded')),
-      logger.init().then((_) => debugPrint('✅ [Init] Logger initialized')),
-      localeService.loadLocale().then(
-        (_) => debugPrint('✅ [Init] Locale loaded'),
-      ),
-      connectivityService.init().then(
-        (_) => debugPrint('✅ [Init] Connectivity initialized'),
-      ),
-    ]).timeout(
-      const Duration(seconds: 15),
-      onTimeout: () {
-        debugPrint(
-          '⚠️ [Init] Base services initialization timed out after 15s',
-        );
-        return []; // Return empty list to satisfy type
-      },
-    );
-
-    PerformanceService.instance.logStartupMilestone('environment_loaded');
-
-    // 4. Critical Dependencies (Supabase & Hive)
-    debugPrint('🚀 [Init] Initializing Supabase and Hive...');
-    await Future.wait([
-      Supabase.initialize(
-        url: SupabaseConstants.supabaseUrl,
-        anonKey: SupabaseConstants.supabaseAnonKey,
-        authOptions: FlutterAuthClientOptions(
-          authFlowType: AuthFlowType.pkce,
-          localStorage: SecureLocalStorage(),
-        ),
-      ).then((_) => debugPrint('✅ [Init] Supabase initialized')),
-      Hive.initFlutter().then((_) async {
-        debugPrint('🚀 [Init] Initializing Hive adapters and stores...');
-        Hive.registerAdapter(SyncOperationAdapter());
-        // Stores needed for dashboard/cached data
-        await Future.wait<dynamic>([
-          LocalProfileStore.init().then(
-            (_) => debugPrint('✅ [Init] LocalProfileStore ready'),
-          ),
-          LocalDocumentStore.init().then(
-            (_) => debugPrint('✅ [Init] LocalDocumentStore ready'),
-          ),
-          LocalExpenseStore.init().then(
-            (_) => debugPrint('✅ [Init] LocalExpenseStore ready'),
-          ),
-        ]);
-        debugPrint('✅ [Init] All Hive stores ready');
-        // Sync queue can init, but processing happens in background
-        return syncQueueService.init().then(
-          (_) => debugPrint('✅ [Init] SyncQueue initialized'),
-        );
-      }),
-    ]).timeout(
-      const Duration(seconds: 20),
-      onTimeout: () {
-        debugPrint(
-          '⚠️ [Init] Critical dependencies (Supabase/Hive) timed out after 20s',
-        );
-        return []; // Return empty list to satisfy type
-      },
-    );
-
-    PerformanceService.instance.logStartupMilestone('critical_services_ready');
-
-    // 5. Initialize background services (Non-blocking)
-    unawaited(_initBackgroundServices());
-
-    unawaited(logger.cleanOldLogs());
-    final service = await PreferencesService.init();
-    prefService = service;
-    await logger.logLifecycle('App initialization complete');
-  } catch (e, stack) {
-    debugPrint('❌ [Init] Fatal error during initialization: $e');
-    debugPrint('Stack trace: $stack');
-    try {
-      await FirebaseCrashlytics.instance.recordError(e, stack, fatal: true);
-    } catch (_) {}
-  } finally {
-    // ALWAYS allow the first frame and run the app, even if some services failed.
-    // This prevents a permanent blank screen.
-    debugPrint('🎬 [Init] Ensuring first frame is allowed...');
-    widgetsBinding.allowFirstFrame();
-  }
-
   // Wrap in runZonedGuarded to catch all async errors (including those outside Flutter context)
-  runZonedGuarded(
-    () {
+  // and ensure ensureInitialized() is called within the same zone as runApp()
+  await runZonedGuarded(
+    () async {
+      final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+      // Keep native splash screen up until we're ready
+      widgetsBinding.deferFirstFrame();
+
+      PreferencesService? prefService;
+
+      // 1. Critical Base Services (Blocking)
+      try {
+        // Override sqlite3 to use the correct library on Android
+        if (Platform.isAndroid) {
+          debugPrint('🚀 [Init] Overriding sqlite3 for Android...');
+          open.overrideFor(OperatingSystem.android, () {
+            return DynamicLibrary.open('libsqlite3.so');
+          });
+        }
+
+        // 1. Initialize Firebase FIRST (PerformanceService depends on it)
+        debugPrint('🚀 [Init] Initializing Firebase...');
+        await Firebase.initializeApp().timeout(
+          const Duration(seconds: 10),
+          onTimeout: () {
+            debugPrint('⚠️ [Init] Firebase initialization timed out after 10s');
+            throw TimeoutException('Firebase initialization timed out');
+          },
+        );
+        debugPrint('✅ [Init] Firebase initialized');
+
+        // Start Cold Start Trace (after Firebase is ready)
+        await PerformanceService.instance.startColdStartTrace();
+        PerformanceService.instance.logStartupMilestone('app_launched');
+
+        FlutterError.onError = (errorDetails) {
+          FirebaseCrashlytics.instance.recordFlutterFatalError(errorDetails);
+        };
+
+        PlatformDispatcher.instance.onError = (error, stack) {
+          // Handle "refresh_token_already_used" error to prevent crash loop
+          if (error is AuthException &&
+              error.code == 'refresh_token_already_used') {
+            debugPrint('⚠️ Refresh token already used. Signing out...');
+            Supabase.instance.client.auth.signOut();
+            return true;
+          }
+
+          // Classify transient network errors as NON-FATAL
+          final errorStr = error.toString().toLowerCase();
+          if (errorStr.contains('socketexception') ||
+              errorStr.contains('failed host lookup') ||
+              errorStr.contains('clientexception') ||
+              errorStr.contains('authretryablefetchexception') ||
+              errorStr.contains('connection refused') ||
+              errorStr.contains('network is unreachable')) {
+            debugPrint('📵 Transient network error (non-fatal): $error');
+            FirebaseCrashlytics.instance.recordError(
+              error,
+              stack,
+              fatal: false,
+            );
+            return true;
+          }
+
+          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+          return true;
+        };
+
+        // 3. Load environment and UI settings (Blocking)
+        SystemChrome.setSystemUIOverlayStyle(
+          const SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: Colors.transparent,
+          ),
+        );
+
+        debugPrint('🚀 [Init] Loading environment and base services...');
+        await Future.wait([
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge),
+          dotenv
+              .load(fileName: '.env')
+              .then((_) => debugPrint('✅ [Init] .env loaded')),
+          logger.init().then((_) => debugPrint('✅ [Init] Logger initialized')),
+          localeService.loadLocale().then(
+            (_) => debugPrint('✅ [Init] Locale loaded'),
+          ),
+          connectivityService.init().then(
+            (_) => debugPrint('✅ [Init] Connectivity initialized'),
+          ),
+        ]).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () {
+            debugPrint(
+              '⚠️ [Init] Base services initialization timed out after 15s',
+            );
+            return []; // Return empty list to satisfy type
+          },
+        );
+
+        PerformanceService.instance.logStartupMilestone('environment_loaded');
+
+        // 4. Critical Dependencies (Supabase & Hive)
+        debugPrint('🚀 [Init] Initializing Supabase and Hive...');
+        await Future.wait([
+          Supabase.initialize(
+            url: SupabaseConstants.supabaseUrl,
+            anonKey: SupabaseConstants.supabaseAnonKey,
+            authOptions: FlutterAuthClientOptions(
+              authFlowType: AuthFlowType.pkce,
+              localStorage: SecureLocalStorage(),
+            ),
+          ).then((_) => debugPrint('✅ [Init] Supabase initialized')),
+          Hive.initFlutter().then((_) async {
+            debugPrint('🚀 [Init] Initializing Hive adapters and stores...');
+            Hive.registerAdapter(SyncOperationAdapter());
+            // Stores needed for dashboard/cached data
+            await Future.wait<dynamic>([
+              LocalProfileStore.init().then(
+                (_) => debugPrint('✅ [Init] LocalProfileStore ready'),
+              ),
+              LocalDocumentStore.init().then(
+                (_) => debugPrint('✅ [Init] LocalDocumentStore ready'),
+              ),
+              LocalExpenseStore.init().then(
+                (_) => debugPrint('✅ [Init] LocalExpenseStore ready'),
+              ),
+            ]);
+            debugPrint('✅ [Init] All Hive stores ready');
+            // Sync queue can init, but processing happens in background
+            return syncQueueService.init().then(
+              (_) => debugPrint('✅ [Init] SyncQueue initialized'),
+            );
+          }),
+        ]).timeout(
+          const Duration(seconds: 20),
+          onTimeout: () {
+            debugPrint(
+              '⚠️ [Init] Critical dependencies (Supabase/Hive) timed out after 20s',
+            );
+            return []; // Return empty list to satisfy type
+          },
+        );
+
+        PerformanceService.instance.logStartupMilestone(
+          'critical_services_ready',
+        );
+
+        // 5. Initialize background services (Non-blocking)
+        unawaited(_initBackgroundServices());
+
+        unawaited(logger.cleanOldLogs());
+        final service = await PreferencesService.init();
+        prefService = service;
+        await logger.logLifecycle('App initialization complete');
+      } catch (e, stack) {
+        debugPrint('❌ [Init] Fatal error during initialization: $e');
+        debugPrint('Stack trace: $stack');
+        try {
+          await FirebaseCrashlytics.instance.recordError(e, stack, fatal: true);
+        } catch (_) {}
+      } finally {
+        // ALWAYS allow the first frame and run the app, even if some services failed.
+        // This prevents a permanent blank screen.
+        debugPrint('🎬 [Init] Ensuring first frame is allowed...');
+        widgetsBinding.allowFirstFrame();
+      }
+
+      debugPrint('🚀 [Init] Running App...');
       runApp(
         MultiProvider(
           providers: [
@@ -680,7 +700,7 @@ class _MyAppState extends State<MyApp> {
     _setupMethodChannelListener();
     _checkForSharedText();
     _setupDeepLinkListener();
-    
+
     // Pass router to notification service for deep linking
     notificationService.setRouter(_router);
   }

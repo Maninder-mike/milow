@@ -304,12 +304,21 @@ class LoadRepository {
     final user = _client.supabase.auth.currentUser;
     if (user == null) return null;
 
-    final response = await _client.supabase
-        .from('profiles')
-        .select('company_id')
-        .eq('id', user.id)
-        .maybeSingle();
+    final result = await _client.query<String?>(
+      () async {
+        final response = await _client.supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', user.id)
+            .maybeSingle();
+        return response?['company_id'] as String?;
+      },
+      operationName: 'getMyCompanyId',
+      cachePolicy: CachePolicy.cacheFirst,
+      cacheKey: 'user_company_id_${user.id}',
+      ttl: const Duration(hours: 1), // Company ID rarely changes
+    );
 
-    return response?['company_id'] as String?;
+    return result.getOrElse((failure) => null);
   }
 }

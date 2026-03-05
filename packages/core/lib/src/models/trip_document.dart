@@ -211,9 +211,11 @@ class TripDocument {
     return TripDocument(
       id: json['id'] as String?,
       tripId: json['trip_id'] as String,
-      tripNumber: json['trips'] != null
-          ? json['trips']['trip_number'] as String?
-          : json['trip_number'] as String?,
+      tripNumber: json['driver_trips'] != null
+          ? json['driver_trips']['trip_number'] as String?
+          : (json['trips'] != null
+                ? json['trips']['trip_number'] as String?
+                : json['trip_number'] as String?),
       userId: json['user_id'] as String,
       companyId: json['company_id'] as String?,
       documentType: TripDocumentType.fromValue(json['document_type'] as String),

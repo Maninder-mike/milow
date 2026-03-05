@@ -423,37 +423,42 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: tokens.spacingS,
-                      vertical: tokens.spacingXS,
-                    ),
-                    decoration: BoxDecoration(
-                      color: statusColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(tokens.shapeFull),
-                      border: Border.all(
-                        color: statusColor.withValues(alpha: 0.2),
+                  Flexible(
+                    child: Container(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: tokens.spacingS,
+                        vertical: tokens.spacingXS,
                       ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.circle,
-                          size: tokens.spacingS,
-                          color: statusColor,
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(tokens.shapeFull),
+                        border: Border.all(
+                          color: statusColor.withValues(alpha: 0.2),
                         ),
-                        SizedBox(width: tokens.spacingS),
-                        Text(
-                          statusLabel,
-                          style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: statusColor,
-                                letterSpacing: 0.3,
-                              ),
-                        ),
-                      ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.circle,
+                            size: tokens.spacingS,
+                            color: statusColor,
+                          ),
+                          SizedBox(width: tokens.spacingS),
+                          Flexible(
+                            child: Text(
+                              statusLabel,
+                              style: Theme.of(context).textTheme.labelSmall
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: statusColor,
+                                    letterSpacing: 0.3,
+                                  ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                   Row(

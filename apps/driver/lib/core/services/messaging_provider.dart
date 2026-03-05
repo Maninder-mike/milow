@@ -41,7 +41,10 @@ class MessagingProvider extends ChangeNotifier {
 
   Future<void> init() async {
     await loadLocalMessages();
-    _subscribeToRealtime();
+    // Only subscribe once during init to avoid race with auth listener
+    if (_realtimeSubscription == null) {
+      _subscribeToRealtime();
+    }
   }
 
   Future<void> loadLocalMessages() async {
@@ -84,43 +87,53 @@ class MessagingProvider extends ChangeNotifier {
     _realtimeSubscription = _supabase
         .from('messages')
         .stream(primaryKey: ['id'])
-        .listen((data) async {
-          debugPrint(
-            '📥 Realtime message update received: ${data.length} messages',
-          );
-          for (final json in data) {
-            try {
-              final message = Message.fromJson(json);
-              // Only save if it's relevant to me
-              if (message.senderId == myId ||
-                  message.receiverId == myId ||
-                  message.loadId != null) {
-                final isNew = !inbox.any((m) => m.id == message.id);
-                await _saveToLocal(message, isSynced: true);
+        .listen(
+          (data) async {
+            debugPrint('📥 Messaging Realtime Update: ${data.length} messages');
+            for (final json in data) {
+              try {
+                final message = Message.fromJson(json);
+                // Only save if it's relevant to me
+                if (message.senderId == myId ||
+                    message.receiverId == myId ||
+                    message.loadId != null) {
+                  final isNew = !inbox.any((m) => m.id == message.id);
+                  await _saveToLocal(message, isSynced: true);
 
-                // Trigger local notification if it's a new message from someone else
-                if (isNew && message.senderId != myId) {
-                  unawaited(
-                    notificationService.showNotification(
-                      id: message.id.hashCode,
-                      title:
-                          'New Message from ${message.senderName ?? 'Someone'}',
-                      body: message.content,
-                      payload: {
-                        'type': 'new_message',
-                        'loadId': message.loadId,
-                      }.toString(),
-                      type: NotificationType.message,
-                    ),
-                  );
+                  // Trigger local notification if it's a new message from someone else
+                  if (isNew && message.senderId != myId) {
+                    unawaited(
+                      notificationService.showNotification(
+                        id: message.id.hashCode,
+                        title:
+                            'New Message from ${message.senderName ?? 'Someone'}',
+                        body: message.content,
+                        payload: {
+                          'type': 'new_message',
+                          'loadId': message.loadId,
+                        }.toString(),
+                        type: NotificationType.message,
+                      ),
+                    );
+                  }
                 }
+              } catch (e) {
+                debugPrint('Error parsing realtime message: $e');
               }
-            } catch (e) {
-              debugPrint('Error parsing realtime message: $e');
             }
-          }
-          await loadLocalMessages();
-        });
+            // Debounce or at least await the local reload
+            await loadLocalMessages();
+          },
+          onError: (error, stackTrace) {
+            debugPrint('❌ Messaging Realtime Error (Code 1002?): $error');
+            // In version 1.0.2+, we should attempt a delayed retry if it's a connection issue
+            Future.delayed(const Duration(seconds: 5), () {
+              if (_supabase.auth.currentUser != null) {
+                _subscribeToRealtime();
+              }
+            });
+          },
+        );
   }
 
   Future<void> _saveToLocal(Message message, {bool isSynced = false}) async {

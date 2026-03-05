@@ -4,12 +4,11 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:mockito/annotations.dart';
-import 'package:mockito/mockito.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-@GenerateMocks([SupabaseClient])
 import 'core_network_client_coalescing_test.mocks.dart';
 
+@GenerateMocks([SupabaseClient])
 class FakeConnectivity extends Fake implements Connectivity {
   @override
   Future<List<ConnectivityResult>> checkConnectivity() async => [
