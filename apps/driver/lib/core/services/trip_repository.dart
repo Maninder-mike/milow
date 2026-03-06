@@ -35,8 +35,6 @@ class TripRepository {
   static String? _getUserId(SupabaseClient client) =>
       mockUserId ?? client.auth.currentUser?.id;
 
-  static SupabaseClient get _client => Supabase.instance.client;
-  static String? get _userId => mockUserId ?? _client.auth.currentUser?.id;
   static CoreNetworkClient _getNetworkClient(SupabaseClient client) {
     return CoreNetworkClient(client);
   }
@@ -69,27 +67,32 @@ class TripRepository {
     if (refresh && connectivityService.isOnline) {
       if (cached.isEmpty) {
         // Cache is empty (fresh install / flutter clean) — await server data
-        return await _refreshFromServer(userId);
+        return await _refreshFromServer(userId, supabaseClient: supabaseClient);
       }
       // Cache has data — fire-and-forget refresh in background
-      unawaited(_refreshFromServer(userId));
+      unawaited(_refreshFromServer(userId, supabaseClient: supabaseClient));
     }
 
     return cached;
   }
 
   /// Force refresh from server and update cache
-  static Future<List<Trip>> refresh() async {
-    final userId = _userId;
+  static Future<List<Trip>> refresh({SupabaseClient? supabaseClient}) async {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
     if (userId == null) return [];
 
-    return await _refreshFromServer(userId);
+    return await _refreshFromServer(userId, supabaseClient: supabaseClient);
   }
 
-  static Future<List<Trip>> _refreshFromServer(String userId) async {
+  static Future<List<Trip>> _refreshFromServer(
+    String userId, {
+    SupabaseClient? supabaseClient,
+  }) async {
     try {
       final serverTrips = await TripService.getTrips(
         coalesceKey: 'trips:$userId',
+        supabaseClient: supabaseClient,
       );
 
       // Get pending sync operations to prevent overwriting/deleting unsynced data

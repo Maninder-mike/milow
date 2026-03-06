@@ -1299,6 +1299,39 @@ class _LoadRowItemState extends ConsumerState<_LoadRowItem> {
                 widget.onBuildQuote();
               },
             ),
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.share_24_regular),
+              text: const Text('Share Tracking Link'),
+              onPressed: () {
+                Navigator.pop(context);
+                if (widget.load.trackingHash != null) {
+                  final link =
+                      'https://track.milow.app/${widget.load.trackingHash}';
+                  Clipboard.setData(ClipboardData(text: link));
+                  displayInfoBar(
+                    context,
+                    builder: (context, close) => InfoBar(
+                      title: const Text('Link Copied'),
+                      content: Text('Tracking link copied to clipboard: $link'),
+                      severity: InfoBarSeverity.success,
+                      onClose: close,
+                    ),
+                  );
+                } else {
+                  displayInfoBar(
+                    context,
+                    builder: (context, close) => InfoBar(
+                      title: const Text('No Tracking Link'),
+                      content: const Text(
+                        'This load does not have a tracking hash yet.',
+                      ),
+                      severity: InfoBarSeverity.warning,
+                      onClose: close,
+                    ),
+                  );
+                }
+              },
+            ),
             if (widget.load.status == LoadStatus.delivered ||
                 widget.load.status == LoadStatus.completed)
               MenuFlyoutItem(

@@ -26,6 +26,7 @@ class Load {
   final String tripNumber;
   final String? poNumber;
   final String? companyId;
+  final String? trackingHash;
   final List<AccessorialCharge> accessorials;
 
   Load({
@@ -51,6 +52,7 @@ class Load {
     required this.tripNumber,
     this.poNumber,
     this.companyId,
+    this.trackingHash,
     this.accessorials = const [],
   });
 
@@ -87,6 +89,7 @@ class Load {
       companyNotes: '',
       tripNumber: '',
       poNumber: null,
+      trackingHash: null,
       accessorials: [],
     );
   }
@@ -140,6 +143,7 @@ class Load {
     String? tripNumber,
     String? poNumber,
     String? companyId,
+    String? trackingHash,
     List<AccessorialCharge>? accessorials,
   }) {
     return Load(
@@ -165,6 +169,7 @@ class Load {
       tripNumber: tripNumber ?? this.tripNumber,
       poNumber: poNumber ?? this.poNumber,
       companyId: companyId ?? this.companyId,
+      trackingHash: trackingHash ?? this.trackingHash,
       accessorials: accessorials ?? this.accessorials,
     );
   }
@@ -194,6 +199,7 @@ class Load {
       'trip_number': tripNumber,
       'po_number': poNumber,
       'company_id': companyId,
+      if (trackingHash != null) 'tracking_hash': trackingHash,
       'accessorials': accessorials.map((e) => e.toJson()).toList(),
     };
   }
@@ -235,6 +241,7 @@ class Load {
       tripNumber: json['trip_number'] as String? ?? '',
       poNumber: json['po_number'] as String?,
       companyId: json['company_id'] as String?,
+      trackingHash: json['tracking_hash'] as String?,
       accessorials: json['accessorials'] != null
           ? (json['accessorials'] as List)
                 .map((e) => AccessorialCharge.fromJson(e))

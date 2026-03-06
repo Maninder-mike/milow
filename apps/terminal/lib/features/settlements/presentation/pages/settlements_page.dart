@@ -4,12 +4,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:terminal/features/drivers/presentation/providers/driver_selection_provider.dart';
 import '../providers/settlement_providers.dart';
+import '../../domain/models/driver_pay_config.dart';
 import '../widgets/generate_settlement_dialog.dart';
+import '../widgets/driver_pay_config_dialog.dart';
 import '../widgets/driver_selector_combo.dart';
 import '../widgets/settlement_kpi_cards.dart';
 import '../widgets/settlement_data_table.dart';
 
 import '../../domain/models/driver_settlement.dart';
+import '../../utils/settlement_pdf_generator.dart';
+import 'package:printing/printing.dart';
 
 class SettlementsPage extends ConsumerStatefulWidget {
   const SettlementsPage({super.key});
@@ -51,18 +55,79 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
     }
   }
 
-  void _showNotImplemented(BuildContext context, String action) {
-    displayInfoBar(
-      context,
-      builder: (context, close) => InfoBar(
-        title: Text('$action Not Implemented'),
-        content: const Text(
-          'This feature will be available in a future update.',
+  Future<void> _exportSelectedSettlements(String driverName) async {
+    if (_selectedIds.isEmpty) {
+      displayInfoBar(
+        context,
+        builder: (context, close) => InfoBar(
+          title: const Text('No Selection'),
+          content: const Text(
+            'Please select at least one settlement to export.',
+          ),
+          severity: InfoBarSeverity.warning,
+          onClose: close,
         ),
-        severity: InfoBarSeverity.warning,
-        onClose: close,
-      ),
-    );
+      );
+      return;
+    }
+
+    try {
+      final repo = ref.read(settlementRepositoryProvider);
+
+      for (final id in _selectedIds) {
+        final result = await repo.getSettlementDetails(id);
+        result.fold(
+          (failure) => throw Exception('Failed to load details for $id'),
+          (settlement) async {
+            final pdfBytes = await SettlementPdfGenerator.generate(
+              settlement,
+              driverName,
+            );
+            await Printing.sharePdf(
+              bytes: pdfBytes,
+              filename: 'Settlement_${settlement.id.substring(0, 8)}.pdf',
+            );
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        displayInfoBar(
+          context,
+          builder: (context, close) => InfoBar(
+            title: const Text('Export Error'),
+            content: Text(e.toString()),
+            severity: InfoBarSeverity.error,
+            onClose: close,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _showPayConfigDialog(
+    BuildContext context,
+    String driverId,
+    String driverName,
+  ) async {
+    // Show a loading ring while fetching
+    DriverPayConfig? config;
+    try {
+      config = await ref.read(driverPayConfigProvider(driverId).future);
+    } catch (e) {
+      // Ignore, will pass null
+    }
+
+    if (context.mounted) {
+      await showDialog(
+        context: context,
+        builder: (context) => DriverPayConfigDialog(
+          driverId: driverId,
+          driverName: driverName,
+          existingConfig: config,
+        ),
+      );
+    }
   }
 
   Future<void> _showGenerateSettlementDialog(
@@ -119,6 +184,15 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
                         _batchUpdateStatus(SettlementStatus.voided),
                   ),
                   CommandBarButton(
+                    icon: const Icon(FluentIcons.settings_24_regular),
+                    label: const Text('Configure Pay'),
+                    onPressed: () => _showPayConfigDialog(
+                      context,
+                      selectedDriver.id,
+                      selectedDriver.fullName ?? 'Unknown Driver',
+                    ),
+                  ),
+                  CommandBarButton(
                     icon: const Icon(FluentIcons.add_24_regular),
                     label: const Text('Generate Settlement'),
                     onPressed: () => _showGenerateSettlementDialog(
@@ -129,7 +203,9 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
                   CommandBarButton(
                     icon: const Icon(FluentIcons.arrow_export_up_24_regular),
                     label: const Text('Export'),
-                    onPressed: () => _showNotImplemented(context, 'Export'),
+                    onPressed: () => _exportSelectedSettlements(
+                      selectedDriver.fullName ?? 'Unknown Driver',
+                    ),
                   ),
                 ],
               )
@@ -137,7 +213,10 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
       ),
       content: selectedDriver == null
           ? _buildNoDriverState()
-          : _buildDriverContent(selectedDriver.id),
+          : _buildDriverContent(
+              selectedDriver.id,
+              selectedDriver.fullName ?? 'Unknown Driver',
+            ),
     );
   }
 
@@ -165,7 +244,7 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
     );
   }
 
-  Widget _buildDriverContent(String driverId) {
+  Widget _buildDriverContent(String driverId, String driverName) {
     final settlementsAsync = ref.watch(driverSettlementsProvider(driverId));
     final summaryAsync = ref.watch(
       fetchSettlementSummaryDataProvider(driverId),
@@ -230,7 +309,8 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
                         });
                       },
                     ),
-                    if (_selectedIds.isNotEmpty) _buildFloatingBatchActionBar(),
+                    if (_selectedIds.isNotEmpty)
+                      _buildFloatingBatchActionBar(driverName),
                   ],
                 );
               },
@@ -315,7 +395,7 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
     );
   }
 
-  Widget _buildFloatingBatchActionBar() {
+  Widget _buildFloatingBatchActionBar(String driverName) {
     return Positioned(
       bottom: 24,
       left: 0,
@@ -376,6 +456,11 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
                     label: const Text('Void'),
                     onPressed: () =>
                         _batchUpdateStatus(SettlementStatus.voided),
+                  ),
+                  CommandBarButton(
+                    icon: const Icon(FluentIcons.arrow_export_up_24_regular),
+                    label: const Text('Export'),
+                    onPressed: () => _exportSelectedSettlements(driverName),
                   ),
                 ],
               ),

@@ -44,7 +44,7 @@ void main() {
     test('returns correct units for USA', () {
       expect(UnitUtils.getDistanceUnit('USA'), 'mi');
       expect(UnitUtils.getVolumeUnit('USA'), 'gal');
-      expect(UnitUtils.getWeightUnit('USA'), 'lb');
+      expect(UnitUtils.getWeightUnit('USA'), 'lbs');
       expect(UnitUtils.getCurrency('USA'), 'USD');
     });
 

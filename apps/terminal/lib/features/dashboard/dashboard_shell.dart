@@ -93,6 +93,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     } else if (location.startsWith('/vehicles')) {
       title = 'Fleet';
       icon = FluentIcons.vehicle_truck_24_regular;
+    } else if (location.startsWith('/maintenance')) {
+      title = 'Maintenance';
+      icon = FluentIcons.wrench_24_regular;
     } else if (location.startsWith('/highway-dispatch')) {
       title = 'Loads';
       icon = FluentIcons.box_24_regular;

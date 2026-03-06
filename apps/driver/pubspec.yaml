@@ -96,6 +96,7 @@ dependencies:
   pub_semver: ^2.2.0
   permission_handler: ^11.3.1
   sqlite3: ^2.9.4
+  connectivity_plus_platform_interface: ^2.0.1
 
 dev_dependencies:
   flutter_test:

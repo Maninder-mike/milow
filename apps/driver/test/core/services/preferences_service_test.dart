@@ -26,7 +26,7 @@ void main() {
       expect(service.getUnitSystem(), UnitSystem.imperial);
       expect(service.getDistanceUnit(), 'mi');
       expect(service.getVolumeUnit(), 'gal');
-      expect(service.getWeightUnit(), 'lb');
+      expect(service.getWeightUnit(), 'lbs');
     });
 
     group('Standardization (User Input -> Metric Storage)', () {

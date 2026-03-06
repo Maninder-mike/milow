@@ -237,6 +237,22 @@ class _GenerateSettlementDialogState
       );
     }
 
+    // Add Recurring Deductions
+    if (config != null && config.recurringDeductions.isNotEmpty) {
+      for (final deduction in config.recurringDeductions) {
+        items.add(
+          SettlementItem(
+            id: '',
+            settlementId: '',
+            type: SettlementItemType.other,
+            description: 'Recurring Deduction: ${deduction.name}',
+            amount: -deduction.amount,
+            referenceId: null,
+          ),
+        );
+      }
+    }
+
     try {
       await ref
           .read(settlementControllerProvider.notifier)

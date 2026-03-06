@@ -196,14 +196,44 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                           )
                           .toList(),
                     ),
-                    _buildCollapsibleSection(
-                      'MAINTENANCE',
-                      isLight,
-                      _getVehiclesByStatus(
+                    _buildCollapsibleSection('MAINTENANCE', isLight, [
+                      HoverButton(
+                        onPressed: () => context.go('/maintenance'),
+                        builder: (context, states) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 20,
+                              vertical: 8,
+                            ),
+                            color: states.isHovered
+                                ? theme.resources.subtleFillColorSecondary
+                                : Colors.transparent,
+                            child: Row(
+                              children: [
+                                Icon(
+                                  FluentIcons.wrench_24_regular,
+                                  size: 16,
+                                  color: theme.resources.textFillColorPrimary,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  'Service Schedules',
+                                  style: GoogleFonts.outfit(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: theme.resources.textFillColorPrimary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      ..._getVehiclesByStatus(
                         vehicles,
                         'MAINTENANCE',
-                      ).map((v) => _buildVehicleItem(v, isLight)).toList(),
-                    ),
+                      ).map((v) => _buildVehicleItem(v, isLight)),
+                    ]),
                     _buildCollapsibleSection(
                       'IDLE',
                       isLight,
