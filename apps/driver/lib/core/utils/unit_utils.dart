@@ -31,7 +31,7 @@ class UnitUtils {
   static String getWeightUnit(String? country) {
     final countryLower = country?.toLowerCase().trim() ?? '';
     if (countryLower == 'usa' || countryLower == 'us') {
-      return 'lb';
+      return 'lbs';
     }
     return 'kg'; // Default for Canada and others
   }
@@ -85,7 +85,7 @@ class UnitUtils {
 
   /// Get weight unit label
   static String getWeightUnitLabel(String unit) {
-    return unit == 'kg' ? 'kg' : 'lb';
+    return unit == 'kg' ? 'kg' : 'lbs';
   }
 
   /// Format currency with symbol

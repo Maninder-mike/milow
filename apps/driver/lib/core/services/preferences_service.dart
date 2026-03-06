@@ -46,7 +46,7 @@ class PreferencesService extends ChangeNotifier {
       notify: false,
     );
     await setWeightUnit(
-      system == UnitSystem.imperial ? 'lb' : 'kg',
+      system == UnitSystem.imperial ? 'lbs' : 'kg',
       notify: false,
     );
 
@@ -101,8 +101,10 @@ class PreferencesService extends ChangeNotifier {
   }
 
   Future<void> setWeightUnit(String unit, {bool notify = true}) async {
-    // Standardize 'lb' instead of 'lbs' for consistency
-    final sanitizedUnit = unit.toLowerCase() == 'lbs' ? 'lb' : unit;
+    // Standardize 'lbs' instead of 'lb' for consistency
+    final sanitizedUnit = unit.toLowerCase() == 'lb'
+        ? 'lbs'
+        : unit.toLowerCase();
     await _prefs.setString(_weightUnitKey, sanitizedUnit);
     if (notify) notifyListeners();
   }
@@ -133,13 +135,13 @@ class PreferencesService extends ChangeNotifier {
   String getWeightUnit() {
     final granular = _prefs.getString(_weightUnitKey);
     if (granular != null) {
-      // Auto-correct 'lbs' to 'lb' if it exists in storage
-      if (granular == 'lbs') return 'lb';
+      // Auto-correct 'lb' to 'lbs' if it exists in storage
+      if (granular == 'lb') return 'lbs';
       return granular;
     }
 
     final system = getUnitSystem();
-    return system == UnitSystem.imperial ? 'lb' : 'kg';
+    return system == UnitSystem.imperial ? 'lbs' : 'kg';
   }
 
   String getVolumeUnit() {

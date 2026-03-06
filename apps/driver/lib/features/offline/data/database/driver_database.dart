@@ -185,7 +185,7 @@ class Loads extends Table {
   RealColumn get weight => real().withDefault(const Constant(0.0))();
   TextColumn get quantity => text().withDefault(const Constant(''))();
   TextColumn get weightUnit =>
-      text().named('weight_unit').withDefault(const Constant('Lbs'))();
+      text().named('weight_unit').withDefault(const Constant('lbs'))();
   TextColumn get status => text()(); // Use name from enum
   TextColumn get loadNotes => text().named('load_notes')();
   TextColumn get companyNotes => text().named('company_notes')();

@@ -5,9 +5,6 @@ import 'dart:async';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:hive_flutter/hive_flutter.dart';
-import 'dart:io';
-import 'dart:ffi';
-import 'package:sqlite3/open.dart';
 import 'package:milow/core/theme/app_theme.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow_core/milow_core.dart';
@@ -98,14 +95,8 @@ Future<void> main() async {
 
       // 1. Critical Base Services (Blocking)
       try {
-        // Override sqlite3 to use the correct library on Android
-        if (Platform.isAndroid) {
-          debugPrint('🚀 [Init] Overriding sqlite3 for Android...');
-          open.overrideFor(OperatingSystem.android, () {
-            return DynamicLibrary.open('libsqlite3.so');
-          });
-        }
-
+        // Let sqlite3_flutter_libs handle the architecture-specific loading automatically
+        // No manual override needed for SQLite on Android when using sqlite3_flutter_libs
         // 1. Initialize Firebase FIRST (PerformanceService depends on it)
         debugPrint('🚀 [Init] Initializing Firebase...');
         await Firebase.initializeApp().timeout(
@@ -136,22 +127,31 @@ Future<void> main() async {
 
           // Classify transient network errors as NON-FATAL
           final errorStr = error.toString().toLowerCase();
-          if (errorStr.contains('socketexception') ||
+          final isNetworkError =
+              errorStr.contains('socketexception') ||
               errorStr.contains('failed host lookup') ||
               errorStr.contains('clientexception') ||
               errorStr.contains('authretryablefetchexception') ||
               errorStr.contains('connection refused') ||
-              errorStr.contains('network is unreachable')) {
+              errorStr.contains('network is unreachable');
+
+          if (isNetworkError) {
             debugPrint('📵 Transient network error (non-fatal): $error');
             FirebaseCrashlytics.instance.recordError(
               error,
               stack,
               fatal: false,
+              reason: 'PlatformDispatcher: Transient Network Error',
             );
             return true;
           }
 
-          FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+          FirebaseCrashlytics.instance.recordError(
+            error,
+            stack,
+            fatal: true,
+            reason: 'PlatformDispatcher.onError',
+          );
           return true;
         };
 
@@ -287,8 +287,34 @@ Future<void> main() async {
       );
     },
     (error, stack) {
-      debugPrint('🔥 [runZonedGuarded] Caught fatal error: $error');
-      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      debugPrint('🔥 [runZonedGuarded] Caught unhandled error: $error');
+
+      final errorStr = error.toString().toLowerCase();
+      final isNetworkError =
+          errorStr.contains('socketexception') ||
+          errorStr.contains('failed host lookup') ||
+          errorStr.contains('clientexception') ||
+          errorStr.contains('authretryablefetchexception') ||
+          errorStr.contains('connection refused') ||
+          errorStr.contains('network is unreachable') ||
+          errorStr.contains('websocketchannelexception');
+
+      if (isNetworkError) {
+        debugPrint('📵 Transient network error (non-fatal): $error');
+        FirebaseCrashlytics.instance.recordError(
+          error,
+          stack,
+          fatal: false,
+          reason: 'runZonedGuarded: Transient Network Error',
+        );
+      } else {
+        FirebaseCrashlytics.instance.recordError(
+          error,
+          stack,
+          fatal: true,
+          reason: 'runZonedGuarded unhandled error',
+        );
+      }
     },
   );
 }

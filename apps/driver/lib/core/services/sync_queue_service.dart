@@ -159,9 +159,15 @@ class SyncQueueService {
       final payload = json.decode(operation.payload) as Map<String, dynamic>;
       final client = supabaseClient ?? Supabase.instance.client;
 
+      // Handle backwards compatibility for pending queue operations from older app versions
+      var tableName = operation.tableName;
+      if (tableName == 'trips') {
+        tableName = 'driver_trips';
+      }
+
       switch (operation.operationType) {
         case 'create':
-          await client.from(operation.tableName).insert(payload);
+          await client.from(tableName).insert(payload);
           break;
         case 'update':
           final id = payload['id'] as String?;
@@ -169,10 +175,7 @@ class SyncQueueService {
 
           // Implement Last-Write-Wins (LWW) with Optimistic Locking
           // Only update if server's updated_at is OLDER than our payload's updated_at
-          final query = client
-              .from(operation.tableName)
-              .update(payload)
-              .eq('id', id);
+          final query = client.from(tableName).update(payload).eq('id', id);
 
           // Note: Removing the 'lt' check temporarily to fix the issue where
           // edits are not being applied because the local updated_at might not
@@ -188,7 +191,7 @@ class SyncQueueService {
         case 'delete':
           final id = payload['id'] as String?;
           if (id == null) throw Exception('Delete requires id in payload');
-          await client.from(operation.tableName).delete().eq('id', id);
+          await client.from(tableName).delete().eq('id', id);
           break;
         case 'upload_document':
           // 1. Extract file path and metadata

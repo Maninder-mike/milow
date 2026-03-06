@@ -14,7 +14,7 @@ class UnitsSettingsPage extends StatefulWidget {
 class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
   String _distanceUnit = 'km';
   String _volumeUnit = 'L';
-  String _weightUnit = 'lb';
+  String _weightUnit = 'lbs';
   bool _autoDetect = false;
 
   @override
@@ -140,7 +140,7 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
             _buildDivider(),
             _buildUnitRow(
               title: 'Weight',
-              options: ['lb', 'kg'],
+              options: ['lbs', 'kg'],
               currentValue: _weightUnit,
               enabled: !_autoDetect,
               onChanged: (val) async {

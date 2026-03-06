@@ -144,19 +144,16 @@ class ProfileService {
       // 1. Update Base Profiles (Index & System Data)
       // MUST do this first because 'driver_profiles' has a foreign key to 'profiles'
       if (baseUpdates.isNotEmpty) {
-        // Use upsert to create if missing (e.g. trigger failed)
-        await client.from(_profilesTable).upsert({
-          ...baseUpdates,
-          'id': uid,
-        }, onConflict: 'id');
+        // Use update to avoid evaluating INSERT policies on existing records
+        await client.from(_profilesTable).update(baseUpdates).eq('id', uid);
       }
 
       // 2. Update Driver Profiles (Personal Data)
       if (driverUpdates.isNotEmpty) {
-        await client.from('driver_profiles').upsert({
-          ...driverUpdates,
-          'id': uid,
-        }, onConflict: 'id');
+        await client
+            .from('driver_profiles')
+            .update(driverUpdates)
+            .eq('id', uid);
       }
     } on PostgrestException catch (e) {
       // Log the error but don't crash the app.
