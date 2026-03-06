@@ -1,7 +1,7 @@
 name: terminal
 description: "Milow Terminal - Fleet management application for dispatchers and admins"
 publish_to: "none"
-version: 0.0.4+1
+version: 0.0.4+2
 
 environment:
   sdk: ^3.10.7
@@ -81,7 +81,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
-  riverpod_generator: ^4.0.0+1
+  riverpod_generator: ^4.0.0+2
   build_runner: ^2.10.4
   mockito: ^5.6.1
   msix: ^3.16.8
