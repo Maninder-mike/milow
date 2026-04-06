@@ -173,6 +173,14 @@ class PreferencesService extends ChangeNotifier {
         : val;
   }
 
+  /// Convert price per unit from User Pref to Metric (for Saving)
+  /// e.g. $/gal to $/L
+  double standardizePrice(double val) {
+    return getUnitSystem() == UnitSystem.imperial
+        ? val * UnitUtils.litersToGallons(1) // (val / 3.785)
+        : val;
+  }
+
   /// Convert value from Metric to User Pref (for Loading/Display)
   double localizeDistance(double val) {
     return getUnitSystem() == UnitSystem.imperial
@@ -189,6 +197,12 @@ class PreferencesService extends ChangeNotifier {
   double localizeWeight(double val) {
     return getUnitSystem() == UnitSystem.imperial
         ? UnitUtils.kgToLbs(val)
+        : val;
+  }
+
+  double localizePrice(double val) {
+    return getUnitSystem() == UnitSystem.imperial
+        ? val / UnitUtils.litersToGallons(1)
         : val;
   }
 

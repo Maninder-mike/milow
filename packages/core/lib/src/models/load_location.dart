@@ -9,6 +9,8 @@ class LoadLocation {
   final String contactPhone;
   final String contactFax;
   final DateTime date;
+  final double? latitude;
+  final double? longitude;
 
   LoadLocation({
     this.id,
@@ -21,6 +23,8 @@ class LoadLocation {
     required this.contactPhone,
     required this.contactFax,
     required this.date,
+    this.latitude,
+    this.longitude,
   });
 
   factory LoadLocation.empty() {
@@ -55,6 +59,8 @@ class LoadLocation {
       date: dateVal != null
           ? (dateVal is DateTime ? dateVal : DateTime.parse(dateVal.toString()))
           : DateTime.now(),
+      latitude: (map['latitude'] as num?)?.toDouble(),
+      longitude: (map['longitude'] as num?)?.toDouble(),
     );
   }
 
@@ -69,6 +75,8 @@ class LoadLocation {
     String? contactPhone,
     String? contactFax,
     DateTime? date,
+    double? latitude,
+    double? longitude,
   }) {
     return LoadLocation(
       id: id ?? this.id,
@@ -81,6 +89,8 @@ class LoadLocation {
       contactPhone: contactPhone ?? this.contactPhone,
       contactFax: contactFax ?? this.contactFax,
       date: date ?? this.date,
+      latitude: latitude ?? this.latitude,
+      longitude: longitude ?? this.longitude,
     );
   }
 
@@ -96,6 +106,8 @@ class LoadLocation {
       'contact_phone': contactPhone,
       'contact_fax': contactFax,
       'date': date.toIso8601String(),
+      'latitude': latitude,
+      'longitude': longitude,
     };
   }
 }

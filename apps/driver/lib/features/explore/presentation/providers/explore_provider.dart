@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/fuel_service.dart';
 import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
 import 'package:milow/core/services/geo_service.dart';
+import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/features/explore/presentation/utils/explore_utils.dart';
 import 'package:milow/features/explore/presentation/utils/explore_map_helper.dart';
 
@@ -16,10 +19,16 @@ class ExploreProvider with ChangeNotifier {
   bool _isLoading = true;
   bool _isMapLoading = true;
   String _selectedCategory = 'All Routes';
+  UnitSystem _unitSystem = UnitSystem.metric;
 
-  double _statsTotalMiles = 0;
+  double _statsTotalDistance = 0;
   double _statsFuelCost = 0;
   int _statsTripCount = 0;
+
+  // Chart Data (Month -> Value)
+  Map<String, double> _monthlyDistanceData = {};
+  Map<String, double> _monthlyFuelData = {};
+  Map<String, int> _tripTypeDistribution = {};
 
   // Getters
   List<Trip> get allTrips => _allTrips;
@@ -29,9 +38,15 @@ class ExploreProvider with ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get isMapLoading => _isMapLoading;
   String get selectedCategory => _selectedCategory;
-  double get statsTotalMiles => _statsTotalMiles;
+  double get statsTotalDistance => _statsTotalDistance;
   double get statsFuelCost => _statsFuelCost;
   int get statsTripCount => _statsTripCount;
+  UnitSystem get unitSystem => _unitSystem;
+
+  // Chart Getters
+  Map<String, double> get monthlyDistanceData => _monthlyDistanceData;
+  Map<String, double> get monthlyFuelData => _monthlyFuelData;
+  Map<String, int> get tripTypeDistribution => _tripTypeDistribution;
 
   static const Set<String> _usStateCodes = {
     'AL',
@@ -208,21 +223,78 @@ class ExploreProvider with ChangeNotifier {
   void _calculateStats() {
     final now = DateTime.now();
     final startOfMonth = DateTime(now.year, now.month, 1);
-
     final monthTrips = _allTrips
         .where((t) => t.tripDate.isAfter(startOfMonth))
         .toList();
 
-    _statsTotalMiles = monthTrips.fold(
-      0.0,
-      (sum, t) => sum + (t.totalDistance ?? 0),
-    );
+    // Use metric as baseline for calculation, then convert for display if needed
+    _statsTotalDistance = monthTrips.fold(0.0, (sum, t) {
+      final dist = t.totalDistance ?? 0;
+      // Convert to display unit
+      if (_unitSystem == UnitSystem.imperial) {
+        return sum + UnitUtils.kmToMiles(dist);
+      }
+      return sum + dist;
+    });
     _statsTripCount = monthTrips.length;
 
     final monthFuel = _allFuelEntries
         .where((f) => f.fuelDate.isAfter(startOfMonth))
         .toList();
     _statsFuelCost = monthFuel.fold(0.0, (sum, f) => sum + f.totalCost);
+
+    // Calculate Chart Series (Last 6 months)
+    _monthlyDistanceData = {};
+    _monthlyFuelData = {};
+    _tripTypeDistribution = {'Long Haul': 0, 'Regional': 0, 'Local': 0};
+
+    final last6Months = DateTime(now.year, now.month - 5, 1);
+    final monthFormatter = DateFormat('MMM');
+
+    // Initialize with zeros for last 6 months to ensure continuity
+    for (var i = 5; i >= 0; i--) {
+      final date = DateTime(now.year, now.month - i, 1);
+      final monthName = monthFormatter.format(date);
+      _monthlyDistanceData[monthName] = 0.0;
+      _monthlyFuelData[monthName] = 0.0;
+    }
+
+    // Process all trips for distance chart and distribution
+    for (final trip in _allTrips) {
+      final displayDistance = ExploreUtils.getDisplayDistance(
+        trip.totalDistance ?? 0,
+        trip.distanceUnit,
+        _unitSystem,
+      );
+
+      if (trip.tripDate.isAfter(last6Months)) {
+        final m = monthFormatter.format(trip.tripDate);
+        if (_monthlyDistanceData.containsKey(m)) {
+          _monthlyDistanceData[m] = _monthlyDistanceData[m]! + displayDistance;
+        }
+      }
+
+      final category = ExploreUtils.getTripCategory(displayDistance, _unitSystem);
+      if (_tripTypeDistribution.containsKey(category)) {
+        _tripTypeDistribution[category] = _tripTypeDistribution[category]! + 1;
+      }
+    }
+
+    for (final fuel in _allFuelEntries) {
+      if (fuel.fuelDate.isAfter(last6Months)) {
+        final m = monthFormatter.format(fuel.fuelDate);
+        if (_monthlyFuelData.containsKey(m)) {
+          _monthlyFuelData[m] = _monthlyFuelData[m]! + fuel.totalCost;
+        }
+      }
+    }
+  }
+
+  void setUnitSystem(UnitSystem unitSystem) {
+    if (_unitSystem == unitSystem) return;
+    _unitSystem = unitSystem;
+    _calculateStats();
+    notifyListeners();
   }
 
   void setSelectedCategory(String category) {
@@ -232,26 +304,22 @@ class ExploreProvider with ChangeNotifier {
   }
 
   List<Trip> get filteredTrips {
-    switch (_selectedCategory) {
-      case 'Long Haul':
-        return _allTrips.where((t) => (t.totalDistance ?? 0) > 500).toList();
-      case 'Regional':
-        return _allTrips
-            .where(
-              (t) =>
-                  (t.totalDistance ?? 0) >= 200 &&
-                  (t.totalDistance ?? 0) <= 500,
-            )
-            .toList();
-      case 'Local':
-        return _allTrips
-            .where(
-              (t) => (t.totalDistance ?? 0) < 200 && (t.totalDistance ?? 0) > 0,
-            )
-            .toList();
-      default:
-        return _allTrips;
-    }
+
+    return _allTrips.where((t) {
+      final displayDistance = ExploreUtils.getDisplayDistance(
+        t.totalDistance ?? 0,
+        t.distanceUnit,
+        _unitSystem,
+      );
+
+      final category = ExploreUtils.getTripCategory(displayDistance, _unitSystem);
+
+      if (_selectedCategory == 'All Routes' || _selectedCategory == 'All') {
+        return true;
+      }
+
+      return category == _selectedCategory;
+    }).toList();
   }
 
   List<Map<String, dynamic>> get filteredDestinations {

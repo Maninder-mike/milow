@@ -95,14 +95,35 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          widget.waitTime.crossingName.isNotEmpty
-                              ? widget.waitTime.crossingName
-                              : widget.waitTime.portName,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w600),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                widget.waitTime.crossingName.isNotEmpty
+                                    ? widget.waitTime.crossingName
+                                    : widget.waitTime.portName,
+                                style: Theme.of(
+                                  context,
+                                ).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            if (widget.waitTime.isStale)
+                              Tooltip(
+                                message: 'Data may be out of date from CBP',
+                                child: Padding(
+                                  padding: EdgeInsets.only(left: tokens.spacingS),
+                                  child: const Icon(
+                                    Icons.history_rounded,
+                                    size: 16,
+                                    color: Colors.amber,
+                                  ),
+                                ),
+                              ),
+                          ],
                         ),
                         SizedBox(height: tokens.spacingXS),
                         Text(
@@ -272,7 +293,7 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
                   context,
                   icon: Icons.update_outlined,
                   label: 'Updated',
-                  value: waitTime.time ?? 'N/A',
+                  value: waitTime.lastUpdatedDisplay,
                 ),
               ),
             ],
@@ -376,7 +397,9 @@ class _BorderWaitTimeCardState extends State<BorderWaitTimeCard> {
           Row(
             children: [
               Text(
-                'Lanes: $lanesOpen/$maxLanes open',
+                maxLanes > 0
+                    ? 'Lanes: $lanesOpen/$maxLanes open'
+                    : 'Lanes: Closed',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
@@ -531,13 +554,30 @@ class BorderWaitTimeCompactCard extends StatelessWidget {
                     ),
                     SizedBox(width: tokens.spacingS),
                     Expanded(
-                      child: Text(
-                        waitTime.portName,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              waitTime.portName,
+                              style: Theme.of(
+                                context,
+                              ).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (waitTime.isStale)
+                            Padding(
+                              padding: EdgeInsets.only(left: tokens.spacingXS),
+                              child: const Icon(
+                                Icons.history_rounded,
+                                size: 14,
+                                color: Colors.amber,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ],

@@ -3,10 +3,12 @@ export 'src/config/supabase_config.dart';
 
 // Models
 export 'src/models/appointment_window.dart';
+export 'src/models/check_call.dart';
 export 'src/models/company.dart';
 export 'src/models/detention.dart';
 export 'src/models/driver_location.dart';
 export 'src/models/expense.dart';
+export 'src/models/load_document.dart';
 export 'src/models/fuel_entry.dart';
 export 'src/models/dvir_report.dart';
 export 'src/models/document.dart';
@@ -19,6 +21,7 @@ export 'src/models/permission.dart';
 export 'src/models/role.dart';
 export 'src/models/broker.dart';
 export 'src/models/load.dart';
+export 'src/models/load_event.dart';
 export 'src/models/load_location.dart';
 export 'src/models/load_status.dart';
 export 'src/models/quote.dart';
@@ -44,3 +47,6 @@ export 'src/services/remote_config_service.dart';
 // Utils
 export 'src/utils/app_dialogs.dart';
 export 'src/utils/failure.dart';
+
+// Mapping
+export 'package:latlong2/latlong.dart';

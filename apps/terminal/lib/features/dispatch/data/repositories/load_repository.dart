@@ -18,17 +18,15 @@ class LoadRepository {
   }) async {
     return _client.query<List<Load>>(() async {
       AppLogger.debug(
-        'Fetching loads (page: $page, pageSize: $pageSize, status: $statusFilter, search: $searchQuery)',
+        'Fetching loads (page: $page, pageSize: $pageSize, search: $searchQuery)',
       );
 
       var query = _client.supabase.from('loads').select('''
-          id, load_reference, status, is_live,
+          id, load_reference, status,
           trip_number, po_number, created_at, updated_at, broker_id, pickup_date, delivery_date,
           pickup_id, receiver_id, company_id,
           customers(*),
           stops(*),
-          pickups(*),
-          receivers(*),
           accessorials:accessorial_charges(*)
         ''');
 
@@ -263,6 +261,92 @@ class LoadRepository {
       }
       return null;
     }, operationName: 'getNextTripNumber');
+  }
+
+  /// Fetch all documents for a specific load.
+  Future<Result<List<LoadDocument>>> fetchDocumentsForLoad(String loadId) async {
+    return _client.query<List<LoadDocument>>(() async {
+      final response = await _client.supabase
+          .from('documents')
+          .select()
+          .eq('load_id', loadId)
+          .order('created_at', ascending: false);
+
+      return (response as List<dynamic>)
+          .map((json) => LoadDocument.fromJson(json as Map<String, dynamic>))
+          .toList();
+    }, operationName: 'fetchDocumentsForLoad');
+  }
+
+  /// Fetch check-calls for a load
+  Future<Result<List<CheckCall>>> fetchCheckCallsForLoad(String loadId) async {
+    return _client.query<List<CheckCall>>(() async {
+      final response = await _client.supabase
+          .from('check_calls')
+          .select()
+          .eq('load_id', loadId)
+          .order('created_at', ascending: false);
+
+      return (response as List)
+          .map((json) => CheckCall.fromJson(json as Map<String, dynamic>))
+          .toList();
+    }, operationName: 'fetchCheckCallsForLoad');
+  }
+
+  /// Create a new check-call request
+  Future<Result<CheckCall>> createCheckCall({
+    required String loadId,
+    required String driverId,
+    required CheckCallType type,
+    required String prompt,
+    Map<String, dynamic>? options,
+    DateTime? expiresAt,
+  }) async {
+    final user = _client.supabase.auth.currentUser;
+    if (user == null) return const Left(UnauthorizedFailure());
+
+    return _client.query<CheckCall>(() async {
+      // Get company_id from load
+      final loadData = await _client.supabase
+          .from('loads')
+          .select('company_id')
+          .eq('id', loadId)
+          .single();
+
+      final response = await _client.supabase
+          .from('check_calls')
+          .insert({
+            'load_id': loadId,
+            'company_id': loadData['company_id'],
+            'driver_id': driverId,
+            'requester_id': user.id,
+            'type': type.value,
+            'prompt': prompt,
+            'options': options,
+            'expires_at': expiresAt?.toIso8601String(),
+            'status': 'pending',
+          })
+          .select()
+          .single();
+
+      return CheckCall.fromJson(response);
+    }, operationName: 'createCheckCall');
+  }
+
+  /// Update document status (Approve/Reject).
+  Future<Result<void>> updateDocumentStatus(
+    String documentId,
+    String status, {
+    String? rejectionReason,
+  }) async {
+    return _client.query<void>(() async {
+      await _client.supabase.from('documents').update({
+        'status': status,
+        'rejection_reason': rejectionReason,
+        'reviewed_at': DateTime.now().toIso8601String(),
+        'reviewed_by': _client.supabase.auth.currentUser?.id,
+      }).eq('id', documentId);
+    }, operationName: 'updateDocumentStatus');
   }
 
   // --- Private Helpers ---

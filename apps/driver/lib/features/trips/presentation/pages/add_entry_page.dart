@@ -292,6 +292,10 @@ class _AddEntryPageState extends State<AddEntryPage>
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _prefillTripData(widget.editingTrip!);
       });
+    } else if (widget.editingFuel != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _prefillFuelData(widget.editingFuel!);
+      });
     }
   }
 
@@ -568,6 +572,74 @@ class _AddEntryPageState extends State<AddEntryPage>
           );
         }
       }
+    }
+  }
+
+  Future<void> _prefillFuelData(FuelEntry fuel) async {
+    final prefService = Provider.of<PreferencesService>(context, listen: false);
+
+    if (mounted) {
+      setState(() {
+        _isReeferFuel.value = fuel.isReeferFuel;
+        _selectedFuelVehicleId.value = fuel.vehicleId;
+
+        // Synchronize with vehicles if ID is null but number is present
+        if (_selectedFuelVehicleId.value == null && _vehicles.isNotEmpty) {
+          final fuelNumber =
+              fuel.isReeferFuel ? fuel.reeferNumber : fuel.truckNumber;
+          final v = _vehicles.cast<Vehicle?>().firstWhere(
+            (v) => v?.truckNumber == fuelNumber,
+            orElse: () => null,
+          );
+          if (v != null) _selectedFuelVehicleId.value = v.id;
+        }
+
+        _fuelUnit.value = prefService.getVolumeUnit();
+        _distanceUnit.value = prefService.getDistanceUnit();
+        _currency.value = fuel.currency;
+        _defFromYard.value = fuel.defFromYard;
+      });
+    }
+
+    _fuelDateController.value.text = _formatDateTime(fuel.fuelDate);
+    _truckNumberController.value.text =
+        (fuel.isReeferFuel ? fuel.reeferNumber : fuel.truckNumber) ?? '';
+    _locationController.value.text = fuel.location ?? '';
+
+    // Localize numbers
+    if (fuel.isReeferFuel) {
+      if (fuel.reeferHours != null) {
+        _odometerController.value.text =
+            fuel.reeferHours!.toString().replaceAll(
+              '.0',
+              '',
+            );
+      }
+    } else if (fuel.odometerReading != null) {
+      final odo = prefService.localizeDistance(fuel.odometerReading!);
+      _odometerController.value.text = odo.toStringAsFixed(0);
+    }
+
+    final quantity = prefService.localizeVolume(fuel.fuelQuantity);
+    _fuelQuantityController.value.text = quantity.toString().replaceAll(
+      '.0',
+      '',
+    );
+
+    final price = prefService.localizePrice(fuel.pricePerUnit);
+    _fuelPriceController.value.text = price.toStringAsFixed(3);
+
+    if (fuel.defQuantity > 0) {
+      final defQuantity = prefService.localizeVolume(fuel.defQuantity);
+      _defQuantityController.value.text = defQuantity.toString().replaceAll(
+            '.0',
+            '',
+          );
+    }
+
+    if (fuel.defPrice > 0) {
+      final defPrice = prefService.localizePrice(fuel.defPrice);
+      _defPriceController.value.text = defPrice.toStringAsFixed(3);
     }
   }
 
@@ -920,11 +992,28 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Apply restored effects
     // Make sure tab controller is synced
-    if (_tabController.index != _tabIndex.value) {
+    // If in edit mode, force the correct tab
+    if (widget.editingFuel != null) {
+      _tabIndex.value = 1;
+      _tabController.index = 1;
+    } else if (widget.editingTrip != null) {
+      _tabIndex.value = 0;
+      _tabController.index = 0;
+    } else if (_tabController.index != _tabIndex.value) {
       _tabController.animateTo(_tabIndex.value);
     }
 
     _prefillBorderCrossing();
+
+    // Odometer must always be manually entered by the user.
+    // Clear any restored values when creating a NEW trip (not editing).
+    if (widget.editingTrip == null) {
+      _tripStartOdometerController.value.clear();
+      _tripEndOdometerController.value.clear();
+    }
+    if (widget.editingFuel == null) {
+      _odometerController.value.clear();
+    }
   }
 
   @override
@@ -2569,6 +2658,11 @@ class _AddEntryPageState extends State<AddEntryPage>
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
+      final prefService = Provider.of<PreferencesService>(
+        context,
+        listen: false,
+      );
+
       final tripDate = DateFormat(
         'MMM d, yyyy, h:mm a',
       ).parse(_tripDateController.value.text);
@@ -2593,22 +2687,30 @@ class _AddEntryPageState extends State<AddEntryPage>
         deliveryCompleted: _deliveryCompleted,
         pickupDetention: _pickupDetention,
         deliveryDetention: _deliveryDetention,
-        startOdometer: double.tryParse(_tripStartOdometerController.value.text),
-        endOdometer: double.tryParse(_tripEndOdometerController.value.text),
-        distanceUnit: _distanceUnit.value,
+        startOdometer: prefService.standardizeDistance(
+          double.tryParse(_tripStartOdometerController.value.text) ?? 0,
+        ),
+        endOdometer: prefService.standardizeDistance(
+          double.tryParse(_tripEndOdometerController.value.text) ?? 0,
+        ),
+        distanceUnit: 'km', // Always save as km in DB
         borderCrossing:
             _selectedBorderCrossing.value ??
             _borderCrossingController.value.text.trim(),
         notes: _tripNotesController.value.text.trim(),
         isEmptyLeg: _isEmptyLeg.value,
         commodity: _commodityController.value.text.trim(),
-        weight: double.tryParse(_weightController.value.text),
-        weightUnit: _weightUnit.value,
+        weight: prefService.standardizeWeight(
+          double.tryParse(_weightController.value.text) ?? 0,
+        ),
+        weightUnit: 'kg', // Always save as kg in DB
         pieces: int.tryParse(_piecesController.value.text),
         referenceNumbers: _referenceNumberControllers
             .map((c) => c.value.text.trim())
             .where((t) => t.isNotEmpty)
             .toList(),
+        // Preserve original timestamps for edit integrity
+        createdAt: widget.editingTrip?.createdAt,
       );
 
       if (widget.editingTrip != null) {
@@ -2656,6 +2758,11 @@ class _AddEntryPageState extends State<AddEntryPage>
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
 
+      final prefService = Provider.of<PreferencesService>(
+        context,
+        listen: false,
+      );
+
       final fuelDate = DateFormat(
         'MMM d, yyyy, h:mm a',
       ).parse(_fuelDateController.value.text);
@@ -2674,16 +2781,27 @@ class _AddEntryPageState extends State<AddEntryPage>
             ? _truckNumberController.value.text.trim()
             : null,
         location: _locationController.value.text.trim(),
-        odometerReading: double.tryParse(_odometerController.value.text),
-        fuelQuantity:
-            double.tryParse(_fuelQuantityController.value.text) ?? 0.0,
-        pricePerUnit: double.tryParse(_fuelPriceController.value.text) ?? 0.0,
-        fuelUnit: _fuelUnit.value,
-        distanceUnit: _distanceUnit.value,
+        odometerReading: prefService.standardizeDistance(
+          double.tryParse(_odometerController.value.text) ?? 0,
+        ),
+        fuelQuantity: prefService.standardizeVolume(
+          double.tryParse(_fuelQuantityController.value.text) ?? 0.0,
+        ),
+        pricePerUnit: prefService.standardizePrice(
+          double.tryParse(_fuelPriceController.value.text) ?? 0.0,
+        ),
+        fuelUnit: 'L', // Always save as Liters in DB
+        distanceUnit: 'km', // Always save as km in DB
         currency: _currency.value,
-        defQuantity: double.tryParse(_defQuantityController.value.text) ?? 0.0,
-        defPrice: double.tryParse(_defPriceController.value.text) ?? 0.0,
+        defQuantity: prefService.standardizeVolume(
+          double.tryParse(_defQuantityController.value.text) ?? 0.0,
+        ),
+        defPrice: prefService.standardizePrice(
+          double.tryParse(_defPriceController.value.text) ?? 0.0,
+        ),
         defFromYard: _defFromYard.value,
+        // Preserve original timestamps for edit integrity
+        createdAt: widget.editingFuel?.createdAt,
       );
 
       if (widget.editingFuel != null) {

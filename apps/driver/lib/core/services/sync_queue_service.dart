@@ -167,26 +167,15 @@ class SyncQueueService {
 
       switch (operation.operationType) {
         case 'create':
-          await client.from(tableName).insert(payload);
+          // Use upsert to be idempotent in case of retries
+          await client.from(tableName).upsert(payload);
           break;
         case 'update':
           final id = payload['id'] as String?;
           if (id == null) throw Exception('Update requires id in payload');
 
-          // Implement Last-Write-Wins (LWW) with Optimistic Locking
-          // Only update if server's updated_at is OLDER than our payload's updated_at
-          final query = client.from(tableName).update(payload).eq('id', id);
-
-          // Note: Removing the 'lt' check temporarily to fix the issue where
-          // edits are not being applied because the local updated_at might not
-          // always be strictly greater than the server's if clocks are slightly out of sync
-          // or if multiple updates happen rapidly.
-          // if (payload.containsKey('updated_at') &&
-          //     payload['updated_at'] != null) {
-          //   query = query.lt('updated_at', payload['updated_at']);
-          // }
-
-          await query;
+          // Implement Last-Write-Wins (LWW)
+          await client.from(tableName).update(payload).eq('id', id);
           break;
         case 'delete':
           final id = payload['id'] as String?;
@@ -207,7 +196,7 @@ class SyncQueueService {
           }
 
           await client.storage
-              .from('trip_documents')
+              .from(tableName == 'documents' ? 'documents' : 'trip_documents')
               .upload(
                 storagePath,
                 file,
@@ -215,7 +204,7 @@ class SyncQueueService {
               );
 
           // 3. Insert into Database
-          await client.from('trip_documents').insert(dbData);
+          await client.from(tableName).insert(dbData);
 
           // 4. Cleanup local file (optional, but good practice if it's a temp scan)
           try {

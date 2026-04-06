@@ -28,6 +28,7 @@ class BorderWaitTimeService {
     if (!forceRefresh && _cachedData != null && _lastFetchTime != null) {
       final diff = DateTime.now().difference(_lastFetchTime!);
       if (diff.inMinutes < _cacheMinutes) {
+        debugPrint('[BWT] Returning in-memory cache (${diff.inMinutes}m old)');
         return _cachedData!;
       }
     }
@@ -36,10 +37,13 @@ class BorderWaitTimeService {
     if (!forceRefresh) {
       final diskCache = await _loadFromDiskCache();
       if (diskCache != null) {
+        debugPrint('[BWT] Returning disk cache');
         _cachedData = diskCache;
         return diskCache;
       }
     }
+
+    debugPrint('[BWT] Fetching from API (forceRefresh: $forceRefresh)...');
 
     // Fetch from API
     try {
@@ -80,11 +84,13 @@ class BorderWaitTimeService {
   }
 
   /// Get wait times for user's saved border crossings
-  static Future<List<BorderWaitTime>> getSavedBorderWaitTimes() async {
+  static Future<List<BorderWaitTime>> getSavedBorderWaitTimes({
+    bool forceRefresh = false,
+  }) async {
     final saved = await getSavedBorderCrossings();
     if (saved.isEmpty) return [];
 
-    final allTimes = await fetchAllWaitTimes();
+    final allTimes = await fetchAllWaitTimes(forceRefresh: forceRefresh);
     final savedIds = saved.map((s) => s.uniqueId).toSet();
 
     return allTimes.where((bwt) => savedIds.contains(bwt.uniqueId)).toList();
@@ -213,6 +219,7 @@ class BorderWaitTimeService {
               'hours': bwt.hours,
               'border': bwt.border,
               'time': bwt.time,
+              'date': bwt.date,
               'construction_notice': bwt.constructionNotice,
             },
           )
@@ -220,6 +227,7 @@ class BorderWaitTimeService {
 
       await prefs.setString(_cacheKey, json.encode(jsonList));
       await prefs.setInt(_cacheTimeKey, DateTime.now().millisecondsSinceEpoch);
+      debugPrint('[BWT] Saved ${data.length} ports to disk cache');
     } catch (e) {
       debugPrint('[BWT] Error saving disk cache: $e');
     }

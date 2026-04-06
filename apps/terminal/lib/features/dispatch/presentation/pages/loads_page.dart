@@ -21,6 +21,8 @@ import 'package:terminal/features/dispatch/presentation/widgets/load_assignment_
 import 'package:terminal/features/dispatch/presentation/widgets/load_quote_dialog.dart';
 import 'package:terminal/features/billing/presentation/widgets/invoice_builder_dialog.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/messages_sidebar.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/load_timeline_panel.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/load_documents_panel.dart';
 
 class LoadsPage extends ConsumerStatefulWidget {
   const LoadsPage({super.key});
@@ -39,6 +41,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
   final FocusNode _listFocusNode = FocusNode();
   final ScrollController _scrollController = ScrollController();
   int? _focusedIndex;
+  int _sidebarTabIndex = 0;
 
   @override
   void didChangeDependencies() {
@@ -355,14 +358,37 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                           ),
                         ),
                         if (selectedLoadId != null)
-                          MessagesSidebar(
-                            loadId: selectedLoadId,
-                            loadReference:
-                                loads
-                                    .where((l) => l.id == selectedLoadId)
-                                    .firstOrNull
-                                    ?.loadReference ??
-                                'Unknown',
+                          SizedBox(
+                            width: 320,
+                            child: TabView(
+                              currentIndex: _sidebarTabIndex,
+                              onChanged: (index) {
+                                setState(() {
+                                  _sidebarTabIndex = index;
+                                });
+                              },
+                              tabs: [
+                                Tab(
+                                  text: const Text('Messages'),
+                                  body: MessagesSidebar(
+                                    loadId: selectedLoadId,
+                                    loadReference: loads
+                                        .where((l) => l.id == selectedLoadId)
+                                        .firstOrNull
+                                        ?.loadReference ??
+                                        'Unknown',
+                                  ),
+                                ),
+                                Tab(
+                                  text: const Text('Timeline'),
+                                  body: LoadTimelinePanel(loadId: selectedLoadId),
+                                ),
+                                Tab(
+                                  text: const Text('Documents'),
+                                  body: LoadDocumentsPanel(loadId: selectedLoadId),
+                                ),
+                              ],
+                            ),
                           ),
                       ],
                     );

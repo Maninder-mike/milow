@@ -7,6 +7,13 @@ import 'package:intl/intl.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:milow/core/services/profile_repository.dart';
+import 'package:milow/core/services/load_document_repository.dart';
+import 'package:milow/features/loads/presentation/pages/load_document_upload_page.dart';
+import 'package:milow/features/loads/presentation/widgets/check_call_banner.dart';
+import 'package:milow/core/services/check_call_service.dart';
+import 'package:milow/core/services/location/location_controller.dart';
+import 'package:provider/provider.dart';
+import 'package:gap/gap.dart';
 
 class LoadDetailsPage extends StatefulWidget {
   final String loadId;
@@ -19,6 +26,7 @@ class LoadDetailsPage extends StatefulWidget {
 
 class _LoadDetailsPageState extends State<LoadDetailsPage> {
   Load? _load;
+  List<LoadDocument> _documents = [];
   bool _isLoading = true;
 
   @override
@@ -28,16 +36,26 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
   }
 
   Future<void> _loadData() async {
+    if (!mounted) return;
     setState(() => _isLoading = true);
     try {
       final loads = await LoadRepository.getLoads(refresh: true);
       // Enterprise Pattern: Find by ID in localized cache
       final load = loads.firstWhere((l) => l.id == widget.loadId);
+      
+      // Fetch documents for this load
+      final docResult = await LoadDocumentRepository.getDocumentsForLoad(widget.loadId);
+      final documents = docResult.getOrElse((failure) => []);
+
       if (mounted) {
         setState(() {
           _load = load;
+          _documents = documents;
           _isLoading = false;
         });
+        
+        // Sync location tracking based on new load status
+        context.read<LocationController>().updateTrackingForLoad(load);
       }
     } catch (e) {
       if (mounted) {
@@ -142,8 +160,29 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            SizedBox(height: tokens.spacingM),
+            // Check Call Notifications
+            Consumer<CheckCallService>(
+              builder: (context, service, child) {
+                final loadCheckCalls = service.pendingCheckCalls
+                    .where((c) => c.loadId == load.id)
+                    .toList();
+
+                if (loadCheckCalls.isEmpty) return const SizedBox.shrink();
+
+                return Column(
+                  children: loadCheckCalls.map((call) => CheckCallBanner(
+                    checkCall: call,
+                    onSubmitted: () => _loadData(),
+                  )).toList(),
+                );
+              },
+            ),
+
             // Load Overview Card
             _buildOverviewSection(load),
+            SizedBox(height: tokens.spacingL),
+            _buildDocumentsSection(load),
             SizedBox(height: tokens.spacingL),
 
             // Vertical Timeline of Stops
@@ -173,6 +212,163 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
         ),
       ),
       bottomNavigationBar: _buildBottomAction(load),
+    );
+  }
+
+  Widget _buildDocumentsSection(Load load) {
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'LOAD DOCUMENTS',
+              style: theme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: tokens.textTertiary,
+                letterSpacing: 1.2,
+              ),
+            ),
+            M3SpringButton(
+              onTap: () async {
+                final result = await Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => LoadDocumentUploadPage(
+                      loadId: load.id,
+                      loadReference: load.loadReference,
+                    ),
+                  ),
+                );
+                if (result == true) {
+                  await _loadData();
+                }
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.primaryContainer,
+                  borderRadius: BorderRadius.circular(tokens.shapeFull),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.add_a_photo,
+                      size: 14,
+                      color: theme.colorScheme.onPrimaryContainer,
+                    ),
+                    const Gap(6),
+                    Text(
+                      'Upload',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: theme.colorScheme.onPrimaryContainer,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+        const Gap(12),
+        if (_documents.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: tokens.surfaceContainerHigh,
+              borderRadius: BorderRadius.circular(tokens.shapeL),
+              border: Border.all(color: tokens.inputBorder),
+            ),
+            child: Column(
+              children: [
+                Icon(Icons.description_outlined, size: 32, color: tokens.textTertiary),
+                const Gap(8),
+                Text(
+                  'No documents uploaded yet',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: tokens.textSecondary),
+                ),
+              ],
+            ),
+          )
+        else
+          SizedBox(
+            height: 100,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: _documents.length,
+              separatorBuilder: (context, _) => const Gap(12),
+              itemBuilder: (context, index) {
+                final doc = _documents[index];
+                return _buildDocumentThumbnail(doc);
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildDocumentThumbnail(LoadDocument doc) {
+    final tokens = context.tokens;
+    final theme = Theme.of(context);
+
+    // Simple status colors
+    Color statusColor = tokens.textSecondary;
+    if (doc.status == DocumentStatus.approved) statusColor = tokens.success;
+    if (doc.status == DocumentStatus.rejected) statusColor = tokens.error;
+
+    return Container(
+      width: 80,
+      decoration: BoxDecoration(
+        color: tokens.surfaceContainer,
+        borderRadius: BorderRadius.circular(tokens.shapeM),
+        border: Border.all(color: tokens.inputBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  doc.documentType == TripDocumentType.proofOfDelivery ? Icons.assignment_turned_in : Icons.description,
+                  color: theme.colorScheme.primary,
+                ),
+                const Gap(4),
+                Text(
+                  doc.documentType.label.toUpperCase(),
+                  style: theme.textTheme.labelSmall?.copyWith(fontSize: 8),
+                  textAlign: TextAlign.center,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          Positioned(
+            top: 4,
+            right: 4,
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: statusColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -479,35 +675,73 @@ class _LoadDetailsPageState extends State<LoadDetailsPage> {
           width: double.infinity,
           height: 56,
           child: isUnaccepted
-              ? FilledButton.icon(
-                  onPressed: () async {
-                    setState(() => _isLoading = true);
-                    try {
-                      await LoadRepository.updateLoadStatus(
-                        load.id,
-                        LoadStatus.enRoute,
-                      );
-                      
-                      // Auto-set status to driving when load is accepted
-                      await ProfileRepository.updateOptimistic({
-                        'driver_status': 'driving',
-                      });
+              ? Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Theme.of(context).colorScheme.error,
+                          side: BorderSide(color: Theme.of(context).colorScheme.error),
+                        ),
+                        onPressed: () async {
+                          setState(() => _isLoading = true);
+                          try {
+                            await LoadRepository.updateLoadStatus(
+                              load.id,
+                              LoadStatus.rejected,
+                            );
+                            if (mounted) context.pop();
+                          } catch (e) {
+                            if (mounted) {
+                              setState(() => _isLoading = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to reject load: $e')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.close),
+                        label: const Text(
+                          'REJECT',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      flex: 2,
+                      child: FilledButton.icon(
+                        onPressed: () async {
+                          setState(() => _isLoading = true);
+                          try {
+                            await LoadRepository.updateLoadStatus(
+                              load.id,
+                              LoadStatus.enRoute,
+                            );
+                            
+                            // Auto-set status to driving when load is accepted
+                            await ProfileRepository.updateOptimistic({
+                              'driver_status': 'driving',
+                            });
 
-                      await _loadData();
-                    } catch (e) {
-                      if (mounted) {
-                        setState(() => _isLoading = false);
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(content: Text('Failed to accept load: $e')),
-                        );
-                      }
-                    }
-                  },
-                  icon: const Icon(Icons.check_circle_outline),
-                  label: const Text(
-                    'ACCEPT LOAD',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
+                            await _loadData();
+                          } catch (e) {
+                            if (mounted) {
+                              setState(() => _isLoading = false);
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(content: Text('Failed to accept load: $e')),
+                              );
+                            }
+                          }
+                        },
+                        icon: const Icon(Icons.check_circle_outline),
+                        label: const Text(
+                          'ACCEPT LOAD',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
                 )
               : FilledButton.icon(
                   onPressed: () {

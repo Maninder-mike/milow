@@ -219,39 +219,39 @@ class Load {
     }
 
     return Load(
-      id: json['id'] as String,
-      loadReference: json['load_reference'] as String? ?? '',
-      brokerId: json['broker_id'] as String?,
+      id: json['id']?.toString() ?? '',
+      loadReference: json['load_reference']?.toString() ?? '',
+      brokerId: json['broker_id']?.toString(),
       brokerName:
-          (json['customers'] as Map<String, dynamic>?)?['name'] as String? ??
+          (json['customers'] as Map<String, dynamic>?)?['name']?.toString() ??
           '',
       rate: (json['rate'] as num?)?.toDouble() ?? 0.0,
-      currency: json['currency'] as String? ?? 'CAD',
-      goods: json['goods'] as String? ?? '',
+      currency: json['currency']?.toString() ?? 'CAD',
+      goods: json['goods']?.toString() ?? '',
       weight: weightApp,
-      quantity: json['quantity'] as String? ?? '',
+      quantity: json['quantity']?.toString() ?? '',
       weightUnit: weightUnit,
       stops: stops,
-      status: LoadStatusX.fromString(json['status'] as String? ?? 'pending'),
-      loadNotes: json['load_notes'] as String? ?? '',
-      companyNotes: json['company_notes'] as String? ?? '',
-      assignedDriverId: json['assigned_driver_id'] as String?,
-      assignedTruckId: json['assigned_truck_id'] as String?,
-      assignedTrailerId: json['assigned_trailer_id'] as String?,
-      tripNumber: json['trip_number'] as String? ?? '',
-      poNumber: json['po_number'] as String?,
-      companyId: json['company_id'] as String?,
-      trackingHash: json['tracking_hash'] as String?,
+      status: LoadStatusX.fromString(json['status']?.toString() ?? 'pending'),
+      loadNotes: json['load_notes']?.toString() ?? '',
+      companyNotes: json['company_notes']?.toString() ?? '',
+      assignedDriverId: json['assigned_driver_id']?.toString(),
+      assignedTruckId: json['assigned_truck_id']?.toString(),
+      assignedTrailerId: json['assigned_trailer_id']?.toString(),
+      tripNumber: json['trip_number']?.toString() ?? '',
+      poNumber: json['po_number']?.toString(),
+      companyId: json['company_id']?.toString(),
+      trackingHash: json['tracking_hash']?.toString(),
       accessorials: json['accessorials'] != null
           ? (json['accessorials'] as List)
                 .map((e) => AccessorialCharge.fromJson(e))
                 .toList()
           : [],
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'])
+          ? DateTime.parse(json['created_at'].toString())
           : null,
       updatedAt: json['updated_at'] != null
-          ? DateTime.parse(json['updated_at'])
+          ? DateTime.parse(json['updated_at'].toString())
           : null,
     );
   }

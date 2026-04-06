@@ -18,6 +18,7 @@ import 'package:milow/core/services/locale_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/core/services/notification_service.dart';
 import 'package:milow/core/services/announcements_provider.dart';
+import 'package:milow/core/services/check_call_service.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
@@ -26,6 +27,7 @@ import 'package:flutter/services.dart';
 import 'package:milow/core/services/trip_parser_service.dart';
 import 'package:milow/core/services/local_profile_store.dart';
 import 'package:milow/core/services/local_document_store.dart';
+import 'package:milow/core/services/local_load_document_store.dart';
 import 'package:milow/core/services/local_expense_store.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow/core/services/sync_queue_service.dart';
@@ -74,6 +76,7 @@ import 'package:milow/features/inspections/presentation/pages/inspections_page.d
 import 'package:milow/features/inspections/presentation/pages/inspection_form_page.dart';
 import 'package:milow/features/offline/data/database/driver_database.dart';
 import 'package:milow/core/services/location/location_tracking_service.dart';
+import 'package:milow/core/services/location/location_controller.dart';
 import 'package:milow/core/services/location/location_repository.dart';
 
 import 'package:milow/features/inbox/presentation/pages/chat_detail_page.dart';
@@ -207,9 +210,14 @@ Future<void> main() async {
               LocalProfileStore.init().then(
                 (_) => debugPrint('✅ [Init] LocalProfileStore ready'),
               ),
-              LocalDocumentStore.init().then(
-                (_) => debugPrint('✅ [Init] LocalDocumentStore ready'),
-              ),
+              Future.wait([
+                LocalDocumentStore.init().then(
+                  (_) => debugPrint('[Main] LocalDocumentStore init done'),
+                ),
+                LocalLoadDocumentStore.init().then(
+                  (_) => debugPrint('[Main] LocalLoadDocumentStore init done'),
+                ),
+              ]),
               LocalExpenseStore.init().then(
                 (_) => debugPrint('✅ [Init] LocalExpenseStore ready'),
               ),
@@ -271,6 +279,10 @@ Future<void> main() async {
               ),
             ),
             Provider(create: (_) => LocationTrackingService(driverDatabase)),
+            ChangeNotifierProvider(
+              create: (context) => 
+                  LocationController(context.read<LocationTrackingService>()),
+            ),
             Provider(
               create: (_) =>
                   LocationRepository(driverDatabase, Supabase.instance.client),
@@ -279,6 +291,7 @@ Future<void> main() async {
               create: (_) => MessagingProvider(driverDatabase)..init(),
             ),
             ChangeNotifierProvider(create: (_) => AnnouncementsProvider()),
+            ChangeNotifierProvider(create: (_) => CheckCallService()),
             if (prefService != null)
               ChangeNotifierProvider.value(value: prefService),
           ],

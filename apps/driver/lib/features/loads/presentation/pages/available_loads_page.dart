@@ -46,44 +46,87 @@ class _AvailableLoadsPageState extends State<AvailableLoadsPage> {
   @override
   Widget build(BuildContext context) {
     final tokens = context.tokens;
-    return Scaffold(
-      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      appBar: AppBar(
-        title: const Text('Available Loads'),
-        actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
-        ],
+    
+    // Split loads into Assigned (need acceptance) and Active (in progress)
+    final assignedStatus = [
+      LoadStatus.assigned, 
+      LoadStatus.pending, 
+      LoadStatus.tendered, 
+      LoadStatus.dispatched
+    ];
+    
+    final activeStatus = [
+      LoadStatus.enRoute,
+      LoadStatus.atPickup,
+      LoadStatus.loaded,
+      LoadStatus.atStop,
+      LoadStatus.atDelivery,
+    ];
+    
+    final assignedLoads = _loads.where((l) => assignedStatus.contains(l.status)).toList();
+    final activeLoads = _loads.where((l) => activeStatus.contains(l.status)).toList();
+
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+        appBar: AppBar(
+          title: const Text('My Loads'),
+          actions: [
+            IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Assigned'),
+              Tab(text: 'Active'),
+            ],
+          ),
+        ),
+        body: _isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : TabBarView(
+                children: [
+                  _buildLoadList(assignedLoads, tokens),
+                  _buildLoadList(activeLoads, tokens),
+                ],
+              ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
-              onRefresh: _loadData,
-              child: _loads.isEmpty
-                  ? _buildEmptyState()
-                  : ListView.separated(
-                      padding: EdgeInsets.all(tokens.spacingM),
-                      itemCount: _loads.length,
-                      separatorBuilder: (context, index) =>
-                          SizedBox(height: tokens.spacingM),
-                      itemBuilder: (context, index) =>
-                          _buildLoadCard(_loads[index]),
-                    ),
+    );
+  }
+
+  Widget _buildLoadList(List<Load> loads, DesignTokens tokens) {
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: loads.isEmpty
+          ? _buildEmptyState()
+          : ListView.separated(
+              padding: EdgeInsets.all(tokens.spacingM),
+              itemCount: loads.length,
+              separatorBuilder: (context, index) =>
+                  SizedBox(height: tokens.spacingM),
+              itemBuilder: (context, index) =>
+                  _buildLoadCard(loads[index]),
             ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(Icons.assignment_outlined, size: 64, color: Colors.grey[400]),
-          const SizedBox(height: 16),
-          Text(
-            'No loads available at the moment',
-            style: TextStyle(color: Colors.grey[600]),
-          ),
-        ],
+    return SingleChildScrollView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Container(
+        height: 400,
+        alignment: Alignment.center,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.assignment_outlined, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No loads available',
+              style: TextStyle(color: Colors.grey[600]),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -99,7 +142,7 @@ class _AvailableLoadsPageState extends State<AvailableLoadsPage> {
         side: BorderSide(color: colorScheme.outlineVariant),
       ),
       child: InkWell(
-        onTap: () => context.push('/load-details/${load.id}'),
+        onTap: () => context.push('/load-details/${load.id}').then((_) => _loadData()),
         borderRadius: BorderRadius.circular(tokens.shapeM),
         child: Padding(
           padding: EdgeInsets.all(tokens.spacingM),
@@ -135,10 +178,37 @@ class _AvailableLoadsPageState extends State<AvailableLoadsPage> {
                 ),
               ],
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  if (load.status == LoadStatus.assigned)
+              if (load.status == LoadStatus.assigned || load.status == LoadStatus.pending)
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    M3SpringButton(
+                      onTap: () async {
+                        await LoadRepository.updateLoadStatus(
+                          load.id,
+                          LoadStatus.rejected,
+                        );
+                        await _loadData();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: colorScheme.error),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Text(
+                          'REJECT',
+                          style: TextStyle(
+                            color: colorScheme.error,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
                     M3SpringButton(
                       onTap: () async {
                         await LoadRepository.updateLoadStatus(
@@ -165,8 +235,8 @@ class _AvailableLoadsPageState extends State<AvailableLoadsPage> {
                         ),
                       ),
                     ),
-                ],
-              ),
+                  ],
+                ),
             ],
           ),
         ),

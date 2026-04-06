@@ -6,6 +6,7 @@ import 'package:milow_core/milow_core.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/data_prefetch_service.dart';
+import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
 import 'package:milow/features/explore/presentation/utils/explore_utils.dart';
@@ -13,6 +14,7 @@ import 'package:milow/features/explore/presentation/widgets/explore_map_view.dar
 import 'package:milow/features/explore/presentation/widgets/stats_overview_card.dart';
 import 'package:milow/features/explore/presentation/widgets/state_collector_card.dart';
 import 'package:milow/features/explore/presentation/widgets/smart_suggestions_card.dart';
+import 'package:milow/features/explore/presentation/widgets/performance_analytics_dashboard.dart';
 import 'package:milow/features/explore/presentation/pages/visited_states_map_page.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -28,8 +30,14 @@ class _ExplorePageState extends State<ExplorePage> {
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<ExploreProvider>().loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefService = context.read<PreferencesService>();
+      final unitSystem = prefService.getUnitSystem();
+      if (mounted) {
+        final provider = context.read<ExploreProvider>();
+        provider.setUnitSystem(unitSystem);
+        await provider.loadData();
+      }
     });
   }
 
@@ -165,6 +173,11 @@ class _ExplorePageState extends State<ExplorePage> {
                       const Padding(
                         padding: EdgeInsets.symmetric(horizontal: 16),
                         child: StatsOverviewCard(),
+                      ),
+                      const SizedBox(height: 16),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: PerformanceAnalyticsDashboard(),
                       ),
                       const SizedBox(height: 8),
 

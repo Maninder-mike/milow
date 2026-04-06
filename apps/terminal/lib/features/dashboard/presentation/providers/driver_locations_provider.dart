@@ -14,24 +14,25 @@ final driverLocationsProvider = StreamProvider<List<DriverLocation>>((ref) {
 
   Future<void> fetchLocations() async {
     if (companyId == null) {
-      controller.add([]);
+      if (!controller.isClosed) controller.add([]);
       return;
     }
     try {
       final data = await supabase
           .from('driver_locations')
-          .select()
+          .select('*, profiles:driver_id (full_name, driver_status)')
           .eq('company_id', companyId)
           .order('updated_at', ascending: false);
 
       final Map<String, DriverLocation> latestPerDriver = {};
       for (var json in data) {
         final loc = DriverLocation.fromJson(json);
-        if (!latestPerDriver.containsKey(loc.driverId)) {
-          latestPerDriver[loc.driverId] = loc;
-        }
+        // We know for sure it's per-driver because of unique constraint
+        latestPerDriver[loc.driverId] = loc;
       }
-      controller.add(latestPerDriver.values.toList());
+      if (!controller.isClosed) {
+        controller.add(latestPerDriver.values.toList());
+      }
     } catch (e) {
       if (!controller.isClosed) controller.addError(e);
     }

@@ -208,7 +208,7 @@ class TripRepository {
     // Queue sync operation
     final payload = localTrip.toJson();
     payload['user_id'] = userId;
-    payload.remove('id'); // Server will generate its own ID
+    // Keep 'id' in payload to ensure client-side UUID is used on the server
 
     await syncQueueService.enqueue(
       tableName: 'driver_trips',
@@ -216,6 +216,9 @@ class TripRepository {
       payload: payload,
       localId: localId,
     );
+
+    // Trigger background sync
+    unawaited(syncQueueService.processQueue(supabaseClient: client));
 
     return localTrip;
   }
@@ -238,9 +241,9 @@ class TripRepository {
     // Update local cache immediately
     final updatedTrip = trip.copyWith(updatedAt: DateTime.now());
 
-    await driverDatabase
-        .update(driverDatabase.trips)
-        .replace(_toCompanion(updatedTrip));
+    await (driverDatabase.update(driverDatabase.trips)
+          ..where((t) => t.id.equals(trip.id!)))
+        .write(_toCompanion(updatedTrip));
     debugPrint('[TripRepository] Updated locally: ${trip.id}');
 
     // Queue sync operation
@@ -253,6 +256,9 @@ class TripRepository {
       payload: payload,
       localId: trip.id!,
     );
+
+    // Trigger background sync
+    unawaited(syncQueueService.processQueue(supabaseClient: client));
 
     return updatedTrip;
   }
@@ -748,6 +754,8 @@ class TripRepository {
       weightUnit: Value(trip.weightUnit),
       pieces: Value(trip.pieces),
       referenceNumbers: Value(jsonEncode(trip.referenceNumbers)),
+      createdAt: Value(trip.createdAt),
+      updatedAt: Value(trip.updatedAt ?? DateTime.now()),
       lastUpdated: Value(DateTime.now()),
     );
   }

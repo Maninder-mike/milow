@@ -83,7 +83,7 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
               child: ProgressRing(),
             ),
           ),
-          error: (e, s) => Center(child: Text('Error loading metrics: \$e')),
+          error: (e, s) => Center(child: Text('Error loading metrics: $e')),
         ),
       ],
     );

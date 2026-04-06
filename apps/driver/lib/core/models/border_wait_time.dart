@@ -19,6 +19,7 @@ class BorderWaitTime {
   final String? fastOperationalStatus;
   final String? constructionNotice;
   final String? time; // Current time from API
+  final String? date; // Current date from API
 
   BorderWaitTime({
     required this.portNumber,
@@ -40,6 +41,7 @@ class BorderWaitTime {
     this.fastOperationalStatus,
     this.constructionNotice,
     this.time,
+    this.date,
   });
 
   factory BorderWaitTime.fromJson(Map<String, dynamic> json) {
@@ -62,9 +64,13 @@ class BorderWaitTime {
     }
 
     int parseInt(dynamic value) {
-      if (value == null || value == '' || value == 'N/A') return 0;
+      if (value == null) return 0;
       if (value is int) return value;
-      if (value is String) return int.tryParse(value) ?? 0;
+      if (value is String) {
+        final val = value.trim();
+        if (val.isEmpty || val == 'N/A') return 0;
+        return int.tryParse(val) ?? 0;
+      }
       return 0;
     }
 
@@ -90,15 +96,40 @@ class BorderWaitTime {
       fastMaxLanes: parseInt(fastLanes['maximum_lanes']),
       hours: json['hours'] as String?,
       border: json['border'] as String?,
-      lastUpdated: json['date'] != null
-          ? DateTime.tryParse(json['date'] as String)
-          : null,
+      lastUpdated: _parseDateTime(json['date'] as String?, json['time'] as String?),
       updateTime: standardLanes['update_time']?.toString(),
       operationalStatus: standardLanes['operational_status']?.toString(),
       fastOperationalStatus: fastLanes['operational_status']?.toString(),
       constructionNotice: json['construction_notice']?.toString(),
       time: json['time']?.toString(),
+      date: json['date']?.toString(),
     );
+  }
+
+  static DateTime? _parseDateTime(String? dateStr, String? timeStr) {
+    if (dateStr == null) return null;
+    try {
+      // Handle M/D/YYYY format
+      final dateParts = dateStr.split('/');
+      if (dateParts.length != 3) return DateTime.tryParse(dateStr);
+
+      final month = int.parse(dateParts[0]);
+      final day = int.parse(dateParts[1]);
+      final year = int.parse(dateParts[2]);
+
+      if (timeStr != null) {
+        final timeParts = timeStr.split(':');
+        if (timeParts.length >= 2) {
+          final hour = int.parse(timeParts[0]);
+          final minute = int.parse(timeParts[1]);
+          final second = timeParts.length > 2 ? int.parse(timeParts[2]) : 0;
+          return DateTime(year, month, day, hour, minute, second);
+        }
+      }
+      return DateTime(year, month, day);
+    } catch (_) {
+      return DateTime.tryParse(dateStr);
+    }
   }
 
   /// Check if this port has commercial truck operations
@@ -187,6 +218,25 @@ class BorderWaitTime {
 
   /// Unique identifier for saving
   String get uniqueId => '${portNumber}_$crossingName';
+
+  /// Check if data is likely stale (no update_time reported by CBP)
+  /// NOTE: The CBP API's top-level `date` field is often stuck/old.
+  /// We use `update_time` from lane data as the real freshness signal.
+  bool get isStale {
+    // If there's a valid update_time from the lane data, data is considered fresh
+    if (updateTime != null && updateTime!.isNotEmpty) return false;
+    // If there's no update_time AND no open lanes, consider it stale/unavailable
+    if (lanesOpen == 0 && maxLanes == 0) return true;
+    // Default: not stale (CBP just doesn't always populate update_time)
+    return false;
+  }
+
+  /// Display-friendly "last updated" string for the UI
+  String get lastUpdatedDisplay {
+    if (updateTime != null && updateTime!.isNotEmpty) return updateTime!;
+    if (time != null && time!.isNotEmpty) return time!;
+    return 'N/A';
+  }
 }
 
 /// Saved border crossing preference

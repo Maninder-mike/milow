@@ -8,6 +8,7 @@ class DriverLocation {
   final double? heading;
   final double? speed;
   final DateTime updatedAt;
+  final Map<String, dynamic>? metadata;
 
   const DriverLocation({
     required this.id,
@@ -18,6 +19,7 @@ class DriverLocation {
     required this.updatedAt,
     this.heading,
     this.speed,
+    this.metadata,
   });
 
   factory DriverLocation.fromJson(Map<String, dynamic> json) {
@@ -29,7 +31,10 @@ class DriverLocation {
       longitude: (json['longitude'] as num).toDouble(),
       heading: (json['heading'] as num?)?.toDouble(),
       speed: (json['speed'] as num?)?.toDouble(),
-      updatedAt: DateTime.parse(json['updated_at'] as String),
+      updatedAt: json['updated_at'] != null 
+          ? DateTime.parse(json['updated_at'].toString())
+          : DateTime.now(),
+      metadata: json,
     );
   }
 

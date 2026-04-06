@@ -146,23 +146,23 @@ class Stop {
     }
 
     return Stop(
-      id: json['id'] as String? ?? '',
-      loadId: json['load_id'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
+      loadId: json['load_id']?.toString() ?? '',
       sequence: json['sequence'] as int? ?? 1,
-      type: StopType.values.byName(json['type'] as String? ?? 'pickup'),
+      type: StopType.values.byName(json['type']?.toString() ?? 'pickup'),
       location: LoadLocation.fromMap(
         json,
         json['appointment_time'] ?? json['scheduled_time'],
       ),
-      notes: json['notes'] as String?,
-      commodity: json['commodity'] as String?,
-      quantity: json['quantity'] as String?,
+      notes: json['notes']?.toString(),
+      commodity: json['commodity']?.toString(),
+      quantity: json['quantity']?.toString(),
       weight: weightApp,
       weightUnit: unit,
-      stopReference: json['stop_reference'] as String?,
-      instructions: json['instructions'] as String?,
+      stopReference: json['stop_reference']?.toString(),
+      instructions: json['instructions']?.toString(),
       appointmentTime: json['appointment_time'] != null
-          ? DateTime.parse(json['appointment_time'] as String)
+          ? DateTime.parse(json['appointment_time'].toString())
           : null,
       appointmentWindow: json['appointment_window'] != null
           ? AppointmentWindow.fromJson(
@@ -171,10 +171,10 @@ class Stop {
           : null,
       isCompleted: json['is_completed'] as bool? ?? false,
       completedAt: json['completed_at'] != null
-          ? DateTime.parse(json['completed_at'] as String)
+          ? DateTime.parse(json['completed_at'].toString())
           : null,
       arrivedAt: json['arrived_at'] != null
-          ? DateTime.parse(json['arrived_at'] as String)
+          ? DateTime.parse(json['arrived_at'].toString())
           : null,
     );
   }

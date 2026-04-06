@@ -27,6 +27,8 @@ class ActiveTripCard extends StatefulWidget {
 class _ActiveTripCardState extends State<ActiveTripCard> {
   double? _pickupDistance;
   double? _deliveryDistance;
+  double? _initialPickupDistance;
+  double? _initialDeliveryDistance;
   bool _isLoadingPickup = true;
   bool _isLoadingDelivery = true;
   Timer? _locationTimer;
@@ -34,72 +36,83 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
   int _currentPage = 0;
   UnitSystem _unitSystem = UnitSystem.metric;
 
-  // Check which locations are available
-  bool get _hasPickup => widget.trip.pickupLocations.isNotEmpty;
-  bool get _hasDelivery => widget.trip.deliveryLocations.isNotEmpty;
+  // Multi-stop helpers
+  bool get _hasPickup => widget.trip.uncompletedPickups.isNotEmpty;
+  bool get _hasDelivery => widget.trip.uncompletedDeliveries.isNotEmpty;
   int get _totalPages => (_hasPickup ? 1 : 0) + (_hasDelivery ? 1 : 0);
 
-  // Determine initial page based on trip state
-  // If pickup locations exist, we're in pickup mode (show pickup first)
-  // If no pickups, we're in delivery mode
-  // Determine initial page based on trip state
-  // If all pickups are completed, default to the delivery card (page 1)
-  int get _initialPage {
-    if (!_hasPickup) return 0;
-    if (widget.trip.allPickupsCompleted && _hasDelivery) return 1;
-    return 0;
+  // Get next uncompleted stops with indexing
+  String get _pickupLabel {
+    final uncompleted = widget.trip.uncompletedPickups;
+    if (uncompleted.isEmpty) return 'No uncompleted pickups';
+    final total = widget.trip.pickupLocations.length;
+    if (total <= 1) return 'Pickup';
+    final index = widget.trip.pickupLocations.indexOf(uncompleted.first) + 1;
+    return 'Pickup $index of $total';
   }
 
-  @override
-  void didUpdateWidget(ActiveTripCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Auto-advance to delivery if pickups just completed
-    if (!oldWidget.trip.allPickupsCompleted &&
-        widget.trip.allPickupsCompleted &&
-        _hasDelivery &&
-        _currentPage == 0) {
-      _pageController.animateToPage(
-        1,
-        duration: M3ExpressiveMotion.durationMedium,
-        curve: M3ExpressiveMotion.standard,
-      );
-    }
+  String get _deliveryLabel {
+    final uncompleted = widget.trip.uncompletedDeliveries;
+    if (uncompleted.isEmpty) return 'No uncompleted deliveries';
+    final total = widget.trip.deliveryLocations.length;
+    if (total <= 1) return 'Delivery';
+    final index = widget.trip.deliveryLocations.indexOf(uncompleted.first) + 1;
+    return 'Delivery $index of $total';
   }
 
   String get _pickupAddress {
-    if (_hasPickup) {
-      return _extractCityStateCountry(widget.trip.pickupLocations.first);
+    final uncompleted = widget.trip.uncompletedPickups;
+    if (uncompleted.isNotEmpty) {
+      return _extractCityStateCountry(uncompleted.first);
+    }
+    // Fallback to last completed pickup if all done
+    if (widget.trip.pickupLocations.isNotEmpty) {
+      return _extractCityStateCountry(widget.trip.pickupLocations.last);
     }
     return 'No pickup';
   }
 
   String get _deliveryAddress {
-    if (_hasDelivery) {
-      return _extractCityStateCountry(widget.trip.deliveryLocations.first);
+    final uncompleted = widget.trip.uncompletedDeliveries;
+    if (uncompleted.isNotEmpty) {
+      return _extractCityStateCountry(uncompleted.first);
+    }
+    // Fallback to last completed delivery if all done
+    if (widget.trip.deliveryLocations.isNotEmpty) {
+      return _extractCityStateCountry(widget.trip.deliveryLocations.last);
     }
     return 'No delivery';
   }
 
-  String get _fullPickupAddress =>
-      _hasPickup ? widget.trip.pickupLocations.first : '';
-  String get _fullDeliveryAddress =>
-      _hasDelivery ? widget.trip.deliveryLocations.first : '';
+  String get _fullPickupAddress {
+    final uncompleted = widget.trip.uncompletedPickups;
+    return uncompleted.isNotEmpty ? uncompleted.first : '';
+  }
+
+  String get _fullDeliveryAddress {
+    final uncompleted = widget.trip.uncompletedDeliveries;
+    return uncompleted.isNotEmpty ? uncompleted.first : '';
+  }
 
   /// Extract city, state, country from full address
   String _extractCityStateCountry(String address) {
     if (address.isEmpty) return 'Unknown';
 
+    // Try to remove house number and street if they follow common patterns
+    // but keep enough context for the driver.
     final parts = address
         .split(',')
         .map((e) => e.trim())
-        .where((e) => e.isNotEmpty && !RegExp(r'^\d+$').hasMatch(e))
+        .where((e) => e.isNotEmpty)
         .toList();
 
     if (parts.length >= 3) {
-      return parts.sublist(parts.length - 3).join(', ');
+      // Typically: [Street], [City], [Prov/State], [Postal], [Country]
+      // We want to show more than just the end if it's truncated.
+      return address; // Return full address, handles wrapping in the UI now
     }
 
-    return parts.join(', ');
+    return address;
   }
 
   @override
@@ -173,6 +186,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
             if (mounted) {
               setState(() {
                 _pickupDistance = distance;
+                _initialPickupDistance ??= distance;
                 _isLoadingPickup = false;
               });
             }
@@ -189,6 +203,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
             if (mounted) {
               setState(() {
                 _deliveryDistance = distance;
+                _initialDeliveryDistance ??= distance;
                 _isLoadingDelivery = false;
               });
             }
@@ -232,7 +247,9 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
     }
   }
 
-  String _formatDistance(double meters) {
+  String _formatDistance(double? meters) {
+    if (meters == null || meters == 0) return 'Location unavailable';
+
     final useKm = _unitSystem == UnitSystem.metric;
     if (useKm) {
       final km = meters / 1000;
@@ -251,7 +268,8 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
   }
 
   String _formatETA(double meters) {
-    const avgSpeedMps = 26.82; // 60 mph
+    // Variable speed based on distance (city vs highway heuristic)
+    final avgSpeedMps = meters > 10000 ? 26.82 : 15.0; // 60 mph vs ~35 mph
     final seconds = meters / avgSpeedMps;
     final minutes = (seconds / 60).round();
 
@@ -269,11 +287,44 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
     }
   }
 
-  double _calculateProgress(double? distance) {
-    if (distance == null) return 0.3;
-    const maxDistance = 500000.0;
-    final progress = 1.0 - (distance / maxDistance).clamp(0.0, 1.0);
-    return progress.clamp(0.1, 0.95);
+  double _calculateProgress(double? distance, bool isPickup) {
+    if (distance == null) return 0.1;
+
+    final initialDistance =
+        isPickup ? _initialPickupDistance : _initialDeliveryDistance;
+
+    if (initialDistance == null || initialDistance < 100) {
+      return 0.1; // Baseline not set yet or very close
+    }
+
+    // Progress is (Initial - Current) / Initial
+    // e.g. started 100km away, now 40km away -> (100-40)/100 = 60%
+    final progress = (1.0 - (distance / initialDistance)).clamp(0.05, 0.95);
+    return progress;
+  }
+
+  // Determine initial page based on trip state
+  int get _initialPage {
+    if (!_hasPickup) return 0;
+    // If pickups are done, show delivery
+    if (widget.trip.allPickupsCompleted && _hasDelivery) return 1;
+    return 0;
+  }
+
+  @override
+  void didUpdateWidget(ActiveTripCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Auto-advance to delivery if pickups just completed
+    if (!oldWidget.trip.allPickupsCompleted &&
+        widget.trip.allPickupsCompleted &&
+        _hasDelivery &&
+        _currentPage == 0) {
+      _pageController.animateToPage(
+        1,
+        duration: M3ExpressiveMotion.durationMedium,
+        curve: M3ExpressiveMotion.standard,
+      );
+    }
   }
 
   @override
@@ -283,16 +334,18 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
     // Build list of pages based on available locations
     final pages = <Widget>[];
 
-    // Check completion status
+    // Check completion status from helper getters
     final allPickupsCompleted = widget.trip.allPickupsCompleted;
     final allDeliveriesCompleted = widget.trip.allDeliveriesCompleted;
 
-    if (_hasPickup) {
+    if (widget.trip.pickupLocations.isNotEmpty) {
       pages.add(
         _buildCard(
           context,
           isPickup: true,
+          label: _pickupLabel,
           address: _pickupAddress,
+          fullAddress: _fullPickupAddress,
           distance: _pickupDistance,
           isLoading: _isLoadingPickup,
           statusLabel: allPickupsCompleted
@@ -310,12 +363,14 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
         ),
       );
     }
-    if (_hasDelivery) {
+    if (widget.trip.deliveryLocations.isNotEmpty) {
       pages.add(
         _buildCard(
           context,
           isPickup: false,
+          label: _deliveryLabel,
           address: _deliveryAddress,
+          fullAddress: _fullDeliveryAddress,
           distance: _deliveryDistance,
           isLoading: _isLoadingDelivery,
           statusLabel: allDeliveriesCompleted
@@ -341,7 +396,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
       children: [
         // Swipeable Cards
         SizedBox(
-          height: 175, // Fixed height for consistency
+          height: 190, // Increased height for wrapped address
           child: PageView(
             controller: _pageController,
             onPageChanged: (index) {
@@ -351,7 +406,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
           ),
         ),
         if (_totalPages > 1) ...[
-          SizedBox(height: tokens.spacingM),
+          SizedBox(height: tokens.spacingS),
           // Page Indicator Dots
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -390,7 +445,9 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
   Widget _buildCard(
     BuildContext context, {
     required bool isPickup,
+    required String label,
     required String address,
+    required String fullAddress,
     required double? distance,
     required bool isLoading,
     required String statusLabel,
@@ -399,7 +456,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
     bool hideEta = false,
   }) {
     final tokens = context.tokens;
-    final progress = _calculateProgress(distance);
+    final progress = _calculateProgress(distance, isPickup);
 
     return GestureDetector(
       onTap: () {
@@ -493,13 +550,14 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                   ),
                 ],
               ),
-              SizedBox(height: tokens.spacingM),
+              SizedBox(height: tokens.spacingS),
 
-              // Destination
+              // Destination (Pickup/Delivery)
               Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Container(
+                    margin: EdgeInsets.only(top: tokens.spacingXS),
                     padding: EdgeInsets.all(tokens.spacingS),
                     decoration: BoxDecoration(
                       color: tokens.surfaceContainer,
@@ -513,31 +571,40 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          isPickup ? 'Pickup' : 'Delivery',
+                          label,
                           style: Theme.of(context).textTheme.labelSmall
-                              ?.copyWith(color: tokens.textTertiary),
-                        ),
-                        Text(
-                          address,
-                          style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(
+                                color: tokens.textTertiary,
                                 fontWeight: FontWeight.bold,
-                                color: tokens.textPrimary,
                               ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                        ),
+                        Tooltip(
+                          message: fullAddress,
+                          child: Text(
+                            address,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                  color: tokens.textPrimary,
+                                ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: tokens.spacingM),
+              const Spacer(),
 
               // Progress Bar
               LayoutBuilder(
                 builder: (context, constraints) {
                   final width = constraints.maxWidth;
+                  // Clamp progress icon away from absolute edges
+                  final clampedProgress = progress.clamp(0.04, 0.96);
+
                   return Stack(
                     clipBehavior: Clip.none,
                     alignment: Alignment.centerLeft,
@@ -554,7 +621,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       // Progress
                       Container(
                         height: 6,
-                        width: width * progress,
+                        width: width * clampedProgress,
                         decoration: BoxDecoration(
                           color: statusColor,
                           borderRadius: BorderRadius.circular(tokens.shapeFull),
@@ -562,7 +629,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                       ),
                       // Truck Icon
                       Positioned(
-                        left: (width * progress) - 12,
+                        left: (width * clampedProgress) - 12,
                         child: Container(
                           padding: EdgeInsets.all(tokens.spacingXS),
                           decoration: BoxDecoration(
@@ -578,8 +645,10 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                             ],
                           ),
                           child: Icon(
-                            Icons.local_shipping_rounded,
-                            size: 12,
+                            isPickup
+                                ? Icons.store_rounded
+                                : Icons.local_shipping_rounded,
+                            size: 10,
                             color: statusColor,
                           ),
                         ),
@@ -599,7 +668,7 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                         ? 'Complete ✓'
                         : (isLoading
                               ? 'Calculating...'
-                              : _formatDistance(distance ?? 0)),
+                              : _formatDistance(distance)),
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.bold,
                       color: hideEta ? tokens.success : tokens.textPrimary,

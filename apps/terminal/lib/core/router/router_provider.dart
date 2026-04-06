@@ -30,15 +30,16 @@ import 'package:terminal/features/dashboard/screens/deliver/delivery_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicles_page.dart';
 import 'package:terminal/features/dashboard/screens/vehicles/vehicle_status_page.dart';
 import 'package:terminal/features/dispatch/presentation/pages/dispatch_page.dart';
-import 'package:terminal/features/dispatch/presentation/pages/loads_page.dart'; // [NEW] import
+import 'package:terminal/features/dispatch/presentation/pages/loads_page.dart';
 import 'package:terminal/features/dispatch/presentation/pages/quotes_page.dart';
 import 'package:terminal/features/billing/presentation/pages/invoices_page.dart';
 import 'package:terminal/features/crm/presentation/pages/crm_page.dart';
 import 'package:terminal/features/crm/presentation/pages/crm_details_page.dart';
 import 'package:terminal/features/settlements/presentation/pages/settlements_page.dart';
-import 'package:terminal/features/settlements/presentation/pages/settlement_details_page.dart'; // [NEW]
-import 'package:terminal/features/fleet/presentation/pages/maintenance_page.dart'; // [NEW]
+import 'package:terminal/features/settlements/presentation/pages/settlement_details_page.dart';
+import 'package:terminal/features/fleet/presentation/pages/maintenance_page.dart';
 import 'package:terminal/features/analytics/presentation/screens/analytics_page.dart';
+import 'package:terminal/features/dashboard/screens/fleet_map_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -193,8 +194,11 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           GoRoute(
             path: '/location',
-            builder: (context, state) =>
-                const EntityPlaceholderPage(title: 'Location'),
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const FleetMapPage(),
+            ),
           ),
           GoRoute(
             path: '/drivers',

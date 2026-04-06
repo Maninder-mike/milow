@@ -5,6 +5,8 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons, IconButton;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:terminal/features/dashboard/presentation/providers/driver_locations_provider.dart';
+import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
+import 'package:milow_core/milow_core.dart';
 
 class FleetMapView extends ConsumerStatefulWidget {
   const FleetMapView({super.key});
@@ -20,6 +22,7 @@ class _FleetMapViewState extends ConsumerState<FleetMapView> {
   @override
   Widget build(BuildContext context) {
     final locationsAsync = ref.watch(driverLocationsProvider);
+    final loadsAsync = ref.watch(loadsListProvider);
     final theme = FluentTheme.of(context);
 
     return Container(
@@ -65,6 +68,55 @@ class _FleetMapViewState extends ConsumerState<FleetMapView> {
                           'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
                       subdomains: const ['a', 'b', 'c'],
                     ),
+                    // Stop Geofence Circles
+                    CircleLayer(
+                      circles: loadsAsync.maybeWhen(
+                        data: (loads) => loads
+                            .expand((l) => l.stops)
+                            .where((s) =>
+                                s.location.latitude != null &&
+                                s.location.longitude != null)
+                            .map((s) {
+                          return CircleMarker(
+                            point: latlong.LatLng(
+                                s.location.latitude!, s.location.longitude!),
+                            radius: 500, // 500 meters
+                            useRadiusInMeter: true,
+                            color: (s.type == StopType.pickup
+                                    ? Colors.green
+                                    : Colors.red)
+                                .withValues(alpha: 0.1),
+                            borderColor: (s.type == StopType.pickup
+                                    ? Colors.green
+                                    : Colors.red)
+                                .withValues(alpha: 0.3),
+                            borderStrokeWidth: 1,
+                          );
+                        }).toList(),
+                        orElse: () => <CircleMarker>[],
+                      ),
+                    ),
+                    // Stop Markers
+                    MarkerLayer(
+                      markers: loadsAsync.maybeWhen(
+                        data: (loads) => loads
+                            .expand((l) => l.stops)
+                            .where((s) =>
+                                s.location.latitude != null &&
+                                s.location.longitude != null)
+                            .map((s) {
+                          return Marker(
+                            point: latlong.LatLng(
+                                s.location.latitude!, s.location.longitude!),
+                            width: 32,
+                            height: 32,
+                            child: _StopMarker(stop: s),
+                          );
+                        }).toList(),
+                        orElse: () => [],
+                      ),
+                    ),
+                    // Driver Markers
                     MarkerLayer(
                       markers: locations.map((loc) {
                         return Marker(
@@ -242,6 +294,40 @@ class _DriverMarker extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _StopMarker extends StatelessWidget {
+  final Stop stop;
+
+  const _StopMarker({required this.stop});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPickup = stop.type == StopType.pickup;
+    final color = isPickup ? Colors.green : Colors.red;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.2),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: color, width: 2),
+      ),
+      child: Icon(
+        isPickup
+            ? FluentIcons.location_24_filled
+            : FluentIcons.location_24_regular,
+        size: 16,
+        color: color,
+      ),
     );
   }
 }

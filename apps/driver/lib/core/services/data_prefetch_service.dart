@@ -173,13 +173,32 @@ class DataPrefetchService {
 
   /// Invalidate cache (data changed, need to refetch)
   void invalidateCache() {
-    // Clear cached trips and fuel entries to prevent stale duplicates
+    // Clear cached trips, fuel entries and border times to prevent stale duplicates
     _cachedTrips = null;
     _cachedFuelEntries = null;
+    _cachedBorderWaitTimes = null;
     _prefetchComplete = false;
 
     if (kDebugMode) {
       debugPrint('DataPrefetchService: Cache invalidated');
+    }
+  }
+
+  /// Update cached border wait times manually
+  void updateBorderWaitTimes(List<BorderWaitTime> times) {
+    _cachedBorderWaitTimes = times;
+    if (kDebugMode) {
+      debugPrint(
+        'DataPrefetchService: Updated cached border wait times (${times.length})',
+      );
+    }
+  }
+
+  /// Clear border wait times cache specifically
+  void clearBorderWaitTimesCache() {
+    _cachedBorderWaitTimes = null;
+    if (kDebugMode) {
+      debugPrint('DataPrefetchService: Border wait times cache cleared');
     }
   }
 }

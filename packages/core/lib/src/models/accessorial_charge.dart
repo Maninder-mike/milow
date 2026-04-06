@@ -83,22 +83,22 @@ class AccessorialCharge {
 
   factory AccessorialCharge.fromJson(Map<String, dynamic> json) {
     return AccessorialCharge(
-      id: json['id'] as String,
-      loadId: json['load_id'] as String? ?? '',
-      type: json['type'] as String? ?? '',
+      id: json['id']?.toString() ?? '',
+      loadId: json['load_id']?.toString() ?? '',
+      type: json['type']?.toString() ?? '',
       amount: (json['amount'] as num?)?.toDouble() ?? 0.0,
-      currency: json['currency'] as String? ?? 'CAD',
-      notes: json['notes'] as String? ?? '',
+      currency: json['currency']?.toString() ?? 'CAD',
+      notes: json['notes']?.toString() ?? '',
       status: json['status'] != null
-          ? ChargeStatus.fromString(json['status'] as String)
+          ? ChargeStatus.fromString(json['status'].toString())
           : ChargeStatus.pending,
-      createdBy: json['created_by'] as String?,
-      approvedBy: json['approved_by'] as String?,
+      createdBy: json['created_by']?.toString(),
+      approvedBy: json['approved_by']?.toString(),
       createdAt: json['created_at'] != null
-          ? DateTime.parse(json['created_at'] as String)
+          ? DateTime.parse(json['created_at'].toString())
           : null,
       approvedAt: json['approved_at'] != null
-          ? DateTime.parse(json['approved_at'] as String)
+          ? DateTime.parse(json['approved_at'].toString())
           : null,
     );
   }

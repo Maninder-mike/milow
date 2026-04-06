@@ -30,6 +30,7 @@ import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/location/location_preferences_helper.dart';
 import 'package:milow/features/dashboard/presentation/widgets/active_trip_card.dart';
 import 'package:milow/features/dashboard/presentation/widgets/load_progress_card.dart';
+import 'package:milow/core/services/location/location_controller.dart';
 import 'package:milow/core/widgets/sync_status_indicator.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/core/services/fuel_repository.dart';
@@ -308,14 +309,21 @@ class _DashboardPageState extends State<DashboardPage>
         setState(() {
           _isLoadingBorders = true;
           _borderError = null;
+          // When forcing refresh, also clear the top-level prefetch cache
+          if (forceRefresh) {
+            prefetch.clearBorderWaitTimesCache();
+          }
         });
       }
 
-      // Force refresh the API data first if requested
-      if (forceRefresh) {
-        await BorderWaitTimeService.fetchAllWaitTimes(forceRefresh: true);
-      }
-      final waitTimes = await BorderWaitTimeService.getSavedBorderWaitTimes();
+      // Fetch fresh data (honoring forceRefresh)
+      final waitTimes = await BorderWaitTimeService.getSavedBorderWaitTimes(
+        forceRefresh: forceRefresh,
+      );
+
+      // Sync back to prefetch service to ensure future reads are consistent
+      prefetch.updateBorderWaitTimes(waitTimes);
+
       if (mounted) {
         setState(() {
           _borderWaitTimes = waitTimes;
@@ -425,6 +433,21 @@ class _DashboardPageState extends State<DashboardPage>
         setState(() {
           _assignedLoads = loads;
         });
+
+        // Sync tracking controller with the most active load
+        try {
+          final activeLoad = loads.firstWhere(
+            (l) => l.status == LoadStatus.enRoute || l.status == LoadStatus.atStop,
+          );
+          if (mounted) {
+            context.read<LocationController>().updateTrackingForLoad(activeLoad);
+          }
+        } catch (_) {
+          // No active load found, ensure controller handles cleanup if needed
+          if (mounted) {
+            context.read<LocationController>().updateTrackingForLoad(null);
+          }
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -725,10 +748,10 @@ class _DashboardPageState extends State<DashboardPage>
                 md: 3,
                 child: _DashboardCard(
                   title: 'Explore',
-                  subtitle: 'Map & Loads',
+                  subtitle: 'Analytics & Map',
                   icon: Icons.explore_outlined,
                   color: Theme.of(context).colorScheme.tertiaryContainer,
-                  onTap: () => context.push('/available-loads'),
+                  onTap: () => context.go('/explore'),
                 ),
               ),
               ResponsiveColumn(

@@ -99,6 +99,26 @@ class Trip {
   /// Check if trip is fully completed
   bool get isCompleted => allPickupsCompleted && allDeliveriesCompleted;
 
+  /// Get list of uncompleted pickup locations
+  List<String> get uncompletedPickups {
+    final result = <String>[];
+    for (var i = 0; i < pickupLocations.length; i++) {
+      final isCompleted = i < pickupCompleted.length && pickupCompleted[i];
+      if (!isCompleted) result.add(pickupLocations[i]);
+    }
+    return result;
+  }
+
+  /// Get list of uncompleted delivery locations
+  List<String> get uncompletedDeliveries {
+    final result = <String>[];
+    for (var i = 0; i < deliveryLocations.length; i++) {
+      final isCompleted = i < deliveryCompleted.length && deliveryCompleted[i];
+      if (!isCompleted) result.add(deliveryLocations[i]);
+    }
+    return result;
+  }
+
   /// Create Trip from JSON (Supabase response)
   factory Trip.fromJson(Map<String, dynamic> json) {
     return Trip(

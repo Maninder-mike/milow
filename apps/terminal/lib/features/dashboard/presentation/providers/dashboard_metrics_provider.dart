@@ -57,7 +57,7 @@ Future<DashboardMetrics> dashboardMetrics(Ref ref) async {
   final firstDayMonth = DateTime(now.year, now.month, 1);
   final revenueMTD = invoices
       .where((inv) => inv.createdAt?.isAfter(firstDayMonth) ?? false)
-      .fold<double>(0, (sum, inv) => sum + inv.totalAmount);
+      .fold<double>(0.0, (sum, inv) => sum + inv.totalAmount);
 
   // 4. Fleet Health %
   final totalVehicles = vehicles.length;

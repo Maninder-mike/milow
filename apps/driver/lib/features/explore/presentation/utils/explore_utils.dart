@@ -1,6 +1,29 @@
 import 'package:intl/intl.dart';
+import 'package:milow/core/services/preferences_service.dart';
+import 'package:milow/core/utils/unit_utils.dart';
 
 class ExploreUtils {
+  /// Get distance converted to target unit system
+  static double getDisplayDistance(double rawDistance, String? sourceUnit, UnitSystem targetSystem) {
+    if (sourceUnit == 'mi' && targetSystem == UnitSystem.metric) {
+      return UnitUtils.milesToKm(rawDistance);
+    } else if (sourceUnit == 'km' && targetSystem == UnitSystem.imperial) {
+      return UnitUtils.kmToMiles(rawDistance);
+    }
+    return rawDistance;
+  }
+
+  /// Categorize trip based on distance (in the target unit system)
+  static String getTripCategory(double displayDistance, UnitSystem system) {
+    final thresholdLong = system == UnitSystem.metric ? 500.0 : 310.0;
+    final thresholdRegional = system == UnitSystem.metric ? 200.0 : 124.0;
+
+    if (displayDistance > thresholdLong) return 'Long Haul';
+    if (displayDistance >= thresholdRegional) return 'Regional';
+    if (displayDistance > 0) return 'Local';
+    return 'Other';
+  }
+
   /// Extract city and state/province from address
   /// Returns format: "City ST" (e.g., "Vaughan ON" or "Irwindale CA")
   static String extractCityState(String address) {

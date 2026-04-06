@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:milow/core/services/preferences_service.dart';
 import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
 
 class StatsOverviewCard extends StatelessWidget {
@@ -57,8 +58,10 @@ class StatsOverviewCard extends StatelessWidget {
                   _buildStatItem(
                     context,
                     icon: Icons.speed_rounded,
-                    label: 'Miles',
-                    value: numberFormat.format(provider.statsTotalMiles),
+                    label: provider.unitSystem == UnitSystem.metric
+                        ? 'Kilometers'
+                        : 'Miles',
+                    value: numberFormat.format(provider.statsTotalDistance),
                     color: colorScheme.primary,
                   ),
                   _buildStatItem(

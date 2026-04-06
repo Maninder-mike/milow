@@ -77,10 +77,21 @@ class FuelRepository {
         supabaseClient: client,
       );
 
-      // Clear existing local cache for this user
-      await (driverDatabase.delete(
-        driverDatabase.fuelEntries,
-      )..where((f) => f.userId.equals(userId))).go();
+      // We don't delete locally added entries that haven't synced yet (those in sync_queue)
+      final pendingCreateIds = syncQueueService.pendingOperations
+          .where((op) => op.tableName == 'fuel_entries' && op.operationType == 'create')
+          .map((op) => op.localId)
+          .toSet();
+
+      // Clear existing local cache for this user, except for pending creations
+      var deleteQuery = driverDatabase.delete(driverDatabase.fuelEntries)
+        ..where((f) => f.userId.equals(userId));
+
+      if (pendingCreateIds.isNotEmpty) {
+        deleteQuery = deleteQuery..where((f) => f.id.isNotIn(pendingCreateIds.toList()));
+      }
+
+      await deleteQuery.go();
 
       // Update local cache with server data
       await driverDatabase.batch((batch) {
@@ -159,8 +170,8 @@ class FuelRepository {
 
     // Queue sync operation
     final payload = localEntry.toJson();
+    // Keep 'id' in payload to ensure client-side UUID is used on the server
     payload['user_id'] = userId;
-    payload.remove('id'); // Server will generate its own ID
 
     await syncQueueService.enqueue(
       tableName: 'fuel_entries',
