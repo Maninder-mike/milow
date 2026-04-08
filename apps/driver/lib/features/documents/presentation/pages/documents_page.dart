@@ -163,7 +163,8 @@ class _DocumentsPageState extends State<DocumentsPage> {
   }
 
   Future<void> _fetchActiveTrip() async {
-    final activeTrip = await TripRepository.getActiveTrip();
+    final activeTripResult = await TripRepository.getActiveTrip();
+    final activeTrip = activeTripResult.fold((l) => null, (r) => r);
     if (activeTrip != null && mounted) {
       setState(() {
         if (_tripId == null) {

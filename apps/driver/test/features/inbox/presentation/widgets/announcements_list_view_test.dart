@@ -60,13 +60,13 @@ void main() {
         Announcement(
           id: '1',
           title: 'System Maintenance',
-          body: 'Scheduled maintenance this Sunday.',
+          content: 'Scheduled maintenance this Sunday.',
           createdAt: DateTime.now().subtract(const Duration(hours: 2)),
         ),
         Announcement(
           id: '2',
           title: 'New Policy update',
-          body: 'Please review the updated safety guidelines.',
+          content: 'Please review the updated safety guidelines.',
           createdAt: DateTime.now().subtract(const Duration(days: 1)),
         ),
       ];

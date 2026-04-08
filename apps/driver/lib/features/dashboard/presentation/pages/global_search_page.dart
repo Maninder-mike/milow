@@ -49,8 +49,11 @@ class _GlobalSearchPageState extends State<GlobalSearchPage> {
 
   Future<void> _loadData() async {
     try {
-      final trips = await TripService.getTrips();
-      final fuelEntries = await FuelService.getFuelEntries();
+      final tripsResult = await TripService.getTrips();
+      final trips = tripsResult.fold((l) => <Trip>[], (r) => r);
+      
+      final fuelEntriesResult = await FuelService.getFuelEntries();
+      final fuelEntries = fuelEntriesResult.fold((l) => <FuelEntry>[], (r) => r);
 
       if (mounted) {
         setState(() {

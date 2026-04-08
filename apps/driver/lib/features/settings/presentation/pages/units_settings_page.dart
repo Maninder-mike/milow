@@ -12,9 +12,7 @@ class UnitsSettingsPage extends StatefulWidget {
 }
 
 class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
-  String _distanceUnit = 'km';
-  String _volumeUnit = 'L';
-  String _weightUnit = 'lbs';
+  UnitSystem _unitSystem = UnitSystem.metric;
   bool _autoDetect = false;
 
   @override
@@ -25,16 +23,12 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
 
   Future<void> _loadPreferences() async {
     final prefService = Provider.of<PreferencesService>(context, listen: false);
-    final dUnit = prefService.getDistanceUnit();
-    final vUnit = prefService.getVolumeUnit();
-    final weightUnit = prefService.getWeightUnit();
+    final sys = prefService.getUnitSystem();
     final autoDetect = prefService.getAutoUpdateUnits();
 
     if (mounted) {
       setState(() {
-        _distanceUnit = dUnit;
-        _volumeUnit = vUnit;
-        _weightUnit = weightUnit;
+        _unitSystem = sys;
         _autoDetect = autoDetect;
       });
     }
@@ -95,7 +89,7 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
                 ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w600),
               ),
               subtitle: Text(
-                'Set units based on your current location',
+                'Set units automatically based on your current location',
                 style: Theme.of(context).textTheme.bodySmall,
               ),
               value: _autoDetect,
@@ -114,48 +108,64 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
               },
             ),
             _buildDivider(),
-            _buildUnitRow(
-              title: 'Distance',
-              options: ['mi', 'km'],
-              currentValue: _distanceUnit,
+            _buildSystemRow(
+              title: 'System',
+              options: const [UnitSystem.metric, UnitSystem.imperial],
+              currentValue: _unitSystem,
               enabled: !_autoDetect,
               onChanged: (val) async {
                 final prefService = context.read<PreferencesService>();
-                await prefService.setDistanceUnit(val);
-                if (mounted) setState(() => _distanceUnit = val);
-              },
-            ),
-            _buildDivider(),
-            _buildUnitRow(
-              title: 'Volume',
-              options: ['gal', 'L'],
-              currentValue: _volumeUnit,
-              enabled: !_autoDetect,
-              onChanged: (val) async {
-                final prefService = context.read<PreferencesService>();
-                await prefService.setVolumeUnit(val);
-                if (mounted) setState(() => _volumeUnit = val);
-              },
-            ),
-            _buildDivider(),
-            _buildUnitRow(
-              title: 'Weight',
-              options: ['lbs', 'kg'],
-              currentValue: _weightUnit,
-              enabled: !_autoDetect,
-              onChanged: (val) async {
-                final prefService = context.read<PreferencesService>();
-                await prefService.setWeightUnit(val);
-                if (mounted) setState(() => _weightUnit = val);
+                await prefService.setUnitSystem(val);
+                if (mounted) setState(() => _unitSystem = val);
               },
             ),
             Padding(
               padding: EdgeInsets.all(context.tokens.spacingL),
               child: Text(
-                'These units will be used throughout the app for trips, fuel entries, and reports.',
+                _autoDetect 
+                  ? 'Currently auto-detecting and using the ${_unitSystem == UnitSystem.metric ? "Metric" : "Imperial"} system for this region. These units will be used throughout the app for trips, fuel entries, and reports.'
+                  : 'These units will be used throughout the app for trips, fuel entries, and reports.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                   color: textColor.withValues(alpha: 0.6),
                 ),
+              ),
+            ),
+            const Spacer(),
+            Theme(
+              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              child: ExpansionTile(
+                title: Text(
+                  'Advanced Overrides',
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                subtitle: const Text(
+                  'Manually override specific units (e.g. km + Gallons)',
+                  style: TextStyle(fontSize: 11),
+                ),
+                children: [
+                  _buildGranularRow(
+                    title: 'Distance',
+                    currentValue: context.watch<PreferencesService>().getDistanceUnit(),
+                    options: ['km', 'mi'],
+                    onChanged: (val) => context.read<PreferencesService>().setDistanceUnit(val),
+                  ),
+                  _buildGranularRow(
+                    title: 'Fuel Volume',
+                    currentValue: context.watch<PreferencesService>().getVolumeUnit(),
+                    options: ['L', 'gal'],
+                    onChanged: (val) => context.read<PreferencesService>().setVolumeUnit(val),
+                  ),
+                  _buildGranularRow(
+                    title: 'Weight',
+                    currentValue: context.watch<PreferencesService>().getWeightUnit(),
+                    options: ['kg', 'lbs'],
+                    onChanged: (val) => context.read<PreferencesService>().setWeightUnit(val),
+                  ),
+                  SizedBox(height: context.tokens.spacingL),
+                ],
               ),
             ),
           ],
@@ -164,11 +174,49 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
     );
   }
 
-  Widget _buildUnitRow({
+  Widget _buildGranularRow({
     required String title,
-    required List<String> options,
     required String currentValue,
+    required List<String> options,
     required Function(String) onChanged,
+  }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: context.tokens.spacingL,
+        vertical: 8,
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ),
+          SegmentedButton<String>(
+            segments: options
+                .map((opt) => ButtonSegment(
+                      value: opt,
+                      label: Text(opt),
+                    ))
+                .toList(),
+            selected: {currentValue},
+            onSelectionChanged: (set) => onChanged(set.first),
+            showSelectedIcon: false,
+            style: const ButtonStyle(
+              visualDensity: VisualDensity.compact,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSystemRow({
+    required String title,
+    required List<UnitSystem> options,
+    required UnitSystem currentValue,
+    required Function(UnitSystem) onChanged,
     bool enabled = true,
   }) {
     return IgnorePointer(
@@ -180,18 +228,18 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
             horizontal: context.tokens.spacingL,
             vertical: 16,
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: Text(
-                  title,
-                  style: Theme.of(
-                    context,
-                  ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
-                ),
+              Text(
+                title,
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(fontWeight: FontWeight.w500),
               ),
+              const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.all(2),
+                padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: Theme.of(
                     context,
@@ -199,13 +247,14 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
                   borderRadius: BorderRadius.circular(context.tokens.shapeM),
                 ),
                 child: Row(
-                  mainAxisSize: MainAxisSize.min,
                   children: options
                       .map(
-                        (opt) => _buildSegmentButton(
-                          opt.toUpperCase(),
-                          currentValue == opt,
-                          () => onChanged(opt),
+                        (opt) => Expanded(
+                          child: _buildSegmentButton(
+                            opt == UnitSystem.metric ? 'Metric\n(km, L, kg)' : 'Imperial\n(mi, gal, lbs)',
+                            currentValue == opt,
+                            () => onChanged(opt),
+                          ),
                         ),
                       )
                       .toList(),
@@ -226,7 +275,7 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
           color: isSelected
               ? Theme.of(context).colorScheme.primary
@@ -246,11 +295,13 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
         ),
         child: Text(
           label,
+          textAlign: TextAlign.center,
           style: Theme.of(context).textTheme.labelMedium?.copyWith(
             color: isSelected
                 ? Theme.of(context).colorScheme.onPrimary
                 : Theme.of(context).colorScheme.onSurfaceVariant,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            height: 1.3,
           ),
         ),
       ),

@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:milow/core/utils/unit_utils.dart';
@@ -12,6 +13,8 @@ class PreferencesService extends ChangeNotifier {
   static const String _hiddenTripsKey = 'hidden_trips';
   static const String _autoUpdateUnitsKey = 'auto_update_units';
   static const String _currencyKey = 'currency_pref';
+  static const String _lastDetectedCountryKey = 'last_detected_country';
+  static const String _countryDetectedAtKey = 'country_detected_at';
 
   final SharedPreferences _prefs;
 
@@ -19,7 +22,20 @@ class PreferencesService extends ChangeNotifier {
 
   static Future<PreferencesService> init() async {
     final prefs = await SharedPreferences.getInstance();
-    return PreferencesService(prefs);
+    final service = PreferencesService(prefs);
+    
+    // Auto-detect unit system on absolute first launch
+    if (!prefs.containsKey(_unitSystemKey)) {
+      try {
+        final locale = Platform.localeName; // e.g., "en_US", "en_CA"
+        final countryCode = locale.contains('_') ? locale.split('_').last : locale;
+        await service.updateFromCountry(countryCode);
+      } catch (e) {
+        debugPrint('Failed to detect initial locale: $e');
+      }
+    }
+    
+    return service;
   }
 
   // Unit System preference (Metric/Imperial)
@@ -204,6 +220,34 @@ class PreferencesService extends ChangeNotifier {
     return getUnitSystem() == UnitSystem.imperial
         ? val / UnitUtils.litersToGallons(1)
         : val;
+  }
+
+  // Hysteresis tracking for cross-border suggestions
+  String? getLastDetectedCountry() {
+    return _prefs.getString(_lastDetectedCountryKey);
+  }
+
+  DateTime? getCountryDetectedAt() {
+    final iso = _prefs.getString(_countryDetectedAtKey);
+    return iso != null ? DateTime.parse(iso) : null;
+  }
+
+  Future<void> setLastDetectedCountry(String country) async {
+    final currentCountry = getLastDetectedCountry();
+    if (currentCountry != country) {
+      await _prefs.setString(_lastDetectedCountryKey, country);
+      await _prefs.setString(
+        _countryDetectedAtKey,
+        DateTime.now().toIso8601String(),
+      );
+      notifyListeners();
+    }
+  }
+
+  Future<void> clearDetectedCountry() async {
+    await _prefs.remove(_lastDetectedCountryKey);
+    await _prefs.remove(_countryDetectedAtKey);
+    notifyListeners();
   }
 
   // PDF Export Column Order preferences

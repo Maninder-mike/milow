@@ -129,11 +129,13 @@ class _RecordsListPageState extends State<RecordsListPage> {
   Future<void> _loadRecords() async {
     debugPrint('[RecordsListPage] _loadRecords started');
     try {
-      final trips = await TripRepository.getTrips();
+      final tripsResult = await TripRepository.getTrips();
+      final trips = tripsResult.fold((l) => <Trip>[], (r) => r);
       debugPrint(
         '[RecordsListPage] _loadRecords: Trips loaded: ${trips.length}',
       );
-      final fuelEntries = await FuelRepository.getFuelEntries();
+      final fuelEntriesResult = await FuelRepository.getFuelEntries();
+      final fuelEntries = fuelEntriesResult.fold((l) => <FuelEntry>[], (r) => r);
       debugPrint(
         '[RecordsListPage] _loadRecords: Fuel loaded: ${fuelEntries.length}',
       );
@@ -909,9 +911,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
                                   } else {
                                     final fuel = data as FuelEntry;
                                     if (fuel.id != null) {
-                                      await FuelRepository.deleteFuelEntry(
-                                        fuel.id!,
-                                      );
+                                      final result = await FuelRepository.deleteFuelEntry( fuel.id! );
+                                      result.fold((f) => throw Exception(f.message), (_) {});
                                     }
                                   }
 
@@ -1876,7 +1877,7 @@ class _RecordsListPageState extends State<RecordsListPage> {
       final unitSystemLabel = unitSystem == UnitSystem.metric
           ? 'Metric (km, L)'
           : 'Imperial (mi, gal)';
-      final odometerUnit = unitSystem == UnitSystem.metric ? 'km' : 'mi';
+      final odometerUnit = prefService.getDistanceUnit();
 
       // Get user profile
       final profile = await ProfileRepository.getCachedFirst(refresh: false);

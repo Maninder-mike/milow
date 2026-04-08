@@ -84,6 +84,7 @@ import 'package:milow/features/auth/presentation/pages/email_verified_page.dart'
 import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
+import 'package:milow/core/providers/unit_suggestion_provider.dart';
 
 Future<void> main() async {
   // Wrap in runZonedGuarded to catch all async errors (including those outside Flutter context)
@@ -290,10 +291,16 @@ Future<void> main() async {
             ChangeNotifierProvider(
               create: (_) => MessagingProvider(driverDatabase)..init(),
             ),
-            ChangeNotifierProvider(create: (_) => AnnouncementsProvider()),
+            ChangeNotifierProvider(
+              create: (_) => AnnouncementsProvider(driverDatabase),
+            ),
             ChangeNotifierProvider(create: (_) => CheckCallService()),
-            if (prefService != null)
+            if (prefService != null) ...[
               ChangeNotifierProvider.value(value: prefService),
+              ChangeNotifierProvider(
+                create: (context) => UnitSuggestionProvider(prefService!),
+              ),
+            ],
           ],
           child: const MyApp(),
         ),

@@ -2156,7 +2156,8 @@ class _AllActivityPageState extends State<_AllActivityPage> {
         } else {
           final fuel = item['fuel'] as FuelEntry;
           if (fuel.id != null) {
-            await FuelRepository.deleteFuelEntry(fuel.id!);
+            final result = await FuelRepository.deleteFuelEntry(fuel.id!);
+            result.fold((f) => throw Exception(f.message), (_) {});
           }
         }
 

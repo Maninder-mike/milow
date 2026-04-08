@@ -47,13 +47,13 @@ class TripRepository {
   ///
   /// Returns cached data immediately. If [refresh] is true, also
   /// fetches from server in the background.
-  static Future<List<Trip>> getTrips({
+  static Future<Result<List<Trip>>> getTrips({
     bool refresh = true,
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return [];
+    if (userId == null) return const Left(UnauthorizedFailure());
 
     // Return cached data immediately
     final query = driverDatabase.select(driverDatabase.trips)
@@ -73,32 +73,59 @@ class TripRepository {
       unawaited(_refreshFromServer(userId, supabaseClient: supabaseClient));
     }
 
-    return cached;
+    return Right(cached);
+  }
+
+  /// Watch all trips for current user (reactive)
+  ///
+  /// Returns a stream that emits a new list of trips whenever
+  /// the local database changes.
+  static Stream<List<Trip>> watchTrips({SupabaseClient? supabaseClient}) {
+    final client = _getClient(supabaseClient);
+    final userId = _getUserId(client);
+    if (userId == null) return Stream.value([]);
+
+    final query = driverDatabase.select(driverDatabase.trips)
+      ..where((t) => t.userId.equals(userId))
+      ..orderBy([
+        (t) => OrderingTerm(expression: t.tripDate, mode: OrderingMode.desc),
+      ]);
+
+    return query.watch().map((rows) => rows.map((d) => _fromData(d)).toList());
   }
 
   /// Force refresh from server and update cache
-  static Future<List<Trip>> refresh({SupabaseClient? supabaseClient}) async {
+  static Future<Result<List<Trip>>> refresh({SupabaseClient? supabaseClient}) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return [];
+    if (userId == null) return const Left(UnauthorizedFailure());
 
     return await _refreshFromServer(userId, supabaseClient: supabaseClient);
   }
 
-  static Future<List<Trip>> _refreshFromServer(
+  static Future<Result<List<Trip>>> _refreshFromServer(
     String userId, {
     SupabaseClient? supabaseClient,
   }) async {
-    try {
-      final serverTrips = await TripService.getTrips(
-        coalesceKey: 'trips:$userId',
-        supabaseClient: supabaseClient,
-      );
+    final serverResult = await TripService.getTrips(
+      coalesceKey: 'trips:$userId',
+      supabaseClient: supabaseClient,
+    );
 
-      // Get pending sync operations to prevent overwriting/deleting unsynced data
-      final pendingOps = syncQueueService.pendingOperations
-          .where((op) => op.tableName == 'driver_trips')
-          .toList();
+    return serverResult.fold(
+      (failure) async {
+        debugPrint('[TripRepository] Failed to refresh: $failure');
+        // Return cached data on failure
+        final List<TripData> dataList = await (driverDatabase.select(
+          driverDatabase.trips,
+        )..where((t) => t.userId.equals(userId))).get();
+        return Right(dataList.map((d) => _fromData(d)).toList());
+      },
+      (serverTrips) async {
+        // Get pending sync operations to prevent overwriting/deleting unsynced data
+        final pendingOps = syncQueueService.pendingOperations
+            .where((op) => op.tableName == 'driver_trips')
+            .toList();
 
       final pendingCreateIds = pendingOps
           .where((op) => op.operationType == 'create')
@@ -140,22 +167,16 @@ class TripRepository {
         }
       });
 
-      debugPrint(
-        '[TripRepository] Refreshed ${serverTrips.length} trips from server',
-      );
-      return serverTrips;
-    } catch (e) {
-      debugPrint('[TripRepository] Failed to refresh: $e');
-      // Return cached data on failure
-      final List<TripData> dataList = await (driverDatabase.select(
-        driverDatabase.trips,
-      )..where((t) => t.userId.equals(userId))).get();
-      return dataList.map((d) => _fromData(d)).toList();
-    }
+        debugPrint(
+          '[TripRepository] Refreshed ${serverTrips.length} trips from server',
+        );
+        return Right(serverTrips);
+      },
+    );
   }
 
   /// Get a single trip by ID (local-first)
-  static Future<Trip?> getTripById(
+  static Future<Result<Trip?>> getTripById(
     String tripId, {
     SupabaseClient? supabaseClient,
   }) async {
@@ -163,7 +184,7 @@ class TripRepository {
     final query = driverDatabase.select(driverDatabase.trips)
       ..where((t) => t.id.equals(tripId));
     final data = await query.getSingleOrNull();
-    if (data != null) return _fromData(data);
+    if (data != null) return Right(_fromData(data));
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
@@ -174,21 +195,21 @@ class TripRepository {
       );
     }
 
-    return null;
+    return const Right(null);
   }
 
   /// Create a new trip (offline-capable)
   ///
   /// Saves to local cache immediately and queues sync.
   /// Returns the trip with a local ID that will be synced.
-  static Future<Trip> createTrip(
+  static Future<Result<Trip>> createTrip(
     Trip trip, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return const Left(UnauthorizedFailure());
     }
 
     // Generate local ID if not present
@@ -220,22 +241,22 @@ class TripRepository {
     // Trigger background sync
     unawaited(syncQueueService.processQueue(supabaseClient: client));
 
-    return localTrip;
+    return Right(localTrip);
   }
 
   /// Update an existing trip (offline-capable)
-  static Future<Trip> updateTrip(
+  static Future<Result<Trip>> updateTrip(
     Trip trip, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return const Left(UnauthorizedFailure());
     }
 
     if (trip.id == null) {
-      throw Exception('Trip ID is required for update');
+      return const Left(ValidationFailure('Trip ID is required for update'));
     }
 
     // Update local cache immediately
@@ -260,18 +281,18 @@ class TripRepository {
     // Trigger background sync
     unawaited(syncQueueService.processQueue(supabaseClient: client));
 
-    return updatedTrip;
+    return Right(updatedTrip);
   }
 
   /// Delete a trip (offline-capable)
-  static Future<void> deleteTrip(
+  static Future<Result<Unit>> deleteTrip(
     String tripId, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return const Left(UnauthorizedFailure());
     }
 
     // Delete from local cache immediately
@@ -291,22 +312,22 @@ class TripRepository {
       },
       localId: tripId,
     );
+    return const Right(unit);
   }
 
   /// Search trips (local search if offline, server if online)
-  static Future<List<Trip>> searchTrips(
+  static Future<Result<List<Trip>>> searchTrips(
     String query, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return [];
+    if (userId == null) return const Left(UnauthorizedFailure());
 
     if (connectivityService.isOnline) {
-      try {
-        return await TripService.searchTrips(query, supabaseClient: client);
-      } catch (_) {
-        // Fallback to local search
+      final serverResult = await TripService.searchTrips(query, supabaseClient: client);
+      if (serverResult.isRight()) {
+        return serverResult;
       }
     }
 
@@ -320,7 +341,7 @@ class TripRepository {
                       t.truckNumber.like(queryLower)),
             ))
             .get();
-    return tripDataList.map((d) => _fromData(d)).toList();
+    return Right(tripDataList.map((d) => _fromData(d)).toList());
   }
 
   static Future<Result<List<TripDocument>>> getSharedDocuments(
@@ -644,24 +665,24 @@ class TripRepository {
 
   /// Get active trip (trip that is not fully completed)
   /// A trip is active if it has no end_odometer OR has incomplete deliveries
-  static Future<Trip?> getActiveTrip({SupabaseClient? supabaseClient}) async {
+  static Future<Result<Trip?>> getActiveTrip({SupabaseClient? supabaseClient}) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return null;
+    if (userId == null) return const Right(null);
 
     // Check locally first
     final query = driverDatabase.select(driverDatabase.trips)
       ..where((t) => t.userId.equals(userId) & t.endOdometer.isNull())
       ..limit(1);
     final data = await query.getSingleOrNull();
-    if (data != null) return _fromData(data);
+    if (data != null) return Right(_fromData(data));
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
       return await TripService.getActiveTrip(supabaseClient: client);
     }
 
-    return null;
+    return const Right(null);
   }
 
   /// Clear local cache (for logout)

@@ -69,7 +69,14 @@ class Trip {
     this.pieces,
     this.referenceNumbers = const [],
     this.companyId,
-  });
+  })  : assert(tripNumber.isNotEmpty, 'Trip number cannot be empty'),
+        assert(truckNumber.isNotEmpty, 'Truck number cannot be empty'),
+        assert(
+          startOdometer == null ||
+              endOdometer == null ||
+              endOdometer >= startOdometer,
+          'End odometer ($endOdometer) cannot be less than start odometer ($startOdometer)',
+        );
 
   /// Calculate total distance if both odometer readings are available
   double? get totalDistance {

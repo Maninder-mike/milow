@@ -290,24 +290,34 @@ class Messages extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('AnnouncementData')
+class Announcements extends Table {
+  TextColumn get id => text()();
+  TextColumn get companyId => text().named('company_id')();
+  TextColumn get title => text()();
+  TextColumn get content => text()();
+  TextColumn get authorName => text().named('author_name').nullable()();
+  DateTimeColumn get createdAt => dateTime().named('created_at')();
+  BoolColumn get isSynced =>
+      boolean().named('is_synced').withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Trips,
-    FuelEntries,
-    DriverTruckInspections,
-    DriverTruckInspectionDefects,
-    InspectionDefectPhotos,
-    Loads,
-    Stops,
     DriverLocations,
     Messages,
+    Announcements,
   ],
 )
 class DriverDatabase extends _$DriverDatabase {
   DriverDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   @override
   MigrationStrategy get migration {
@@ -391,6 +401,20 @@ class DriverDatabase extends _$DriverDatabase {
           await m.addColumn(
             fuelEntries,
             fuelEntries.companyId as GeneratedColumn<Object>,
+          );
+        }
+        if (from < 13) {
+          // Schema v13: Add Announcements table
+          await customStatement(
+            'CREATE TABLE IF NOT EXISTS announcements ('
+            'id TEXT PRIMARY KEY, '
+            'company_id TEXT NOT NULL, '
+            'title TEXT NOT NULL, '
+            'content TEXT NOT NULL, '
+            'author_name TEXT, '
+            'created_at INTEGER NOT NULL, '
+            'is_synced INTEGER NOT NULL DEFAULT 0'
+            ')',
           );
         }
       },

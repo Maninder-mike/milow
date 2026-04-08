@@ -44,7 +44,8 @@ class FuelEntry {
     this.createdAt,
     this.updatedAt,
     this.companyId,
-  });
+  })  : assert(fuelQuantity > 0, 'Fuel quantity must be greater than zero'),
+        assert(pricePerUnit >= 0, 'Price per unit cannot be negative');
 
   /// Calculate total cost
   double get totalCost =>

@@ -1,11 +1,9 @@
 import 'dart:async';
-import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:milow/features/offline/data/database/driver_database.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:uuid/uuid.dart';
-import 'package:milow/core/services/notification_service.dart';
 
 class MessagingProvider extends ChangeNotifier {
   final DriverDatabase _db;
@@ -29,10 +27,9 @@ class MessagingProvider extends ChangeNotifier {
       debugPrint('🔗 MessagingProvider Auth Event: ${data.event}');
       if (data.event == AuthChangeEvent.signedIn ||
           data.event == AuthChangeEvent.tokenRefreshed) {
-        _subscribeToRealtime();
-        loadLocalMessages();
+        _listenToLocalMessages();
       } else if (data.event == AuthChangeEvent.signedOut) {
-        _realtimeSubscription?.cancel();
+        _localSubscription?.cancel();
         _inbox = [];
         notifyListeners();
       }
@@ -40,124 +37,66 @@ class MessagingProvider extends ChangeNotifier {
   }
 
   Future<void> init() async {
-    await loadLocalMessages();
-    // Only subscribe once during init to avoid race with auth listener
-    if (_realtimeSubscription == null) {
-      _subscribeToRealtime();
-    }
+    _listenToLocalMessages();
   }
 
-  Future<void> loadLocalMessages() async {
-    try {
-      // Use customSelect since we are bypassing code generation for Messages
-      final rows = await _db
-          .customSelect('SELECT * FROM messages ORDER BY created_at DESC')
-          .get();
+  StreamSubscription? _localSubscription;
 
-      _inbox = rows.map((row) {
-        return Message(
-          id: row.read<String>('id'),
-          companyId: row.read<String?>('company_id'),
-          loadId: row.read<String?>('load_id'),
-          senderId: row.read<String>('sender_id'),
-          receiverId: row.read<String?>('receiver_id'),
-          content: row.read<String>('content'),
-          type: MessageType.fromValue(row.read<String>('message_type')),
-          attachmentUrl: row.read<String?>('attachment_url'),
-          createdAt: DateTime.fromMillisecondsSinceEpoch(
-            row.read<int>('created_at') * 1000,
-          ),
-          senderName: row.read<String?>('sender_name'),
-          senderRole: row.read<String?>('sender_role'),
-          senderAvatarUrl: row.read<String?>('sender_avatar_url'),
-        );
-      }).toList();
-
+  void _listenToLocalMessages() {
+    _localSubscription?.cancel();
+    _localSubscription = watchMessages().listen((messages) {
+      _inbox = messages;
       notifyListeners();
-    } catch (e) {
-      debugPrint('Error loading local messages: $e');
-    }
+    });
   }
 
-  void _subscribeToRealtime() {
+  /// Watch all messages (reactive)
+  Stream<List<Message>> watchMessages() {
     final myId = _supabase.auth.currentUser?.id;
-    if (myId == null) return;
+    if (myId == null) return Stream.value([]);
 
-    _realtimeSubscription?.cancel();
-    _realtimeSubscription = _supabase
-        .from('messages')
-        .stream(primaryKey: ['id'])
-        .listen(
-          (data) async {
-            debugPrint('📥 Messaging Realtime Update: ${data.length} messages');
-            for (final json in data) {
-              try {
-                final message = Message.fromJson(json);
-                // Only save if it's relevant to me
-                if (message.senderId == myId ||
-                    message.receiverId == myId ||
-                    message.loadId != null) {
-                  final isNew = !inbox.any((m) => m.id == message.id);
-                  await _saveToLocal(message, isSynced: true);
-
-                  // Trigger local notification if it's a new message from someone else
-                  if (isNew && message.senderId != myId) {
-                    unawaited(
-                      notificationService.showNotification(
-                        id: message.id.hashCode,
-                        title:
-                            'New Message from ${message.senderName ?? 'Someone'}',
-                        body: message.content,
-                        payload: {
-                          'type': 'new_message',
-                          'loadId': message.loadId,
-                        }.toString(),
-                        type: NotificationType.message,
-                      ),
-                    );
-                  }
-                }
-              } catch (e) {
-                debugPrint('Error parsing realtime message: $e');
-              }
-            }
-            // Debounce or at least await the local reload
-            await loadLocalMessages();
-          },
-          onError: (error, stackTrace) {
-            debugPrint('❌ Messaging Realtime Error (Code 1002?): $error');
-            // In version 1.0.2+, we should attempt a delayed retry if it's a connection issue
-            Future.delayed(const Duration(seconds: 5), () {
-              if (_supabase.auth.currentUser != null) {
-                _subscribeToRealtime();
-              }
-            });
-          },
-        );
+    // Drift-based watch for Messages table
+    return _db.select(_db.messages).watch().map((rows) {
+      return rows.map((row) => _fromData(row)).toList();
+    });
   }
+
+  static Message _fromData(MessageData data) {
+    return Message(
+      id: data.id,
+      companyId: data.companyId,
+      loadId: data.loadId,
+      senderId: data.senderId,
+      receiverId: data.receiverId,
+      content: data.content,
+      type: MessageType.fromValue(data.messageType),
+      attachmentUrl: data.attachmentUrl,
+      createdAt: data.createdAt,
+      senderName: data.senderName,
+      senderRole: data.senderRole,
+      senderAvatarUrl: data.senderAvatarUrl,
+    );
+  }
+
 
   Future<void> _saveToLocal(Message message, {bool isSynced = false}) async {
-    final timestamp = message.createdAt.millisecondsSinceEpoch ~/ 1000;
-    await _db.customInsert(
-      'INSERT OR REPLACE INTO messages '
-      '(id, company_id, load_id, sender_id, receiver_id, content, message_type, attachment_url, created_at, sender_name, sender_role, sender_avatar_url, is_synced) '
-      'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      variables: [
-        Variable(message.id ?? const Uuid().v4()),
-        Variable(message.companyId),
-        Variable(message.loadId),
-        Variable(message.senderId),
-        Variable(message.receiverId),
-        Variable(message.content),
-        Variable(message.type.value),
-        Variable(message.attachmentUrl),
-        Variable(timestamp),
-        Variable(message.senderName),
-        Variable(message.senderRole),
-        Variable(message.senderAvatarUrl),
-        Variable(isSynced),
-      ],
+    final data = MessageData(
+      id: message.id ?? const Uuid().v4(),
+      companyId: message.companyId,
+      loadId: message.loadId,
+      senderId: message.senderId,
+      receiverId: message.receiverId,
+      content: message.content,
+      messageType: message.type.value,
+      attachmentUrl: message.attachmentUrl,
+      createdAt: message.createdAt,
+      senderName: message.senderName,
+      senderRole: message.senderRole,
+      senderAvatarUrl: message.senderAvatarUrl,
+      isSynced: isSynced,
     );
+
+    await _db.into(_db.messages).insertOnConflictUpdate(data);
   }
 
   Future<void> sendMessage({
@@ -181,7 +120,6 @@ class MessagingProvider extends ChangeNotifier {
 
     // 1. Save locally (Optimistic UI)
     await _saveToLocal(message, isSynced: false);
-    await loadLocalMessages();
 
     // 2. Sync to Supabase
     final result = await MessagingRepository.sendMessage(
@@ -201,14 +139,10 @@ class MessagingProvider extends ChangeNotifier {
         // 3. Update local as synced and with actual ID/data from server
         // We use the temporary ID to find and replace it
         unawaited(
-          _db
-              .customStatement('DELETE FROM messages WHERE id = ?', [
-                message.id,
-              ])
-              .then((_) async {
-                await _saveToLocal(syncedMessage, isSynced: true);
-                await loadLocalMessages();
-              }),
+          _db.transaction(() async {
+            await (_db.delete(_db.messages)..where((m) => m.id.equals(message.id!))).go();
+            await _saveToLocal(syncedMessage, isSynced: true);
+          }),
         );
       },
     );
@@ -216,6 +150,7 @@ class MessagingProvider extends ChangeNotifier {
 
   @override
   void dispose() {
+    _localSubscription?.cancel();
     _realtimeSubscription?.cancel();
     super.dispose();
   }

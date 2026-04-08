@@ -15,6 +15,7 @@ class LocationTrackingService {
   bool _isTracking = false;
   DateTime? _lastPublishedAt;
   Position? _lastPublishedPosition;
+  String? _cachedCompanyId;
   
   // Geofencing state
   List<Stop> _activeStops = [];
@@ -33,6 +34,20 @@ class LocationTrackingService {
     double distanceFilter = 10,
   }) async {
     if (_isTracking) return;
+
+    // Prefetch company_id to avoid redundant lookups at scale
+    try {
+      final profile = await _supabase
+          .from('profiles')
+          .select('company_id')
+          .eq('id', driverId)
+          .maybeSingle();
+      if (profile != null) {
+        _cachedCompanyId = profile['company_id'] as String?;
+      }
+    } catch (e) {
+      AppLogger.error('LocationTrackingService: Failed to prefetch company_id', error: e);
+    }
 
     final serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) {
@@ -171,24 +186,23 @@ class LocationTrackingService {
 
   Future<void> _publishToSupabase(String driverId, Position position) async {
     try {
-      // Get company_id from user's current profile context
+      // 1. Ensure user is still authenticated
       final user = _supabase.auth.currentUser;
       if (user == null) return;
       
-      // We assume company_id is available in the profile or cached. 
-      // For this operation, we can use a quick select or rely on the trigger 
-      // in the database migration (20260329000004) to handle company-specific RLS if inserted via service_role,
-      // but here the driver is inserting their own.
-      
-      // First, get the company_id if not already known
-      final profile = await _supabase
-          .from('profiles')
-          .select('company_id')
-          .eq('id', driverId)
-          .maybeSingle();
-      
-      if (profile == null || profile['company_id'] == null) return;
-      final companyId = profile['company_id'] as String;
+      // 2. Use cached company_id if available, fallback only if absolutely necessary
+      String? companyId = _cachedCompanyId;
+      if (companyId == null) {
+        final profile = await _supabase
+            .from('profiles')
+            .select('company_id')
+            .eq('id', driverId)
+            .maybeSingle();
+        
+        if (profile == null || profile['company_id'] == null) return;
+        companyId = profile['company_id'] as String;
+        _cachedCompanyId = companyId; // Update cache for future updates
+      }
 
       await _supabase.from('driver_locations').upsert({
         'driver_id': driverId,

@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:fpdart/fpdart.dart';
 
 /// Service for managing fuel entries in Supabase
 class FuelService {
@@ -7,39 +8,46 @@ class FuelService {
     return customClient ?? Supabase.instance.client;
   }
 
+  static CoreNetworkClient _getNetworkClient(SupabaseClient client) {
+    return CoreNetworkClient(client);
+  }
+
   static String? _getUserId(SupabaseClient client) =>
       client.auth.currentUser?.id;
 
   /// Create a new fuel entry
-  static Future<FuelEntry?> createFuelEntry(
+  static Future<Result<FuelEntry>> createFuelEntry(
     FuelEntry entry, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      final data = entry.toJson();
-      data['user_id'] = userId;
-      data.remove('id'); // Let database generate ID
+    final netClient = _getNetworkClient(client);
 
-      final response = await client
-          .from('fuel_entries')
-          .insert(data)
-          .select()
-          .single();
+    return netClient.query<FuelEntry>(
+      () async {
+        final data = entry.toJson();
+        data['user_id'] = userId;
+        data.remove('id'); // Let database generate ID
 
-      return FuelEntry.fromJson(response);
-    } catch (e) {
-      rethrow;
-    }
+        final response = await client
+            .from('fuel_entries')
+            .insert(data)
+            .select()
+            .single();
+
+        return FuelEntry.fromJson(response);
+      },
+      operationName: 'FuelService.createFuelEntry',
+    );
   }
 
   /// Get all fuel entries for current user
-  static Future<List<FuelEntry>> getFuelEntries({
+  static Future<Result<List<FuelEntry>>> getFuelEntries({
     int? limit,
     DateTime? fromDate,
     DateTime? toDate,
@@ -49,177 +57,191 @@ class FuelService {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      var query = client.from('fuel_entries').select().eq('user_id', userId);
+    final netClient = _getNetworkClient(client);
 
-      if (fuelType != null) {
-        query = query.eq('fuel_type', fuelType);
-      }
-      if (fromDate != null) {
-        query = query.gte('fuel_date', fromDate.toIso8601String());
-      }
-      if (toDate != null) {
-        query = query.lte('fuel_date', toDate.toIso8601String());
-      }
+    return netClient.query<List<FuelEntry>>(
+      () async {
+        var query = client.from('fuel_entries').select().eq('user_id', userId);
 
-      final response = await query.order('fuel_date', ascending: false);
+        if (fuelType != null) {
+          query = query.eq('fuel_type', fuelType);
+        }
+        if (fromDate != null) {
+          query = query.gte('fuel_date', fromDate.toIso8601String());
+        }
+        if (toDate != null) {
+          query = query.lte('fuel_date', toDate.toIso8601String());
+        }
 
-      List<dynamic> data = response;
-      if (limit != null) {
-        data = data.take(limit).toList();
-      }
+        final response = await query.order('fuel_date', ascending: false);
 
-      return data.map((json) => FuelEntry.fromJson(json)).toList();
-    } catch (e) {
-      rethrow;
-    }
+        List<dynamic> data = response;
+        if (limit != null) {
+          data = data.take(limit).toList();
+        }
+
+        return data.map((json) => FuelEntry.fromJson(json)).toList();
+      },
+      operationName: 'FuelService.getFuelEntries',
+    );
   }
 
   /// Get a single fuel entry by ID
-  static Future<FuelEntry?> getFuelEntryById(
+  static Future<Result<FuelEntry?>> getFuelEntryById(
     String entryId, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      final response = await client
-          .from('fuel_entries')
-          .select()
-          .eq('id', entryId)
-          .eq('user_id', userId)
-          .maybeSingle();
+    final netClient = _getNetworkClient(client);
 
-      if (response == null) return null;
-      return FuelEntry.fromJson(response);
-    } catch (e) {
-      rethrow;
-    }
+    return netClient.query<FuelEntry?>(
+      () async {
+        final response = await client
+            .from('fuel_entries')
+            .select()
+            .eq('id', entryId)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+        if (response == null) return null;
+        return FuelEntry.fromJson(response);
+      },
+      operationName: 'FuelService.getFuelEntryById',
+    );
   }
 
   /// Update an existing fuel entry
-  static Future<FuelEntry?> updateFuelEntry(
+  static Future<Result<FuelEntry>> updateFuelEntry(
     FuelEntry entry, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
     if (entry.id == null) {
-      throw Exception('Fuel entry ID is required for update');
+      return left(const ValidationFailure('Fuel entry ID is required for update'));
     }
 
-    try {
-      final data = entry.toJson();
-      data['updated_at'] = DateTime.now().toIso8601String();
+    final netClient = _getNetworkClient(client);
 
-      final response = await client
-          .from('fuel_entries')
-          .update(data)
-          .eq('id', entry.id!)
-          .eq('user_id', userId)
-          .select()
-          .single();
+    return netClient.query<FuelEntry>(
+      () async {
+        final data = entry.toJson();
+        data['updated_at'] = DateTime.now().toIso8601String();
 
-      return FuelEntry.fromJson(response);
-    } catch (e) {
-      rethrow;
-    }
+        final response = await client
+            .from('fuel_entries')
+            .update(data)
+            .eq('id', entry.id!)
+            .eq('user_id', userId)
+            .select()
+            .single();
+
+        return FuelEntry.fromJson(response);
+      },
+      operationName: 'FuelService.updateFuelEntry',
+    );
   }
 
   /// Delete a fuel entry
-  static Future<void> deleteFuelEntry(
+  static Future<Result<Unit>> deleteFuelEntry(
     String entryId, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      await client
-          .from('fuel_entries')
-          .delete()
-          .eq('id', entryId)
-          .eq('user_id', userId);
-    } catch (e) {
-      throw Exception('Failed to delete fuel entry: $e');
-    }
+    final netClient = _getNetworkClient(client);
+
+    return netClient.query<Unit>(
+      () async {
+        await client
+            .from('fuel_entries')
+            .delete()
+            .eq('id', entryId)
+            .eq('user_id', userId);
+        return unit;
+      },
+      operationName: 'FuelService.deleteFuelEntry',
+    );
   }
 
   /// Get total fuel entries count for current user
-  static Future<int> getFuelEntriesCount({
+  static Future<Result<int>> getFuelEntriesCount({
     String? fuelType,
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      var query = client.from('fuel_entries').select().eq('user_id', userId);
+    final netClient = _getNetworkClient(client);
 
-      if (fuelType != null) {
-        query = query.eq('fuel_type', fuelType);
-      }
+    return netClient.query<int>(
+      () async {
+        var query = client.from('fuel_entries').select().eq('user_id', userId);
 
-      final response = await query.count(CountOption.exact);
-      return response.count;
-    } catch (e) {
-      throw Exception('Failed to get fuel entries count: $e');
-    }
+        if (fuelType != null) {
+          query = query.eq('fuel_type', fuelType);
+        }
+
+        final response = await query.count(CountOption.exact);
+        return response.count;
+      },
+      operationName: 'FuelService.getFuelEntriesCount',
+    );
   }
 
   /// Get total fuel cost for all entries
-  static Future<Map<String, double>> getTotalFuelCost({
+  static Future<Result<Map<String, double>>> getTotalFuelCost({
     SupabaseClient? supabaseClient,
   }) async {
-    final entries = await getFuelEntries(supabaseClient: supabaseClient);
+    final entriesResult = await getFuelEntries(supabaseClient: supabaseClient);
 
-    // Group by currency
-    final Map<String, double> totals = {'USD': 0.0, 'CAD': 0.0};
-
-    for (final entry in entries) {
-      final cost = entry.totalCost;
-      totals[entry.currency] = (totals[entry.currency] ?? 0) + cost;
-    }
-
-    return totals;
+    return entriesResult.map((entries) {
+      final Map<String, double> totals = {'USD': 0.0, 'CAD': 0.0};
+      for (final entry in entries) {
+        final cost = entry.totalCost;
+        totals[entry.currency] = (totals[entry.currency] ?? 0) + cost;
+      }
+      return totals;
+    });
   }
 
   /// Get total fuel quantity
-  static Future<Map<String, double>> getTotalFuelQuantity({
+  static Future<Result<Map<String, double>>> getTotalFuelQuantity({
     SupabaseClient? supabaseClient,
   }) async {
-    final entries = await getFuelEntries(supabaseClient: supabaseClient);
+    final entriesResult = await getFuelEntries(supabaseClient: supabaseClient);
 
-    // Group by unit
-    final Map<String, double> totals = {'gal': 0.0, 'L': 0.0};
-
-    for (final entry in entries) {
-      totals[entry.fuelUnit] =
-          (totals[entry.fuelUnit] ?? 0) + entry.fuelQuantity;
-    }
-
-    return totals;
+    return entriesResult.map((entries) {
+      final Map<String, double> totals = {'gal': 0.0, 'L': 0.0};
+      for (final entry in entries) {
+        totals[entry.fuelUnit] =
+            (totals[entry.fuelUnit] ?? 0) + entry.fuelQuantity;
+      }
+      return totals;
+    });
   }
 
   /// Get truck fuel entries only
-  static Future<List<FuelEntry>> getTruckFuelEntries({
+  static Future<Result<List<FuelEntry>>> getTruckFuelEntries({
     int? limit,
     SupabaseClient? supabaseClient,
   }) async {
@@ -231,7 +253,7 @@ class FuelService {
   }
 
   /// Get reefer fuel entries only
-  static Future<List<FuelEntry>> getReeferFuelEntries({
+  static Future<Result<List<FuelEntry>>> getReeferFuelEntries({
     int? limit,
     SupabaseClient? supabaseClient,
   }) async {
@@ -243,31 +265,34 @@ class FuelService {
   }
 
   /// Search fuel entries by truck/reefer number or location
-  static Future<List<FuelEntry>> searchFuelEntries(
+  static Future<Result<List<FuelEntry>>> searchFuelEntries(
     String query, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      final response = await client
-          .from('fuel_entries')
-          .select()
-          .eq('user_id', userId)
-          .or(
-            'truck_number.ilike.%$query%,reefer_number.ilike.%$query%,location.ilike.%$query%',
-          )
-          .order('fuel_date', ascending: false);
+    final netClient = _getNetworkClient(client);
 
-      return (response as List)
-          .map((json) => FuelEntry.fromJson(json))
-          .toList();
-    } catch (e) {
-      throw Exception('Failed to search fuel entries: $e');
-    }
+    return netClient.query<List<FuelEntry>>(
+      () async {
+        final response = await client
+            .from('fuel_entries')
+            .select()
+            .eq('user_id', userId)
+            .or(
+              'truck_number.ilike.%$query%,reefer_number.ilike.%$query%,location.ilike.%$query%',
+            )
+            .order('fuel_date', ascending: false);
+
+        return (response as List)
+            .map((json) => FuelEntry.fromJson(json))
+            .toList();
+      },
+      operationName: 'FuelService.searchFuelEntries',
+    );
   }
 }

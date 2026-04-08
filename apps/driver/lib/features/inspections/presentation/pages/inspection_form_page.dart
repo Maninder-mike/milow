@@ -645,7 +645,7 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(
                     labelText: 'Odometer',
-                    hintText: 'Ex: 120500',
+                    hintText: 'Ex: 120500 ($_odometerUnit)',
                     prefixIcon: Icon(Icons.speed, color: colorScheme.primary),
                   ),
                   validator: (value) =>

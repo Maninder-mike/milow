@@ -74,7 +74,8 @@ class GeofenceService {
     }
 
     // Get active trip
-    _activeTrip = await TripRepository.getActiveTrip();
+    final result = await TripRepository.getActiveTrip();
+    _activeTrip = result.fold((l) => null, (r) => r);
     if (_activeTrip == null) {
       debugPrint('[GeofenceService] No active trip to monitor');
       return;
@@ -253,11 +254,18 @@ class GeofenceService {
     }
 
     try {
-      await TripRepository.updateTrip(updatedTrip);
-      _activeTrip = updatedTrip;
-      debugPrint('[GeofenceService] Updated arrival time for ${location.name}');
+      final result = await TripRepository.updateTrip(updatedTrip);
+      result.fold(
+        (failure) {
+          debugPrint('[GeofenceService] Failed to update arrival time: $failure');
+        },
+        (trip) {
+          _activeTrip = trip;
+          debugPrint('[GeofenceService] Updated arrival time for ${location.name}');
+        },
+      );
     } catch (e) {
-      debugPrint('[GeofenceService] Failed to update arrival time: $e');
+      debugPrint('[GeofenceService] Exception updating arrival time: $e');
     }
   }
 }

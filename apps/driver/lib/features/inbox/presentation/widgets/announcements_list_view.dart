@@ -119,7 +119,7 @@ class _AnnouncementCard extends StatelessWidget {
             ),
             SizedBox(height: tokens.spacingM),
             Text(
-              announcement.body,
+              announcement.content,
               style: Theme.of(
                 context,
               ).textTheme.bodyMedium?.copyWith(height: 1.5),

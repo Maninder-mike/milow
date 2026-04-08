@@ -42,9 +42,12 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _loadStats() async {
     try {
       // Fetch fresh data from TripService
-      final tripCount = await TripService.getTripsCount();
-      final totalDistance =
+      final tripCountResult = await TripService.getTripsCount();
+      final totalDistanceResult =
           await TripService.getTotalDistance(); // stored in miles
+
+      final tripCount = tripCountResult.getOrElse((_) => 0);
+      final totalDistance = totalDistanceResult.getOrElse((_) => 0.0);
 
       // Calculate distance based on distance unit preference
       final isMetric = _distanceUnit == 'km';

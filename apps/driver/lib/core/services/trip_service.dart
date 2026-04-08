@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:fpdart/fpdart.dart';
 
 /// Service for managing trips in Supabase
 class TripService {
@@ -12,44 +13,49 @@ class TripService {
   }
 
   /// Create a new trip
-  static Future<Trip?> createTrip(
+  static Future<Result<Trip>> createTrip(
     Trip trip, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    // Check for duplicate trip number
-    if (await tripNumberExists(trip.tripNumber, supabaseClient: client)) {
-      throw Exception('Trip number "${trip.tripNumber}" already exists');
-    }
+    final netClient = _getNetworkClient(client);
 
-    try {
-      final data = trip.toJson();
-      data['user_id'] = userId;
-      data.remove('id'); // Let database generate ID
+    // Duplicate check wrap
+    final existsResult = await tripNumberExists(trip.tripNumber, supabaseClient: client);
+    return existsResult.fold(
+      (failure) => left(failure),
+      (exists) async {
+        if (exists) {
+          return left(ValidationFailure('Trip number "${trip.tripNumber}" already exists'));
+        }
 
-      final response = await client
-          .from('driver_trips')
-          .insert(data)
-          .select()
-          .single();
+        return netClient.query<Trip>(
+          () async {
+            final data = trip.toJson();
+            data['user_id'] = userId;
+            data.remove('id'); // Let database generate ID
 
-      return Trip.fromJson(response);
-    } catch (e) {
-      if (e.toString().contains('already exists')) {
-        rethrow;
-      }
-      // Rethrow all errors so ErrorHandler can parse them correctly
-      rethrow;
-    }
+            final response = await client
+                .from('driver_trips')
+                .insert(data)
+                .select()
+                .single();
+
+            return Trip.fromJson(response);
+          },
+          operationName: 'TripService.createTrip',
+        );
+      },
+    );
   }
 
   /// Check if a trip number already exists for the current user
-  static Future<bool> tripNumberExists(
+  static Future<Result<bool>> tripNumberExists(
     String tripNumber, {
     String? excludeId,
     SupabaseClient? supabaseClient,
@@ -57,30 +63,33 @@ class TripService {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      var query = client
-          .from('driver_trips')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('trip_number', tripNumber.toUpperCase());
+    final netClient = _getNetworkClient(client);
 
-      // Exclude specific trip ID (for updates)
-      if (excludeId != null) {
-        query = query.neq('id', excludeId);
-      }
+    return netClient.query<bool>(
+      () async {
+        var query = client
+            .from('driver_trips')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('trip_number', tripNumber.toUpperCase());
 
-      final response = await query.maybeSingle();
-      return response != null;
-    } catch (e) {
-      return false;
-    }
+        // Exclude specific trip ID (for updates)
+        if (excludeId != null) {
+          query = query.neq('id', excludeId);
+        }
+
+        final response = await query.maybeSingle();
+        return response != null;
+      },
+      operationName: 'TripService.tripNumberExists',
+    );
   }
 
   /// Get all trips for current user
-  static Future<List<Trip>> getTrips({
+  static Future<Result<List<Trip>>> getTrips({
     int? limit,
     int? offset,
     DateTime? fromDate,
@@ -91,11 +100,11 @@ class TripService {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
     final networkClient = _getNetworkClient(client);
-    final result = await networkClient.query(
+    final result = await networkClient.query<List<dynamic>>(
       () async {
         var query = client.from('driver_trips').select().eq('user_id', userId);
 
@@ -109,12 +118,11 @@ class TripService {
         final response = await query.order('trip_date', ascending: false);
         return response as List<dynamic>;
       },
-      operationName: 'getTrips',
+      operationName: 'TripService.getTrips',
       coalesceKey: coalesceKey,
     );
 
-    return result.fold(
-      (failure) => throw Exception('Failed to get trips: ${failure.message}'),
+    return result.map(
       (data) {
         var list = data;
         if (limit != null) {
@@ -126,7 +134,7 @@ class TripService {
   }
 
   /// Get a single trip by ID
-  static Future<Trip?> getTripById(
+  static Future<Result<Trip?>> getTripById(
     String tripId, {
     String? coalesceKey,
     SupabaseClient? supabaseClient,
@@ -134,11 +142,11 @@ class TripService {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
     final networkClient = _getNetworkClient(client);
-    final result = await networkClient.query(
+    final result = await networkClient.query<Map<String, dynamic>?>(
       () async {
         final response = await client
             .from('driver_trips')
@@ -148,12 +156,11 @@ class TripService {
             .maybeSingle();
         return response;
       },
-      operationName: 'getTripById',
+      operationName: 'TripService.getTripById',
       coalesceKey: coalesceKey,
     );
 
-    return result.fold(
-      (failure) => throw Exception('Failed to get trip: ${failure.message}'),
+    return result.map(
       (data) {
         if (data == null) return null;
         return Trip.fromJson(data);
@@ -162,160 +169,184 @@ class TripService {
   }
 
   /// Update an existing trip
-  static Future<Trip?> updateTrip(
+  static Future<Result<Trip>> updateTrip(
     Trip trip, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
     if (trip.id == null) {
-      throw Exception('Trip ID is required for update');
+      return left(const ValidationFailure('Trip ID is required for update'));
     }
 
-    // Check for duplicate trip number (excluding current trip)
-    if (await tripNumberExists(
+    final netClient = _getNetworkClient(client);
+
+    final existsResult = await tripNumberExists(
       trip.tripNumber,
       excludeId: trip.id,
       supabaseClient: client,
-    )) {
-      throw Exception('Trip number "${trip.tripNumber}" already exists');
-    }
+    );
 
-    try {
-      final data = trip.toJson();
-      data['updated_at'] = DateTime.now().toIso8601String();
+    return existsResult.fold(
+      (failure) => left(failure),
+      (exists) async {
+        if (exists) {
+          return left(ValidationFailure('Trip number "${trip.tripNumber}" already exists'));
+        }
 
-      final response = await client
-          .from('driver_trips')
-          .update(data)
-          .eq('id', trip.id!)
-          .eq('user_id', userId)
-          .select()
-          .single();
+        return netClient.query<Trip>(
+          () async {
+            final data = trip.toJson();
+            data['updated_at'] = DateTime.now().toIso8601String();
 
-      return Trip.fromJson(response);
-    } catch (e) {
-      rethrow;
-    }
+            final response = await client
+                .from('driver_trips')
+                .update(data)
+                .eq('id', trip.id!)
+                .eq('user_id', userId)
+                .select()
+                .single();
+
+            return Trip.fromJson(response);
+          },
+          operationName: 'TripService.updateTrip',
+        );
+      },
+    );
   }
 
   /// Delete a trip
-  static Future<void> deleteTrip(
+  static Future<Result<Unit>> deleteTrip(
     String tripId, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      await client
-          .from('driver_trips')
-          .delete()
-          .eq('id', tripId)
-          .eq('user_id', userId);
-    } catch (e) {
-      throw Exception('Failed to delete trip: $e');
-    }
+    final netClient = _getNetworkClient(client);
+
+    return netClient.query<Unit>(
+      () async {
+        await client
+            .from('driver_trips')
+            .delete()
+            .eq('id', tripId)
+            .eq('user_id', userId);
+        return unit;
+      },
+      operationName: 'TripService.deleteTrip',
+    );
   }
 
   /// Get total trips count for current user
-  static Future<int> getTripsCount({SupabaseClient? supabaseClient}) async {
+  static Future<Result<int>> getTripsCount({SupabaseClient? supabaseClient}) async {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      final response = await client
-          .from('driver_trips')
-          .select()
-          .eq('user_id', userId)
-          .count(CountOption.exact);
+    final netClient = _getNetworkClient(client);
 
-      return response.count;
-    } catch (e) {
-      throw Exception('Failed to get trips count: $e');
-    }
+    return netClient.query<int>(
+      () async {
+        final response = await client
+            .from('driver_trips')
+            .select()
+            .eq('user_id', userId)
+            .count(CountOption.exact);
+
+        return response.count;
+      },
+      operationName: 'TripService.getTripsCount',
+    );
   }
 
   /// Get total distance for all trips (calculated on server)
-  static Future<double> getTotalDistance({
+  static Future<Result<double>> getTotalDistance({
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      final response = await client.rpc(
-        'get_total_trip_distance',
-        params: {'user_uuid': userId},
-      );
-      return (response as num?)?.toDouble() ?? 0.0;
-    } catch (e) {
-      throw Exception('Failed to get total distance: $e');
-    }
+    final netClient = _getNetworkClient(client);
+
+    return netClient.query<double>(
+      () async {
+        final response = await client.rpc(
+          'get_total_trip_distance',
+          params: {'user_uuid': userId},
+        );
+        return (response as num?)?.toDouble() ?? 0.0;
+      },
+      operationName: 'TripService.getTotalDistance',
+    );
   }
 
   /// Search trips by trip number or truck number
-  static Future<List<Trip>> searchTrips(
+  static Future<Result<List<Trip>>> searchTrips(
     String query, {
     SupabaseClient? supabaseClient,
   }) async {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      final response = await client
-          .from('driver_trips')
-          .select()
-          .eq('user_id', userId)
-          .or('trip_number.ilike.%$query%,truck_number.ilike.%$query%')
-          .order('trip_date', ascending: false);
+    final netClient = _getNetworkClient(client);
 
-      return (response as List).map((json) => Trip.fromJson(json)).toList();
-    } catch (e) {
-      throw Exception('Failed to search trips: $e');
-    }
+    return netClient.query<List<Trip>>(
+      () async {
+        final response = await client
+            .from('driver_trips')
+            .select()
+            .eq('user_id', userId)
+            .or('trip_number.ilike.%$query%,truck_number.ilike.%$query%')
+            .order('trip_date', ascending: false);
+
+        return (response as List).map((json) => Trip.fromJson(json)).toList();
+      },
+      operationName: 'TripService.searchTrips',
+    );
   }
 
   /// Get the most recent active trip (trip without end odometer)
   /// Returns null if no active trip exists
-  static Future<Trip?> getActiveTrip({SupabaseClient? supabaseClient}) async {
+  static Future<Result<Trip?>> getActiveTrip({SupabaseClient? supabaseClient}) async {
     final client = _getClient(supabaseClient);
     final userId = client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('User not authenticated');
+      return left(const UnauthorizedFailure('User not authenticated'));
     }
 
-    try {
-      final response = await client
-          .from('driver_trips')
-          .select()
-          .eq('user_id', userId)
-          .isFilter('end_odometer', null)
-          .order('trip_date', ascending: false)
-          .limit(1)
-          .maybeSingle();
+    final netClient = _getNetworkClient(client);
 
-      if (response == null) return null;
-      return Trip.fromJson(response);
-    } catch (e) {
-      // Return null on error - active trip is optional
-      return null;
-    }
+    return netClient.query<Trip?>(
+      () async {
+        final response = await client
+            .from('driver_trips')
+            .select()
+            .eq('user_id', userId)
+            .isFilter('end_odometer', null)
+            .order('trip_date', ascending: false)
+            .limit(1)
+            .maybeSingle();
+
+        if (response == null) return null;
+        return Trip.fromJson(response);
+      },
+      operationName: 'TripService.getActiveTrip',
+    );
   }
 }

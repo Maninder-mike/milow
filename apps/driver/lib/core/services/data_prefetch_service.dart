@@ -102,7 +102,8 @@ class DataPrefetchService {
 
   Future<void> _prefetchTrips() async {
     try {
-      _cachedTrips = await TripRepository.getTrips();
+      final result = await TripRepository.getTrips();
+      _cachedTrips = result.fold((l) => <Trip>[], (r) => r);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('DataPrefetchService: Failed to prefetch trips: $e');
@@ -112,7 +113,8 @@ class DataPrefetchService {
 
   Future<void> _prefetchFuelEntries() async {
     try {
-      _cachedFuelEntries = await FuelRepository.getFuelEntries();
+      final result = await FuelRepository.getFuelEntries();
+      _cachedFuelEntries = result.fold((l) => <FuelEntry>[], (r) => r);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('DataPrefetchService: Failed to prefetch fuel entries: $e');

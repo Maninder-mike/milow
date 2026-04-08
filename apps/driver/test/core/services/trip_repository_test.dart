@@ -180,10 +180,11 @@ void main() {
     );
 
     test('createTrip saves to local DB and enqueues sync', () async {
-      final trip = await TripRepository.createTrip(
+      final tripResult = await TripRepository.createTrip(
         testTrip,
         supabaseClient: mockSupabaseClient,
       );
+      final trip = tripResult.fold((l) => throw Exception(l.message), (r) => r);
 
       // Verify it generated an ID
       expect(trip.id, isNotNull);
@@ -203,10 +204,11 @@ void main() {
     });
 
     test('updateTrip saves to local DB and enqueues sync', () async {
-      final trip = await TripRepository.createTrip(
+      final tripResult = await TripRepository.createTrip(
         testTrip,
         supabaseClient: mockSupabaseClient,
       );
+      final trip = tripResult.fold((l) => throw Exception(l.message), (r) => r);
 
       final updatedTrip = trip.copyWith(notes: 'Updated note');
 
@@ -233,10 +235,11 @@ void main() {
       when(() => mockConnectivityService.isOnline).thenReturn(false);
 
       // 1. Create a trip with pending 'update' locally
-      final trip = await TripRepository.createTrip(
+      final tripResult = await TripRepository.createTrip(
         testTrip,
         supabaseClient: mockSupabaseClient,
       );
+      final trip = tripResult.fold((l) => throw Exception(l.message), (r) => r);
       final updatedTrip = trip.copyWith(notes: 'Updated note');
       await TripRepository.updateTrip(
         updatedTrip,

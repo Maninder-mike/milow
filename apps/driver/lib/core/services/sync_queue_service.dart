@@ -10,6 +10,7 @@ import 'package:uuid/uuid.dart';
 import 'package:milow/core/models/sync_operation.dart';
 import 'package:milow/core/models/sync_status.dart';
 import 'package:milow/core/services/connectivity_service.dart';
+import 'package:milow_core/milow_core.dart';
 
 /// Service for managing the offline sync queue.
 ///
@@ -165,85 +166,146 @@ class SyncQueueService {
         tableName = 'driver_trips';
       }
 
-      switch (operation.operationType) {
-        case 'create':
-          // Use upsert to be idempotent in case of retries
-          await client.from(tableName).upsert(payload);
-          break;
-        case 'update':
-          final id = payload['id'] as String?;
-          if (id == null) throw Exception('Update requires id in payload');
-
-          // Implement Last-Write-Wins (LWW)
-          await client.from(tableName).update(payload).eq('id', id);
-          break;
-        case 'delete':
-          final id = payload['id'] as String?;
-          if (id == null) throw Exception('Delete requires id in payload');
-          await client.from(tableName).delete().eq('id', id);
-          break;
-        case 'upload_document':
-          // 1. Extract file path and metadata
-          final localFilePath = payload['local_file_path'] as String;
-          final storagePath = payload['storage_path'] as String;
-          final dbData = payload['db_data'] as Map<String, dynamic>;
-          final mimeType = payload['mime_type'] as String;
-
-          // 2. Upload to Storage
-          final file = File(localFilePath);
-          if (!await file.exists()) {
-            throw Exception('Local file not found for upload: $localFilePath');
-          }
-
-          await client.storage
-              .from(tableName == 'documents' ? 'documents' : 'trip_documents')
-              .upload(
-                storagePath,
-                file,
-                fileOptions: FileOptions(contentType: mimeType, upsert: true),
-              );
-
-          // 3. Insert into Database
-          await client.from(tableName).insert(dbData);
-
-          // 4. Cleanup local file (optional, but good practice if it's a temp scan)
-          try {
-            await file.delete();
-          } catch (e) {
-            debugPrint('[SyncQueueService] Failed to delete temp file: $e');
-          }
-          break;
-        default:
-          throw Exception('Unknown operation type: ${operation.operationType}');
-      }
-
-      // Success - remove from queue
-      await operation.delete();
-      debugPrint('[SyncQueueService] Completed: ${operation.id}');
-    } on PostgrestException catch (e) {
-      debugPrint(
-        '[SyncQueueService] PostgrestException: ${operation.id}, error: $e',
+      final result = await _executeOperation(
+        client,
+        operation,
+        tableName,
+        payload,
       );
-      if (e.code == '401' || e.code == '403') {
-        // Stop processing the queue immediately on auth errors to prevent hammering
-        operation.markFailed('Authentication error: ${e.message}');
-        _isProcessing = false;
-        _emitStatus();
-        return; // Early return stops the queue
-      }
-      _handleOperationFailure(operation, e);
+
+      await result.fold(
+        (failure) async {
+          debugPrint('[SyncQueueService] Network result failed for ${operation.id}: $failure');
+          if (failure is UnauthorizedFailure || failure is ForbiddenFailure) {
+            // Stop processing the queue immediately on auth errors to prevent hammering
+            operation.markFailed('Authentication error: ${failure.message}');
+            await operation.save();
+            _isProcessing = false;
+            _emitStatus();
+          } else {
+            _handleOperationFailure(operation, failure.message);
+          }
+        },
+        (_) async {
+          // Success - remove from queue
+          await operation.delete();
+          debugPrint('[SyncQueueService] Completed: ${operation.id}');
+        },
+      );
     } catch (e) {
-      debugPrint('[SyncQueueService] Failed: ${operation.id}, error: $e');
-      _handleOperationFailure(operation, e);
+      debugPrint('[SyncQueueService] Failed (Non-network): ${operation.id}, error: $e');
+      _handleOperationFailure(operation, e.toString());
     }
   }
 
-  void _handleOperationFailure(SyncOperation operation, Object e) {
+  Future<Result<bool>> _executeOperation(
+    SupabaseClient client,
+    SyncOperation operation,
+    String tableName,
+    Map<String, dynamic> payload,
+  ) async {
+    final netClient = CoreNetworkClient(client);
+
+    return netClient.query<bool>(
+      () async {
+        switch (operation.operationType) {
+          case 'create':
+            return await _handleUpsert(client, tableName, payload);
+          case 'update':
+            return await _handleUpdate(client, tableName, payload);
+          case 'delete':
+            return await _handleDelete(client, tableName, payload);
+          case 'upload_document':
+            return await _handleUpload(client, tableName, payload);
+          default:
+            throw Exception('Unknown operation type: ${operation.operationType}');
+        }
+      },
+      operationName: 'sync_${operation.operationType}_$tableName',
+    );
+  }
+
+  Future<bool> _handleUpsert(
+    SupabaseClient client,
+    String tableName,
+    Map<String, dynamic> payload,
+  ) async {
+    // Use upsert to be idempotent in case of retries
+    await client.from(tableName).upsert(payload);
+    return true;
+  }
+
+  Future<bool> _handleUpdate(
+    SupabaseClient client,
+    String tableName,
+    Map<String, dynamic> payload,
+  ) async {
+    final id = payload['id'] as String?;
+    if (id == null) throw Exception('Update requires id in payload');
+
+    // Implement Last-Write-Wins (LWW)
+    await client.from(tableName).update(payload).eq('id', id);
+    return true;
+  }
+
+  Future<bool> _handleDelete(
+    SupabaseClient client,
+    String tableName,
+    Map<String, dynamic> payload,
+  ) async {
+    final id = payload['id'] as String?;
+    if (id == null) throw Exception('Delete requires id in payload');
+    await client.from(tableName).delete().eq('id', id);
+    return true;
+  }
+
+  Future<bool> _handleUpload(
+    SupabaseClient client,
+    String tableName,
+    Map<String, dynamic> payload,
+  ) async {
+    // 1. Extract file path and metadata
+    final localFilePath = payload['local_file_path'] as String;
+    final storagePath = payload['storage_path'] as String;
+    final dbData = payload['db_data'] as Map<String, dynamic>;
+    final mimeType = payload['mime_type'] as String;
+
+    // 2. Upload to Storage
+    final file = File(localFilePath);
+    if (!await file.exists()) {
+      throw Exception('Local file not found for upload: $localFilePath');
+    }
+
+    await client.storage
+        .from(tableName == 'documents' ? 'documents' : 'trip_documents')
+        .upload(
+          storagePath,
+          file,
+          fileOptions: FileOptions(contentType: mimeType, upsert: true),
+        );
+
+    // 3. Insert into Database
+    await client.from(tableName).insert(dbData);
+
+    // 4. Cleanup local file (optional, but good practice if it's a temp scan)
+    try {
+      if (await file.exists()) {
+        await file.delete();
+      }
+    } catch (e) {
+      debugPrint('[SyncQueueService] Failed to delete temp file: $e');
+    }
+    return true;
+  }
+
+  void _handleOperationFailure(SyncOperation operation, String errorMessage) {
     if (operation.canRetry) {
-      operation.markFailed(e.toString());
+      operation.markFailed(errorMessage);
+      operation.save();
     } else {
       // Max retries reached, keep in queue as failed for user to see
-      operation.markFailed(e.toString());
+      operation.markFailed(errorMessage);
+      operation.save();
     }
   }
 

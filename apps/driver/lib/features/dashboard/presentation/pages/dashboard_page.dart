@@ -360,8 +360,10 @@ class _DashboardPageState extends State<DashboardPage>
       } else {
         // Fetch from repositories (offline-first)
         // Note: Repositories return all items sorted by date
-        final allTrips = await TripRepository.getTrips(refresh: true);
-        final allFuel = await FuelRepository.getFuelEntries(refresh: true);
+        final allTripsResult = await TripRepository.getTrips(refresh: true);
+        final allTrips = allTripsResult.fold((l) => <Trip>[], (r) => r);
+        final allFuelResult = await FuelRepository.getFuelEntries(refresh: true);
+        final allFuel = allFuelResult.fold((l) => <FuelEntry>[], (r) => r);
 
         trips = allTrips.take(10).toList();
         fuelEntries = allFuel.take(5).toList();
@@ -841,7 +843,7 @@ class _DashboardPageState extends State<DashboardPage>
                 children: [
                   Expanded(
                     child: Text(
-                      announcement.body,
+                      announcement.content,
                       style: const TextStyle(color: Colors.white, fontSize: 13),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
@@ -1897,7 +1899,8 @@ class _DashboardPageState extends State<DashboardPage>
 
     try {
       // Update database
-      await TripRepository.updateTrip(updatedTrip);
+      final result = await TripRepository.updateTrip(updatedTrip);
+      result.fold((l) => throw Exception(l.message), (r) => null);
 
       if (mounted) {
         // Show success feedback
@@ -1980,7 +1983,8 @@ class _DashboardPageState extends State<DashboardPage>
 
     try {
       // Update database
-      await TripRepository.updateTrip(updatedTrip);
+      final result = await TripRepository.updateTrip(updatedTrip);
+      result.fold((l) => throw Exception(l.message), (r) => null);
 
       if (mounted) {
         // Show success feedback

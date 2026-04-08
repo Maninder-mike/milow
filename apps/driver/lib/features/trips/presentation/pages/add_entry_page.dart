@@ -20,11 +20,11 @@ import 'package:milow/core/services/trip_service.dart';
 import 'package:milow/core/services/trip_repository.dart';
 import 'package:milow/core/services/fuel_repository.dart';
 
+import 'package:milow/features/trips/presentation/widgets/trip_stepper.dart';
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/prediction_service.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
 
-import 'package:milow/core/widgets/load_details_section.dart';
 import 'package:milow/core/widgets/custom_autocomplete_field.dart';
 import 'package:milow/core/widgets/m3_spring_button.dart';
 
@@ -145,7 +145,6 @@ class _AddEntryPageState extends State<AddEntryPage>
   String? _companyId;
   List<Vehicle> _vehicles = [];
 
-  Trip? _fetchedTrip;
   List<TripTemplate> _templates = [];
 
   @override
@@ -157,7 +156,6 @@ class _AddEntryPageState extends State<AddEntryPage>
   @override
   void initState() {
     super.initState();
-    _fetchedTrip = widget.editingTrip;
 
     // Calculate initial values
     final String tripNumber =
@@ -194,10 +192,14 @@ class _AddEntryPageState extends State<AddEntryPage>
     _tripDateController = RestorableTextEditingController(text: tripDate);
 
     _tripStartOdometerController = RestorableTextEditingController(
-      text: widget.editingTrip?.startOdometer?.toString() ?? '',
+      text: (widget.editingTrip?.startOdometer != null && widget.editingTrip!.startOdometer! > 0)
+          ? (widget.editingTrip!.startOdometer! == widget.editingTrip!.startOdometer!.toInt() ? widget.editingTrip!.startOdometer!.toInt().toString() : widget.editingTrip!.startOdometer!.toString())
+          : '',
     );
     _tripEndOdometerController = RestorableTextEditingController(
-      text: widget.editingTrip?.endOdometer?.toString() ?? '',
+      text: (widget.editingTrip?.endOdometer != null && widget.editingTrip!.endOdometer! > 0)
+          ? (widget.editingTrip!.endOdometer! == widget.editingTrip!.endOdometer!.toInt() ? widget.editingTrip!.endOdometer!.toInt().toString() : widget.editingTrip!.endOdometer!.toString())
+          : '',
     );
     _tripNotesController = RestorableTextEditingController(
       text: widget.editingTrip?.notes ?? widget.initialData?['notes'] ?? '',
@@ -218,11 +220,11 @@ class _AddEntryPageState extends State<AddEntryPage>
     _locationController = RestorableTextEditingController(
       text: widget.editingFuel?.location ?? '',
     );
+    final defaultOdo = widget.editingFuel?.odometerReading ?? widget.editingFuel?.reeferHours;
     _odometerController = RestorableTextEditingController(
-      text:
-          widget.editingFuel?.odometerReading?.toString() ??
-          widget.editingFuel?.reeferHours?.toString() ??
-          '',
+      text: (defaultOdo != null && defaultOdo > 0) 
+        ? (defaultOdo == defaultOdo.toInt() ? defaultOdo.toInt().toString() : defaultOdo.toString()) 
+        : '',
     );
     _fuelQuantityController = RestorableTextEditingController(
       text: widget.editingFuel?.fuelQuantity.toString() ?? '',
@@ -519,16 +521,16 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Fill odometer readings (localized)
     final prefService = Provider.of<PreferencesService>(context, listen: false);
-    if (trip.startOdometer != null) {
+    if (trip.startOdometer != null && trip.startOdometer! > 0) {
       final startOdo = prefService.localizeDistance(trip.startOdometer!);
       if (mounted) {
-        _tripStartOdometerController.value.text = startOdo.toStringAsFixed(0);
+        _tripStartOdometerController.value.text = startOdo == startOdo.toInt() ? startOdo.toInt().toString() : startOdo.toString();
       }
     }
-    if (trip.endOdometer != null) {
+    if (trip.endOdometer != null && trip.endOdometer! > 0) {
       final endOdo = prefService.localizeDistance(trip.endOdometer!);
       if (mounted) {
-        _tripEndOdometerController.value.text = endOdo.toStringAsFixed(0);
+        _tripEndOdometerController.value.text = endOdo == endOdo.toInt() ? endOdo.toInt().toString() : endOdo.toString();
       }
     }
 
@@ -608,16 +610,16 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Localize numbers
     if (fuel.isReeferFuel) {
-      if (fuel.reeferHours != null) {
+      if (fuel.reeferHours != null && fuel.reeferHours! > 0) {
         _odometerController.value.text =
             fuel.reeferHours!.toString().replaceAll(
               '.0',
               '',
             );
       }
-    } else if (fuel.odometerReading != null) {
+    } else if (fuel.odometerReading != null && fuel.odometerReading! > 0) {
       final odo = prefService.localizeDistance(fuel.odometerReading!);
-      _odometerController.value.text = odo.toStringAsFixed(0);
+      _odometerController.value.text = odo == odo.toInt() ? odo.toInt().toString() : odo.toString();
     }
 
     final quantity = prefService.localizeVolume(fuel.fuelQuantity);
@@ -747,9 +749,10 @@ class _AddEntryPageState extends State<AddEntryPage>
   /// Load border crossings and prefill with most frequently used
   Future<void> _prefillBorderCrossing() async {
     try {
-      final trips = await TripService.getTrips(
+      final tripsResult = await TripService.getTrips(
         supabaseClient: widget.supabaseClient,
       );
+      final trips = tripsResult.getOrElse((_) => <Trip>[]);
       if (trips.isEmpty) return;
 
       // Count frequency of each border crossing
@@ -881,10 +884,11 @@ class _AddEntryPageState extends State<AddEntryPage>
   /// Load all existing trip numbers for duplicate detection
   Future<void> _loadExistingTripNumbers() async {
     try {
-      final List<Trip> trips = await TripRepository.getTrips(
+      final result = await TripRepository.getTrips(
         refresh: false,
         supabaseClient: widget.supabaseClient,
       );
+      final List<Trip> trips = result.fold((l) => <Trip>[], (r) => r);
       if (mounted) {
         setState(() {
           _existingTripNumbers = trips
@@ -1163,72 +1167,6 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
-  // Build border crossing dropdown with add/edit capability
-  Widget _buildBorderCrossingDropdown() {
-    final tokens = context.tokens;
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              return DropdownMenu<String>(
-                width: constraints.maxWidth,
-                initialSelection: _selectedBorderCrossing.value,
-                label: const Text('Border Crossing'),
-                leadingIcon: Icon(
-                  Icons.flag_rounded,
-                  color: tokens.textTertiary,
-                ),
-                inputDecorationTheme: InputDecorationTheme(
-                  filled: true,
-                  fillColor: tokens.inputBackground,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(tokens.shapeM),
-                    borderSide: BorderSide(color: tokens.inputBorder),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(tokens.shapeM),
-                    borderSide: BorderSide(color: tokens.inputBorder),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(tokens.shapeM),
-                    borderSide: BorderSide(
-                      color: Theme.of(context).colorScheme.primary,
-                      width: 2,
-                    ),
-                  ),
-                ),
-                dropdownMenuEntries: _borderCrossings.map((border) {
-                  return DropdownMenuEntry<String>(
-                    value: border,
-                    label: border,
-                    leadingIcon: Icon(
-                      Icons.flag_rounded,
-                      color: Theme.of(context).colorScheme.primary,
-                      size: 20,
-                    ),
-                  );
-                }).toList(),
-                onSelected: (value) {
-                  setState(() {
-                    _selectedBorderCrossing.value = value;
-                    _borderCrossingController.value.text = value ?? '';
-                  });
-                },
-              );
-            },
-          ),
-        ),
-        const SizedBox(width: 4),
-        _buildAddButton(
-          _showAddBorderCrossingDialog,
-          tooltip: 'Add Border Crossing',
-        ),
-      ],
-    );
-  }
 
   // [NEW] Quick Actions Section (Capsules)
   Widget _buildQuickActions() {
@@ -1389,107 +1327,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     );
   }
 
-  List<Widget> _buildLocationFields(_LocationFieldType type) {
-    final fields = <Widget>[];
-    final controllers = type == _LocationFieldType.pickup
-        ? _pickupControllers
-        : _deliveryControllers;
-    final focusNodes = type == _LocationFieldType.pickup
-        ? _pickupFocusNodes
-        : _deliveryFocusNodes;
-    final detention = type == _LocationFieldType.pickup
-        ? _pickupDetention
-        : _deliveryDetention;
-    final title = type == _LocationFieldType.pickup ? 'Pickup' : 'Delivery';
 
-    for (int i = 0; i < controllers.length; i++) {
-      final isLast = i == controllers.length - 1;
-      final canAdd = controllers.length < _maxLocations;
-      final canRemove = controllers.length > 1;
-
-      fields.add(
-        Padding(
-          padding: EdgeInsets.only(bottom: isLast ? 0 : 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: CustomAutocompleteField(
-                      controller: controllers[i].value,
-                      focusNode: focusNodes[i],
-                      textCapitalization: TextCapitalization.words,
-                      label: i == 0 ? '$title Location' : '$title ${i + 1}',
-                      hint: i == 0 ? 'City, State' : 'City, State',
-                      prefixIcon: Icons.location_on,
-                      suffixIcon: Icons.my_location,
-                      onSuffixTap: () => _getLocationFor(controllers[i].value),
-                      optionsBuilder: (v) => PredictionService.instance
-                          .getLocationSuggestions(v.text),
-                    ),
-                  ),
-                  const SizedBox(width: 4),
-                  // Detention Button
-                  _buildDetentionButton(
-                    detention: detention[i],
-                    onTap: () async {
-                      final result = await showDialog<Detention>(
-                        context: context,
-                        builder: (context) =>
-                            DetentionDialog(initialDetention: detention[i]),
-                      );
-                      if (result != null) {
-                        setState(() {
-                          detention[i] = result;
-                        });
-                      }
-                    },
-                  ),
-                  if (canRemove) ...[
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.remove_circle_outline),
-                      color: Theme.of(context).colorScheme.error,
-                      onPressed: () => _removeLocation(type, i),
-                    ),
-                  ],
-                  if (isLast && canAdd) ...[
-                    const SizedBox(width: 4),
-                    _buildAddButton(() => _addLocation(type)),
-                  ],
-                ],
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-    return fields;
-  }
-
-  Widget _buildDetentionButton({
-    required VoidCallback onTap,
-    Detention? detention,
-  }) {
-    final hasDetention = detention != null;
-    final isLayover = detention?.isLayover ?? false;
-    final primaryColor = Theme.of(context).colorScheme.primary;
-
-    return IconButton(
-      tooltip: hasDetention
-          ? (isLayover
-                ? 'Overnight Stay (Edit)'
-                : 'Waiting Time: ${detention.duration.inMinutes}m (Edit)')
-          : 'Add Waiting Time / Overnight',
-      onPressed: onTap,
-      icon: Icon(
-        isLayover ? Icons.hotel : Icons.timer_outlined,
-        color: hasDetention ? primaryColor : context.tokens.textSecondary,
-      ),
-    );
-  }
 
   // void _onTripScroll() {
   //   _handleScroll(_tripScrollController);
@@ -1634,13 +1472,15 @@ class _AddEntryPageState extends State<AddEntryPage>
   Future<void> _fetchLastDestination() async {
     try {
       // Get the most recent trip
-      final recentTrips = await TripService.getTrips(
+      final recentTripsResult = await TripService.getTrips(
         limit: 1,
         supabaseClient: widget.supabaseClient,
       );
 
-      if (recentTrips.isNotEmpty && mounted) {
-        final lastTrip = recentTrips.first;
+      final trips = recentTripsResult.getOrElse((_) => <Trip>[]);
+
+      if (trips.isNotEmpty && mounted) {
+        final lastTrip = trips.first;
 
         if (lastTrip.deliveryLocations.isNotEmpty) {
           final lastDestination = lastTrip.deliveryLocations.last;
@@ -1760,156 +1600,8 @@ class _AddEntryPageState extends State<AddEntryPage>
     }
   }
 
-  List<Widget> _buildTripDetailsSection() {
-    return [
-      // Trip Number & Truck Number Row
-      Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: _tripNumberController.value,
-              decoration: InputDecoration(
-                labelText: 'Trip Number',
-                hintText: 'e.g. 12345',
-                prefixIcon: const Icon(Icons.numbers),
-                errorText: _tripNumberExists
-                    ? 'Trip number already exists'
-                    : null,
-              ),
-              textCapitalization: TextCapitalization.characters,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: CustomAutocompleteField(
-              controller: _tripTruckNumberController.value,
-              focusNode: _tripTruckFocusNode,
-              label: 'Truck Number',
-              hint: 'e.g. 101',
-              prefixIcon: Icons.local_shipping,
-              optionsBuilder: (v) => _getVehicleSuggestions(v.text),
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
 
-      // Date Row
-      Row(
-        children: [
-          Expanded(
-            child: TextFormField(
-              controller: _tripDateController.value,
-              decoration: const InputDecoration(
-                labelText: 'Date',
-                prefixIcon: Icon(Icons.calendar_today),
-              ),
-              readOnly: true,
-              onTap: () async {
-                final currentText = _tripDateController.value.text;
-                DateTime initialDate = DateTime.now();
-                try {
-                  initialDate = DateFormat(
-                    'MMM d, yyyy, h:mm a',
-                  ).parse(currentText);
-                } catch (_) {}
 
-                final DateTime? picked = await _pickDateTime(initialDate);
-                if (picked != null && mounted) {
-                  setState(() {
-                    _tripDateController.value.text = _formatDateTime(picked);
-                  });
-                }
-              },
-            ),
-          ),
-        ],
-      ),
-      const SizedBox(height: 16),
-
-      // Trailers
-      ..._buildTrailerFields(),
-
-      const SizedBox(height: 16),
-
-      // Border Crossing
-      _buildBorderCrossingDropdown(),
-    ];
-  }
-
-  Widget _buildOdometerFields() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextFormField(
-            controller: _tripStartOdometerController.value,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'Start Odometer',
-              suffixText: _distanceUnit.value,
-              prefixIcon: const Icon(Icons.speed),
-            ),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: TextFormField(
-            controller: _tripEndOdometerController.value,
-            keyboardType: TextInputType.number,
-            decoration: InputDecoration(
-              labelText: 'End Odometer',
-              suffixText: _distanceUnit.value,
-              prefixIcon: const Icon(Icons.speed),
-            ),
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-          ),
-        ),
-      ],
-    );
-  }
-
-  List<Widget> _buildTrailerFields() {
-    final List<Widget> fields = [];
-    for (int i = 0; i < _trailerControllers.length; i++) {
-      fields.add(
-        Padding(
-          padding: const EdgeInsets.only(bottom: 8.0),
-          child: Row(
-            children: [
-              Expanded(
-                child: CustomAutocompleteField(
-                  controller: _trailerControllers[i].value,
-                  focusNode: _trailerFocusNodes[i],
-                  label: 'Trailer ${i + 1}',
-                  hint: 'e.g. 5301',
-                  prefixIcon: Icons.rv_hookup,
-                  optionsBuilder: (v) =>
-                      _getVehicleSuggestions(v.text, filter: 'trailer'),
-                ),
-              ),
-              const SizedBox(width: 4),
-              if (_trailerControllers.length > 1)
-                IconButton(
-                  icon: const Icon(Icons.remove_circle_outline),
-                  color: Theme.of(context).colorScheme.error,
-                  onPressed: () => _removeTrailer(i),
-                ),
-              if (i == _trailerControllers.length - 1 &&
-                  _trailerControllers.length < _maxTrailers)
-                IconButton(
-                  icon: const Icon(Icons.add_circle_outline),
-                  color: Theme.of(context).colorScheme.primary,
-                  onPressed: () => _addTrailer(),
-                ),
-            ],
-          ),
-        ),
-      );
-    }
-    return fields;
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -2226,102 +1918,78 @@ class _AddEntryPageState extends State<AddEntryPage>
   Widget _buildAddTripTab() {
     return SingleChildScrollView(
       controller: _tripScrollController,
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+      padding: const EdgeInsets.symmetric(vertical: 8),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Quick Actions for existing trips (Capsules)
           _buildQuickActions(),
-          // Empty Leg Toggle - only show for new trips
-          if (_fetchedTrip == null && widget.editingTrip == null) ...[
-            SwitchListTile(
-              value: _isEmptyLeg.value,
-              onChanged: (value) {
-                setState(() => _isEmptyLeg.value = value);
-                if (value) {
-                  _fetchLastDestination();
-                }
-              },
-              title: Text(
-                'Empty Leg',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  fontWeight: FontWeight.w500,
-                  color: context.tokens.textPrimary,
-                ),
-              ),
-              subtitle: Text(
-                'Driving without cargo (Deadhead)',
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: context.tokens.textSecondary,
-                ),
-              ),
-              secondary: Icon(
-                Icons.no_luggage_outlined,
-                color: _isEmptyLeg.value
-                    ? Theme.of(context).colorScheme.primary
-                    : context.tokens.textTertiary,
-              ),
-              activeThumbColor: Theme.of(context).colorScheme.primary,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 0),
-            ),
-            const SizedBox(height: 16),
-          ],
-
-          // Trip Details
-          ..._buildTripDetailsSection(),
-
-          const SizedBox(height: 24),
-
-          // Pickups
-          ..._buildLocationFields(_LocationFieldType.pickup),
-
-          const SizedBox(height: 24),
-
-          // Deliveries
-          ..._buildLocationFields(_LocationFieldType.delivery),
-
-          const SizedBox(height: 24),
-
-          // Odometer
-          _buildOdometerFields(),
-
-          const SizedBox(height: 24),
-
-          // Quick Actions Section (Capsules)
-          // Moved from above to avoid duplication, now part of _buildAddTripTab
-          // _buildQuickActions(), // Already handled above or should be inside form
-
-          // Load Details (conditionally shown)
-          if (_currentDriverType?.showOwnerOpFeatures ?? true) ...[
-            LoadDetailsSection(
-              commodityController: _commodityController.value,
-              weightController: _weightController.value,
-              weightUnit: _weightUnit.value,
-              piecesController: _piecesController.value,
-              referenceNumberControllers: _referenceNumberControllers
-                  .map((c) => c.value)
-                  .toList(),
-              onAddReferenceNumber: _addReferenceNumber,
-              onRemoveReferenceNumber: _removeReferenceNumber,
-              onWeightUnitChanged: (val) {
+          TripStepper(
+            onSave: _validateAndSaveTrip,
+            isSaving: _isSaving,
+            tripNumberController: _tripNumberController.value,
+            truckNumberController: _tripTruckNumberController.value,
+            truckFocusNode: _tripTruckFocusNode,
+            tripDateController: _tripDateController.value,
+            onPickDate: () async {
+              final currentText = _tripDateController.value.text;
+              DateTime initialDate = DateTime.now();
+              try {
+                initialDate = DateFormat('MMM d, yyyy, h:mm a').parse(currentText);
+              } catch (_) {}
+              final picked = await _pickDateTime(initialDate);
+              if (picked != null) {
                 setState(() {
-                  _weightUnit.value = val;
+                  _tripDateController.value.text = _formatDateTime(picked);
                 });
-              },
-            ),
-            const SizedBox(height: 24),
-          ],
-
-          // Notes
-          TextFormField(
-            controller: _tripNotesController.value,
-            decoration: const InputDecoration(
-              labelText: 'Notes',
-              hintText: 'Add any notes for this trip',
-              prefixIcon: Icon(Icons.note_alt_outlined),
-            ),
-            maxLines: 3,
-            textCapitalization: TextCapitalization.sentences,
+              }
+            },
+            getVehicleSuggestions: (v) => _getVehicleSuggestions(v, filter: 'truck'),
+            pickupControllers: _pickupControllers.map((c) => c.value).toList(),
+            pickupFocusNodes: _pickupFocusNodes,
+            deliveryControllers: _deliveryControllers.map((c) => c.value).toList(),
+            deliveryFocusNodes: _deliveryFocusNodes,
+            pickupDetention: _pickupDetention,
+            deliveryDetention: _deliveryDetention,
+            onAddPickup: () => _addLocation(_LocationFieldType.pickup),
+            onRemovePickup: (i) => _removeLocation(_LocationFieldType.pickup, i),
+            onAddDelivery: () => _addLocation(_LocationFieldType.delivery),
+            onRemoveDelivery: (i) => _removeLocation(_LocationFieldType.delivery, i),
+            onUpdateDetention: (i, isPickup) async {
+              final list = isPickup ? _pickupDetention : _deliveryDetention;
+              final result = await showDialog<Detention>(
+                context: context,
+                builder: (context) => DetentionDialog(initialDetention: list[i]),
+              );
+              if (result != null) {
+                setState(() {
+                  list[i] = result;
+                });
+              }
+            },
+            onGetLocation: _getLocationFor,
+            getLocationSuggestions: (v) => PredictionService.instance.getLocationSuggestions(v),
+            trailerControllers: _trailerControllers.map((c) => c.value).toList(),
+            trailerFocusNodes: _trailerFocusNodes,
+            commodityController: _commodityController.value,
+            weightController: _weightController.value,
+            piecesController: _piecesController.value,
+            weightUnit: _weightUnit.value,
+            onWeightUnitChanged: (v) => setState(() => _weightUnit.value = v),
+            referenceNumberControllers: _referenceNumberControllers.map((c) => c.value).toList(),
+            onAddReferenceNumber: _addReferenceNumber,
+            onRemoveReferenceNumber: _removeReferenceNumber,
+            onAddTrailer: _addTrailer,
+            onRemoveTrailer: _removeTrailer,
+            startOdometerController: _tripStartOdometerController.value,
+            endOdometerController: _tripEndOdometerController.value,
+            borderCrossingController: _borderCrossingController.value,
+            onShowAddBorderCrossing: _showAddBorderCrossingDialog,
+            notesController: _tripNotesController.value,
+            distanceUnit: _distanceUnit.value,
+            isEmptyLeg: _isEmptyLeg.value,
+            onEmptyLegChanged: (v) {
+              setState(() => _isEmptyLeg.value = v);
+              if (v) _fetchLastDestination();
+            },
           ),
         ],
       ),
@@ -2435,12 +2103,12 @@ class _AddEntryPageState extends State<AddEntryPage>
             controller: _odometerController.value,
             decoration: InputDecoration(
               labelText: 'Odometer Reading',
-              hintText: 'e.g., 123456',
+              hintText: 'e.g., 123456 (${_distanceUnit.value})',
               prefixIcon: const Icon(Icons.speed),
               suffixText: _distanceUnit.value,
             ),
-            keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d*'))],
           ),
           const SizedBox(height: 16),
 
@@ -2452,7 +2120,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                   controller: _fuelQuantityController.value,
                   decoration: InputDecoration(
                     labelText: 'Fuel Quantity',
-                    hintText: 'e.g., 100',
+                    hintText: 'e.g., 100 (${_fuelUnit.value})',
                     prefixIcon: const Icon(Icons.local_gas_station),
                     suffixText: _fuelUnit.value,
                   ),
@@ -2575,16 +2243,6 @@ class _AddEntryPageState extends State<AddEntryPage>
   }
 
   // Helper function to build Add/Remove buttons for dynamic lists
-  Widget _buildAddButton(VoidCallback onPressed, {String? tooltip}) {
-    return IconButton(
-      tooltip: tooltip ?? 'Add New',
-      onPressed: onPressed,
-      icon: Icon(
-        Icons.add_circle_outline,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-    );
-  }
 
   // Placeholder for _addReferenceNumber and _removeReferenceNumber
   // (Assuming these would be part of LoadDetailsSection or similar)
@@ -2687,10 +2345,10 @@ class _AddEntryPageState extends State<AddEntryPage>
         deliveryCompleted: _deliveryCompleted,
         pickupDetention: _pickupDetention,
         deliveryDetention: _deliveryDetention,
-        startOdometer: prefService.standardizeDistance(
+        startOdometer: _tripStartOdometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
           double.tryParse(_tripStartOdometerController.value.text) ?? 0,
         ),
-        endOdometer: prefService.standardizeDistance(
+        endOdometer: _tripEndOdometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
           double.tryParse(_tripEndOdometerController.value.text) ?? 0,
         ),
         distanceUnit: 'km', // Always save as km in DB
@@ -2700,7 +2358,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         notes: _tripNotesController.value.text.trim(),
         isEmptyLeg: _isEmptyLeg.value,
         commodity: _commodityController.value.text.trim(),
-        weight: prefService.standardizeWeight(
+        weight: _weightController.value.text.trim().isEmpty ? null : prefService.standardizeWeight(
           double.tryParse(_weightController.value.text) ?? 0,
         ),
         weightUnit: 'kg', // Always save as kg in DB
@@ -2714,9 +2372,11 @@ class _AddEntryPageState extends State<AddEntryPage>
       );
 
       if (widget.editingTrip != null) {
-        await TripRepository.updateTrip(newTrip);
+        final result = await TripRepository.updateTrip(newTrip);
+        result.fold((l) => throw Exception(l.message), (r) => null);
       } else {
-        await TripRepository.createTrip(newTrip);
+        final result = await TripRepository.createTrip(newTrip);
+        result.fold((l) => throw Exception(l.message), (r) => null);
       }
 
       if (mounted) {
@@ -2781,7 +2441,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             ? _truckNumberController.value.text.trim()
             : null,
         location: _locationController.value.text.trim(),
-        odometerReading: prefService.standardizeDistance(
+        odometerReading: _odometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
           double.tryParse(_odometerController.value.text) ?? 0,
         ),
         fuelQuantity: prefService.standardizeVolume(
@@ -2805,9 +2465,11 @@ class _AddEntryPageState extends State<AddEntryPage>
       );
 
       if (widget.editingFuel != null) {
-        await FuelRepository.updateFuelEntry(newFuel);
+        final result = await FuelRepository.updateFuelEntry(newFuel);
+        result.fold((f) => throw Exception(f.message), (_) {});
       } else {
-        await FuelRepository.createFuelEntry(newFuel);
+        final result = await FuelRepository.createFuelEntry(newFuel);
+        result.fold((f) => throw Exception(f.message), (_) {});
       }
 
       if (mounted) {

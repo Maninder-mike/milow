@@ -8,6 +8,9 @@ import 'package:milow/features/dashboard/presentation/pages/dashboard_page.dart'
 import 'package:milow/features/inbox/presentation/pages/inbox_page.dart';
 import 'package:milow/features/settings/presentation/pages/settings_page.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
+import 'package:milow/core/widgets/unit_suggestion_overlay.dart';
+import 'package:milow/core/providers/unit_suggestion_provider.dart';
+import 'package:provider/provider.dart';
 
 class TabsShell extends StatefulWidget {
   final int initialIndex;
@@ -26,6 +29,20 @@ class _TabsShellState extends State<TabsShell> {
     super.initState();
     _index = widget.initialIndex;
     _controller = PageController(initialPage: _index);
+    
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setupSuggestionListener();
+    });
+  }
+
+  void _setupSuggestionListener() {
+    if (!mounted) return;
+    
+    final suggestionProvider = context.read<UnitSuggestionProvider>();
+    suggestionProvider.addListener(() {
+      if (!mounted) return;
+      setState(() {}); // Rebuild stack to show overlay
+    });
   }
 
   @override
@@ -46,12 +63,9 @@ class _TabsShellState extends State<TabsShell> {
 
   /// Handle back navigation: go to dashboard from other tabs, confirm exit on dashboard
   Future<void> _handleBackNavigation() async {
-    // Use widget.initialIndex to check current tab based on route
     if (widget.initialIndex != 0) {
-      // Not on dashboard - navigate to dashboard using go_router
       context.go('/dashboard');
     } else {
-      // On dashboard - show exit confirmation
       final shouldExit = await _showExitConfirmation();
       if (shouldExit == true) {
         await SystemNavigator.pop();
@@ -150,43 +164,62 @@ class _TabsShellState extends State<TabsShell> {
 
           return Scaffold(
             backgroundColor: background,
-            bottomNavigationBar: null,
-            body: Row(
+            body: Stack(
               children: [
-                if (isTabletOrLarger)
-                  NavigationRail(
-                    selectedIndex: _index,
-                    onDestinationSelected: _onDestinationSelected,
-                    labelType: NavigationRailLabelType.all,
-                    destinations: _railDestinations,
-                    backgroundColor: isDark ? null : Colors.white,
-                    indicatorColor: Theme.of(
-                      context,
-                    ).colorScheme.primaryContainer,
-                    // Use a small elevation or border for separation
-                    elevation: 1,
-                  ),
-                Expanded(
-                  child: PageTransitionSwitcher(
-                    transitionBuilder:
-                        (
-                          Widget child,
-                          Animation<double> primaryAnimation,
-                          Animation<double> secondaryAnimation,
-                        ) {
-                          return FadeThroughTransition(
-                            animation: primaryAnimation,
-                            secondaryAnimation: secondaryAnimation,
-                            child: child,
-                          );
-                        },
-                    child: [
-                      const DashboardPage(),
-                      const ExplorePage(),
-                      const InboxPage(),
-                      const SettingsPage(),
-                    ][_index],
-                  ),
+                Row(
+                  children: [
+                    if (isTabletOrLarger)
+                      NavigationRail(
+                        selectedIndex: _index,
+                        onDestinationSelected: _onDestinationSelected,
+                        labelType: NavigationRailLabelType.all,
+                        destinations: _railDestinations,
+                        backgroundColor: isDark ? null : Colors.white,
+                        indicatorColor: Theme.of(
+                          context,
+                        ).colorScheme.primaryContainer,
+                        elevation: 1,
+                      ),
+                    Expanded(
+                      child: PageTransitionSwitcher(
+                        transitionBuilder:
+                            (
+                              Widget child,
+                              Animation<double> primaryAnimation,
+                              Animation<double> secondaryAnimation,
+                            ) {
+                              return FadeThroughTransition(
+                                animation: primaryAnimation,
+                                secondaryAnimation: secondaryAnimation,
+                                child: child,
+                              );
+                            },
+                        child: [
+                          const DashboardPage(),
+                          const ExplorePage(),
+                          const InboxPage(),
+                          const SettingsPage(),
+                        ][_index],
+                      ),
+                    ),
+                  ],
+                ),
+                // Unit Suggestion Overlay
+                Consumer<UnitSuggestionProvider>(
+                  builder: (context, provider, _) {
+                    final country = provider.suggestedCountry;
+                    if (country == null) return const SizedBox.shrink();
+
+                    return Positioned(
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      child: UnitSuggestionOverlay(
+                        countryCode: country,
+                        onDismiss: () => provider.dismissSuggestion(),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
