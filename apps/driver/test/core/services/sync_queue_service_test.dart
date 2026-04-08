@@ -6,6 +6,7 @@ import 'package:hive_flutter/hive_flutter.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path_provider_platform_interface/path_provider_platform_interface.dart';
+import 'package:connectivity_plus_platform_interface/connectivity_plus_platform_interface.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
 
 import 'package:milow/core/models/sync_operation.dart';
@@ -21,6 +22,19 @@ class FakePathProvider extends Fake
   Future<String?> getTemporaryPath() async => path;
   @override
   Future<String?> getApplicationDocumentsPath() async => path;
+}
+
+class FakeConnectivity extends Fake
+    with MockPlatformInterfaceMixin
+    implements ConnectivityPlatform {
+  @override
+  Future<List<ConnectivityResult>> checkConnectivity() async => [
+        ConnectivityResult.wifi,
+      ];
+
+  @override
+  Stream<List<ConnectivityResult>> get onConnectivityChanged =>
+      Stream.value([ConnectivityResult.wifi]);
 }
 
 class MockConnectivityService extends Mock implements ConnectivityService {}
@@ -72,6 +86,7 @@ void main() {
   setUpAll(() async {
     tempDir = await Directory.systemTemp.createTemp('sync_queue_test_');
     PathProviderPlatform.instance = FakePathProvider(tempDir.path);
+    ConnectivityPlatform.instance = FakeConnectivity();
     await Hive.initFlutter(tempDir.path);
     if (!Hive.isAdapterRegistered(1)) {
       Hive.registerAdapter(SyncOperationAdapter());

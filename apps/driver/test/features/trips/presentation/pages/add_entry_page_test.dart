@@ -144,15 +144,15 @@ void main() {
 
     final tripTab = find.byType(SingleChildScrollView).at(0);
     expect(
-      find.descendant(of: tripTab, matching: find.text('Trailer 1')),
+      find.descendant(of: tripTab, matching: find.text('Primary Trailer')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: tripTab, matching: find.text('Pickup Location')),
+      find.descendant(of: tripTab, matching: find.text('Stop 1')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: tripTab, matching: find.text('Delivery Location')),
+      find.descendant(of: tripTab, matching: find.text('Unload 1')),
       findsOneWidget,
     );
 
@@ -173,7 +173,7 @@ void main() {
     expect(
       find.descendant(
         of: tripTab,
-        matching: find.widgetWithText(TextField, 'Trailer 1'),
+        matching: find.widgetWithText(TextField, 'Primary Trailer'),
       ),
       findsOneWidget,
     );
@@ -189,14 +189,14 @@ void main() {
     expect(
       find.descendant(
         of: tripTab,
-        matching: find.widgetWithText(TextField, 'Trailer 1'),
+        matching: find.widgetWithText(TextField, 'Primary Trailer'),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: tripTab,
-        matching: find.widgetWithText(TextField, 'Trailer 2'),
+        matching: find.widgetWithText(TextField, 'Secondary Trailer'),
       ),
       findsOneWidget,
     );
@@ -213,14 +213,14 @@ void main() {
     expect(
       find.descendant(
         of: tripTab,
-        matching: find.widgetWithText(TextField, 'Trailer 1'),
+        matching: find.widgetWithText(TextField, 'Primary Trailer'),
       ),
       findsOneWidget,
     );
     expect(
       find.descendant(
         of: tripTab,
-        matching: find.widgetWithText(TextField, 'Trailer 2'),
+        matching: find.widgetWithText(TextField, 'Secondary Trailer'),
       ),
       findsNothing,
     );
@@ -242,7 +242,7 @@ void main() {
     expect(
       find.descendant(
         of: tripTab,
-        matching: find.widgetWithText(TextField, 'Pickup Location'),
+        matching: find.widgetWithText(TextField, 'Stop 1'),
       ),
       findsOneWidget,
     );
@@ -302,7 +302,7 @@ void main() {
     expect(
       find.descendant(
         of: tripTab,
-        matching: find.widgetWithText(TextField, 'Delivery Location'),
+        matching: find.widgetWithText(TextField, 'Unload 1'),
       ),
       findsOneWidget,
     );
