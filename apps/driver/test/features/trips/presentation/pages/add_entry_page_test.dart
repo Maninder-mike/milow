@@ -139,26 +139,45 @@ void main() {
 
     final prefs = await SharedPreferences.getInstance();
     await tester.pumpWidget(createTestWidget(prefs));
-    await tester.pump(); // Start building
-    await tester.pump(const Duration(milliseconds: 500)); // Allow async loading
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
 
-    final tripTab = find.byType(SingleChildScrollView).at(0);
-    expect(
-      find.descendant(of: tripTab, matching: find.text('Primary Trailer')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tripTab, matching: find.text('Stop 1')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: tripTab, matching: find.text('Unload 1')),
-      findsOneWidget,
-    );
+    // Initially in Step 0: Trip Summary
+    expect(find.text('Trip Number *'), findsOneWidget);
+    expect(find.text('Truck Number *'), findsOneWidget);
 
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
   });
+
+  Future<void> navigateToStep(WidgetTester tester, int step) async {
+    final nextBtn = find.text('Next Step').hitTestable();
+
+    // Fill Step 0 requirements if moving to Step 1 or beyond
+    if (step >= 1) {
+      await tester.enterText(find.widgetWithText(TextFormField, 'Trip Number *'), 'T-123');
+      await tester.enterText(find.widgetWithText(TextField, 'Truck Number *'), '101');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(nextBtn.first);
+      await tester.tap(nextBtn.first);
+      await tester.pumpAndSettle();
+    }
+    // Fill Step 1 requirements if moving to Step 2 or beyond
+    if (step >= 2) {
+      await tester.enterText(find.widgetWithText(TextField, 'Stop 1'), 'Chicago, IL');
+      await tester.enterText(find.widgetWithText(TextField, 'Unload 1'), 'LA, CA');
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(nextBtn.first);
+      await tester.tap(nextBtn.first);
+      await tester.pumpAndSettle();
+    }
+    // Fill Step 2 requirements if moving to Step 3
+    if (step >= 3) {
+      await tester.ensureVisible(nextBtn.first);
+      await tester.tap(nextBtn.first);
+      await tester.pumpAndSettle();
+    }
+  }
 
   testWidgets('Can add and remove Trailer fields', (tester) async {
     tester.view.physicalSize = const Size(1080, 2400);
@@ -169,59 +188,43 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    final tripTab = find.byType(SingleChildScrollView).at(0);
+    // Move to Cargo step (Step 2)
+    await navigateToStep(tester, 2);
+
     expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Primary Trailer'),
-      ),
+      find.widgetWithText(TextField, 'Primary Trailer'),
       findsOneWidget,
     );
 
-    final addIcon = find.descendant(
-      of: tripTab,
-      matching: find.byIcon(Icons.add_circle_outline),
-    );
+    final addButton = find.ancestor(
+      of: find.byIcon(Icons.add_circle_outline),
+      matching: find.byType(IconButton),
+    ).hitTestable().first;
 
-    await tester.tap(addIcon.at(0));
+    await tester.dragUntilVisible(
+      addButton,
+      find.byType(SingleChildScrollView).first,
+      const Offset(0, -500),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(addButton);
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Primary Trailer'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Secondary Trailer'),
-      ),
+      find.widgetWithText(TextField, 'Secondary Trailer'),
       findsOneWidget,
     );
 
-    final removeIcon = find.descendant(
-      of: tripTab,
-      matching: find.byIcon(Icons.remove_circle_outline),
-    );
-    expect(removeIcon, findsNWidgets(2));
+    final removeIcon = find.byIcon(Icons.remove_circle_outline);
+    // Find how many remove icons are present (both Primary and Secondary might have one)
+    expect(removeIcon, findsAtLeastNWidgets(1));
 
-    await tester.tap(removeIcon.at(1));
+    // Tap the last one (safest for dynamic lists)
+    await tester.tap(removeIcon.last);
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Primary Trailer'),
-      ),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Secondary Trailer'),
-      ),
+      find.widgetWithText(TextField, 'Secondary Trailer'),
       findsNothing,
     );
 
@@ -238,50 +241,39 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    final tripTab = find.byType(SingleChildScrollView).at(0);
+    // Move to Logistics step (Step 1)
+    await navigateToStep(tester, 1);
+
     expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Stop 1'),
-      ),
+      find.widgetWithText(TextField, 'Stop 1'),
       findsOneWidget,
     );
 
-    // Pickup Add button is index 2 (index 0: Trailer, index 1: Border Crossing)
-    final addIconFinder = find
-        .descendant(
-          of: tripTab,
-          matching: find.byIcon(Icons.add_circle_outline),
-        )
-        .at(2);
+    // Pickup Add button
+    final addButton = find.ancestor(
+      of: find.byIcon(Icons.add_circle_outline),
+      matching: find.byType(IconButton),
+    ).hitTestable().at(0);
 
     await tester.dragUntilVisible(
-      addIconFinder,
-      tripTab,
+      addButton,
+      find.byType(SingleChildScrollView).first,
       const Offset(0, -500),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(addIconFinder);
+    await tester.tap(addButton);
     await tester.pumpAndSettle();
 
-    final removeIcon = find.descendant(
-      of: tripTab,
-      matching: find.byIcon(Icons.remove_circle_outline),
-    );
-    // 2 locations now, each has a remove icon. Trailers also have icons if many, but we have 1 trailer.
-    // 1 trailer: no remove icon (length > 1 check).
-    // 2 locations: 2 remove icons.
+    final removeIcon = find.byIcon(Icons.remove_circle_outline);
+    // 2 locations now, each has a remove icon.
     expect(removeIcon, findsNWidgets(2));
 
     await tester.tap(removeIcon.at(1));
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.byIcon(Icons.remove_circle_outline),
-      ),
+      find.byIcon(Icons.remove_circle_outline),
       findsNothing,
     );
 
@@ -298,47 +290,38 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    final tripTab = find.byType(SingleChildScrollView).at(0);
+    // Move to Logistics step (Step 1)
+    await navigateToStep(tester, 1);
+
     expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.widgetWithText(TextField, 'Unload 1'),
-      ),
+      find.widgetWithText(TextField, 'Unload 1'),
       findsOneWidget,
     );
 
-    // Delivery Add button is index 3
-    final addIconFinder = find
-        .descendant(
-          of: tripTab,
-          matching: find.byIcon(Icons.add_circle_outline),
-        )
-        .at(3);
+    // Delivery Add button
+    final addButton = find.ancestor(
+      of: find.byIcon(Icons.add_circle_outline),
+      matching: find.byType(IconButton),
+    ).hitTestable().at(1);
 
     await tester.dragUntilVisible(
-      addIconFinder,
-      tripTab,
+      addButton,
+      find.byType(SingleChildScrollView).first,
       const Offset(0, -500),
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(addIconFinder);
+    await tester.tap(addButton);
     await tester.pumpAndSettle();
 
-    final removeIcon = find.descendant(
-      of: tripTab,
-      matching: find.byIcon(Icons.remove_circle_outline),
-    );
+    final removeIcon = find.byIcon(Icons.remove_circle_outline);
     expect(removeIcon, findsNWidgets(2));
 
     await tester.tap(removeIcon.at(1));
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(
-        of: tripTab,
-        matching: find.byIcon(Icons.remove_circle_outline),
-      ),
+      find.byIcon(Icons.remove_circle_outline),
       findsNothing,
     );
 

@@ -56,6 +56,16 @@ class MockSupabaseQueryBuilder extends Mock implements SupabaseQueryBuilder {
   ) {
     return MockPostgrestFilterBuilder();
   }
+
+  @override
+  PostgrestFilterBuilder<List<Map<String, dynamic>>> upsert(
+    Object values, {
+    String? onConflict,
+    bool ignoreDuplicates = false,
+    bool defaultToNull = true,
+  }) {
+    return MockPostgrestFilterBuilder();
+  }
 }
 
 class MockPostgrestFilterBuilder extends Mock
