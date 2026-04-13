@@ -308,6 +308,12 @@ class Announcements extends Table {
 @DriftDatabase(
   tables: [
     Trips,
+    FuelEntries,
+    DriverTruckInspections,
+    DriverTruckInspectionDefects,
+    InspectionDefectPhotos,
+    Loads,
+    Stops,
     DriverLocations,
     Messages,
     Announcements,

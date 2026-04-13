@@ -36,14 +36,14 @@ class AuthRepository {
         email: email,
         password: password,
       );
-      return const Right(null);
+      return right(null);
     } on AuthException catch (e) {
       if (e.message.contains('Invalid login credentials')) {
-        return Left(UnauthorizedFailure('Invalid email or password'));
+        return left(UnauthorizedFailure('Invalid email or password'));
       }
-      return Left(ServerFailure(e.message));
+      return left(ServerFailure(e.message));
     } catch (e) {
-      return Left(UnexpectedFailure('SignIn failed', originalError: e));
+      return left(UnexpectedFailure('SignIn failed', originalError: e));
     }
   }
 
@@ -59,20 +59,20 @@ class AuthRepository {
         emailRedirectTo: 'milow-admin://login',
         data: data,
       );
-      return const Right(null);
+      return right(null);
     } on AuthException catch (e) {
-      return Left(ServerFailure(e.message));
+      return left(ServerFailure(e.message));
     } catch (e) {
-      return Left(UnexpectedFailure('SignUp failed', originalError: e));
+      return left(UnexpectedFailure('SignUp failed', originalError: e));
     }
   }
 
   Future<Result<void>> signOut() async {
     try {
       await _client.supabase.auth.signOut();
-      return const Right(null);
+      return right(null);
     } catch (e) {
-      return Left(UnexpectedFailure('SignOut failed', originalError: e));
+      return left(UnexpectedFailure('SignOut failed', originalError: e));
     }
   }
 }

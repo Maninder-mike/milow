@@ -53,7 +53,7 @@ class TripRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Left(UnauthorizedFailure());
+    if (userId == null) return left(const UnauthorizedFailure());
 
     // Return cached data immediately
     final query = driverDatabase.select(driverDatabase.trips)
@@ -73,7 +73,7 @@ class TripRepository {
       unawaited(_refreshFromServer(userId, supabaseClient: supabaseClient));
     }
 
-    return Right(cached);
+    return right(cached);
   }
 
   /// Watch all trips for current user (reactive)
@@ -98,7 +98,7 @@ class TripRepository {
   static Future<Result<List<Trip>>> refresh({SupabaseClient? supabaseClient}) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Left(UnauthorizedFailure());
+    if (userId == null) return left(const UnauthorizedFailure());
 
     return await _refreshFromServer(userId, supabaseClient: supabaseClient);
   }
@@ -119,7 +119,7 @@ class TripRepository {
         final List<TripData> dataList = await (driverDatabase.select(
           driverDatabase.trips,
         )..where((t) => t.userId.equals(userId))).get();
-        return Right(dataList.map((d) => _fromData(d)).toList());
+        return right(dataList.map((d) => _fromData(d)).toList());
       },
       (serverTrips) async {
         // Get pending sync operations to prevent overwriting/deleting unsynced data
@@ -127,50 +127,50 @@ class TripRepository {
             .where((op) => op.tableName == 'driver_trips')
             .toList();
 
-      final pendingCreateIds = pendingOps
-          .where((op) => op.operationType == 'create')
-          .map((op) => op.localId)
-          .toSet();
+        final pendingCreateIds = pendingOps
+            .where((op) => op.operationType == 'create')
+            .map((op) => op.localId)
+            .toSet();
 
-      final pendingUpdateIds = pendingOps
-          .where((op) => op.operationType == 'update')
-          .map((op) => op.localId)
-          .toSet();
+        final pendingUpdateIds = pendingOps
+            .where((op) => op.operationType == 'update')
+            .map((op) => op.localId)
+            .toSet();
 
-      // Clear existing local cache for this user, BUT preserve pending creates
-      final existingData = await (driverDatabase.select(
-        driverDatabase.trips,
-      )..where((t) => t.userId.equals(userId))).get();
-      for (final data in existingData) {
-        // id is non-nullable in Drill generated classes, check is redundant
-
-        if (pendingCreateIds.contains(data.id) || pendingUpdateIds.contains(data.id)) {
-          continue;
-        }
-        await (driverDatabase.delete(
+        // Clear existing local cache for this user, BUT preserve pending creates
+        final existingData = await (driverDatabase.select(
           driverDatabase.trips,
-        )..where((t) => t.id.equals(data.id))).go();
-        // }
-      }
+        )..where((t) => t.userId.equals(userId))).get();
+        for (final data in existingData) {
+          // id is non-nullable in Drill generated classes, check is redundant
 
-      // Update local cache with server data, BUT respect pending updates
-      await driverDatabase.batch((batch) {
-        for (final trip in serverTrips) {
-          if (trip.id != null && pendingUpdateIds.contains(trip.id)) {
+          if (pendingCreateIds.contains(data.id) || pendingUpdateIds.contains(data.id)) {
             continue;
           }
-          batch.insert(
+          await (driverDatabase.delete(
             driverDatabase.trips,
-            _toCompanion(trip),
-            mode: InsertMode.insertOrReplace,
-          );
+          )..where((t) => t.id.equals(data.id))).go();
+          // }
         }
-      });
+
+        // Update local cache with server data, BUT respect pending updates
+        await driverDatabase.batch((batch) {
+          for (final trip in serverTrips) {
+            if (trip.id != null && pendingUpdateIds.contains(trip.id)) {
+              continue;
+            }
+            batch.insert(
+              driverDatabase.trips,
+              _toCompanion(trip),
+              mode: InsertMode.insertOrReplace,
+            );
+          }
+        });
 
         debugPrint(
           '[TripRepository] Refreshed ${serverTrips.length} trips from server',
         );
-        return Right(serverTrips);
+        return right(serverTrips);
       },
     );
   }
@@ -184,7 +184,7 @@ class TripRepository {
     final query = driverDatabase.select(driverDatabase.trips)
       ..where((t) => t.id.equals(tripId));
     final data = await query.getSingleOrNull();
-    if (data != null) return Right(_fromData(data));
+    if (data != null) return right(_fromData(data));
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
@@ -195,7 +195,7 @@ class TripRepository {
       );
     }
 
-    return const Right(null);
+    return right(null);
   }
 
   /// Create a new trip (offline-capable)
@@ -209,7 +209,7 @@ class TripRepository {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      return const Left(UnauthorizedFailure());
+      return left(const UnauthorizedFailure());
     }
 
     // Generate local ID if not present
@@ -241,7 +241,7 @@ class TripRepository {
     // Trigger background sync
     unawaited(syncQueueService.processQueue(supabaseClient: client));
 
-    return Right(localTrip);
+    return right(localTrip);
   }
 
   /// Update an existing trip (offline-capable)
@@ -252,11 +252,11 @@ class TripRepository {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      return const Left(UnauthorizedFailure());
+      return left(const UnauthorizedFailure());
     }
 
     if (trip.id == null) {
-      return const Left(ValidationFailure('Trip ID is required for update'));
+      return left(const ValidationFailure('Trip ID is required for update'));
     }
 
     // Update local cache immediately
@@ -281,7 +281,7 @@ class TripRepository {
     // Trigger background sync
     unawaited(syncQueueService.processQueue(supabaseClient: client));
 
-    return Right(updatedTrip);
+    return right(updatedTrip);
   }
 
   /// Delete a trip (offline-capable)
@@ -292,7 +292,7 @@ class TripRepository {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
     if (userId == null) {
-      return const Left(UnauthorizedFailure());
+      return left(const UnauthorizedFailure());
     }
 
     // Delete from local cache immediately
@@ -312,7 +312,7 @@ class TripRepository {
       },
       localId: tripId,
     );
-    return const Right(unit);
+    return right(unit);
   }
 
   /// Search trips (local search if offline, server if online)
@@ -322,7 +322,7 @@ class TripRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Left(UnauthorizedFailure());
+    if (userId == null) return left(const UnauthorizedFailure());
 
     if (connectivityService.isOnline) {
       final serverResult = await TripService.searchTrips(query, supabaseClient: client);
@@ -341,7 +341,7 @@ class TripRepository {
                       t.truckNumber.like(queryLower)),
             ))
             .get();
-    return Right(tripDataList.map((d) => _fromData(d)).toList());
+    return right(tripDataList.map((d) => _fromData(d)).toList());
   }
 
   static Future<Result<List<TripDocument>>> getSharedDocuments(
@@ -350,7 +350,7 @@ class TripRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Left(UnauthorizedFailure());
+    if (userId == null) return left(const UnauthorizedFailure());
 
     final result = await _getNetworkClient(client).query(() async {
       final response = await client
@@ -362,14 +362,14 @@ class TripRepository {
       return response;
     }, operationName: 'getSharedDocuments');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
         final docs = (data as List)
             .map((doc) => TripDocument.fromJson(doc as Map<String, dynamic>))
             .toList();
-        return Right(docs);
+        return right(docs);
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }
@@ -415,7 +415,7 @@ class TripRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Left(UnauthorizedFailure());
+    if (userId == null) return left(const UnauthorizedFailure());
 
     // 1. Check local cache first
     try {
@@ -426,7 +426,7 @@ class TripRepository {
         debugPrint(
           '[TripRepository] Resolved trip $tripNumber locally: ${localTrip.id}',
         );
-        return Right(localTrip.id);
+        return right(localTrip.id);
       }
     } catch (e) {
       debugPrint('[TripRepository] Local resolve warning: $e');
@@ -434,7 +434,7 @@ class TripRepository {
 
     // 2. Fallback to server if online
     if (!connectivityService.isOnline) {
-      return const Right(null);
+      return right(null);
     }
 
     return _getNetworkClient(client).query(() async {
@@ -458,9 +458,9 @@ class TripRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Left(UnauthorizedFailure());
+    if (userId == null) return left(const UnauthorizedFailure());
     if (tripId == null) {
-      return const Left(
+      return left(
         ValidationFailure(
           'A valid trip could not be found. Please ensure the trip is synced before attaching documents.',
         ),
@@ -539,9 +539,9 @@ class TripRepository {
           },
           localId: const Uuid().v4(),
         );
-        return const Right(null);
+        return right(null);
       } catch (e) {
-        return Left(CacheFailure(e.toString()));
+        return left(CacheFailure(e.toString()));
       }
     }
 
@@ -632,14 +632,14 @@ class TripRepository {
       return response;
     }, operationName: 'getDocuments');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
         final docs = (data as List)
             .map((doc) => TripDocument.fromJson(doc as Map<String, dynamic>))
             .toList();
-        return Right(docs);
+        return right(docs);
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }
@@ -668,21 +668,21 @@ class TripRepository {
   static Future<Result<Trip?>> getActiveTrip({SupabaseClient? supabaseClient}) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Right(null);
+    if (userId == null) return right(null);
 
     // Check locally first
     final query = driverDatabase.select(driverDatabase.trips)
       ..where((t) => t.userId.equals(userId) & t.endOdometer.isNull())
       ..limit(1);
     final data = await query.getSingleOrNull();
-    if (data != null) return Right(_fromData(data));
+    if (data != null) return right(_fromData(data));
 
     // Fallback to server if online
     if (connectivityService.isOnline) {
       return await TripService.getActiveTrip(supabaseClient: client);
     }
 
-    return const Right(null);
+    return right(null);
   }
 
   /// Clear local cache (for logout)

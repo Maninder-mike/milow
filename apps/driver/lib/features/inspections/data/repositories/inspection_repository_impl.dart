@@ -55,10 +55,10 @@ class InspectionRepositoryImpl implements IInspectionRepository {
         }
       }
 
-      return Right(grouped.values.toList());
+      return right(grouped.values.toList());
     } catch (e) {
       domain.AppLogger.error('Failed to get inspections', error: e);
-      return Left(domain.UnexpectedFailure(e.toString()));
+      return left(domain.UnexpectedFailure(e.toString()));
     }
   }
 
@@ -139,14 +139,14 @@ class InspectionRepositoryImpl implements IInspectionRepository {
       // 2. Attempt Async Sync to Supabase
       unawaited(_syncToSupabase(inspectionToSave));
 
-      return const Right(null);
+      return right(null);
     } catch (e, stack) {
       domain.AppLogger.error(
         'Failed to save inspection',
         error: e,
         stackTrace: stack,
       );
-      return Left(domain.UnexpectedFailure(e.toString()));
+      return left(domain.UnexpectedFailure(e.toString()));
     }
   }
 
@@ -173,10 +173,10 @@ class InspectionRepositoryImpl implements IInspectionRepository {
           syncedCount++;
         }
       }
-      return Right(syncedCount);
+      return right(syncedCount);
     } catch (e) {
       domain.AppLogger.error('Failed to sync pending inspections', error: e);
-      return Left(domain.UnexpectedFailure(e.toString()));
+      return left(domain.UnexpectedFailure(e.toString()));
     }
   }
 
@@ -292,10 +292,10 @@ class InspectionRepositoryImpl implements IInspectionRepository {
       );
 
       domain.AppLogger.info('Inspection synced successfully: ${inspection.id}');
-      return const Right(null);
+      return right(null);
     } catch (e) {
       domain.AppLogger.error('Sync failed', error: e);
-      return Left(domain.UnexpectedFailure(e.toString()));
+      return left(domain.UnexpectedFailure(e.toString()));
     }
   }
 
@@ -307,7 +307,7 @@ class InspectionRepositoryImpl implements IInspectionRepository {
         _db.driverTruckInspections,
       )..where((t) => t.id.equals(id))).getSingleOrNull();
 
-      if (inspection == null) return const Right(null);
+      if (inspection == null) return right(null);
 
       if (inspection.isSynced) {
         // 2a. Soft Delete locally
@@ -337,10 +337,10 @@ class InspectionRepositoryImpl implements IInspectionRepository {
           )..where((t) => t.id.equals(id))).go();
         });
       }
-      return const Right(null);
+      return right(null);
     } catch (e) {
       domain.AppLogger.error('Failed to delete inspection', error: e);
-      return Left(domain.UnexpectedFailure(e.toString()));
+      return left(domain.UnexpectedFailure(e.toString()));
     }
   }
 
@@ -394,10 +394,10 @@ class InspectionRepositoryImpl implements IInspectionRepository {
       // Attempt upload immediately
       unawaited(_uploadPhoto(file, fileName, photoId));
 
-      return const Right(null);
+      return right(null);
     } catch (e) {
       domain.AppLogger.error('Failed to save photo', error: e);
-      return Left(domain.UnexpectedFailure(e.toString()));
+      return left(domain.UnexpectedFailure(e.toString()));
     }
   }
 

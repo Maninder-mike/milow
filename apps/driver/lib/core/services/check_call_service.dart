@@ -98,10 +98,10 @@ class CheckCallService extends ChangeNotifier {
       _pendingCheckCalls.removeWhere((c) => c.id == checkCallId);
       notifyListeners();
       
-      return Right(CheckCall.fromJson(response));
+      return right(CheckCall.fromJson(response));
     } catch (e, stack) {
       await logger.error('CheckCallService', 'Error submitting response', error: e, stackTrace: stack);
-      return const Left(ServerFailure(
+      return left(const ServerFailure(
         'Failed to submit check-call response',
       ));
     }

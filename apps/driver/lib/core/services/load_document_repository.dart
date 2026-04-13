@@ -31,12 +31,12 @@ class LoadDocumentRepository {
     if (!forceRefresh) {
       final cached = LocalLoadDocumentStore.getForLoad(loadId);
       if (cached.isNotEmpty) {
-        return Right(cached);
+        return right(cached);
       }
     }
 
     if (!connectivityService.isOnline) {
-      return Right(LocalLoadDocumentStore.getForLoad(loadId));
+      return right(LocalLoadDocumentStore.getForLoad(loadId));
     }
 
     // Fetch from server
@@ -68,7 +68,7 @@ class LoadDocumentRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final userId = _getUserId(client);
-    if (userId == null) return const Left(UnauthorizedFailure());
+    if (userId == null) return left(const UnauthorizedFailure());
 
     final dateStr = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     final shortType = type.name.toUpperCase().substring(0, 3);
@@ -116,7 +116,7 @@ class LoadDocumentRepository {
         },
         localId: localId,
       );
-      return const Right(null);
+      return right(null);
     }
 
     return _getNetworkClient(client).query(() async {

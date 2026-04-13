@@ -303,7 +303,7 @@ class LoadRepository {
     DateTime? expiresAt,
   }) async {
     final user = _client.supabase.auth.currentUser;
-    if (user == null) return const Left(UnauthorizedFailure());
+    if (user == null) return left(UnauthorizedFailure());
 
     return _client.query<CheckCall>(() async {
       // Get company_id from load

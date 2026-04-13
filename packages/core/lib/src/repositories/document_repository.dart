@@ -29,14 +29,14 @@ class DocumentRepository {
       return response;
     }, operationName: 'getDocumentsForUser');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
         final docs = (data as List)
             .map((json) => TripDocument.fromJson(json))
             .toList();
-        return Right(docs);
+        return right(docs);
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }
@@ -52,7 +52,7 @@ class DocumentRepository {
     final user = client.auth.currentUser;
 
     if (user == null) {
-      return Left(UnauthorizedFailure('User not authenticated'));
+      return left(UnauthorizedFailure('User not authenticated'));
     }
 
     // Since we want to use the document_reviews table for audit,
@@ -86,11 +86,11 @@ class DocumentRepository {
       return updatedDoc;
     }, operationName: 'updateDocumentStatus');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
-        return Right(TripDocument.fromJson(data));
+        return right(TripDocument.fromJson(data));
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }

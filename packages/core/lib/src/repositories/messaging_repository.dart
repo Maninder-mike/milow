@@ -31,14 +31,14 @@ class MessagingRepository {
       return response;
     }, operationName: 'getLoadMessages');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
         final messages = (data as List)
             .map((json) => Message.fromJson(json))
             .toList();
-        return Right(messages);
+        return right(messages);
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }
@@ -49,7 +49,7 @@ class MessagingRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final myId = client.auth.currentUser?.id;
-    if (myId == null) return Left(UnauthorizedFailure('Not authenticated'));
+    if (myId == null) return left(UnauthorizedFailure('Not authenticated'));
 
     final result = await _getNetworkClient(client).query(() async {
       // This is a simplified approach: fetch latest messages where user is sender or receiver
@@ -64,7 +64,7 @@ class MessagingRepository {
       return response;
     }, operationName: 'getConversations');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
         final messages = (data as List)
             .map((json) => Message.fromJson(json))
@@ -81,9 +81,9 @@ class MessagingRepository {
           }
         }
 
-        return Right(latestMessages.values.toList());
+        return right(latestMessages.values.toList());
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }
@@ -95,7 +95,7 @@ class MessagingRepository {
   }) async {
     final client = _getClient(supabaseClient);
     final myId = client.auth.currentUser?.id;
-    if (myId == null) return Left(UnauthorizedFailure('Not authenticated'));
+    if (myId == null) return left(UnauthorizedFailure('Not authenticated'));
 
     final result = await _getNetworkClient(client).query(() async {
       final response = await client
@@ -110,14 +110,14 @@ class MessagingRepository {
       return response;
     }, operationName: 'getDirectMessages');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
         final messages = (data as List)
             .map((json) => Message.fromJson(json))
             .toList();
-        return Right(messages);
+        return right(messages);
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }
@@ -135,7 +135,7 @@ class MessagingRepository {
     final user = client.auth.currentUser;
 
     if (user == null) {
-      return Left(UnauthorizedFailure('User not authenticated'));
+      return left(UnauthorizedFailure('User not authenticated'));
     }
 
     final messageData = {
@@ -158,11 +158,11 @@ class MessagingRepository {
       return response;
     }, operationName: 'sendMessage');
 
-    return result.fold((failure) => Left(failure), (data) {
+    return result.fold((failure) => left(failure), (data) {
       try {
-        return Right(Message.fromJson(data));
+        return right(Message.fromJson(data));
       } catch (e) {
-        return Left(ParsingFailure(e.toString()));
+        return left(ParsingFailure(e.toString()));
       }
     });
   }
