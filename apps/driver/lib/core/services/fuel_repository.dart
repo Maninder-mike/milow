@@ -116,12 +116,18 @@ class FuelRepository {
               .map((op) => op.localId)
               .toSet();
 
-          // Clear existing local cache for this user, except for pending creations
+          final pendingUpdateIds = syncQueueService.pendingOperations
+              .where((op) => op.tableName == 'fuel_entries' && op.operationType == 'update')
+              .map((op) => op.localId)
+              .toSet();
+
+          // Clear existing local cache for this user, except for pending creations and updates
           var deleteQuery = driverDatabase.delete(driverDatabase.fuelEntries)
             ..where((f) => f.userId.equals(userId));
 
-          if (pendingCreateIds.isNotEmpty) {
-            deleteQuery = deleteQuery..where((f) => f.id.isNotIn(pendingCreateIds.toList()));
+          final idsToPreserve = {...pendingCreateIds, ...pendingUpdateIds};
+          if (idsToPreserve.isNotEmpty) {
+            deleteQuery = deleteQuery..where((f) => f.id.isNotIn(idsToPreserve.toList()));
           }
 
           await deleteQuery.go();
@@ -129,6 +135,9 @@ class FuelRepository {
           // Update local cache with server data
           await driverDatabase.batch((batch) {
             for (final entry in serverEntries) {
+              if (entry.id != null && pendingUpdateIds.contains(entry.id)) {
+                continue;
+              }
               batch.insert(
                 driverDatabase.fuelEntries,
                 _toCompanion(entry),

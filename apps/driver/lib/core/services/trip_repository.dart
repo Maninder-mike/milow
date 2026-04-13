@@ -144,7 +144,7 @@ class TripRepository {
       for (final data in existingData) {
         // id is non-nullable in Drill generated classes, check is redundant
 
-        if (pendingCreateIds.contains(data.id)) {
+        if (pendingCreateIds.contains(data.id) || pendingUpdateIds.contains(data.id)) {
           continue;
         }
         await (driverDatabase.delete(
