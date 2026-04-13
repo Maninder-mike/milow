@@ -103,76 +103,80 @@ class TripRepository {
     return await _refreshFromServer(userId, supabaseClient: supabaseClient);
   }
 
+  static final _refreshLock = AsyncMutex();
+
   static Future<Result<List<Trip>>> _refreshFromServer(
     String userId, {
     SupabaseClient? supabaseClient,
   }) async {
-    final serverResult = await TripService.getTrips(
-      coalesceKey: 'trips:$userId',
-      supabaseClient: supabaseClient,
-    );
+    return _refreshLock.synchronized(() async {
+      final serverResult = await TripService.getTrips(
+        coalesceKey: 'trips:$userId',
+        supabaseClient: supabaseClient,
+      );
 
-    return serverResult.fold(
-      (failure) async {
-        debugPrint('[TripRepository] Failed to refresh: $failure');
-        // Return cached data on failure
-        final List<TripData> dataList = await (driverDatabase.select(
-          driverDatabase.trips,
-        )..where((t) => t.userId.equals(userId))).get();
-        return right(dataList.map((d) => _fromData(d)).toList());
-      },
-      (serverTrips) async {
-        // Get pending sync operations to prevent overwriting/deleting unsynced data
-        final pendingOps = syncQueueService.pendingOperations
-            .where((op) => op.tableName == 'driver_trips')
-            .toList();
-
-        final pendingCreateIds = pendingOps
-            .where((op) => op.operationType == 'create')
-            .map((op) => op.localId)
-            .toSet();
-
-        final pendingUpdateIds = pendingOps
-            .where((op) => op.operationType == 'update')
-            .map((op) => op.localId)
-            .toSet();
-
-        // Clear existing local cache for this user, BUT preserve pending creates
-        final existingData = await (driverDatabase.select(
-          driverDatabase.trips,
-        )..where((t) => t.userId.equals(userId))).get();
-        for (final data in existingData) {
-          // id is non-nullable in Drill generated classes, check is redundant
-
-          if (pendingCreateIds.contains(data.id) || pendingUpdateIds.contains(data.id)) {
-            continue;
-          }
-          await (driverDatabase.delete(
+      return serverResult.fold(
+        (failure) async {
+          debugPrint('[TripRepository] Failed to refresh: $failure');
+          // Return cached data on failure
+          final List<TripData> dataList = await (driverDatabase.select(
             driverDatabase.trips,
-          )..where((t) => t.id.equals(data.id))).go();
-          // }
-        }
+          )..where((t) => t.userId.equals(userId))).get();
+          return right(dataList.map((d) => _fromData(d)).toList());
+        },
+        (serverTrips) async {
+          // Get pending sync operations to prevent overwriting/deleting unsynced data
+          final pendingOps = syncQueueService.pendingOperations
+              .where((op) => op.tableName == 'driver_trips')
+              .toList();
 
-        // Update local cache with server data, BUT respect pending updates
-        await driverDatabase.batch((batch) {
-          for (final trip in serverTrips) {
-            if (trip.id != null && pendingUpdateIds.contains(trip.id)) {
+          final pendingCreateIds = pendingOps
+              .where((op) => op.operationType == 'create')
+              .map((op) => op.localId)
+              .toSet();
+
+          final pendingUpdateIds = pendingOps
+              .where((op) => op.operationType == 'update')
+              .map((op) => op.localId)
+              .toSet();
+
+          // Clear existing local cache for this user, BUT preserve pending creates
+          final existingData = await (driverDatabase.select(
+            driverDatabase.trips,
+          )..where((t) => t.userId.equals(userId))).get();
+          for (final data in existingData) {
+            // id is non-nullable in Drill generated classes, check is redundant
+
+            if (pendingCreateIds.contains(data.id) || pendingUpdateIds.contains(data.id)) {
               continue;
             }
-            batch.insert(
+            await (driverDatabase.delete(
               driverDatabase.trips,
-              _toCompanion(trip),
-              mode: InsertMode.insertOrReplace,
-            );
+            )..where((t) => t.id.equals(data.id))).go();
+            // }
           }
-        });
 
-        debugPrint(
-          '[TripRepository] Refreshed ${serverTrips.length} trips from server',
-        );
-        return right(serverTrips);
-      },
-    );
+          // Update local cache with server data, BUT respect pending updates
+          await driverDatabase.batch((batch) {
+            for (final trip in serverTrips) {
+              if (trip.id != null && pendingUpdateIds.contains(trip.id)) {
+                continue;
+              }
+              batch.insert(
+                driverDatabase.trips,
+                _toCompanion(trip),
+                mode: InsertMode.insertOrReplace,
+              );
+            }
+          });
+
+          debugPrint(
+            '[TripRepository] Refreshed ${serverTrips.length} trips from server',
+          );
+          return right(serverTrips);
+        },
+      );
+    });
   }
 
   /// Get a single trip by ID (local-first)
@@ -260,7 +264,8 @@ class TripRepository {
     }
 
     // Update local cache immediately
-    final updatedTrip = trip.copyWith(updatedAt: DateTime.now());
+    final now = DateTime.now();
+    final updatedTrip = trip.copyWith(updatedAt: now);
 
     await (driverDatabase.update(driverDatabase.trips)
           ..where((t) => t.id.equals(trip.id!)))
@@ -269,7 +274,6 @@ class TripRepository {
 
     // Queue sync operation
     final payload = updatedTrip.toJson();
-    payload['updated_at'] = DateTime.now().toIso8601String();
 
     await syncQueueService.enqueue(
       tableName: 'driver_trips',
@@ -461,7 +465,7 @@ class TripRepository {
     if (userId == null) return left(const UnauthorizedFailure());
     if (tripId == null) {
       return left(
-        ValidationFailure(
+        const ValidationFailure(
           'A valid trip could not be found. Please ensure the trip is synced before attaching documents.',
         ),
       );
@@ -688,7 +692,6 @@ class TripRepository {
   /// Clear local cache (for logout)
   static Future<void> clearCache() async {
     await driverDatabase.delete(driverDatabase.trips).go();
-    await driverDatabase.delete(driverDatabase.fuelEntries).go();
   }
 
   static Trip _fromData(TripData data) {

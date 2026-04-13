@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:milow/core/models/border_wait_time.dart';
 import 'package:milow/core/services/border_wait_time_service.dart';
 import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/services/data_prefetch_service.dart';
 
 class BorderCrossingSelector extends StatefulWidget {
   const BorderCrossingSelector({super.key});
@@ -78,6 +79,9 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
       }
       await BorderWaitTimeService.addBorderCrossing(port);
     }
+    // Clear prefetch cache so dashboard fetches new selections
+    DataPrefetchService.instance.clearBorderWaitTimesCache();
+    
     final saved = await BorderWaitTimeService.getSavedBorderCrossings();
     setState(() => _savedCrossings = saved);
   }
@@ -227,6 +231,9 @@ class _BorderCrossingSelectorState extends State<BorderCrossingSelector> {
                               await BorderWaitTimeService.removeBorderCrossing(
                                 saved.uniqueId,
                               );
+                              // Clear prefetch cache
+                              DataPrefetchService.instance.clearBorderWaitTimesCache();
+                              
                               final savedList =
                                   await BorderWaitTimeService.getSavedBorderCrossings();
                               setState(() => _savedCrossings = savedList);

@@ -17,6 +17,13 @@ class BorderWaitTimeService {
 
   static List<BorderWaitTime>? _cachedData;
   static DateTime? _lastFetchTime;
+  
+  /// Notifier to alert listeners (like the Dashboard) when saved crossings change
+  static final ValueNotifier<int> savedCrossingsNotifier = ValueNotifier<int>(0);
+  
+  static void _notifyCrossingsChanged() {
+    savedCrossingsNotifier.value++;
+  }
 
   /// Fetch all border wait times from CBP API
   /// Returns cached data if less than 5 minutes old
@@ -116,6 +123,7 @@ class BorderWaitTimeService {
     final limited = crossings.take(_maxSavedBorders).toList();
     final jsonList = limited.map((c) => json.encode(c.toJson())).toList();
     await prefs.setStringList(_savedBordersKey, jsonList);
+    _notifyCrossingsChanged();
   }
 
   /// Get user's saved border crossings

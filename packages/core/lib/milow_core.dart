@@ -46,6 +46,7 @@ export 'src/services/remote_config_service.dart';
 
 // Utils
 export 'src/utils/app_dialogs.dart';
+export 'src/utils/async_mutex.dart';
 export 'src/utils/failure.dart';
 
 // Mapping

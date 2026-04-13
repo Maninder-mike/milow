@@ -2796,6 +2796,17 @@ class MockSupabaseStorageClient extends _i1.Mock
   );
 
   @override
+  _i2.SupabaseStorageClient setHeader(String? key, String? value) =>
+      (super.noSuchMethod(
+            Invocation.method(#setHeader, [key, value]),
+            returnValue: _FakeSupabaseStorageClient_1(
+              this,
+              Invocation.method(#setHeader, [key, value]),
+            ),
+          )
+          as _i2.SupabaseStorageClient);
+
+  @override
   _i4.Future<List<_i2.Bucket>> listBuckets() =>
       (super.noSuchMethod(
             Invocation.method(#listBuckets, []),
@@ -2895,6 +2906,17 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
             returnValue: <String, String>{},
           )
           as Map<String, String>);
+
+  @override
+  _i2.StorageFileApi setHeader(String? key, String? value) =>
+      (super.noSuchMethod(
+            Invocation.method(#setHeader, [key, value]),
+            returnValue: _FakeStorageFileApi_30(
+              this,
+              Invocation.method(#setHeader, [key, value]),
+            ),
+          )
+          as _i2.StorageFileApi);
 
   @override
   _i4.Future<String> upload(
@@ -3209,9 +3231,14 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   _i4.Future<_i11.Uint8List> download(
     String? path, {
     _i2.TransformOptions? transform,
+    Map<String, String>? queryParams,
   }) =>
       (super.noSuchMethod(
-            Invocation.method(#download, [path], {#transform: transform}),
+            Invocation.method(
+              #download,
+              [path],
+              {#transform: transform, #queryParams: queryParams},
+            ),
             returnValue: _i4.Future<_i11.Uint8List>.value(_i11.Uint8List(0)),
           )
           as _i4.Future<_i11.Uint8List>);
@@ -3423,4 +3450,95 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
             ),
           )
           as _i4.Future<_i7.Either<_i8.Failure, String?>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, List<_i3.LoadDocument>>>
+  fetchDocumentsForLoad(String? loadId) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchDocumentsForLoad, [loadId]),
+            returnValue:
+                _i4.Future<
+                  _i7.Either<_i8.Failure, List<_i3.LoadDocument>>
+                >.value(
+                  _i6.dummyValue<
+                    _i7.Either<_i8.Failure, List<_i3.LoadDocument>>
+                  >(this, Invocation.method(#fetchDocumentsForLoad, [loadId])),
+                ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, List<_i3.LoadDocument>>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, List<_i3.CheckCall>>>
+  fetchCheckCallsForLoad(String? loadId) =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchCheckCallsForLoad, [loadId]),
+            returnValue:
+                _i4.Future<_i7.Either<_i8.Failure, List<_i3.CheckCall>>>.value(
+                  _i6.dummyValue<_i7.Either<_i8.Failure, List<_i3.CheckCall>>>(
+                    this,
+                    Invocation.method(#fetchCheckCallsForLoad, [loadId]),
+                  ),
+                ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, List<_i3.CheckCall>>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, _i3.CheckCall>> createCheckCall({
+    required String? loadId,
+    required String? driverId,
+    required _i3.CheckCallType? type,
+    required String? prompt,
+    Map<String, dynamic>? options,
+    DateTime? expiresAt,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#createCheckCall, [], {
+              #loadId: loadId,
+              #driverId: driverId,
+              #type: type,
+              #prompt: prompt,
+              #options: options,
+              #expiresAt: expiresAt,
+            }),
+            returnValue:
+                _i4.Future<_i7.Either<_i8.Failure, _i3.CheckCall>>.value(
+                  _i6.dummyValue<_i7.Either<_i8.Failure, _i3.CheckCall>>(
+                    this,
+                    Invocation.method(#createCheckCall, [], {
+                      #loadId: loadId,
+                      #driverId: driverId,
+                      #type: type,
+                      #prompt: prompt,
+                      #options: options,
+                      #expiresAt: expiresAt,
+                    }),
+                  ),
+                ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, _i3.CheckCall>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, void>> updateDocumentStatus(
+    String? documentId,
+    String? status, {
+    String? rejectionReason,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #updateDocumentStatus,
+              [documentId, status],
+              {#rejectionReason: rejectionReason},
+            ),
+            returnValue: _i4.Future<_i7.Either<_i8.Failure, void>>.value(
+              _i6.dummyValue<_i7.Either<_i8.Failure, void>>(
+                this,
+                Invocation.method(
+                  #updateDocumentStatus,
+                  [documentId, status],
+                  {#rejectionReason: rejectionReason},
+                ),
+              ),
+            ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, void>>);
 }

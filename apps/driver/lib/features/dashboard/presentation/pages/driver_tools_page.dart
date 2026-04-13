@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/services/geofence_service.dart';
+import 'package:milow/core/services/preferences_service.dart';
+import 'package:provider/provider.dart';
 import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
 
 class DriverToolsPage extends StatefulWidget {
@@ -34,6 +36,8 @@ class _DriverToolsPageState extends State<DriverToolsPage> {
   @override
   Widget build(BuildContext context) {
     final textColor = Theme.of(context).colorScheme.onSurface;
+    final prefService = context.watch<PreferencesService>();
+    final realTimeBorders = prefService.getRealTimeBorders();
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
@@ -149,6 +153,20 @@ class _DriverToolsPageState extends State<DriverToolsPage> {
                   builder: (_) => const BorderCrossingSelector(),
                 ),
               ),
+            ),
+            _buildToolItem(
+              icon: Icons.bolt_rounded,
+              title: 'Real-time Wait Times',
+              subtitle: 'Poll more frequently for fresh data',
+              iconColor: Colors.amber,
+              trailing: Switch.adaptive(
+                value: realTimeBorders,
+                activeTrackColor: Theme.of(context).colorScheme.primary,
+                onChanged: (value) async {
+                  await prefService.setRealTimeBorders(value);
+                },
+              ),
+              onTap: null,
             ),
             _buildDivider(),
             Padding(

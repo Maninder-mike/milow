@@ -124,15 +124,43 @@ class _DashboardPageState extends State<DashboardPage>
       }
     });
 
-    // Refresh border wait times every 5 minutes
+    // Start background refresh timer
+    _startBorderRefreshTimer();
+
+    // Listen for manual settings/selection changes
+    BorderWaitTimeService.savedCrossingsNotifier.addListener(_onBordersChanged);
+    
+    // Listen for preference changes (real-time toggle)
+    context.read<PreferencesService>().addListener(_startBorderRefreshTimer);
+  }
+
+  void _onBordersChanged() {
+    if (mounted) {
+      _loadBorderWaitTimes(forceRefresh: true);
+    }
+  }
+
+  void _startBorderRefreshTimer() {
+    _borderRefreshTimer?.cancel();
+
+    // Determine interval based on user preference
+    final prefService = context.read<PreferencesService>();
+    final isRealTime = prefService.getRealTimeBorders();
+    final interval = isRealTime ? 2 : 5;
+
+    debugPrint('[BWT] Starting refresh timer: every $interval minutes');
+
     _borderRefreshTimer = Timer.periodic(
-      const Duration(minutes: 5),
+      Duration(minutes: interval),
       (_) => _loadBorderWaitTimes(forceRefresh: true),
     );
   }
 
   @override
   void dispose() {
+    BorderWaitTimeService.savedCrossingsNotifier
+        .removeListener(_onBordersChanged);
+    context.read<PreferencesService>().removeListener(_startBorderRefreshTimer);
     _borderRefreshTimer?.cancel();
     _notificationSubscription?.cancel();
     _incomingSubscription?.cancel();

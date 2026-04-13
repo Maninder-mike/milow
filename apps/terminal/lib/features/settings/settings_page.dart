@@ -32,8 +32,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             (profile['email']?.contains('admin') ?? false));
 
     return NavigationView(
-      appBar: NavigationAppBar(
-        automaticallyImplyLeading: false,
+      titleBar: TitleBar(
         title: Text(
           'Settings',
           style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
@@ -42,7 +41,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       pane: NavigationPane(
         selected: _currentIndex,
         onChanged: (index) => setState(() => _currentIndex = index),
-        displayMode: PaneDisplayMode.open,
+        displayMode: PaneDisplayMode.expanded,
         items: [
           PaneItem(
             icon: const Icon(FluentIcons.settings_24_regular),

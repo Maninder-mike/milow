@@ -12,6 +12,9 @@ on:
       - ".github/workflows/android_play_store.yml"
   workflow_dispatch:
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # -----------------------------------------------------------------------------
   # Job 1: Quality Check (Tests, Lint, Audit)

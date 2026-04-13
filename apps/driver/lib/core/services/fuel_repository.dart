@@ -87,74 +87,78 @@ class FuelRepository {
     return await _refreshFromServer(userId, supabaseClient: client);
   }
 
+  static final _refreshLock = AsyncMutex();
+
   static Future<Result<List<FuelEntry>>> _refreshFromServer(
     String userId, {
     SupabaseClient? supabaseClient,
   }) async {
-    final client = _getClient(supabaseClient);
-    final serverResult = await FuelService.getFuelEntries(
-      supabaseClient: client,
-    );
-    
-    return serverResult.fold(
-      (failure) async {
-         debugPrint('[FuelRepository] Failed to refresh: $failure');
-         try {
-           final List<FuelEntryData> dataList = await (driverDatabase.select(
-             driverDatabase.fuelEntries,
-           )..where((f) => f.userId.equals(userId))).get();
-           return right(dataList.map((d) => _fromData(d)).toList());
-         } catch(e, stack) {
-           return left(CacheFailure('Failed to load local fallback fuel entries', stack));
-         }
-      },
-      (serverEntries) async {
-        try {
-          // We don't delete locally added entries that haven't synced yet (those in sync_queue)
-          final pendingCreateIds = syncQueueService.pendingOperations
-              .where((op) => op.tableName == 'fuel_entries' && op.operationType == 'create')
-              .map((op) => op.localId)
-              .toSet();
+    return _refreshLock.synchronized(() async {
+      final client = _getClient(supabaseClient);
+      final serverResult = await FuelService.getFuelEntries(
+        supabaseClient: client,
+      );
 
-          final pendingUpdateIds = syncQueueService.pendingOperations
-              .where((op) => op.tableName == 'fuel_entries' && op.operationType == 'update')
-              .map((op) => op.localId)
-              .toSet();
+      return serverResult.fold(
+        (failure) async {
+           debugPrint('[FuelRepository] Failed to refresh: $failure');
+           try {
+             final List<FuelEntryData> dataList = await (driverDatabase.select(
+               driverDatabase.fuelEntries,
+             )..where((f) => f.userId.equals(userId))).get();
+             return right(dataList.map((d) => _fromData(d)).toList());
+           } catch(e, stack) {
+             return left(CacheFailure('Failed to load local fallback fuel entries', stack));
+           }
+        },
+        (serverEntries) async {
+          try {
+            // We don't delete locally added entries that haven't synced yet (those in sync_queue)
+            final pendingCreateIds = syncQueueService.pendingOperations
+                .where((op) => op.tableName == 'fuel_entries' && op.operationType == 'create')
+                .map((op) => op.localId)
+                .toSet();
 
-          // Clear existing local cache for this user, except for pending creations and updates
-          var deleteQuery = driverDatabase.delete(driverDatabase.fuelEntries)
-            ..where((f) => f.userId.equals(userId));
+            final pendingUpdateIds = syncQueueService.pendingOperations
+                .where((op) => op.tableName == 'fuel_entries' && op.operationType == 'update')
+                .map((op) => op.localId)
+                .toSet();
 
-          final idsToPreserve = {...pendingCreateIds, ...pendingUpdateIds};
-          if (idsToPreserve.isNotEmpty) {
-            deleteQuery = deleteQuery..where((f) => f.id.isNotIn(idsToPreserve.toList()));
-          }
+            // Clear existing local cache for this user, except for pending creations and updates
+            var deleteQuery = driverDatabase.delete(driverDatabase.fuelEntries)
+              ..where((f) => f.userId.equals(userId));
 
-          await deleteQuery.go();
-
-          // Update local cache with server data
-          await driverDatabase.batch((batch) {
-            for (final entry in serverEntries) {
-              if (entry.id != null && pendingUpdateIds.contains(entry.id)) {
-                continue;
-              }
-              batch.insert(
-                driverDatabase.fuelEntries,
-                _toCompanion(entry),
-                mode: InsertMode.insertOrReplace,
-              );
+            final idsToPreserve = {...pendingCreateIds, ...pendingUpdateIds};
+            if (idsToPreserve.isNotEmpty) {
+              deleteQuery = deleteQuery..where((f) => f.id.isNotIn(idsToPreserve.toList()));
             }
-          });
 
-          debugPrint(
-            '[FuelRepository] Refreshed ${serverEntries.length} entries from server',
-          );
-          return right(serverEntries);
-        } catch (e, stack) {
-           return left(CacheFailure('Failed to write refreshed fuel data to cache', stack));
+            await deleteQuery.go();
+
+            // Update local cache with server data
+            await driverDatabase.batch((batch) {
+              for (final entry in serverEntries) {
+                if (entry.id != null && pendingUpdateIds.contains(entry.id)) {
+                  continue;
+                }
+                batch.insert(
+                  driverDatabase.fuelEntries,
+                  _toCompanion(entry),
+                  mode: InsertMode.insertOrReplace,
+                );
+              }
+            });
+
+            debugPrint(
+              '[FuelRepository] Refreshed ${serverEntries.length} entries from server',
+            );
+            return right(serverEntries);
+          } catch (e, stack) {
+             return left(CacheFailure('Failed to write refreshed fuel data to cache', stack));
+          }
         }
-      }
-    );
+      );
+    });
   }
 
   /// Get a single fuel entry by ID (local-first)
@@ -251,7 +255,8 @@ class FuelRepository {
 
     try {
       // Update local cache immediately
-      final updatedEntry = entry.copyWith(updatedAt: DateTime.now());
+      final now = DateTime.now();
+      final updatedEntry = entry.copyWith(updatedAt: now);
 
       await (driverDatabase.update(driverDatabase.fuelEntries)
             ..where((f) => f.id.equals(updatedEntry.id!)))
@@ -260,7 +265,6 @@ class FuelRepository {
 
       // Queue sync operation
       final payload = updatedEntry.toJson();
-      payload['updated_at'] = DateTime.now().toIso8601String();
 
       await syncQueueService.enqueue(
         tableName: 'fuel_entries',

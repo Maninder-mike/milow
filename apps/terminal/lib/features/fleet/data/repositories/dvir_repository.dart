@@ -52,18 +52,24 @@ class DVIRRepository {
     required DVIRInspectionType inspectionType,
     required bool isSafeToOperate,
     int? odometer,
+    String? trailerId,
+    String? location,
     List<DVIRDefect> defects = const [],
     String? notes,
     String? driverSignatureUrl,
   }) async {
     return _client.query<DVIRReport>(() async {
       final currentUser = _client.supabase.auth.currentUser;
+      final session = _client.supabase.auth.currentSession;
+      final companyId = session?.user.appMetadata['company_id'];
 
       final data = await _client.supabase
           .from('dvir_reports')
           .insert({
             'vehicle_id': vehicleId,
+            'trailer_id': trailerId,
             'driver_id': currentUser?.id,
+            'company_id': companyId,
             'inspection_type': inspectionType == DVIRInspectionType.preTrip
                 ? 'pre_trip'
                 : 'post_trip',
@@ -72,6 +78,7 @@ class DVIRRepository {
             'defects': defects.map((d) => d.toJson()).toList(),
             'is_safe_to_operate': isSafeToOperate,
             'driver_signature_url': driverSignatureUrl,
+            'location': location,
             'notes': notes,
           })
           .select()

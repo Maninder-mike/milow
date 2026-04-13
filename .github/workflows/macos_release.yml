@@ -5,6 +5,9 @@ on:
     branches:
       - beta
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   # -----------------------------------------------------------------------------
   # Job 1: Quality Check (Tests, Lint)

@@ -15,6 +15,7 @@ class PreferencesService extends ChangeNotifier {
   static const String _currencyKey = 'currency_pref';
   static const String _lastDetectedCountryKey = 'last_detected_country';
   static const String _countryDetectedAtKey = 'country_detected_at';
+  static const String _realTimeBordersKey = 'real_time_borders';
 
   final SharedPreferences _prefs;
 
@@ -76,6 +77,16 @@ class PreferencesService extends ChangeNotifier {
 
   Future<void> setAutoUpdateUnits(bool value) async {
     await _prefs.setBool(_autoUpdateUnitsKey, value);
+    notifyListeners();
+  }
+
+  // Real-time Border Wait Times preference
+  bool getRealTimeBorders() {
+    return _prefs.getBool(_realTimeBordersKey) ?? false;
+  }
+
+  Future<void> setRealTimeBorders(bool value) async {
+    await _prefs.setBool(_realTimeBordersKey, value);
     notifyListeners();
   }
 

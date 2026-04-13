@@ -33,6 +33,7 @@ class SyncQueueService {
   Box<SyncOperation>? _box;
   final _statusController = StreamController<SyncStatusInfo>.broadcast();
   StreamSubscription<bool>? _connectivitySubscription;
+  Timer? _retryTimer;
   bool _isProcessing = false;
 
   /// Stream of sync status updates
@@ -79,6 +80,13 @@ class SyncQueueService {
       _emitStatus();
     }
 
+    // Attempt periodic retry for pending operations every 60 seconds
+    _retryTimer = Timer.periodic(const Duration(seconds: 60), (_) {
+      if (connectivityService.isOnline && !_isProcessing && pendingCount > 0) {
+        unawaited(processQueue());
+      }
+    });
+
     debugPrint('[SyncQueueService] Initialized, pending: $pendingCount');
   }
 
@@ -90,6 +98,38 @@ class SyncQueueService {
     required String localId,
   }) async {
     final box = _ensureBox;
+
+    // Dedup: find existing pending op for this record
+    final existing = box.values.where(
+      (op) => op.localId == localId &&
+              op.tableName == tableName &&
+              op.status == 'pending',
+    ).toList();
+
+    if (operationType == 'delete') {
+      // Remove all pending ops for this record — the delete supersedes them
+      for (final op in existing) {
+        await box.delete(op.key);
+      }
+    } else if (existing.isNotEmpty) {
+      // Coalesce: update the existing op's payload instead of creating a new one
+      final target = existing.first;
+      target.payload = json.encode(payload);
+      target.operationType =
+          operationType == 'create' && target.operationType == 'create'
+              ? 'create' // Keep as create if it was originally a create
+              : operationType;
+
+      await target.save();
+      debugPrint('[SyncQueueService] Coalesced (Updated existing): $target');
+
+      _emitStatus();
+      if (connectivityService.isOnline && !_isProcessing) {
+        unawaited(processQueue());
+      }
+      return target.id;
+    }
+
     final id = _uuid.v4();
 
     final operation = SyncOperation(
@@ -361,6 +401,7 @@ class SyncQueueService {
   /// Dispose the service
   void dispose() {
     _connectivitySubscription?.cancel();
+    _retryTimer?.cancel();
     _statusController.close();
   }
 }

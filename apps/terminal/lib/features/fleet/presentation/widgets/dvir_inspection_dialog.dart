@@ -1,7 +1,10 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:geocoding/geocoding.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:signature/signature.dart';
 import 'package:uuid/uuid.dart';
 import '../../data/repositories/dvir_repository.dart';
 
@@ -26,9 +29,17 @@ class DVIRInspectionDialog extends ConsumerStatefulWidget {
 class _DVIRInspectionDialogState extends ConsumerState<DVIRInspectionDialog> {
   DVIRInspectionType _inspectionType = DVIRInspectionType.preTrip;
   final _odometerController = TextEditingController();
+  final _trailerIdController = TextEditingController();
+  final _locationController = TextEditingController();
   final _notesController = TextEditingController();
+  final _signatureController = SignatureController(
+    penStrokeWidth: 3,
+    penColor: Colors.black,
+    exportBackgroundColor: Colors.white,
+  );
   bool _isSafeToOperate = true;
   bool _isLoading = false;
+  bool _isLocationLoading = false;
 
   // Checklist state
   final Map<DVIRCategory, bool> _checkedItems = {};
@@ -44,12 +55,60 @@ class _DVIRInspectionDialogState extends ConsumerState<DVIRInspectionDialog> {
     for (final category in DVIRCategory.values) {
       _checkedItems[category] = true;
     }
+    _captureLocation();
+  }
+
+  Future<void> _captureLocation() async {
+    setState(() => _isLocationLoading = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        _locationController.text = 'Location services disabled';
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          _locationController.text = 'Permission denied';
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        _locationController.text = 'Permission denied forever';
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      final placemarks = await placemarkFromCoordinates(
+        position.latitude,
+        position.longitude,
+      );
+
+      if (placemarks.isNotEmpty) {
+        final p = placemarks.first;
+        _locationController.text = '${p.street}, ${p.locality}, ${p.administrativeArea}';
+      } else {
+        _locationController.text = '${position.latitude}, ${position.longitude}';
+      }
+    } catch (e) {
+      _locationController.text = 'Error capturing location';
+    } finally {
+      if (mounted) {
+        setState(() => _isLocationLoading = false);
+      }
+    }
   }
 
   @override
   void dispose() {
     _odometerController.dispose();
+    _trailerIdController.dispose();
+    _locationController.dispose();
     _notesController.dispose();
+    _signatureController.dispose();
     super.dispose();
   }
 
@@ -86,58 +145,94 @@ class _DVIRInspectionDialogState extends ConsumerState<DVIRInspectionDialog> {
   }
 
   Future<void> _submit() async {
+    if (_signatureController.isEmpty) {
+      displayInfoBar(
+        context,
+        builder: (context, close) => InfoBar(
+          title: const Text('Signature Required'),
+          content: const Text('Please provide your signature before submitting.'),
+          severity: InfoBarSeverity.warning,
+          onClose: close,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isLoading = true);
 
     try {
       final repo = ref.read(dvirRepositoryProvider);
-      await repo.createInspection(
+
+      // In a real app, we would upload the signature image to Supabase Storage first.
+      // For now, we'll simulate the upload and get a URL.
+      // final signatureBytes = await _signatureController.toPngBytes();
+      // final signatureUrl = await repo.uploadSignature(signatureBytes);
+      const signatureUrl = 'https://placeholder.com/signature_raw_data_mock';
+
+      final result = await repo.createInspection(
         vehicleId: widget.vehicleId,
+        trailerId: _trailerIdController.text.isEmpty
+            ? null
+            : _trailerIdController.text,
+        location: _locationController.text.isEmpty
+            ? null
+            : _locationController.text,
         inspectionType: _inspectionType,
         isSafeToOperate: _isSafeToOperate,
         odometer: int.tryParse(_odometerController.text),
         defects: _defects,
         notes: _notesController.text.isEmpty ? null : _notesController.text,
+        driverSignatureUrl: signatureUrl,
       );
 
-      // Invalidate providers
-      ref.invalidate(dvirHistoryProvider(widget.vehicleId));
+      result.fold(
+        (failure) => _handleFailure(failure),
+        (report) {
+          // Invalidate providers
+          ref.invalidate(dvirHistoryProvider(widget.vehicleId));
 
-      if (mounted) {
-        Navigator.pop(context);
-        widget.onSaved?.call();
+          if (mounted) {
+            Navigator.pop(context);
+            widget.onSaved?.call();
 
-        displayInfoBar(
-          context,
-          builder: (context, close) => InfoBar(
-            title: const Text('DVIR Submitted'),
-            content: Text(
-              _defects.isEmpty
-                  ? 'No defects found'
-                  : '${_defects.length} defect(s) reported',
-            ),
-            severity: _defects.isEmpty
-                ? InfoBarSeverity.success
-                : InfoBarSeverity.warning,
-            onClose: close,
-          ),
-        );
-      }
+            displayInfoBar(
+              context,
+              builder: (context, close) => InfoBar(
+                title: const Text('DVIR Submitted'),
+                content: Text(
+                  _defects.isEmpty
+                      ? 'No defects found'
+                      : '${_defects.length} defect(s) reported',
+                ),
+                severity: _defects.isEmpty
+                    ? InfoBarSeverity.success
+                    : InfoBarSeverity.warning,
+                onClose: close,
+              ),
+            );
+          }
+        },
+      );
     } catch (e) {
-      if (mounted) {
-        displayInfoBar(
-          context,
-          builder: (context, close) => InfoBar(
-            title: const Text('Error'),
-            content: Text(e.toString()),
-            severity: InfoBarSeverity.error,
-            onClose: close,
-          ),
-        );
-      }
+      _handleFailure(UnexpectedFailure(e.toString(), originalError: e));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+    }
+  }
+
+  void _handleFailure(Failure failure) {
+    if (mounted) {
+      displayInfoBar(
+        context,
+        builder: (context, close) => InfoBar(
+          title: const Text('Error'),
+          content: Text(failure.message),
+          severity: InfoBarSeverity.error,
+          onClose: close,
+        ),
+      );
     }
   }
 
@@ -152,47 +247,80 @@ class _DVIRInspectionDialogState extends ConsumerState<DVIRInspectionDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Inspection Type Toggle
+            RadioGroup<DVIRInspectionType>(
+              groupValue: _inspectionType,
+              onChanged: (value) {
+                if (value != null) {
+                  setState(() => _inspectionType = value);
+                }
+              },
+              child: Row(
+                children: [
+                  Expanded(
+                    child: RadioButton<DVIRInspectionType>(
+                      value: DVIRInspectionType.preTrip,
+                      content: const Text('Pre-Trip'),
+                    ),
+                  ),
+                  Expanded(
+                    child: RadioButton<DVIRInspectionType>(
+                      value: DVIRInspectionType.postTrip,
+                      content: const Text('Post-Trip'),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Vehicle Info Row
             Row(
               children: [
                 Expanded(
-                  child: RadioButton(
-                    checked: _inspectionType == DVIRInspectionType.preTrip,
-                    onChanged: (checked) {
-                      if (checked) {
-                        setState(
-                          () => _inspectionType = DVIRInspectionType.preTrip,
-                        );
-                      }
-                    },
-                    content: const Text('Pre-Trip'),
+                  child: InfoLabel(
+                    label: 'Odometer',
+                    child: TextBox(
+                      controller: _odometerController,
+                      placeholder: 'Current mileage',
+                      keyboardType: TextInputType.number,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 16),
                 Expanded(
-                  child: RadioButton(
-                    checked: _inspectionType == DVIRInspectionType.postTrip,
-                    onChanged: (checked) {
-                      if (checked) {
-                        setState(
-                          () => _inspectionType = DVIRInspectionType.postTrip,
-                        );
-                      }
-                    },
-                    content: const Text('Post-Trip'),
+                  child: InfoLabel(
+                    label: 'Trailer ID (Optional)',
+                    child: TextBox(
+                      controller: _trailerIdController,
+                      placeholder: 'e.g., T-101',
+                    ),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 16),
 
-            // Odometer
+            // Location
             InfoLabel(
-              label: 'Odometer',
-              child: SizedBox(
-                width: 200,
-                child: TextBox(
-                  controller: _odometerController,
-                  placeholder: 'Current mileage',
-                  keyboardType: TextInputType.number,
+              label: 'Location',
+              child: TextBox(
+                controller: _locationController,
+                placeholder: _isLocationLoading
+                    ? 'Capturing location...'
+                    : 'Physical location of inspection',
+                prefix: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                  child: _isLocationLoading
+                      ? const SizedBox(
+                          width: 16,
+                          height: 16,
+                          child: ProgressRing(strokeWidth: 2),
+                        )
+                      : const Icon(FluentIcons.location_16_regular, size: 16),
+                ),
+                suffix: IconButton(
+                  icon: const Icon(FluentIcons.arrow_sync_16_regular),
+                  onPressed: _isLocationLoading ? null : _captureLocation,
                 ),
               ),
             ),
@@ -377,7 +505,43 @@ class _DVIRInspectionDialogState extends ConsumerState<DVIRInspectionDialog> {
               child: TextBox(
                 controller: _notesController,
                 placeholder: 'Additional notes',
-                maxLines: 3,
+                maxLines: 2,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Driver Signature
+            Text(
+              'Driver Signature *',
+              style: FluentTheme.of(context).typography.bodyStrong,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              decoration: BoxDecoration(
+                border: Border.all(
+                  color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+                ),
+                borderRadius: BorderRadius.circular(4),
+                color: Colors.white,
+              ),
+              child: Column(
+                children: [
+                  Signature(
+                    controller: _signatureController,
+                    height: 120,
+                    backgroundColor: Colors.white,
+                  ),
+                  const Divider(),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      HyperlinkButton(
+                        onPressed: () => _signatureController.clear(),
+                        child: const Text('Clear Signature'),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
           ],
