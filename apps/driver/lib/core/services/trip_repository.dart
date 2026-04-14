@@ -173,7 +173,18 @@ class TripRepository {
           debugPrint(
             '[TripRepository] Refreshed ${serverTrips.length} trips from server',
           );
-          return right(serverTrips);
+          
+          final List<TripData> finalDataList = await (driverDatabase.select(
+            driverDatabase.trips,
+          )
+            ..where((t) => t.userId.equals(userId))
+            ..orderBy([
+              (t) => OrderingTerm(
+                  expression: t.tripDate, mode: OrderingMode.desc),
+            ]))
+          .get();
+          
+          return right(finalDataList.map((d) => _fromData(d)).toList());
         },
       );
     });

@@ -152,7 +152,16 @@ class FuelRepository {
             debugPrint(
               '[FuelRepository] Refreshed ${serverEntries.length} entries from server',
             );
-            return right(serverEntries);
+            final List<FuelEntryData> finalDataList = await (driverDatabase.select(
+              driverDatabase.fuelEntries,
+            )
+              ..where((f) => f.userId.equals(userId))
+              ..orderBy([
+                (f) => OrderingTerm(
+                    expression: f.fuelDate, mode: OrderingMode.desc),
+              ]))
+            .get();
+            return right(finalDataList.map((d) => _fromData(d)).toList());
           } catch (e, stack) {
              return left(CacheFailure('Failed to write refreshed fuel data to cache', stack));
           }

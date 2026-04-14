@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/core/widgets/custom_autocomplete_field.dart';
+import 'package:milow/core/services/preferences_service.dart';
 
 import 'package:milow/features/inspections/presentation/widgets/inspection_signature_pad.dart';
 import 'package:milow/features/inspections/presentation/providers/inspection_provider.dart';
@@ -41,8 +42,7 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
   Uint8List? _signatureBytes;
   String? _existingSignatureUrl;
 
-  // Odometer Unit
-  String _odometerUnit = 'mi'; // 'mi' or 'km'
+
 
   // Defects
   // Map of DVIRCategory -> DVIRDefect
@@ -217,7 +217,6 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
         if (lastVehicle != null && lastVehicle.isNotEmpty) {
           _vehicleController.text = lastVehicle;
         }
-        _odometerUnit = prefs.getString('last_odometer_unit') ?? 'mi';
       }
     });
   }
@@ -225,7 +224,6 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
   Future<void> _savePreferences() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('last_vehicle_id', _vehicleController.text);
-    await prefs.setString('last_odometer_unit', _odometerUnit);
   }
 
   void _toggleDefect(DVIRCategory category, String defectName) {
@@ -639,41 +637,27 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                flex: 2,
-                child: TextFormField(
-                  controller: _odometerController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Odometer',
-                    hintText: 'Ex: 120500 ($_odometerUnit)',
-                    prefixIcon: Icon(Icons.speed, color: colorScheme.primary),
-                  ),
-                  validator: (value) =>
-                      value == null || value.isEmpty ? 'Required' : null,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 1,
-                child: Container(
-                  height: 56, // Match standard input height
-                  decoration: BoxDecoration(
-                    color: tokens.inputBackground,
-                    borderRadius: BorderRadius.circular(tokens.shapeS),
-                    border: Border.all(color: tokens.inputBorder),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _buildUnitToggle(tokens, colorScheme, 'mi'),
-                      Container(
-                        width: 1,
-                        height: 24,
-                        color: tokens.inputBorder,
+                child: Consumer<PreferencesService>(
+                  builder: (context, prefService, _) {
+                    final unit = prefService.getDistanceUnit();
+                    return TextFormField(
+                      controller: _odometerController,
+                      keyboardType: TextInputType.number,
+                      decoration: InputDecoration(
+                        labelText: 'Odometer',
+                        hintText: 'Ex: 120500 ($unit)',
+                        prefixIcon:
+                            Icon(Icons.speed, color: colorScheme.primary),
+                        suffixText: unit.toUpperCase(),
+                        suffixStyle: GoogleFonts.outfit(
+                          fontWeight: FontWeight.bold,
+                          color: colorScheme.primary,
+                        ),
                       ),
-                      _buildUnitToggle(tokens, colorScheme, 'km'),
-                    ],
-                  ),
+                      validator: (value) =>
+                          value == null || value.isEmpty ? 'Required' : null,
+                    );
+                  },
                 ),
               ),
             ],
@@ -936,30 +920,5 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
     );
   }
 
-  Widget _buildUnitToggle(
-    DesignTokens tokens,
-    ColorScheme colorScheme,
-    String unit,
-  ) {
-    final isSelected = _odometerUnit == unit;
-    return Expanded(
-      child: InkWell(
-        onTap: () => setState(() => _odometerUnit = unit),
-        borderRadius: BorderRadius.circular(tokens.shapeS),
-        child: Container(
-          alignment: Alignment.center,
-          color: isSelected ? colorScheme.primaryContainer : null,
-          child: Text(
-            unit.toUpperCase(),
-            style: GoogleFonts.outfit(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected
-                  ? colorScheme.onPrimaryContainer
-                  : tokens.textSecondary,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
+
 }

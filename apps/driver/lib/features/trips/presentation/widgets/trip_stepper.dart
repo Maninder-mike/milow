@@ -206,6 +206,18 @@ class _TripStepperState extends State<TripStepper> {
             state: _currentStep > 0 ? StepState.complete : StepState.editing,
             content: Column(
               children: [
+                SwitchListTile(
+                  value: widget.isEmptyLeg,
+                  onChanged: widget.onEmptyLegChanged,
+                  title: const Text('Deadhead / Empty Leg'),
+                  subtitle: const Text('No cargo for this movement'),
+                  contentPadding: EdgeInsets.zero,
+                  secondary: Icon(Icons.no_luggage_outlined,
+                      color: widget.isEmptyLeg
+                          ? Theme.of(context).colorScheme.primary
+                          : null),
+                ),
+                const SizedBox(height: 16),
                 TextFormField(
                   controller: widget.tripNumberController,
                   decoration: const InputDecoration(
@@ -246,15 +258,6 @@ class _TripStepperState extends State<TripStepper> {
             content: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                SwitchListTile(
-                  value: widget.isEmptyLeg,
-                  onChanged: widget.onEmptyLegChanged,
-                  title: const Text('Deadhead / Empty Leg'),
-                  subtitle: const Text('No cargo for this movement'),
-                  contentPadding: EdgeInsets.zero,
-                  secondary: Icon(Icons.no_luggage_outlined, color: widget.isEmptyLeg ? Theme.of(context).colorScheme.primary : null),
-                ),
-                const SizedBox(height: 16),
                 _buildSectionHeader('Pickups'),
                 ..._buildLocationFields(true),
                 const SizedBox(height: 24),

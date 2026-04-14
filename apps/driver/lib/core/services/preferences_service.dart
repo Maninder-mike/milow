@@ -72,7 +72,7 @@ class PreferencesService extends ChangeNotifier {
 
   // Auto-detect setting
   bool getAutoUpdateUnits() {
-    return _prefs.getBool(_autoUpdateUnitsKey) ?? false;
+    return _prefs.getBool(_autoUpdateUnitsKey) ?? true;
   }
 
   Future<void> setAutoUpdateUnits(bool value) async {

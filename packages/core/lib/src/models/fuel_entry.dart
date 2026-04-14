@@ -127,7 +127,7 @@ class FuelEntry {
       if (id != null) 'id': id,
       if (userId != null) 'user_id': userId,
       if (vehicleId != null) 'vehicle_id': vehicleId,
-      'fuel_date': fuelDate.toIso8601String(),
+      'fuel_date': fuelDate.toUtc().toIso8601String(),
       'fuel_type': fuelType,
       'truck_number': truckNumber,
       'reefer_number': reeferNumber,
@@ -142,6 +142,8 @@ class FuelEntry {
       'def_quantity': defQuantity,
       'def_price': defPrice,
       'def_from_yard': defFromYard,
+      if (createdAt != null) 'created_at': createdAt!.toUtc().toIso8601String(),
+      if (updatedAt != null) 'updated_at': updatedAt!.toUtc().toIso8601String(),
       if (companyId != null) 'company_id': companyId,
     };
   }

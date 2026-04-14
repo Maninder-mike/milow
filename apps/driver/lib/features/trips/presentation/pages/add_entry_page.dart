@@ -192,12 +192,12 @@ class _AddEntryPageState extends State<AddEntryPage>
     _tripDateController = RestorableTextEditingController(text: tripDate);
 
     _tripStartOdometerController = RestorableTextEditingController(
-      text: (widget.editingTrip?.startOdometer != null && widget.editingTrip!.startOdometer! > 0)
+      text: (widget.editingTrip?.startOdometer != null && widget.editingTrip!.startOdometer! >= 0)
           ? (widget.editingTrip!.startOdometer! == widget.editingTrip!.startOdometer!.toInt() ? widget.editingTrip!.startOdometer!.toInt().toString() : widget.editingTrip!.startOdometer!.toString())
           : '',
     );
     _tripEndOdometerController = RestorableTextEditingController(
-      text: (widget.editingTrip?.endOdometer != null && widget.editingTrip!.endOdometer! > 0)
+      text: (widget.editingTrip?.endOdometer != null && widget.editingTrip!.endOdometer! >= 0)
           ? (widget.editingTrip!.endOdometer! == widget.editingTrip!.endOdometer!.toInt() ? widget.editingTrip!.endOdometer!.toInt().toString() : widget.editingTrip!.endOdometer!.toString())
           : '',
     );
@@ -222,7 +222,7 @@ class _AddEntryPageState extends State<AddEntryPage>
     );
     final defaultOdo = widget.editingFuel?.odometerReading ?? widget.editingFuel?.reeferHours;
     _odometerController = RestorableTextEditingController(
-      text: (defaultOdo != null && defaultOdo > 0) 
+      text: (defaultOdo != null && defaultOdo >= 0) 
         ? (defaultOdo == defaultOdo.toInt() ? defaultOdo.toInt().toString() : defaultOdo.toString()) 
         : '',
     );
@@ -521,13 +521,13 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Fill odometer readings (localized)
     final prefService = Provider.of<PreferencesService>(context, listen: false);
-    if (trip.startOdometer != null && trip.startOdometer! > 0) {
+    if (trip.startOdometer != null && trip.startOdometer! >= 0) {
       final startOdo = prefService.localizeDistance(trip.startOdometer!);
       if (mounted) {
         _tripStartOdometerController.value.text = startOdo == startOdo.toInt() ? startOdo.toInt().toString() : startOdo.toString();
       }
     }
-    if (trip.endOdometer != null && trip.endOdometer! > 0) {
+    if (trip.endOdometer != null && trip.endOdometer! >= 0) {
       final endOdo = prefService.localizeDistance(trip.endOdometer!);
       if (mounted) {
         _tripEndOdometerController.value.text = endOdo == endOdo.toInt() ? endOdo.toInt().toString() : endOdo.toString();
@@ -610,14 +610,14 @@ class _AddEntryPageState extends State<AddEntryPage>
 
     // Localize numbers
     if (fuel.isReeferFuel) {
-      if (fuel.reeferHours != null && fuel.reeferHours! > 0) {
+      if (fuel.reeferHours != null && fuel.reeferHours! >= 0) {
         _odometerController.value.text =
             fuel.reeferHours!.toString().replaceAll(
               '.0',
               '',
             );
       }
-    } else if (fuel.odometerReading != null && fuel.odometerReading! > 0) {
+    } else if (fuel.odometerReading != null && fuel.odometerReading! >= 0) {
       final odo = prefService.localizeDistance(fuel.odometerReading!);
       _odometerController.value.text = odo == odo.toInt() ? odo.toInt().toString() : odo.toString();
     }
@@ -1342,7 +1342,7 @@ class _AddEntryPageState extends State<AddEntryPage>
   // }
 
   String _formatDateTime(DateTime dateTime) {
-    return DateFormat('MMM d, yyyy, h:mm a').format(dateTime);
+    return DateFormat('MMM d, yyyy, h:mm a').format(dateTime.toLocal());
   }
 
   Future<DateTime?> _pickDateTime(DateTime initial) async {
@@ -1360,7 +1360,9 @@ class _AddEntryPageState extends State<AddEntryPage>
       context: context,
       initialTime: TimeOfDay.fromDateTime(initial),
     );
-    if (time == null) return date;
+    if (time == null) {
+      return DateTime(date.year, date.month, date.day, initial.hour, initial.minute);
+    }
 
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
@@ -2346,10 +2348,10 @@ class _AddEntryPageState extends State<AddEntryPage>
         pickupDetention: _pickupDetention,
         deliveryDetention: _deliveryDetention,
         startOdometer: _tripStartOdometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
-          double.tryParse(_tripStartOdometerController.value.text) ?? 0,
+          double.tryParse(_tripStartOdometerController.value.text.replaceAll(',', '')) ?? 0,
         ),
         endOdometer: _tripEndOdometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
-          double.tryParse(_tripEndOdometerController.value.text) ?? 0,
+          double.tryParse(_tripEndOdometerController.value.text.replaceAll(',', '')) ?? 0,
         ),
         distanceUnit: 'km', // Always save as km in DB
         borderCrossing:
@@ -2359,7 +2361,7 @@ class _AddEntryPageState extends State<AddEntryPage>
         isEmptyLeg: _isEmptyLeg.value,
         commodity: _commodityController.value.text.trim(),
         weight: _weightController.value.text.trim().isEmpty ? null : prefService.standardizeWeight(
-          double.tryParse(_weightController.value.text) ?? 0,
+          double.tryParse(_weightController.value.text.replaceAll(',', '')) ?? 0,
         ),
         weightUnit: 'kg', // Always save as kg in DB
         pieces: int.tryParse(_piecesController.value.text),
@@ -2442,22 +2444,22 @@ class _AddEntryPageState extends State<AddEntryPage>
             : null,
         location: _locationController.value.text.trim(),
         odometerReading: _odometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
-          double.tryParse(_odometerController.value.text) ?? 0,
+          double.tryParse(_odometerController.value.text.replaceAll(',', '')) ?? 0,
         ),
         fuelQuantity: prefService.standardizeVolume(
-          double.tryParse(_fuelQuantityController.value.text) ?? 0.0,
+          double.tryParse(_fuelQuantityController.value.text.replaceAll(',', '')) ?? 0.0,
         ),
         pricePerUnit: prefService.standardizePrice(
-          double.tryParse(_fuelPriceController.value.text) ?? 0.0,
+          double.tryParse(_fuelPriceController.value.text.replaceAll(',', '')) ?? 0.0,
         ),
         fuelUnit: 'L', // Always save as Liters in DB
         distanceUnit: 'km', // Always save as km in DB
         currency: _currency.value,
         defQuantity: prefService.standardizeVolume(
-          double.tryParse(_defQuantityController.value.text) ?? 0.0,
+          double.tryParse(_defQuantityController.value.text.replaceAll(',', '')) ?? 0.0,
         ),
         defPrice: prefService.standardizePrice(
-          double.tryParse(_defPriceController.value.text) ?? 0.0,
+          double.tryParse(_defPriceController.value.text.replaceAll(',', '')) ?? 0.0,
         ),
         defFromYard: _defFromYard.value,
         // Preserve original timestamps for edit integrity

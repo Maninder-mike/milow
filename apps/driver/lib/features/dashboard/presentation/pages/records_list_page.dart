@@ -1606,7 +1606,8 @@ class _RecordsListPageState extends State<RecordsListPage> {
     }
   }
 
-  String _formatDate(DateTime date) {
+  String _formatDate(DateTime dateTime) {
+    final date = dateTime.toLocal();
     final months = [
       'Jan',
       'Feb',
