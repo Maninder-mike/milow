@@ -171,17 +171,6 @@ class _AddEntryPageState extends State<AddEntryPage>
         ? _formatDateTime(widget.editingTrip!.tripDate)
         : _formatDateTime(DateTime.now());
 
-    // Parse initialData date if present
-    if (widget.initialData?['date'] != null && widget.editingTrip == null) {
-      try {
-        // Basic parsing logic adapted from original
-        // ... (simplified for brevity, assuming standard format or just using current)
-        // Actually, let's preserve the logic if possible or just default to now.
-        // Given complexity, sticking to 'now' or ensuring parsed.
-        // For now, default to now if not editing.
-      } catch (_) {}
-    }
-
     _tripNumberController = RestorableTextEditingController(text: tripNumber);
     _tripTruckNumberController = RestorableTextEditingController(
       text: truckNumber,
@@ -202,8 +191,10 @@ class _AddEntryPageState extends State<AddEntryPage>
           : '',
     );
     _tripNotesController = RestorableTextEditingController(
-      text: widget.editingTrip?.notes ?? widget.initialData?['notes'] ?? '',
+      text: widget.editingTrip?.notes ?? '',
     );
+
+    // Initial fields will be added by restoreState and prefillFromInitialData
 
     // Fuel Initials
     _fuelDateController = RestorableTextEditingController(
@@ -297,6 +288,10 @@ class _AddEntryPageState extends State<AddEntryPage>
     } else if (widget.editingFuel != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _prefillFuelData(widget.editingFuel!);
+      });
+    } else if (widget.initialData != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _prefillFromInitialData(widget.initialData!);
       });
     }
   }
@@ -575,6 +570,57 @@ class _AddEntryPageState extends State<AddEntryPage>
         }
       }
     }
+  }
+
+  void _prefillFromInitialData(Map<String, dynamic> data) {
+    if (!mounted) return;
+
+    setState(() {
+      // 1. Trip Basics
+      if (data['tripNumber'] != null) {
+        _tripNumberController.value.text = data['tripNumber'] as String;
+      }
+      if (data['truckNumber'] != null) {
+        _tripTruckNumberController.value.text = data['truckNumber'] as String;
+      }
+      if (data['notes'] != null) {
+        _tripNotesController.value.text = data['notes'] as String;
+      }
+
+      // 2. Date/Time
+      if (data['date'] != null) {
+        try {
+          final dateStr = data['date'] as String;
+          // Input format from parser: "MM/dd/yyyy HH:mm AM/PM"
+          final inputFormat = DateFormat('MM/dd/yyyy h:mm a');
+          final dateTime = inputFormat.parse(dateStr);
+          // Standardize to the format used throughout the app UI
+          _tripDateController.value.text = _formatDateTime(dateTime);
+        } catch (e) {
+          debugPrint('Error parsing share intent date: $e');
+        }
+      }
+
+      // 3. Locations
+      final startLoc = data['startLocation'] as String?;
+      final endLoc = data['endLocation'] as String?;
+
+      if (startLoc != null) {
+        if (_pickupControllers.isNotEmpty && _pickupControllers[0].value.text.isEmpty) {
+           _pickupControllers[0].value.text = startLoc;
+        } else {
+           _addLocation(_LocationFieldType.pickup, startLoc);
+        }
+      }
+
+      if (endLoc != null) {
+        if (_deliveryControllers.isNotEmpty && _deliveryControllers[0].value.text.isEmpty) {
+           _deliveryControllers[0].value.text = endLoc;
+        } else {
+           _addLocation(_LocationFieldType.delivery, endLoc);
+        }
+      }
+    });
   }
 
   Future<void> _prefillFuelData(FuelEntry fuel) async {
@@ -1927,6 +1973,7 @@ class _AddEntryPageState extends State<AddEntryPage>
           TripStepper(
             onSave: _validateAndSaveTrip,
             isSaving: _isSaving,
+            tripNumberExists: _tripNumberExists,
             tripNumberController: _tripNumberController.value,
             truckNumberController: _tripTruckNumberController.value,
             truckFocusNode: _tripTruckFocusNode,
@@ -2279,13 +2326,30 @@ class _AddEntryPageState extends State<AddEntryPage>
   Future<void> _validateAndSaveTrip() async {
     if (_isSaving) return;
 
-    if (_tripNumberController.value.text.isEmpty) {
+    if (_tripNumberController.value.text.trim().isEmpty) {
       ErrorHandler.showError(context, 'Trip number is required');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Trip number is required'), backgroundColor: Colors.red),
+      );
       return;
     }
 
-    if (_tripTruckNumberController.value.text.isEmpty) {
+    if (_tripNumberExists) {
+      ErrorHandler.showError(context, 'This trip number already exists');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('This trip number already exists. Please use a unique number.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
+    if (_tripTruckNumberController.value.text.trim().isEmpty) {
       ErrorHandler.showError(context, 'Truck number is required');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Truck number is required'), backgroundColor: Colors.red),
+      );
       return;
     }
 
@@ -2293,10 +2357,11 @@ class _AddEntryPageState extends State<AddEntryPage>
         .map((c) => c.value.text.trim())
         .where((t) => t.isNotEmpty)
         .toList();
+
     if (pickups.isEmpty) {
-      ErrorHandler.showError(
-        context,
-        'At least one pickup location is required',
+      ErrorHandler.showError(context, 'At least one pickup is required');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('At least one pickup is required'), backgroundColor: Colors.red),
       );
       return;
     }
@@ -2305,15 +2370,44 @@ class _AddEntryPageState extends State<AddEntryPage>
         .map((c) => c.value.text.trim())
         .where((t) => t.isNotEmpty)
         .toList();
+
     if (deliveries.isEmpty) {
-      ErrorHandler.showError(
-        context,
-        'At least one delivery location is required',
+      ErrorHandler.showError(context, 'At least one delivery is required');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('At least one delivery is required'), backgroundColor: Colors.red),
       );
       return;
     }
 
-    setState(() => _isSaving = true);
+    // Synchronize lists with non-empty locations to maintain data integrity
+    final List<DateTime?> filteredPickupTimes = [];
+    final List<bool> filteredPickupCompleted = [];
+    final List<Detention?> filteredPickupDetention = [];
+    
+    for (int i = 0; i < _pickupControllers.length; i++) {
+      if (_pickupControllers[i].value.text.trim().isNotEmpty) {
+        filteredPickupTimes.add(i < _pickupTimes.length ? _pickupTimes[i] : null);
+        filteredPickupCompleted.add(i < _pickupCompleted.length ? _pickupCompleted[i] : false);
+        filteredPickupDetention.add(i < _pickupDetention.length ? _pickupDetention[i] : null);
+      }
+    }
+
+    final List<DateTime?> filteredDeliveryTimes = [];
+    final List<bool> filteredDeliveryCompleted = [];
+    final List<Detention?> filteredDeliveryDetention = [];
+
+    for (int i = 0; i < _deliveryControllers.length; i++) {
+      if (_deliveryControllers[i].value.text.trim().isNotEmpty) {
+        filteredDeliveryTimes.add(i < _deliveryTimes.length ? _deliveryTimes[i] : null);
+        filteredDeliveryCompleted.add(i < _deliveryCompleted.length ? _deliveryCompleted[i] : false);
+        filteredDeliveryDetention.add(i < _deliveryDetention.length ? _deliveryDetention[i] : null);
+      }
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
     try {
       final userId = Supabase.instance.client.auth.currentUser?.id;
       if (userId == null) throw Exception('User not authenticated');
@@ -2323,9 +2417,41 @@ class _AddEntryPageState extends State<AddEntryPage>
         listen: false,
       );
 
-      final tripDate = DateFormat(
-        'MMM d, yyyy, h:mm a',
-      ).parse(_tripDateController.value.text);
+      final String tripDateText = _tripDateController.value.text.trim();
+      if (tripDateText.isEmpty) throw Exception('Trip date is required');
+
+      DateTime tripDate;
+      try {
+        tripDate = DateFormat('MMM d, yyyy, h:mm a').parse(tripDateText);
+      } catch (e) {
+        // Fallback for different date formats if MMM d failed
+        try {
+           tripDate = DateTime.parse(tripDateText);
+        } catch (_) {
+           throw Exception('Invalid date format. Please use the date picker.');
+        }
+      }
+
+      final startOdoText = _tripStartOdometerController.value.text.trim().replaceAll(',', '');
+      final endOdoText = _tripEndOdometerController.value.text.trim().replaceAll(',', '');
+
+      final double? startOdometer = startOdoText.isEmpty ? null : double.tryParse(startOdoText);
+      final double? endOdometer = endOdoText.isEmpty ? null : double.tryParse(endOdoText);
+
+      if (startOdometer != null && endOdometer != null && endOdometer < startOdometer) {
+        throw Exception('End odometer ($endOdometer) cannot be less than start odometer ($startOdometer)');
+      }
+
+      final finalStartOdo = startOdometer == null ? null : prefService.standardizeDistance(startOdometer);
+      final finalEndOdo = endOdometer == null ? null : prefService.standardizeDistance(endOdometer);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Finalizing trip details...', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.blueGrey,
+          duration: Duration(milliseconds: 500),
+        ),
+      );
 
       final newTrip = Trip(
         id: widget.editingTrip?.id,
@@ -2341,18 +2467,14 @@ class _AddEntryPageState extends State<AddEntryPage>
         tripDate: tripDate,
         pickupLocations: pickups,
         deliveryLocations: deliveries,
-        pickupTimes: _pickupTimes,
-        deliveryTimes: _deliveryTimes,
-        pickupCompleted: _pickupCompleted,
-        deliveryCompleted: _deliveryCompleted,
-        pickupDetention: _pickupDetention,
-        deliveryDetention: _deliveryDetention,
-        startOdometer: _tripStartOdometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
-          double.tryParse(_tripStartOdometerController.value.text.replaceAll(',', '')) ?? 0,
-        ),
-        endOdometer: _tripEndOdometerController.value.text.trim().isEmpty ? null : prefService.standardizeDistance(
-          double.tryParse(_tripEndOdometerController.value.text.replaceAll(',', '')) ?? 0,
-        ),
+        pickupTimes: filteredPickupTimes,
+        deliveryTimes: filteredDeliveryTimes,
+        pickupCompleted: filteredPickupCompleted,
+        deliveryCompleted: filteredDeliveryCompleted,
+        pickupDetention: filteredPickupDetention,
+        deliveryDetention: filteredDeliveryDetention,
+        startOdometer: finalStartOdo,
+        endOdometer: finalEndOdo,
         distanceUnit: 'km', // Always save as km in DB
         borderCrossing:
             _selectedBorderCrossing.value ??
@@ -2373,24 +2495,43 @@ class _AddEntryPageState extends State<AddEntryPage>
         createdAt: widget.editingTrip?.createdAt,
       );
 
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Saving to database...', style: TextStyle(color: Colors.white)),
+          backgroundColor: Colors.blue,
+          duration: Duration(seconds: 1),
+        ),
+      );
+
       if (widget.editingTrip != null) {
-        final result = await TripRepository.updateTrip(newTrip);
+        final result = await TripRepository.updateTrip(newTrip).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception('Save operation timed out. Please check your connection.'),
+        );
         result.fold((l) => throw Exception(l.message), (r) => null);
       } else {
-        final result = await TripRepository.createTrip(newTrip);
+        final result = await TripRepository.createTrip(newTrip).timeout(
+          const Duration(seconds: 15),
+          onTimeout: () => throw Exception('Save operation timed out. Please check your connection.'),
+        );
         result.fold((l) => throw Exception(l.message), (r) => null);
       }
 
       if (mounted) {
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
               widget.editingTrip != null ? 'Trip Updated!' : 'Trip Saved!',
             ),
+            backgroundColor: Colors.green,
           ),
         );
-        if (context.canPop()) {
-          context.pop(true);
+
+        // Aggressive navigation to ensure screen is closed
+        if (Navigator.of(context).canPop()) {
+          Navigator.of(context).pop(true);
         } else {
           context.go('/dashboard');
         }

@@ -3,7 +3,7 @@ class TripParserService {
     final result = <String, dynamic>{};
 
     // Extract Trip Number
-    final tripMatch = RegExp(r'Trip#\s*(\d+)').firstMatch(text);
+    final tripMatch = RegExp(r'Trip#\s*(\S+)').firstMatch(text);
     if (tripMatch != null) {
       result['tripNumber'] = tripMatch.group(1);
     }
@@ -25,63 +25,87 @@ class TripParserService {
 
     // Extract Pick Up (Start Location)
     // Looking for "Pick #1" followed by address lines until "Date"
+    // Also cleaning up P/Up Ref and Ph# lines if they appear
     final pickMatch = RegExp(
-      r'Pick #\d+\n(.*?)\nDate',
+      r'Pick #1\n(.*?)(?=\nDate)',
       dotAll: true,
     ).firstMatch(text);
     if (pickMatch != null) {
-      final rawAddress = pickMatch.group(1)?.trim() ?? '';
-      // Remove the company name (first line) if it looks like one, or keep it as part of address
-      // For now, we'll use the whole block as the address, but maybe clean up newlines
-      result['startLocation'] = rawAddress.replaceAll('\n', ', ');
+      String rawAddress = pickMatch.group(1)?.trim() ?? '';
+      // Extract metadata lines like Ph# or Ref to append to notes later
+      final metadataLines = <String>[];
+      rawAddress = rawAddress.split('\n').where((line) {
+        if (line.contains('Ph#') || line.contains('Ref')) {
+          metadataLines.add(line.trim());
+          return false;
+        }
+        return true;
+      }).join(', ');
+      
+      result['startLocation'] = rawAddress.trim();
+      if (metadataLines.isNotEmpty) {
+        result['startMetadata'] = metadataLines;
+      }
     }
 
     // Extract Drop Off (End Location)
     final dropMatch = RegExp(
-      r'Drop #\d+\n(.*?)\nDate',
+      r'Drop #1\n(.*?)(?=\nDate)',
       dotAll: true,
     ).firstMatch(text);
     if (dropMatch != null) {
-      final rawAddress = dropMatch.group(1)?.trim() ?? '';
-      result['endLocation'] = rawAddress.replaceAll('\n', ', ');
+      String rawAddress = dropMatch.group(1)?.trim() ?? '';
+      final metadataLines = <String>[];
+      rawAddress = rawAddress.split('\n').where((line) {
+        if (line.contains('Ph#') || line.contains('Ref')) {
+          metadataLines.add(line.trim());
+          return false;
+        }
+        return true;
+      }).join(', ');
+      
+      result['endLocation'] = rawAddress.trim();
+      if (metadataLines.isNotEmpty) {
+        result['endMetadata'] = metadataLines;
+      }
     }
 
-    // Extract Date/Time from Pick #1 section
+    // Extract Date/Time from Pick #1 section - Handle MM/DD/YYYY or similar
     final pickDateMatch = RegExp(
-      r'Pick #1.*?Date\s+(\d{1,2}/\d{1,2}/\d{4})\s+Time\s+([^\n]+)',
+      r'Pick #1.*?Date\s+(\d{1,2}/\d{1,2}/(?:\d{2}|\d{4}))\s+Time\s+([^\n]+)',
       dotAll: true,
     ).firstMatch(text);
 
     if (pickDateMatch != null) {
       try {
         final dateStr = pickDateMatch.group(1)!;
-        final timeStr = pickDateMatch
-            .group(2)!
-            .split('-')[0]
-            .trim(); // Take start time
+        // Take start time if range is provided (7AM - 4PM -> 7AM)
+        final timeRaw = pickDateMatch.group(2)!;
+        final timeStr = timeRaw.split('-')[0].split('to')[0].trim();
 
         String normalizedTime = timeStr;
+        // Normalize 7AM -> 7:00 AM
         if (!timeStr.contains(':')) {
           normalizedTime = timeStr.replaceAllMapped(
-            RegExp(r'(\d+)([AP]M)'),
-            (m) => '${m[1]}:00 ${m[2]}',
+            RegExp(r'(\d+)\s*([AP]M)', caseSensitive: false),
+            (m) => '${m[1]}:00 ${m[2]!.toUpperCase()}',
           );
         }
 
-        final dateTimeStr = '$dateStr $normalizedTime';
-        result['date'] = dateTimeStr;
+        result['date'] = '$dateStr $normalizedTime';
       } catch (e) {
         // Ignore parsing errors
       }
     }
 
-    // Extract all Notes - collect from both Pick and Drop sections
+    // Extract all Notes and merge with metadata
     final allNotes = <String>[];
 
-    // Find all "Notes" sections and extract their content
+    // Find all "Notes" sections
     final notesPattern = RegExp(
-      r'Notes\s+(.+?)(?=\n(?:Pick|Drop|Truck|Trip|$))',
+      r'Notes\s+(.+?)(?=\n(?:Pick|Drop|Truck|Trip|P/Up|$))',
       dotAll: true,
+      caseSensitive: false,
     );
     final notesMatches = notesPattern.allMatches(text);
 
@@ -89,6 +113,24 @@ class TripParserService {
       final noteText = match.group(1)?.trim();
       if (noteText != null && noteText.isNotEmpty) {
         allNotes.add(noteText);
+      }
+    }
+
+    // Add metadata collected from address blocks
+    if (result['startMetadata'] != null) {
+      allNotes.addAll(List<String>.from(result['startMetadata']));
+    }
+    if (result['endMetadata'] != null) {
+      allNotes.addAll(List<String>.from(result['endMetadata']));
+    }
+
+    // Generic check for P/Up Ref outside notes block
+    final refPattern = RegExp(r'P/Up Ref\s+(.+)');
+    final refMatches = refPattern.allMatches(text);
+    for (final match in refMatches) {
+      final ref = match.group(1)?.trim();
+      if (ref != null && !allNotes.contains('P/Up Ref $ref')) {
+        allNotes.add('P/Up Ref $ref');
       }
     }
 

@@ -4,9 +4,9 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 import '../providers/load_providers.dart';
+import '../../../../core/providers/supabase_provider.dart';
 
 class MessagesSidebar extends ConsumerStatefulWidget {
   final String loadId;
@@ -53,11 +53,12 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
     result.fold(
       (failure) {
         if (mounted) {
+          AppLogger.error('Error sending message', error: failure);
           displayInfoBar(
             context,
             builder: (context, close) => InfoBar(
-              title: const Text('Error sending message'),
-              content: Text(failure.message),
+              title: Text('Error', style: GoogleFonts.outfit()),
+              content: Text(failure.message, style: GoogleFonts.outfit()),
               severity: InfoBarSeverity.error,
               onClose: close,
             ),
@@ -80,7 +81,7 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
         items: [
           MenuFlyoutItem(
             leading: const Icon(FluentIcons.clock_24_regular),
-            text: const Text('Request ETA'),
+            text: Text('Request ETA', style: GoogleFonts.outfit()),
             onPressed: () {
               final payload = QuickActionPayload(
                 actionType: 'request_eta',
@@ -94,7 +95,7 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
           ),
           MenuFlyoutItem(
             leading: const Icon(FluentIcons.location_24_regular),
-            text: const Text('Confirm Arrival'),
+            text: Text('Confirm Arrival', style: GoogleFonts.outfit()),
             onPressed: () {
               final payload = QuickActionPayload(
                 actionType: 'confirm_arrival',
@@ -108,7 +109,7 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
           ),
           MenuFlyoutItem(
             leading: const Icon(FluentIcons.document_search_24_regular),
-            text: const Text('Request POD'),
+            text: Text('Request POD', style: GoogleFonts.outfit()),
             onPressed: () {
               final payload = QuickActionPayload(
                 actionType: 'upload_pod',
@@ -188,7 +189,7 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
                     children: [
                       Text(
                         'Dispatch Chat',
-                        style: TextStyle(
+                        style: GoogleFonts.outfit(
                           fontSize: 12,
                           color: theme.resources.textFillColorSecondary,
                         ),
@@ -244,7 +245,7 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
                         const SizedBox(height: 12),
                         Text(
                           'No messages yet',
-                          style: TextStyle(
+                          style: GoogleFonts.outfit(
                             color: theme.resources.textFillColorSecondary,
                           ),
                         ),
@@ -310,6 +311,7 @@ class _MessagesSidebarState extends ConsumerState<MessagesSidebar> {
                   child: TextBox(
                     controller: _messageController,
                     placeholder: 'Type a message...',
+                    style: GoogleFonts.outfit(),
                     onSubmitted: (_) => _sendMessage(),
                     maxLines: null,
                     padding: const EdgeInsets.symmetric(
@@ -347,7 +349,8 @@ class _MessageBubble extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = FluentTheme.of(context);
-    final user = Supabase.instance.client.auth.currentUser;
+    final client = ref.watch(supabaseClientProvider);
+    final user = client.auth.currentUser;
     final isMe = message.senderId == user?.id;
 
     if (message.type == MessageType.quickAction) {
@@ -366,7 +369,7 @@ class _MessageBubble extends ConsumerWidget {
               padding: const EdgeInsets.only(left: 4, bottom: 4),
               child: Text(
                 message.senderName ?? 'Unknown',
-                style: TextStyle(
+                style: GoogleFonts.outfit(
                   fontSize: 11,
                   color: theme.resources.textFillColorSecondary,
                   fontWeight: FontWeight.w600,
@@ -377,7 +380,7 @@ class _MessageBubble extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
               color: isMe
-                  ? const Color(0xFF009688)
+                  ? theme.accentColor
                   : theme.resources.surfaceStrokeColorDefault.withValues(
                       alpha: 0.05,
                     ),
@@ -388,7 +391,7 @@ class _MessageBubble extends ConsumerWidget {
               children: [
                 Text(
                   message.content,
-                  style: TextStyle(
+                  style: GoogleFonts.outfit(
                     color: isMe
                         ? Colors.white
                         : theme.resources.textFillColorPrimary,
@@ -398,7 +401,7 @@ class _MessageBubble extends ConsumerWidget {
                 const SizedBox(height: 4),
                 Text(
                   DateFormat.jm().format(message.createdAt),
-                  style: TextStyle(
+                  style: GoogleFonts.outfit(
                     fontSize: 9,
                     color:
                         (isMe
@@ -448,7 +451,7 @@ class _MessageBubble extends ConsumerWidget {
                   const SizedBox(width: 8),
                   Text(
                     'QUICK ACTION',
-                    style: TextStyle(
+                    style: GoogleFonts.outfit(
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       color: theme.accentColor,
@@ -459,7 +462,7 @@ class _MessageBubble extends ConsumerWidget {
               const SizedBox(height: 8),
               Text(
                 payload.label,
-                style: const TextStyle(
+                style: GoogleFonts.outfit(
                   fontSize: 13,
                   fontWeight: FontWeight.w600,
                 ),
@@ -467,7 +470,7 @@ class _MessageBubble extends ConsumerWidget {
               const SizedBox(height: 4),
               Text(
                 DateFormat.jm().format(message.createdAt),
-                style: TextStyle(
+                style: GoogleFonts.outfit(
                   fontSize: 9,
                   color: theme.resources.textFillColorSecondary,
                 ),

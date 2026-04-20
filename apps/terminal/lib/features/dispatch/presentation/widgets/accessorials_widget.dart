@@ -2,6 +2,7 @@ import 'package:fluent_ui/fluent_ui.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:terminal/core/constants/app_colors.dart';
 
 class AccessorialsWidget extends StatefulWidget {
   final List<AccessorialCharge> charges;
@@ -23,96 +24,14 @@ class AccessorialsWidget extends StatefulWidget {
 
 class _AccessorialsWidgetState extends State<AccessorialsWidget> {
   void _openAddDialog() {
-    String type = 'Detention';
-    String amountStr = '';
-    String notes = '';
-    final formKey = GlobalKey<FormState>();
-
     showDialog(
       context: context,
-      builder: (context) {
-        return ContentDialog(
-          title: const Text('Add Accessorial Charge'),
-          content: Form(
-            key: formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                InfoLabel(
-                  label: 'Type',
-                  child: ComboBox<String>(
-                    value: type,
-                    items:
-                        const [
-                          'Detention',
-                          'Lumper',
-                          'Layover',
-                          'Tarp',
-                          'Scale',
-                          'Other',
-                        ].map((e) {
-                          return ComboBoxItem(value: e, child: Text(e));
-                        }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        type = val;
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                InfoLabel(
-                  label: 'Amount',
-                  child: TextFormBox(
-                    placeholder: '0.00',
-                    prefix: const Padding(
-                      padding: EdgeInsets.only(left: 8.0),
-                      child: Text('\$'),
-                    ),
-                    onChanged: (val) => amountStr = val,
-                    validator: (val) {
-                      if (val == null || val.isEmpty) return 'Required';
-                      if (double.tryParse(val) == null) return 'Invalid number';
-                      return null;
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                InfoLabel(
-                  label: 'Notes (Optional)',
-                  child: TextFormBox(
-                    placeholder: 'Reason for charge...',
-                    onChanged: (val) => notes = val,
-                    maxLines: 2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          actions: [
-            Button(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () {
-                if (formKey.currentState?.validate() == true) {
-                  final charge = AccessorialCharge.create(
-                    loadId: '', // Will be assigned by parent or controller
-                    type: type,
-                    amount: double.parse(amountStr),
-                    notes: notes,
-                  );
-                  widget.onAdd(charge);
-                  Navigator.pop(context);
-                }
-              },
-              child: const Text('Add Charge'),
-            ),
-          ],
-        );
-      },
+      builder: (context) => _AddAccessorialDialog(
+        onAdd: (charge) {
+          widget.onAdd(charge);
+          Navigator.pop(context);
+        },
+      ),
     );
   }
 
@@ -183,12 +102,12 @@ class _AccessorialsWidgetState extends State<AccessorialsWidget> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: Colors.orange.withValues(alpha: 0.1),
+                          color: AppColors.warning.withValues(alpha: 0.1),
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
+                        child: const Icon(
                           FluentIcons.money,
-                          color: Colors.orange,
+                          color: AppColors.warning,
                           size: 16,
                         ),
                       ),
@@ -244,7 +163,7 @@ class _AccessorialsWidgetState extends State<AccessorialsWidget> {
                                     FilledButton(
                                       style: ButtonStyle(
                                         backgroundColor:
-                                            WidgetStateProperty.all(Colors.red),
+                                            WidgetStateProperty.all(AppColors.error),
                                       ),
                                       onPressed: () {
                                         widget.onDelete(charge);
@@ -265,6 +184,113 @@ class _AccessorialsWidgetState extends State<AccessorialsWidget> {
               );
             }).toList(),
           ),
+      ],
+    );
+  }
+}
+
+class _AddAccessorialDialog extends StatefulWidget {
+  final Function(AccessorialCharge) onAdd;
+
+  const _AddAccessorialDialog({required this.onAdd});
+
+  @override
+  State<_AddAccessorialDialog> createState() => _AddAccessorialDialogState();
+}
+
+class _AddAccessorialDialogState extends State<_AddAccessorialDialog> {
+  String type = 'Detention';
+  String amountStr = '';
+  String notes = '';
+  final formKey = GlobalKey<FormState>();
+
+  @override
+  Widget build(BuildContext context) {
+    return ContentDialog(
+      title: Text(
+        'Add Accessorial Charge',
+        style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+      ),
+      content: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            InfoLabel(
+              label: 'Type',
+              labelStyle: GoogleFonts.outfit(),
+              child: ComboBox<String>(
+                value: type,
+                items: const [
+                  'Detention',
+                  'Lumper',
+                  'Layover',
+                  'Tarp',
+                  'Scale',
+                  'Other',
+                ].map((e) {
+                  return ComboBoxItem(value: e, child: Text(e, style: GoogleFonts.outfit()));
+                }).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => type = val);
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            InfoLabel(
+              label: 'Amount',
+              labelStyle: GoogleFonts.outfit(),
+              child: TextFormBox(
+                placeholder: '0.00',
+                style: GoogleFonts.outfit(),
+                prefix: const Padding(
+                  padding: EdgeInsets.only(left: 8.0),
+                  child: Text('\$'),
+                ),
+                onChanged: (val) => amountStr = val,
+                validator: (val) {
+                  if (val == null || val.isEmpty) return 'Required';
+                  if (double.tryParse(val) == null) return 'Invalid number';
+                  return null;
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            InfoLabel(
+              label: 'Notes (Optional)',
+              labelStyle: GoogleFonts.outfit(),
+              child: TextFormBox(
+                placeholder: 'Reason for charge...',
+                style: GoogleFonts.outfit(),
+                onChanged: (val) => notes = val,
+                maxLines: 2,
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        Button(
+          onPressed: () => Navigator.pop(context),
+          child: Text('Cancel', style: GoogleFonts.outfit()),
+        ),
+        FilledButton(
+          onPressed: () {
+            if (formKey.currentState?.validate() == true) {
+              final charge = AccessorialCharge.create(
+                loadId: '', 
+                type: type,
+                amount: double.parse(amountStr),
+                notes: notes,
+              );
+              widget.onAdd(charge);
+            }
+          },
+          child: Text('Add Charge', style: GoogleFonts.outfit()),
+        ),
       ],
     );
   }

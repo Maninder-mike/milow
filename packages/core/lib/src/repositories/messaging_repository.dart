@@ -142,9 +142,9 @@ class MessagingRepository {
       'sender_id': user.id,
       'content': content,
       'message_type': type.value,
-      'load_id': ?loadId,
-      'receiver_id': ?receiverId,
-      'attachment_url': ?attachmentUrl,
+      'load_id': loadId,
+      'receiver_id': receiverId,
+      'attachment_url': attachmentUrl,
     };
 
     final result = await _getNetworkClient(client).query(() async {

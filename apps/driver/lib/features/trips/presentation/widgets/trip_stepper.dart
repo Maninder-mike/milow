@@ -7,6 +7,7 @@ import 'package:milow_core/milow_core.dart';
 class TripStepper extends StatefulWidget {
   final VoidCallback onSave;
   final bool isSaving;
+  final bool tripNumberExists;
   
   // Step 1: Core
   final TextEditingController tripNumberController;
@@ -58,6 +59,7 @@ class TripStepper extends StatefulWidget {
   const TripStepper({
     required this.onSave,
     required this.isSaving,
+    required this.tripNumberExists,
     required this.tripNumberController,
     required this.truckNumberController,
     required this.truckFocusNode,
@@ -220,10 +222,11 @@ class _TripStepperState extends State<TripStepper> {
                 const SizedBox(height: 16),
                 TextFormField(
                   controller: widget.tripNumberController,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Trip Number *',
                     hintText: 'e.g. T-9921',
-                    prefixIcon: Icon(Icons.confirmation_number_outlined),
+                    prefixIcon: const Icon(Icons.confirmation_number_outlined),
+                    errorText: widget.tripNumberExists ? 'This trip number already exists' : null,
                   ),
                   textCapitalization: TextCapitalization.characters,
                   onChanged: (_) => setState(() {}),

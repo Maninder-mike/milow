@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 
 class AddressInputForm extends StatefulWidget {
@@ -34,6 +35,7 @@ class _AddressInputFormState extends State<AddressInputForm> {
   @override
   void initState() {
     super.initState();
+    assert(widget.location.companyName.isNotEmpty || widget.location.id == null);
     _companyController = TextEditingController(
       text: widget.location.companyName,
     );
@@ -193,12 +195,12 @@ class _AddressInputFormState extends State<AddressInputForm> {
 
         return Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF181818) : theme.cardColor,
+            color: isDark 
+                ? theme.resources.solidBackgroundFillColorBase 
+                : theme.cardColor,
             borderRadius: BorderRadius.circular(4),
             border: Border.all(
-              color: isDark
-                  ? const Color(0xFF333333)
-                  : theme.resources.dividerStrokeColorDefault,
+              color: theme.resources.dividerStrokeColorDefault,
             ),
           ),
           padding: const EdgeInsets.all(16),
@@ -208,15 +210,17 @@ class _AddressInputFormState extends State<AddressInputForm> {
               if (widget.title.isNotEmpty) ...[
                 Text(
                   widget.title,
-                  style: FluentTheme.of(
-                    context,
-                  ).typography.subtitle?.copyWith(fontWeight: FontWeight.bold),
+                  style: GoogleFonts.outfit(
+                    textStyle: theme.typography.subtitle,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 const SizedBox(height: 12),
               ],
 
               InfoLabel(
                 label: 'Date & Time (${widget.location.date.timeZoneName})',
+                labelStyle: GoogleFonts.outfit(),
                 child: isNarrow
                     ? Column(
                         children: [
@@ -299,6 +303,7 @@ class _AddressInputFormState extends State<AddressInputForm> {
 
               InfoLabel(
                 label: 'Company Name',
+                labelStyle: GoogleFonts.outfit(),
                 child:
                     widget.suggestions != null && widget.suggestions!.isNotEmpty
                     ? AutoSuggestBox<Map<String, dynamic>>(
@@ -327,6 +332,7 @@ class _AddressInputFormState extends State<AddressInputForm> {
                       )
                     : TextBox(
                         placeholder: 'Business/Facility Name',
+                        style: GoogleFonts.outfit(),
                         decoration: WidgetStateProperty.all(
                           BoxDecoration(borderRadius: BorderRadius.circular(4)),
                         ),
@@ -340,8 +346,10 @@ class _AddressInputFormState extends State<AddressInputForm> {
 
               InfoLabel(
                 label: 'Address',
+                labelStyle: GoogleFonts.outfit(),
                 child: TextBox(
                   placeholder: 'Street Address',
+                  style: GoogleFonts.outfit(),
                   decoration: WidgetStateProperty.all(
                     BoxDecoration(borderRadius: BorderRadius.circular(4)),
                   ),

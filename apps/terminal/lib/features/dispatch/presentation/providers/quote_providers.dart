@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:milow_core/milow_core.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../data/repositories/quote_repository.dart';
 import '../../../../core/providers/network_provider.dart';
 
@@ -17,29 +16,8 @@ QuoteRepository quoteRepository(Ref ref) {
 /// Signal that emits when the 'quotes' table changes
 @riverpod
 Stream<int> quotesChangeSignal(Ref ref) {
-  final controller = StreamController<int>();
-  int counter = 0;
-
-  final channel = Supabase.instance.client.channel('public:quotes');
-
-  channel
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'quotes',
-        callback: (payload) {
-          counter++;
-          controller.add(counter);
-        },
-      )
-      .subscribe();
-
-  ref.onDispose(() {
-    Supabase.instance.client.removeChannel(channel);
-    controller.close();
-  });
-
-  return controller.stream;
+  final repository = ref.read(quoteRepositoryProvider);
+  return repository.quotesChangeSignal;
 }
 
 /// List of quotes (AsyncValue) by fetching from repository

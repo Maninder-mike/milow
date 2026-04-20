@@ -1,10 +1,11 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
-import '../widgets/load_entry_form.dart';
-import '../widgets/broker_entry_dialog.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/load_entry_form.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/broker_entry_dialog.dart';
 
 class DispatchPage extends ConsumerStatefulWidget {
   const DispatchPage({super.key});
@@ -25,7 +26,10 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
       header: isCreatingLoad
           ? null
           : PageHeader(
-              title: const Text('Dispatch Board'),
+              title: Text(
+                'Dispatch Board',
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+              ),
               commandBar: CommandBar(
                 primaryItems: [
                   CommandBarButton(
@@ -56,6 +60,25 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                 await ref
                     .read(loadControllerProvider.notifier)
                     .createLoad(newLoad);
+
+                if (ref.read(loadControllerProvider).hasError) {
+                  if (context.mounted) {
+                    displayInfoBar(
+                      context,
+                      builder: (context, close) => InfoBar(
+                        title: Text('Error Saving', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                        content: Text(
+                          ref.read(loadControllerProvider).error.toString(),
+                          style: GoogleFonts.outfit(),
+                        ),
+                        severity: InfoBarSeverity.error,
+                        onClose: close,
+                      ),
+                    );
+                  }
+                  return; // Keep form open on error
+                }
+
                 ref.read(isCreatingLoadProvider.notifier).toggle(false);
                 ref.read(loadDraftProvider.notifier).reset();
               },
@@ -108,11 +131,11 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                         children: [
                           TextSpan(
                             text: load.brokerName,
-                            style: const TextStyle(fontWeight: FontWeight.bold),
+                            style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
                           ),
                           TextSpan(
                             text: ' - #${load.loadReference}',
-                            style: TextStyle(
+                            style: GoogleFonts.outfit(
                               color: FluentTheme.of(
                                 context,
                               ).resources.textFillColorSecondary,
@@ -133,7 +156,7 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                           ),
                           TextSpan(
                             text: '${load.pickup.city}, ${load.pickup.state}',
-                            style: const TextStyle(fontSize: 13),
+                            style: GoogleFonts.outfit(fontSize: 13),
                           ),
                           const TextSpan(text: ' -> '),
                           TextSpan(
@@ -149,13 +172,14 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
                           TextSpan(
                             text:
                                 '${load.delivery.city}, ${load.delivery.state}',
-                            style: const TextStyle(fontSize: 13),
+                            style: GoogleFonts.outfit(fontSize: 13),
                           ),
                         ],
                       ),
                     ),
                     subtitle: Text(
                       'Goods: ${load.goods}  |  Rate: \$${load.rate.toStringAsFixed(2)} ${load.currency}',
+                      style: GoogleFonts.outfit(),
                     ),
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(
@@ -187,9 +211,9 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
         children: [
           const Icon(FluentIcons.vehicle_truck_profile_24_regular, size: 48),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No active loads',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           const Text('Click "New Load" to add a shipment from the board.'),
@@ -219,8 +243,8 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
               context,
               builder: (infoBarContext, close) {
                 return InfoBar(
-                  title: const Text('Broker Saved'),
-                  content: Text('Saved ${newBroker.name}'),
+                  title: Text('Broker Saved', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+                  content: Text('Saved ${newBroker.name}', style: GoogleFonts.outfit()),
                   severity: InfoBarSeverity.success,
                   onClose: close,
                 );

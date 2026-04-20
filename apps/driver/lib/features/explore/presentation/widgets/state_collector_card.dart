@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
+import 'package:milow/core/widgets/glassy_card.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
 class StateCollectorCard extends StatelessWidget {
   final VoidCallback? onTap;
@@ -10,6 +12,7 @@ class StateCollectorCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colorScheme = Theme.of(context).colorScheme;
+    final tokens = context.tokens;
 
     return Consumer<ExploreProvider>(
       builder: (context, provider, child) {
@@ -18,145 +21,169 @@ class StateCollectorCard extends StatelessWidget {
         const total = 50;
         final progress = count / total;
 
-        return InkWell(
+        return GlassyCard(
           onTap: onTap,
-          borderRadius: BorderRadius.circular(24),
-          child: Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: colorScheme.primaryContainer.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(
-                color: colorScheme.primary.withValues(alpha: 0.1),
+          borderRadius: tokens.shapeXL,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'STATE COLLECTOR',
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                              color: colorScheme.primary,
+                            ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Your trucking legacy',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: colorScheme.onSurfaceVariant),
+                      ),
+                    ],
+                  ),
+                  Icon(
+                    Icons.stars_rounded,
+                    color: colorScheme.primary,
+                    size: 28,
+                  ),
+                ],
               ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
+              const SizedBox(height: 32),
+              Row(
+                children: [
+                  SizedBox(
+                    height: 80,
+                    width: 80,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        SizedBox(
+                          height: 80,
+                          width: 80,
+                          child: CircularProgressIndicator(
+                            value: progress,
+                            strokeWidth: 8,
+                            backgroundColor:
+                                colorScheme.primary.withValues(alpha: 0.1),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              colorScheme.primary,
+                            ),
+                            strokeCap: StrokeCap.round,
+                          ),
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$count',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .headlineMedium
+                                  ?.copyWith(
+                                    fontWeight: FontWeight.w900,
+                                    color: colorScheme.onSurface,
+                                  ),
+                            ),
+                            Text(
+                              'of $total',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelSmall
+                                  ?.copyWith(
+                                    color: colorScheme.onSurfaceVariant,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 32),
+                  Expanded(
+                    child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'STATE COLLECTOR',
-                          style: Theme.of(context).textTheme.labelLarge
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 1.2,
-                                color: colorScheme.primary,
+                          'Next Milestone',
+                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
                               ),
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Your trucking legacy',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: colorScheme.onSurfaceVariant),
+                          _getMilestoneMessage(count),
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                color: colorScheme.onSurfaceVariant,
+                              ),
+                        ),
+                        const SizedBox(height: 12),
+                        LinearProgressIndicator(
+                          value: (count % 10) / 10,
+                          backgroundColor:
+                              colorScheme.primary.withValues(alpha: 0.1),
+                          color: colorScheme.primary,
+                          minHeight: 4,
+                          borderRadius: BorderRadius.circular(2),
                         ),
                       ],
                     ),
-                    Icon(
-                      Icons.stars_rounded,
-                      color: colorScheme.primary,
-                      size: 28,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$count',
-                      style: Theme.of(context).textTheme.displaySmall?.copyWith(
-                        fontWeight: FontWeight.w900,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      '/ $total',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: colorScheme.onSurfaceVariant.withValues(
-                          alpha: 0.6,
-                        ),
-                        fontWeight: FontWeight.w300,
-                      ),
-                    ),
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary,
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        '${(progress * 100).toInt()}%',
-                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: colorScheme.onPrimary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      colorScheme.primary,
-                    ),
-                    minHeight: 10,
-                  ),
-                ),
-                if (visitedStates.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    height: 32,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: visitedStates.length,
-                      separatorBuilder: (context, index) =>
-                          const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final statesList = visitedStates.toList();
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10),
-                          alignment: Alignment.center,
-                          decoration: BoxDecoration(
-                            color: colorScheme.surface,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(
-                              color: colorScheme.outlineVariant.withValues(
-                                alpha: 0.5,
-                              ),
-                            ),
-                          ),
-                          child: Text(
-                            statesList[index],
-                            style: Theme.of(context).textTheme.labelMedium
-                                ?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: colorScheme.primary,
-                                ),
-                          ),
-                        );
-                      },
-                    ),
                   ),
                 ],
+              ),
+              if (visitedStates.isNotEmpty) ...[
+                const SizedBox(height: 32),
+                SizedBox(
+                  height: 36,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: visitedStates.length,
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(width: 10),
+                    itemBuilder: (context, index) {
+                      final statesList = visitedStates.toList();
+                      return Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: colorScheme.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(tokens.shapeFull),
+                          border: Border.all(
+                            color: colorScheme.primary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          statesList[index],
+                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: colorScheme.primary,
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
               ],
-            ),
+            ],
           ),
         );
       },
     );
+  }
+
+  String _getMilestoneMessage(int count) {
+    if (count < 10) return 'Collect 10 states for "Rookie Ranger"';
+    if (count < 25) return 'Collect 25 states for "Highway Hero"';
+    if (count < 40) return 'Collect 40 states for "Interstate Icon"';
+    if (count < 50) return 'Finish the US for "Total Legend"';
+    return 'You have conquered the US!';
   }
 }

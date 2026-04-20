@@ -5,8 +5,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
-import 'package:milow_core/milow_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:milow_core/milow_core.dart';
 import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
 import 'package:terminal/features/dispatch/presentation/providers/quote_providers.dart';
 import 'package:terminal/features/dispatch/presentation/providers/load_stats_provider.dart';
@@ -207,10 +207,8 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                                         title: 'Loads (Visible)',
                                         value: loads.length.toString(),
                                         icon: FluentIcons.box_24_regular,
-                                        iconColor: const Color(0xFF00ACC1),
-                                        iconBackgroundColor: const Color(
-                                          0xFFE0F7FA,
-                                        ),
+                                        iconColor: AppColors.info,
+                                        iconBackgroundColor: AppColors.info.withValues(alpha: 0.1),
                                         breakdown: [
                                           StatBreakdownItem(
                                             label: 'Completed',
@@ -236,10 +234,8 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                                         value: stats.todayCount.toString(),
                                         icon:
                                             FluentIcons.calendar_ltr_24_regular,
-                                        iconColor: const Color(0xFFFB8C00),
-                                        iconBackgroundColor: const Color(
-                                          0xFFFFF3E0,
-                                        ),
+                                        iconColor: AppColors.warning,
+                                        iconBackgroundColor: AppColors.warning.withValues(alpha: 0.1),
                                       ),
                                     ),
                                     const SizedBox(width: 24),
@@ -249,10 +245,8 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                                         value: stats.completedCount.toString(),
                                         icon: FluentIcons
                                             .checkmark_circle_24_regular,
-                                        iconColor: const Color(0xFF43A047),
-                                        iconBackgroundColor: const Color(
-                                          0xFFE8F5E9,
-                                        ),
+                                        iconColor: AppColors.success,
+                                        iconBackgroundColor: AppColors.success.withValues(alpha: 0.1),
                                       ),
                                     ),
                                   ],
@@ -298,7 +292,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                                       style: ButtonStyle(
                                         backgroundColor:
                                             WidgetStateProperty.all(
-                                              const Color(0xFF009688),
+                                              AppColors.teal,
                                             ),
                                         padding: WidgetStateProperty.all(
                                           const EdgeInsets.symmetric(
@@ -444,11 +438,11 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
           load: load,
           onAssign: (driverIds, truckId, trailerId) async {
             // 1. Update Load Object (Primary Driver)
-            debugPrint('onAssign called with drivers: $driverIds');
+            AppLogger.info('onAssign called with drivers: $driverIds');
             final String? primaryDriverId = driverIds.isNotEmpty
                 ? driverIds.first
                 : null;
-            debugPrint('Setting primaryDriverId: $primaryDriverId');
+            AppLogger.info('Setting primaryDriverId: $primaryDriverId');
 
             final updatedLoad = load.copyWith(
               assignedDriverId: primaryDriverId,
@@ -463,7 +457,7 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
 
             final controllerState = ref.read(loadControllerProvider);
             if (controllerState.hasError) {
-              debugPrint('UpdateLoad failed: ${controllerState.error}');
+              AppLogger.error('UpdateLoad failed: ${controllerState.error}');
               if (!mounted) return;
               displayInfoBar(
                 context,
@@ -494,30 +488,33 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                 }
 
                 if (assignments.isNotEmpty) {
-                  debugPrint('Upserting fleet assignments: $assignments');
-                  await supabase
-                      .from('fleet_assignments')
-                      .upsert(
-                        assignments,
-                        onConflict: 'assignee_id, trip_number, type',
-                      );
-                  debugPrint('Fleet assignments upserted successfully');
+                  final result = await ref
+                      .read(loadRepositoryProvider)
+                      .upsertFleetAssignments(assignments);
+
+                  result.fold(
+                    (failure) {
+                      AppLogger.error('Error saving fleet assignments: ${failure.message}');
+                      if (mounted) {
+                        displayInfoBar(
+                          context,
+                          builder: (context, close) => InfoBar(
+                            title: Text('Sync Error', style: GoogleFonts.outfit()),
+                            content: Text(failure.message, style: GoogleFonts.outfit()),
+                            severity: InfoBarSeverity.error,
+                            onClose: close,
+                          ),
+                        );
+                      }
+                    },
+                    (_) => AppLogger.info('Fleet assignments upserted successfully'),
+                  );
                 }
               } catch (e) {
-                debugPrint('Error saving fleet assignments: $e');
-                if (!mounted) return;
-                displayInfoBar(
-                  context,
-                  builder: (context, close) => InfoBar(
-                    title: const Text('Fleet Assignment Warning'),
-                    content: Text('Could not save detailed assignments: $e'),
-                    severity: InfoBarSeverity.warning,
-                    onClose: close,
-                  ),
-                );
+                AppLogger.error('Unexpected error saving fleet assignments', error: e);
               }
             } else {
-              debugPrint(
+              AppLogger.info(
                 'Skipping fleet assignments: TripNumber=${load.tripNumber}, DriverIds=${driverIds.length}',
               );
             }

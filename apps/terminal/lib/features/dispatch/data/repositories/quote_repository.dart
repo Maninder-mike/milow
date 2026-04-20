@@ -1,5 +1,7 @@
+import 'dart:async';
 import 'package:fpdart/fpdart.dart';
 import 'package:milow_core/milow_core.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class QuoteRepository {
   final CoreNetworkClient _client;
@@ -109,5 +111,26 @@ class QuoteRepository {
       quoteJson['load_reference'] = loadData?['load_reference'] ?? '';
       return Quote.fromJson(quoteJson);
     }, operationName: 'fetchQuoteById');
+  }
+  /// Stream that emits when the 'quotes' table changes.
+  Stream<int> get quotesChangeSignal {
+    final controller = StreamController<int>();
+    int counter = 0;
+
+    final channel = _client.supabase.channel('public:quotes');
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'quotes',
+          callback: (payload) {
+            counter++;
+            if (!controller.isClosed) controller.add(counter);
+          },
+        )
+        .subscribe();
+
+    return controller.stream;
   }
 }

@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 
 class BrokerEntryDialog extends StatefulWidget {
@@ -66,18 +67,27 @@ class _BrokerEntryDialogState extends State<BrokerEntryDialog> {
   @override
   Widget build(BuildContext context) {
     return ContentDialog(
-      title: Text(widget.initialBroker == null ? 'New Broker' : 'Edit Broker'),
+      title: Text(
+        widget.initialBroker == null ? 'New Broker' : 'Edit Broker',
+        style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
+      ),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            InfoLabel(label: 'Identity', child: Divider()),
+            InfoLabel(
+              label: 'Identity',
+              labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              child: const Divider(),
+            ),
             const SizedBox(height: 8),
             InfoLabel(
               label: 'Broker Name',
+              labelStyle: GoogleFonts.outfit(),
               child: TextBox(
                 placeholder: 'Company Name',
+                style: GoogleFonts.outfit(),
                 controller: _nameController,
               ),
             ),
@@ -106,7 +116,11 @@ class _BrokerEntryDialogState extends State<BrokerEntryDialog> {
               ],
             ),
             const SizedBox(height: 20),
-            InfoLabel(label: 'Contact Info', child: Divider()),
+            InfoLabel(
+              label: 'Contact Info',
+              labelStyle: GoogleFonts.outfit(fontWeight: FontWeight.w600),
+              child: const Divider(),
+            ),
             const SizedBox(height: 8),
             Row(
               children: [
@@ -199,13 +213,13 @@ class _BrokerEntryDialogState extends State<BrokerEntryDialog> {
       actions: [
         Button(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text('Cancel', style: GoogleFonts.outfit()),
         ),
         FilledButton(
           onPressed: _isSaving ? null : _submit,
           child: _isSaving
               ? const SizedBox(height: 16, width: 16, child: ProgressRing())
-              : const Text('Save Broker'),
+              : Text('Save Broker', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
         ),
       ],
     );
@@ -213,13 +227,14 @@ class _BrokerEntryDialogState extends State<BrokerEntryDialog> {
 
   Future<void> _submit() async {
     if (_nameController.text.isEmpty) {
+      AppLogger.warning('Broker validation failed: Name is required');
       displayInfoBar(
         alignment: Alignment.bottomRight,
         context,
         builder: (context, close) {
           return InfoBar(
-            title: const Text('Invalid Input'),
-            content: const Text('Broker Name is required.'),
+            title: Text('Invalid Input', style: GoogleFonts.outfit(fontWeight: FontWeight.w600)),
+            content: Text('Broker Name is required.', style: GoogleFonts.outfit()),
             severity: InfoBarSeverity.warning,
             onClose: close,
           );

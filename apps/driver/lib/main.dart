@@ -84,6 +84,7 @@ import 'package:milow/features/auth/presentation/pages/email_verified_page.dart'
 import 'package:milow/features/auth/presentation/pages/reset_password_page.dart';
 import 'package:milow/features/auth/presentation/pages/forgot_password_page.dart';
 import 'package:milow/features/explore/presentation/providers/explore_provider.dart';
+import 'package:milow/features/trips/presentation/widgets/share_confirmation_sheet.dart';
 import 'package:milow/core/providers/unit_suggestion_provider.dart';
 
 Future<void> main() async {
@@ -402,7 +403,10 @@ Future<void> _navigateAfterSplash(BuildContext context) async {
   }
 }
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 final GoRouter _router = GoRouter(
+  navigatorKey: navigatorKey,
   initialLocation: '/splash',
   redirect: (context, state) {
     final session = Supabase.instance.client.auth.currentSession;
@@ -858,17 +862,35 @@ class _MyAppState extends State<MyApp> {
     // Parse the text
     final tripData = TripParserService.parse(text);
 
-    // Navigate to Add Entry Page with data
-    // Use go() instead of push() to replace current route and prevent back navigation issues
-    // This ensures we always navigate to add-entry, even if already there (will refresh with new data)
-    _router.go('/add-entry', extra: tripData);
+    final context = navigatorKey.currentContext;
+    if (context != null) {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        backgroundColor: Colors.transparent,
+        builder: (context) => ShareConfirmationSheet(
+          data: tripData,
+          onConfirm: () {
+            Navigator.pop(context);
+            _router.go('/add-entry', extra: tripData);
+          },
+          onCancel: () {
+            Navigator.pop(context);
+            _isProcessingShareIntent = false;
+          },
+        ),
+      );
+    }
 
-    // Clear the flag after a delay to allow navigation to complete
-    // This gives time for the navigation to finish before auth listener can interfere
+    // Clear the flag after a delay to allow UI to be ready for next share
     unawaited(
       Future.delayed(const Duration(milliseconds: 2000), () {
-        _isProcessingShareIntent = false;
-        debugPrint('✅ Share intent processing complete');
+        // If sheet is dismissed via cancel, we already set it to false
+        // Otherwise, this ensures it's reset.
+        if (_isProcessingShareIntent) {
+          _isProcessingShareIntent = false;
+        }
+        debugPrint('✅ Share intent processing initiated');
       }),
     );
   }

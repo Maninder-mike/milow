@@ -79,5 +79,43 @@ Date 01/09/2026 Time 08:00 AM
       final result = TripParserService.parse(text);
       expect(result['endLocation'], '123 Main St, Suite 100');
     });
+
+    test('parses complex trip format from user example', () {
+      const text = '''
+Trip# 12227
+Truck# 117 Trailer# HP107
+
+Pick #1
+BAG CRAFT PAPERCON LLC. USA
+6416 NW WHITNEY ROAD
+VANCOUVER WA 98665
+Date 04/08/2026 Time 7AM - 4PM
+P/Up Ref 203311987 / 7867407 
+Notes CHECK IN UNDER SMARTX
+
+Drop #1
+MARTIN BROWER BRAMPTON DC
+525 DEERHURST DRIVE
+BRAMPTON ON L6T5K3
+Ph#9057901700
+Date 04/15/2026 Time 1PM
+P/Up Ref Appt #: 58333106 
+Notes CHECK IN UNDER SMARTX
+''';
+
+      final result = TripParserService.parse(text);
+
+      expect(result['tripNumber'], '12227');
+      expect(result['truckNumber'], '117');
+      expect(result['trailerNumber'], 'HP107');
+      expect(result['startLocation'], contains('BAG CRAFT PAPERCON LLC. USA'));
+      expect(result['startLocation'], contains('6416 NW WHITNEY ROAD'));
+      expect(result['endLocation'], contains('MARTIN BROWER BRAMPTON DC'));
+      expect(result['endLocation'], contains('525 DEERHURST DRIVE'));
+      expect(result['date'], '04/08/2026 7:00 AM');
+      expect(result['notes'], contains('CHECK IN UNDER SMARTX'));
+      expect(result['notes'], contains('P/Up Ref 203311987 / 7867407'));
+      expect(result['notes'], contains('Ph#9057901700'));
+    });
   });
 }

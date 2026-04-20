@@ -1,6 +1,7 @@
+import 'dart:async';
 import 'package:fpdart/fpdart.dart';
 import 'package:milow_core/milow_core.dart';
-// Needed for Postgrest updates
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Repository for handling [Load] entities.
 class LoadRepository {
@@ -66,15 +67,19 @@ class LoadRepository {
       return left(const ValidationFailure('Broker name is required.'));
     }
     if (load.stops.isEmpty) {
-      // Enforce at least 1 stop or relies on legacy?
-      // Phase 4: Enforce Sequence.
       return left(const ValidationFailure('At least one stop is required.'));
     }
 
-    return _client.query<void>(() async {
-      AppLogger.debug('Creating load...');
+    final companyId = await _getMyCompanyId();
+    if (companyId == null) {
+      return left(
+        const UnauthorizedFailure('Company ID not found. Please log in again.'),
+      );
+    }
 
-      final fetchedCompanyId = await _getMyCompanyId();
+    return _client.query<void>(() async {
+      AppLogger.info('Creating load...');
+
       final brokerId = await _ensureBrokerExists(
         load.brokerId,
         load.brokerName,
@@ -82,23 +87,16 @@ class LoadRepository {
 
       final loadData = load.toJson();
       loadData['broker_id'] = brokerId;
-      loadData['company_id'] = fetchedCompanyId;
+      loadData['company_id'] = companyId;
 
-      // Phase 4: Do NOT populate legacy pickup_id/receiver_id for new loads.
-      // They are nullable.
       loadData.remove('pickup_id');
       loadData.remove('receiver_id');
-
-      // Remove ID to let DB generate it
       loadData.remove('id');
-      // Ensure timestamps are handled by DB
       loadData.remove('created_at');
       loadData.remove('updated_at');
 
-      // Separate accessorials
       final accessorials = loadData.remove('accessorials') as List?;
 
-      // Insert Load and get ID
       final response = await _client.supabase
           .from('loads')
           .insert(loadData)
@@ -107,24 +105,22 @@ class LoadRepository {
 
       final newLoadId = response['id'] as String;
 
-      // Insert Stops
       if (load.stops.isNotEmpty) {
         final stopsData = load.stops.map((stop) {
           final map = stop.toJson();
-          map['load_id'] = newLoadId; // Link to new load
-          map.remove('id'); // Generate new IDs
+          map['load_id'] = newLoadId;
+          map.remove('id');
           return map;
         }).toList();
 
         await _client.supabase.from('stops').insert(stopsData);
       }
 
-      // Insert Accessorials
       if (accessorials != null && accessorials.isNotEmpty) {
         final accessorialsData = accessorials.map((e) {
           final map = e as Map<String, dynamic>;
           map['load_id'] = newLoadId;
-          map.remove('id'); // Generate new IDs
+          map.remove('id');
           return map;
         }).toList();
 
@@ -143,8 +139,13 @@ class LoadRepository {
       return left(const ValidationFailure('Load ID is required for update.'));
     }
 
+    final companyId = await _getMyCompanyId();
+    if (companyId == null) {
+      return left(const UnauthorizedFailure('Company ID not found.'));
+    }
+
     return _client.query<void>(() async {
-      AppLogger.debug('Updating load ${load.id}...');
+      AppLogger.info('Updating load ${load.id}...');
 
       final brokerId = await _ensureBrokerExists(
         load.brokerId,
@@ -153,69 +154,44 @@ class LoadRepository {
 
       final loadData = load.toJson();
       loadData['broker_id'] = brokerId;
-      loadData['company_id'] = await _getMyCompanyId();
+      loadData['company_id'] = companyId;
 
-      // Keep legacy fields null/untouched if they aren't in toJson?
-      // toJson sends them if ID present.
-      // We should probably explicitly remove them to enforce Stop usage if we want migration.
-      // But if we want to maintain legacy pointers, we'd need to update them.
-      // For Phase 4.1: Ignore legacy columns during update.
       loadData.remove('pickup_id');
       loadData.remove('receiver_id');
-
       loadData.remove('id');
       loadData.remove('created_at');
       loadData.remove('updated_at');
 
-      // Separate accessorials
       final accessorials = loadData.remove('accessorials') as List?;
 
-      AppLogger.debug('Updating load ${load.id} with data: $loadData');
-
-      final updateRes = await _client.supabase
+      await _client.supabase
           .from('loads')
           .update(loadData)
-          .eq('id', load.id)
-          .select();
-      AppLogger.debug('Load update result: $updateRes');
+          .eq('id', load.id);
 
-      // Update Stops: Replace All Strategy
-      // 1. Delete all stops for this load
-      AppLogger.debug('Deleting existing stops for load ${load.id}');
       await _client.supabase.from('stops').delete().eq('load_id', load.id);
 
-      // 2. Insert current stops
       if (load.stops.isNotEmpty) {
         final stopsData = load.stops.map((stop) {
           final map = stop.toJson();
           map['load_id'] = load.id;
-          map.remove('id'); // Generate new IDs ensures clean slate
+          map.remove('id');
           return map;
         }).toList();
 
-        AppLogger.debug(
-          'Inserting ${stopsData.length} stops for load ${load.id}',
-        );
-        final insertRes = await _client.supabase
-            .from('stops')
-            .insert(stopsData)
-            .select();
-        AppLogger.debug('Stops insert result: $insertRes');
+        await _client.supabase.from('stops').insert(stopsData);
       }
 
-      // Update Accessorials: Replace All Strategy
-      // 1. Delete all accessorials for this load
       await _client.supabase
           .from('accessorial_charges')
           .delete()
           .eq('load_id', load.id);
 
-      // 2. Insert current accessorials
       if (accessorials != null && accessorials.isNotEmpty) {
         final accessorialsData = accessorials.map((e) {
           final map = e as Map<String, dynamic>;
           map['load_id'] = load.id;
-          map.remove('id'); // Generate new IDs ensures clean slate
+          map.remove('id');
           return map;
         }).toList();
 
@@ -235,7 +211,6 @@ class LoadRepository {
     }
 
     return _client.query<void>(() async {
-      // Cascade delete handles stops if defined in DB schema (ON DELETE CASCADE)
       await _client.supabase.from('loads').delete().eq('id', id);
       AppLogger.info('Load $id deleted successfully.');
     }, operationName: 'deleteLoad');
@@ -306,7 +281,6 @@ class LoadRepository {
     if (user == null) return left(UnauthorizedFailure());
 
     return _client.query<CheckCall>(() async {
-      // Get company_id from load
       final loadData = await _client.supabase
           .from('loads')
           .select('company_id')
@@ -347,6 +321,149 @@ class LoadRepository {
         'reviewed_by': _client.supabase.auth.currentUser?.id,
       }).eq('id', documentId);
     }, operationName: 'updateDocumentStatus');
+  }
+
+  /// Fetch pickup location suggestions
+  Future<Result<List<Map<String, dynamic>>>> fetchPickupSuggestions() async {
+    return _client.query<List<Map<String, dynamic>>>(() async {
+      final response = await _client.supabase
+          .from('pickups')
+          .select('id, shipper_name, address, city, state_province, postal_code, contact_person, phone, fax')
+          .order('shipper_name');
+      return (response as List).cast<Map<String, dynamic>>();
+    }, operationName: 'fetchPickupSuggestions');
+  }
+
+  /// Fetch receiver location suggestions
+  Future<Result<List<Map<String, dynamic>>>> fetchReceiverSuggestions() async {
+    return _client.query<List<Map<String, dynamic>>>(() async {
+      final response = await _client.supabase
+          .from('receivers')
+          .select('id, receiver_name, address, city, state_province, postal_code, contact_person, phone, fax')
+          .order('receiver_name');
+      return (response as List).cast<Map<String, dynamic>>();
+    }, operationName: 'fetchReceiverSuggestions');
+  }
+
+  /// Fetch broker customer suggestions
+  Future<Result<List<Map<String, dynamic>>>> fetchBrokerSuggestions() async {
+    return _client.query<List<Map<String, dynamic>>>(() async {
+      final response = await _client.supabase
+          .from('customers')
+          .select('id, name, city, state_province')
+          .eq('customer_type', 'Broker')
+          .order('name');
+      return (response as List).cast<Map<String, dynamic>>();
+    }, operationName: 'fetchBrokerSuggestions');
+  }
+
+  /// Upsert fleet assignments for a load.
+  Future<Result<void>> upsertFleetAssignments(List<Map<String, dynamic>> assignments) async {
+    if (assignments.isEmpty) return right(null);
+
+    return _client.query<void>(() async {
+      await _client.supabase.from('fleet_assignments').upsert(
+            assignments,
+            onConflict: 'assignee_id, trip_number, type',
+          );
+    }, operationName: 'upsertFleetAssignments');
+  }
+
+  /// Stream that emits when the 'loads' table changes for the current company.
+  Stream<int> get loadsChangeSignal {
+    final controller = StreamController<int>();
+    int counter = 0;
+
+    if (companyId == null) return const Stream.empty();
+
+    final channel = _client.supabase.channel('public:loads:$companyId');
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'loads',
+          filter: PostgresChangeFilter(
+            type: PostgresChangeFilterType.eq,
+            column: 'company_id',
+            value: companyId!,
+          ),
+          callback: (payload) {
+            counter++;
+            if (!controller.isClosed) controller.add(counter);
+          },
+        )
+        .subscribe();
+
+    return controller.stream;
+  }
+
+  /// Stream that emits when the 'stops' table changes.
+  Stream<int> get stopsChangeSignal {
+    final controller = StreamController<int>();
+    int counter = 0;
+
+    if (companyId == null) return const Stream.empty();
+
+    final channel = _client.supabase.channel('public:stops:$companyId');
+
+    channel
+        .onPostgresChanges(
+          event: PostgresChangeEvent.all,
+          schema: 'public',
+          table: 'stops',
+          callback: (payload) {
+            counter++;
+            if (!controller.isClosed) controller.add(counter);
+          },
+        )
+        .subscribe();
+
+    return controller.stream;
+  }
+
+  /// Fetch summary statistics for loads.
+  Future<Result<Map<String, int>>> fetchLoadStats() async {
+    return _client.query<Map<String, int>>(() async {
+      final now = DateTime.now();
+      final startOfDay = DateTime(now.year, now.month, now.day).toIso8601String();
+      final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59).toIso8601String();
+
+      var baseQuery = _client.supabase.from('loads').select('id');
+      if (companyId != null) {
+        baseQuery = baseQuery.eq('company_id', companyId!);
+      }
+
+      final results = await Future.wait([
+        // Today
+        baseQuery
+            .gte('pickup_date', startOfDay)
+            .lte('pickup_date', endOfDay)
+            .count(CountOption.exact),
+        // Active
+        baseQuery
+            .inFilter('status', [
+              'assigned', 'dispatched', 'tendered', 'enRoute', 
+              'atPickup', 'loaded', 'atStop', 'atDelivery'
+            ])
+            .count(CountOption.exact),
+        // Completed
+        baseQuery
+            .inFilter('status', ['delivered', 'completed'])
+            .count(CountOption.exact),
+        // Delayed
+        baseQuery
+            .eq('is_delayed', true)
+            .count(CountOption.exact),
+      ]);
+
+      return {
+        'today': results[0].count,
+        'active': results[1].count,
+        'completed': results[2].count,
+        'delayed': results[3].count,
+      };
+    }, operationName: 'fetchLoadStats');
   }
 
   // --- Private Helpers ---
@@ -400,7 +517,7 @@ class LoadRepository {
       operationName: 'getMyCompanyId',
       cachePolicy: CachePolicy.cacheFirst,
       cacheKey: 'user_company_id_${user.id}',
-      ttl: const Duration(hours: 1), // Company ID rarely changes
+      ttl: const Duration(hours: 1),
     );
 
     return result.getOrElse((failure) => null);

@@ -19,6 +19,10 @@ import 'package:milow/features/explore/presentation/pages/visited_states_map_pag
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 
+import 'package:milow/core/constants/design_tokens.dart';
+import 'package:milow/core/widgets/glassy_card.dart';
+import 'package:gap/gap.dart';
+
 class ExplorePage extends StatefulWidget {
   const ExplorePage({super.key});
 
@@ -77,19 +81,10 @@ class _ExplorePageState extends State<ExplorePage> {
         ),
         centerTitle: false,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              colorScheme.surface,
-              colorScheme.surfaceContainerLow.withValues(alpha: 0.8),
-              colorScheme.surfaceContainerLowest,
-            ],
-          ),
-        ),
-        child: RefreshIndicator(
+      body: Stack(
+        children: [
+          const _MeshGradientBackground(),
+          RefreshIndicator(
           onRefresh: _onRefresh,
           displacement: 20, // Reduced displacement since AppBar is fixed
           strokeWidth: 3.0,
@@ -98,18 +93,9 @@ class _ExplorePageState extends State<ExplorePage> {
           child: CustomScrollView(
             physics: const BouncingScrollPhysics(),
             slivers: [
-              const SliverPadding(padding: EdgeInsets.only(top: 8)),
-
               if (exploreProvider.isLoading)
-                SliverFillRemaining(
-                  child: Center(
-                    child: CircularProgressIndicator(
-                      strokeWidth: 3.0,
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                )
-              else
+                const _ExploreSkeleton()
+              else ...[
                 SliverToBoxAdapter(
                   child: M3StaggeredList(
                     staggerDelay: const Duration(milliseconds: 100),
@@ -248,12 +234,14 @@ class _ExplorePageState extends State<ExplorePage> {
                     ],
                   ),
                 ),
+              ],
             ],
           ),
         ),
-      ),
-    );
-  }
+      ],
+    ),
+  );
+}
 
   Widget _buildDestinationsList(ExploreProvider exploreProvider) {
     if (exploreProvider.filteredDestinations.isEmpty) {
@@ -262,13 +250,16 @@ class _ExplorePageState extends State<ExplorePage> {
         icon: Icons.map,
       );
     }
-    return Column(
-      children: exploreProvider.filteredDestinations.map((dest) {
-        return _SimpleDestinationCard(
-          destination: dest,
-          onTap: () => _navigateToAllDestinations(),
-        );
-      }).toList(),
+    return GlassyCard(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: exploreProvider.filteredDestinations.map((dest) {
+          return _SimpleDestinationCard(
+            destination: dest,
+            onTap: () => _navigateToAllDestinations(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -281,13 +272,16 @@ class _ExplorePageState extends State<ExplorePage> {
       );
     }
 
-    return Column(
-      children: activity.map((item) {
-        return _SimpleActivityCard(
-          activity: item,
-          onTap: () => _navigateToAllActivity(),
-        );
-      }).toList(),
+    return GlassyCard(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        children: activity.map((item) {
+          return _SimpleActivityCard(
+            activity: item,
+            onTap: () => _navigateToAllActivity(),
+          );
+        }).toList(),
+      ),
     );
   }
 
@@ -2312,3 +2306,118 @@ class _AllActivityPageState extends State<_AllActivityPage> {
 }
 
 // ============== Search Dialog ==============
+
+class _MeshGradientBackground extends StatelessWidget {
+  const _MeshGradientBackground();
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            colorScheme.surface,
+            colorScheme.surfaceContainerLow,
+            colorScheme.primaryContainer.withValues(alpha: 0.1),
+            colorScheme.surfaceContainerLowest,
+          ],
+          stops: const [0, 0.4, 0.7, 1],
+        ),
+      ),
+    );
+  }
+}
+
+
+
+class _ExploreSkeleton extends StatelessWidget {
+  const _ExploreSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    final tokens = context.tokens;
+    return SliverPadding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      sliver: SliverList(
+        delegate: SliverChildListDelegate([
+          const Gap(16),
+          _SkeletonBox(height: 300, radius: tokens.shapeL),
+          const Gap(24),
+          _SkeletonBox(height: 100, radius: tokens.shapeM),
+          const Gap(16),
+          Row(
+            children: [
+              Expanded(child: _SkeletonBox(height: 150, radius: tokens.shapeM)),
+              const Gap(16),
+              Expanded(child: _SkeletonBox(height: 150, radius: tokens.shapeM)),
+            ],
+          ),
+          const Gap(16),
+          _SkeletonBox(height: 120, radius: tokens.shapeM),
+        ]),
+      ),
+    );
+  }
+}
+
+class _SkeletonBox extends StatefulWidget {
+  final double height;
+  final double radius;
+
+  const _SkeletonBox({required this.height, required this.radius});
+
+  @override
+  State<_SkeletonBox> createState() => _SkeletonBoxState();
+}
+
+class _SkeletonBoxState extends State<_SkeletonBox>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final baseColor = isDark ? Colors.grey[900]! : Colors.grey[200]!;
+    final highlightColor = isDark ? Colors.grey[800]! : Colors.grey[100]!;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          height: widget.height,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.radius),
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [baseColor, highlightColor, baseColor],
+              stops: [
+                (_controller.value - 0.3).clamp(0.0, 1.0),
+                _controller.value.clamp(0.0, 1.0),
+                (_controller.value + 0.3).clamp(0.0, 1.0),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}

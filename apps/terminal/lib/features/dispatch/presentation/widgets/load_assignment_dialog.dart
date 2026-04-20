@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:milow_core/milow_core.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:google_fonts/google_fonts.dart';
 import '../../../../features/users/data/user_repository_provider.dart';
 import '../../../../features/dashboard/services/vehicle_service.dart';
 
@@ -30,6 +30,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
   @override
   void initState() {
     super.initState();
+    AppLogger.info('Initializing assignments for existing driver: ${widget.load.assignedDriverId}');
     if (widget.load.assignedDriverId != null) {
       _selectedDriverIds.add(widget.load.assignedDriverId!);
     }
@@ -39,47 +40,27 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
 
   Future<void> _autoSelectTruckForDriver(String driverId) async {
     setState(() => _isLoadingAssignment = true);
-    try {
-      final supabase = Supabase.instance.client;
+    final repo = ref.read(userRepositoryProvider);
+    final result = await repo.getActiveResourceAssignment(driverId);
 
-      // Fetch active assignment
-      final assignment = await supabase
-          .from('fleet_assignments')
-          .select('resource_id')
-          .eq('assignee_id', driverId)
-          .eq('type', 'driver_to_vehicle')
-          .isFilter('unassigned_at', null)
-          .maybeSingle();
-
-      if (assignment != null && mounted) {
-        final vehicleId = assignment['resource_id'] as String?;
-        if (vehicleId != null) {
-          // Verify this vehicle is actually a truck before selecting
-          final vehicleTypeCheck = await supabase
-              .from('vehicles')
-              .select('vehicle_type')
-              .eq('id', vehicleId)
-              .maybeSingle();
-
-          if (vehicleTypeCheck != null && mounted) {
-            final type = vehicleTypeCheck['vehicle_type']
-                ?.toString()
-                .toLowerCase();
-
+    result.fold(
+      (failure) => AppLogger.error('Error auto-selecting truck', error: failure),
+      (assignment) {
+        if (assignment != null && mounted) {
+          final vehicleId = assignment['resource_id'] as String?;
+          final vehicle = assignment['vehicles'] as Map<String, dynamic>?;
+          if (vehicleId != null && vehicle != null) {
+            final type = vehicle['vehicle_type']?.toString().toLowerCase();
             if (type == 'truck') {
               setState(() => _selectedTruckId = vehicleId);
-            } else if (type == 'trailer') {
-              // Less common, but possible if they assigned a trailer to a driver?
+            } else if (type == 'trailer' || type == 'reefer' || type == 'dry van') {
               setState(() => _selectedTrailerId = vehicleId);
             }
           }
         }
-      }
-    } catch (e) {
-      debugPrint('Error auto-selecting truck: $e');
-    } finally {
-      if (mounted) setState(() => _isLoadingAssignment = false);
-    }
+      },
+    );
+    if (mounted) setState(() => _isLoadingAssignment = false);
   }
 
   @override
@@ -91,17 +72,19 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
     return ContentDialog(
       title: Text(
         'Assign Load #${widget.load.tripNumber.isNotEmpty ? widget.load.tripNumber : widget.load.loadReference}',
+        style: GoogleFonts.outfit(fontWeight: FontWeight.w600),
       ),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Select resources to assign to this load:'),
+          Text('Select resources to assign to this load:', style: GoogleFonts.outfit()),
           const SizedBox(height: 16),
 
           // Driver Selection
           InfoLabel(
             label: 'Driver',
+            labelStyle: GoogleFonts.outfit(),
             child: driversAsync.when(
               data: (users) {
                 final drivers = users
@@ -157,7 +140,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                                   const SizedBox(width: 6),
                                   Text(
                                     driver.fullName ?? 'Unknown',
-                                    style: TextStyle(
+                                    style: GoogleFonts.outfit(
                                       color: FluentTheme.of(
                                         context,
                                       ).accentColor,
@@ -240,6 +223,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
           // Truck Selection
           InfoLabel(
             label: 'Truck',
+            labelStyle: GoogleFonts.outfit(),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -260,7 +244,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                         final truckNum = truck['truck_number'] ?? 'N/A';
                         return ComboBoxItem<String>(
                           value: truck['id'] as String?,
-                          child: Text(truckNum),
+                          child: Text(truckNum, style: GoogleFonts.outfit()),
                         );
                       }).toList(),
                       value: _selectedTruckId,
@@ -298,6 +282,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
           // Trailer Selection
           InfoLabel(
             label: 'Trailer',
+            labelStyle: GoogleFonts.outfit(),
             child: vehiclesAsync.when(
               data: (vehicles) {
                 final trailers = vehicles.where((v) {
@@ -314,7 +299,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                     final trailerNum = trailer['truck_number'] ?? 'N/A';
                     return ComboBoxItem<String>(
                       value: trailer['id'] as String?,
-                      child: Text(trailerNum),
+                      child: Text(trailerNum, style: GoogleFonts.outfit()),
                     );
                   }).toList(),
                   value: _selectedTrailerId,
@@ -331,7 +316,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
       actions: [
         Button(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text('Cancel', style: GoogleFonts.outfit()),
         ),
         FilledButton(
           onPressed: () {
@@ -342,7 +327,7 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
             );
             Navigator.pop(context);
           },
-          child: const Text('Assign'),
+          child: Text('Assign', style: GoogleFonts.outfit()),
         ),
       ],
     );

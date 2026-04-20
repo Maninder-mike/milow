@@ -1,12 +1,10 @@
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:milow_core/milow_core.dart';
 
 import '../../data/repositories/load_repository.dart';
 import '../../../../core/providers/network_provider.dart';
-import '../../../../core/providers/supabase_provider.dart';
 import '../../../settings/providers/company_provider.dart';
 
 part 'load_providers.g.dart';
@@ -23,82 +21,15 @@ LoadRepository loadRepository(Ref ref) {
 /// Signal that emits when the 'loads' table changes
 @riverpod
 Stream<int> loadsChangeSignal(Ref ref) {
-  final controller = StreamController<int>();
-  int counter = 0;
-
-  final supabase = ref.watch(supabaseClientProvider);
-  final companyIdOption = ref.watch(currentCompanyIdProvider);
-  final companyId = companyIdOption.value;
-
-  if (companyId == null) {
-    return const Stream.empty();
-  }
-
-  final channel = supabase.channel('public:loads:$companyId');
-
-  channel
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'loads',
-        filter: PostgresChangeFilter(
-          type: PostgresChangeFilterType.eq,
-          column: 'company_id',
-          value: companyId,
-        ),
-        callback: (payload) {
-          counter++;
-          if (!controller.isClosed) controller.add(counter);
-        },
-      )
-      .subscribe();
-
-  ref.onDispose(() {
-    Supabase.instance.client.removeChannel(channel);
-    controller.close();
-  });
-
-  return controller.stream;
+  final repository = ref.read(loadRepositoryProvider);
+  return repository.loadsChangeSignal;
 }
 
 /// Signal that emits when the 'stops' table changes
 @riverpod
 Stream<int> stopsChangeSignal(Ref ref) {
-  final controller = StreamController<int>();
-  int counter = 0;
-
-  final supabase = ref.watch(supabaseClientProvider);
-  final companyIdOption = ref.watch(currentCompanyIdProvider);
-  final companyId = companyIdOption.value;
-
-  if (companyId == null) {
-    return const Stream.empty();
-  }
-
-  // Unfortunately stops doesn't have company_id directly usually, but assuming it
-  // might or we just listen to the load's changes. We'll add the filter if we can.
-  // Actually, stops table might map to load_id. Let's scope it to company_id if it has one.
-  // If not, we just scope the channel name to avoid global collisions.
-  final channel = supabase.channel('public:stops:$companyId');
-
-  channel
-      .onPostgresChanges(
-        event: PostgresChangeEvent.all,
-        schema: 'public',
-        table: 'stops',
-        callback: (payload) {
-          counter++;
-          if (!controller.isClosed) controller.add(counter);
-        },
-      )
-      .subscribe();
-
-  ref.onDispose(() {
-    Supabase.instance.client.removeChannel(channel);
-    controller.close();
-  });
-
-  return controller.stream;
+  final repository = ref.read(loadRepositoryProvider);
+  return repository.stopsChangeSignal;
 }
 
 /// State object for Pagination
@@ -258,6 +189,10 @@ class LoadController extends _$LoadController {
   @override
   FutureOr<void> build() {
     // Initial state
+  }
+
+  void clearError() {
+    state = const AsyncValue.data(null);
   }
 
   Future<void> createLoad(Load load) async {

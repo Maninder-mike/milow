@@ -1,6 +1,8 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:milow/core/constants/design_tokens.dart';
 
-/// A reusable iOS 26-style glassy/frosted card widget
+/// A premium M3 glassmorphic card widget
 class GlassyCard extends StatelessWidget {
   final Widget child;
   final EdgeInsetsGeometry? padding;
@@ -19,17 +21,25 @@ class GlassyCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Widget cardContent = Container(
-      padding: padding,
-      decoration: BoxDecoration(
-        color: Theme.of(context).cardColor,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: Theme.of(context).colorScheme.outlineVariant,
-          width: 1,
+    final tokens = context.tokens;
+    
+    final cardContent = ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: tokens.glassBlur, sigmaY: tokens.glassBlur),
+        child: Container(
+          padding: padding,
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface.withValues(alpha: tokens.glassOpacity),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: tokens.glassBorderOpacity),
+              width: 1,
+            ),
+          ),
+          child: child,
         ),
       ),
-      child: child,
     );
 
     if (onTap != null) {

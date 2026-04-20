@@ -108,6 +108,7 @@ class Stop {
   Map<String, dynamic> toJson() {
     final locMap = location.toJson();
     locMap.remove('date'); // 'date' is not a column in 'stops' table
+    locMap.remove('id'); // Prevent location ID from overriding stop ID
 
     // Database normalization: Store weight as Kgs
     double? weightDb = weight;
@@ -129,9 +130,9 @@ class Stop {
       'instructions': instructions,
       'appointment_time':
           appointmentTime?.toIso8601String() ?? location.date.toIso8601String(),
-      'appointment_window': appointmentWindow?.toJson(),
       'is_completed': isCompleted,
       'completed_at': completedAt?.toIso8601String(),
+      'arrived_at': arrivedAt?.toIso8601String(),
       ...locMap,
     };
   }

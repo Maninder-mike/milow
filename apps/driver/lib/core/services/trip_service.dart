@@ -74,7 +74,8 @@ class TripService {
             .from('driver_trips')
             .select('id')
             .eq('user_id', userId)
-            .eq('trip_number', tripNumber.toUpperCase());
+            .eq('trip_number', tripNumber.toUpperCase())
+            .isFilter('deleted_at', null);
 
         // Exclude specific trip ID (for updates)
         if (excludeId != null) {
@@ -106,7 +107,11 @@ class TripService {
     final networkClient = _getNetworkClient(client);
     final result = await networkClient.query<List<dynamic>>(
       () async {
-        var query = client.from('driver_trips').select().eq('user_id', userId);
+        var query = client
+            .from('driver_trips')
+            .select()
+            .eq('user_id', userId)
+            .isFilter('deleted_at', null);
 
         if (fromDate != null) {
           query = query.gte('trip_date', fromDate.toIso8601String());
@@ -153,6 +158,7 @@ class TripService {
             .select()
             .eq('id', tripId)
             .eq('user_id', userId)
+            .isFilter('deleted_at', null)
             .maybeSingle();
         return response;
       },
@@ -261,6 +267,7 @@ class TripService {
             .from('driver_trips')
             .select()
             .eq('user_id', userId)
+            .isFilter('deleted_at', null)
             .count(CountOption.exact);
 
         return response.count;
@@ -312,6 +319,7 @@ class TripService {
             .from('driver_trips')
             .select()
             .eq('user_id', userId)
+            .isFilter('deleted_at', null)
             .or('trip_number.ilike.%$query%,truck_number.ilike.%$query%')
             .order('trip_date', ascending: false);
 
@@ -337,6 +345,7 @@ class TripService {
         final response = await client
             .from('driver_trips')
             .select()
+            .isFilter('deleted_at', null)
             .eq('user_id', userId)
             .isFilter('end_odometer', null)
             .order('trip_date', ascending: false)

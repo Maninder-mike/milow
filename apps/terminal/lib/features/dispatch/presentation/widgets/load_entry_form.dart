@@ -1,12 +1,13 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../providers/load_providers.dart';
-import 'address_input_form.dart';
-import 'package:milow_core/milow_core.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-import '../widgets/accessorials_widget.dart';
+import 'package:milow_core/milow_core.dart';
+import 'package:terminal/core/constants/app_colors.dart';
+import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/address_input_form.dart';
+import 'package:terminal/features/dispatch/presentation/widgets/accessorials_widget.dart';
 
 class LoadEntryForm extends ConsumerStatefulWidget {
   final Future<void> Function(Load load) onSave;
@@ -49,6 +50,13 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
     super.initState();
     _localBrokers = [];
 
+    // Clear stale error state
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(loadControllerProvider.notifier).clearError();
+      }
+    });
+
     // Initialize controllers with draft values
     final draft = ref.read(loadDraftProvider);
     _refController.text = draft.loadReference;
@@ -58,19 +66,28 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
     _companyNotesController.text = draft.companyNotes;
     _poController.text = draft.poNumber ?? '';
 
-    // Attempt to match selected broker from draft name
-    if (draft.brokerName.isNotEmpty) {
-      try {
-        _selectedBroker = _localBrokers.firstWhere(
-          (b) => b.name == draft.brokerName,
-        );
-        _brokerController.text = _selectedBroker!.name;
-      } catch (_) {
-        _brokerController.text = draft.brokerName;
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    await _fetchLocationSuggestions();
+    
+    // Attempt to match selected broker from draft name AFTER brokers are fetched
+    if (mounted) {
+      final draft = ref.read(loadDraftProvider);
+      if (draft.brokerName.isNotEmpty) {
+        try {
+          _selectedBroker = _localBrokers.firstWhere(
+            (b) => b.name.toLowerCase() == draft.brokerName.toLowerCase(),
+          );
+          _brokerController.text = _selectedBroker!.name;
+          setState(() {});
+        } catch (_) {
+          _brokerController.text = draft.brokerName;
+        }
       }
     }
 
-    _fetchLocationSuggestions();
     _autoPopulateTripNumber();
   }
 
@@ -81,7 +98,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
 
     result.fold(
       (failure) {
-        debugPrint('Error auto-populating trip number: ${failure.message}');
+        AppLogger.error('Error auto-populating trip number: ${failure.message}');
       },
       (nextTrip) {
         if (mounted && nextTrip != null && _tripController.text.isEmpty) {
@@ -96,25 +113,18 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
 
   Future<void> _fetchLocationSuggestions() async {
     try {
-      final pickups = await Supabase.instance.client
-          .from('pickups')
-          .select(
-            'id, shipper_name, address, city, state_province, postal_code, contact_person, phone, fax',
-          )
-          .order('shipper_name');
+      final repo = ref.read(loadRepositoryProvider);
+      
+      // Parallelize fetching suggestions using repository (CoreNetworkClient)
+      final results = await Future.wait([
+        repo.fetchPickupSuggestions(),
+        repo.fetchReceiverSuggestions(),
+        repo.fetchBrokerSuggestions(),
+      ]);
 
-      final receivers = await Supabase.instance.client
-          .from('receivers')
-          .select(
-            'id, receiver_name, address, city, state_province, postal_code, contact_person, phone, fax',
-          )
-          .order('receiver_name');
-
-      final brokerCustomers = await Supabase.instance.client
-          .from('customers')
-          .select('id, name, city, state_province')
-          .eq('customer_type', 'Broker')
-          .order('name');
+      final pickupsRes = results[0].getOrElse((_) => []);
+      final receiversRes = results[1].getOrElse((_) => []);
+      final brokerCustomers = results[2].getOrElse((_) => []);
 
       if (mounted) {
         final seenPickups = <String>{};
@@ -123,11 +133,12 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
         final existingBrokerNames = _localBrokers
             .map((b) => b.name.toLowerCase())
             .toSet();
-        for (final broker in List<Map<String, dynamic>>.from(brokerCustomers)) {
+            
+        final newBrokers = <Broker>[];
+        for (final broker in brokerCustomers) {
           final name = broker['name'] as String? ?? '';
-          if (name.isNotEmpty &&
-              !existingBrokerNames.contains(name.toLowerCase())) {
-            _localBrokers.add(
+          if (name.isNotEmpty && !existingBrokerNames.contains(name.toLowerCase())) {
+            newBrokers.add(
               Broker(
                 id: broker['id'] as String? ?? '',
                 name: name,
@@ -148,16 +159,17 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
         }
 
         setState(() {
-          _pickupSuggestions = List<Map<String, dynamic>>.from(
-            pickups,
-          ).where((p) => seenPickups.add(p['shipper_name'] ?? '')).toList();
-          _receiverSuggestions = List<Map<String, dynamic>>.from(
-            receivers,
-          ).where((r) => seenReceivers.add(r['receiver_name'] ?? '')).toList();
+          _localBrokers.addAll(newBrokers);
+          _pickupSuggestions = pickupsRes
+              .where((p) => seenPickups.add((p['shipper_name'] ?? '').toString()))
+              .toList();
+          _receiverSuggestions = receiversRes
+              .where((r) => seenReceivers.add((r['receiver_name'] ?? '').toString()))
+              .toList();
         });
       }
     } catch (e) {
-      debugPrint('Error fetching location suggestions: $e');
+      AppLogger.error('Error fetching location suggestions', error: e);
     }
   }
 
@@ -174,6 +186,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
   }
 
   void _updateDraft(Load Function(Load) update) {
+    assert(mounted, 'Cannot update draft on unmounted form');
     ref.read(loadDraftProvider.notifier).update(update);
   }
 
@@ -210,6 +223,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
         .toList()
         .cast<Stop>();
 
+    assert(resequencedStops.length == draft.stops.length, 'Stop count mismatch during reorder');
     _updateDraft((l) => l.copyWith(stops: resequencedStops));
   }
 
@@ -298,7 +312,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
 
     stops.add(
       Stop(
-        id: 'new_${DateTime.now().microsecondsSinceEpoch}',
+        id: '', // Empty for new stops, repository will handle generation
         loadId: '',
         sequence: stops.length + 1,
         type: type,
@@ -336,14 +350,27 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
 
   // Auto-calculate totals from stops
   Load _recalculateTotals(Load draft) {
-    // Only auto-calc if there are stops with weight
-    final totalWeight = draft.stops.fold<double>(
-      0,
-      (sum, stop) => sum + (stop.weight ?? 0),
-    );
+    if (draft.stops.isEmpty) return draft;
+
+    double totalWeight = 0;
+    final targetUnit = draft.weightUnit;
+
+    for (final stop in draft.stops) {
+      double stopWeight = stop.weight ?? 0;
+      if (stopWeight == 0) continue;
+
+      // Normalize to target unit
+      if (stop.weightUnit != null && stop.weightUnit != targetUnit) {
+        if (targetUnit == 'Lbs' && stop.weightUnit == 'Kgs') {
+          stopWeight = stopWeight / 0.45359237;
+        } else if (targetUnit == 'Kgs' && stop.weightUnit == 'Lbs') {
+          stopWeight = stopWeight * 0.45359237;
+        }
+      }
+      totalWeight += stopWeight;
+    }
 
     // If total > 0, update header weight.
-    // You might want to respect manual overrides, but for now we sync strictly.
     if (totalWeight > 0) {
       return draft.copyWith(weight: totalWeight);
     }
@@ -354,11 +381,11 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             'Pickups',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ),
         ReorderableListView.builder(
@@ -399,11 +426,11 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Padding(
-          padding: EdgeInsets.only(bottom: 8),
+        Padding(
+          padding: const EdgeInsets.only(bottom: 8),
           child: Text(
             'Deliveries',
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: GoogleFonts.outfit(fontWeight: FontWeight.bold, fontSize: 16),
           ),
         ),
         ReorderableListView.builder(
@@ -442,6 +469,162 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
     );
   }
 
+  Widget _buildActionHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        Button(
+          onPressed: widget.onCancel,
+          child: Text('Cancel', style: GoogleFonts.outfit()),
+        ),
+        const SizedBox(width: 8),
+        FilledButton(
+          onPressed: _isSaving ? null : _submit,
+          child: _isSaving
+              ? const SizedBox(
+                  height: 16,
+                  width: 16,
+                  child: ProgressRing(),
+                )
+              : Text('Save Load', style: GoogleFonts.outfit()),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHeaderFields(bool isNarrow, Load draft) {
+    if (isNarrow) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          InfoLabel(
+            label: 'Broker Name',
+            child: AutoSuggestBox<Broker>(
+              controller: _brokerController,
+              placeholder: 'Search or Add Broker',
+              items: _getBrokerSuggestions(),
+              onSelected: (item) => _onBrokerChanged(item.value),
+              onChanged: (text, reason) {
+                if (reason == TextChangedReason.userInput) {
+                  _updateDraft(
+                    (l) => l.copyWith(brokerName: text, brokerId: null),
+                  );
+                  setState(() {});
+                }
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: InfoLabel(
+                  label: 'Load Ref #',
+                  child: TextBox(
+                    controller: _refController,
+                    placeholder: 'Broker Ref',
+                    style: GoogleFonts.outfit(),
+                    onChanged: (value) => _updateDraft(
+                      (l) => l.copyWith(loadReference: value),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: InfoLabel(
+                  label: 'Trip #',
+                  child: TextBox(
+                    controller: _tripController,
+                    placeholder: 'Trip Number',
+                    style: GoogleFonts.outfit(),
+                    suffix: IconButton(
+                      icon: const Icon(
+                        FluentIcons.arrow_clockwise_16_regular,
+                      ),
+                      onPressed: _autoPopulateTripNumber,
+                    ),
+                    onChanged: (value) => _updateDraft(
+                      (l) => l.copyWith(tripNumber: value),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: InfoLabel(
+                label: 'Broker Name',
+                child: AutoSuggestBox<Broker>(
+                  controller: _brokerController,
+                  placeholder: 'Search or Add Broker',
+                  items: _getBrokerSuggestions(),
+                  onSelected: (item) => _onBrokerChanged(item.value),
+                  onChanged: (text, reason) {
+                    if (reason == TextChangedReason.userInput) {
+                      _updateDraft(
+                        (l) => l.copyWith(
+                          brokerName: text,
+                          brokerId: null,
+                        ),
+                      );
+                      setState(() {});
+                    }
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: InfoLabel(
+                label: 'Load Ref #',
+                child: TextBox(
+                  controller: _refController,
+                  placeholder: 'Broker Ref',
+                  style: GoogleFonts.outfit(),
+                  onChanged: (value) => _updateDraft(
+                    (l) => l.copyWith(loadReference: value),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: InfoLabel(
+                label: 'Trip #',
+                child: TextBox(
+                  controller: _tripController,
+                  placeholder: 'Trip Number',
+                  style: GoogleFonts.outfit(),
+                  suffix: IconButton(
+                    icon: const Icon(
+                      FluentIcons.arrow_clockwise_16_regular,
+                    ),
+                    onPressed: _autoPopulateTripNumber,
+                  ),
+                  onChanged: (value) => _updateDraft(
+                    (l) => l.copyWith(tripNumber: value),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -460,354 +643,14 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Header Actions
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  Button(
-                    onPressed: widget.onCancel,
-                    child: const Text('Cancel'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton(
-                    onPressed: _isSaving ? null : _submit,
-                    child: _isSaving
-                        ? const SizedBox(
-                            height: 16,
-                            width: 16,
-                            child: ProgressRing(),
-                          )
-                        : const Text('Save Load'),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-
-              // Header Fields
-              if (isNarrow) ...[
-                InfoLabel(
-                  label: 'Broker Name',
-                  child: AutoSuggestBox<Broker>(
-                    controller: _brokerController,
-                    placeholder: 'Search or Add Broker',
-                    items: _getBrokerSuggestions(),
-                    onSelected: (item) => _onBrokerChanged(item.value),
-                    onChanged: (text, reason) {
-                      if (reason == TextChangedReason.userInput) {
-                        _updateDraft(
-                          (l) => l.copyWith(brokerName: text, brokerId: null),
-                        );
-                        setState(() {});
-                      }
-                    },
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Row(
-                  children: [
-                    Expanded(
-                      child: InfoLabel(
-                        label: 'Load Ref #',
-                        child: TextBox(
-                          controller: _refController,
-                          placeholder: 'Broker Ref',
-                          onChanged: (value) => _updateDraft(
-                            (l) => l.copyWith(loadReference: value),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InfoLabel(
-                        label: 'Trip #',
-                        child: TextBox(
-                          controller: _tripController,
-                          placeholder: 'Trip Number',
-                          suffix: IconButton(
-                            icon: const Icon(
-                              FluentIcons.arrow_clockwise_16_regular,
-                            ),
-                            onPressed: _autoPopulateTripNumber,
-                          ),
-                          onChanged: (value) => _updateDraft(
-                            (l) => l.copyWith(tripNumber: value),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ] else
-                Row(
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: InfoLabel(
-                        label: 'Broker Name',
-                        child: AutoSuggestBox<Broker>(
-                          controller: _brokerController,
-                          placeholder: 'Search or Add Broker',
-                          items: _getBrokerSuggestions(),
-                          onSelected: (item) => _onBrokerChanged(item.value),
-                          onChanged: (text, reason) {
-                            if (reason == TextChangedReason.userInput) {
-                              _updateDraft(
-                                (l) => l.copyWith(
-                                  brokerName: text,
-                                  brokerId: null,
-                                ),
-                              );
-                              setState(() {});
-                            }
-                          },
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: InfoLabel(
-                        label: 'Load Ref #',
-                        child: TextBox(
-                          controller: _refController,
-                          placeholder: 'Broker Ref',
-                          onChanged: (value) => _updateDraft(
-                            (l) => l.copyWith(loadReference: value),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 2,
-                      child: InfoLabel(
-                        label: 'Trip #',
-                        child: TextBox(
-                          controller: _tripController,
-                          placeholder: 'Internal Trip Number',
-                          suffix: IconButton(
-                            icon: const Icon(
-                              FluentIcons.arrow_clockwise_16_regular,
-                            ),
-                            onPressed: _autoPopulateTripNumber,
-                          ),
-                          onChanged: (value) => _updateDraft(
-                            (l) => l.copyWith(tripNumber: value),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-
+              _buildActionHeader(),
+              const SizedBox(height: 16),
+              _buildHeaderFields(isNarrow, draft),
+              const SizedBox(height: 24),
+              _buildRateAndCommoditySection(draft),
               const SizedBox(height: 12),
-
-              // Rate & Goods
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: InfoLabel(
-                      label: 'Rate',
-                      child: Row(
-                        children: [
-                          Expanded(
-                            flex: 2,
-                            child: NumberBox<double>(
-                              value: draft.rate,
-                              onChanged: (value) => _updateDraft(
-                                (l) => l.copyWith(rate: value ?? 0.0),
-                              ),
-                              mode: SpinButtonPlacementMode.none,
-                              placeholder: 'Amount',
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            flex: 1,
-                            child: ComboBox<String>(
-                              value: draft.currency,
-                              items: const [
-                                ComboBoxItem(value: 'CAD', child: Text('CAD')),
-                                ComboBoxItem(value: 'USD', child: Text('USD')),
-                              ],
-                              onChanged: (value) {
-                                if (value != null) {
-                                  _updateDraft(
-                                    (l) => l.copyWith(currency: value),
-                                  );
-                                }
-                              },
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InfoLabel(
-                      label: 'Goods / Commodity',
-                      child: TextBox(
-                        controller: _goodsController,
-                        placeholder: 'Description of cargo',
-                        onChanged: (value) =>
-                            _updateDraft((l) => l.copyWith(goods: value)),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: InfoLabel(
-                      label: 'PO Number',
-                      child: TextBox(
-                        controller: _poController,
-                        placeholder: 'Customer PO#',
-                        onChanged: (value) =>
-                            _updateDraft((l) => l.copyWith(poNumber: value)),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-
-              // Weight & Qty
-              Row(
-                children: [
-                  if (isWide) ...[
-                    Expanded(
-                      child: InfoLabel(
-                        label: 'Weight',
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child: NumberBox<double>(
-                                value: draft.weight,
-                                onChanged: (value) => _updateDraft(
-                                  (l) => l.copyWith(weight: value ?? 0.0),
-                                ),
-                                mode: SpinButtonPlacementMode.none,
-                                placeholder: 'Weight',
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 1,
-                              child: ComboBox<String>(
-                                value: draft.weightUnit,
-                                items: const [
-                                  ComboBoxItem(
-                                    value: 'Lbs',
-                                    child: Text('Lbs'),
-                                  ),
-                                  ComboBoxItem(
-                                    value: 'Kgs',
-                                    child: Text('Kgs'),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    _updateDraft(
-                                      (l) => l.copyWith(weightUnit: value),
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InfoLabel(
-                        label: 'Quantity',
-                        child: TextBox(
-                          controller: _quantityController,
-                          placeholder: 'e.g. 24 Pallets',
-                          onChanged: (value) =>
-                              _updateDraft((l) => l.copyWith(quantity: value)),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InfoLabel(
-                        label: 'Company Notes',
-                        child: TextBox(
-                          controller: _companyNotesController,
-                          placeholder: 'Internal Notes',
-                          onChanged: (value) => _updateDraft(
-                            (l) => l.copyWith(companyNotes: value),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    Expanded(
-                      child: InfoLabel(
-                        label: 'Weight',
-                        child: Row(
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child: NumberBox<double>(
-                                value: draft.weight,
-                                onChanged: (value) => _updateDraft(
-                                  (l) => l.copyWith(weight: value ?? 0.0),
-                                ),
-                                mode: SpinButtonPlacementMode.none,
-                                placeholder: 'Weight',
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 1,
-                              child: ComboBox<String>(
-                                value: draft.weightUnit,
-                                items: const [
-                                  ComboBoxItem(
-                                    value: 'Lbs',
-                                    child: Text('Lbs'),
-                                  ),
-                                  ComboBoxItem(
-                                    value: 'Kgs',
-                                    child: Text('Kgs'),
-                                  ),
-                                ],
-                                onChanged: (value) {
-                                  if (value != null) {
-                                    _updateDraft(
-                                      (l) => l.copyWith(weightUnit: value),
-                                    );
-                                  }
-                                },
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: InfoLabel(
-                        label: 'Quantity',
-                        child: TextBox(
-                          controller: _quantityController,
-                          placeholder: 'e.g. 24 Pallets',
-                          onChanged: (value) =>
-                              _updateDraft((l) => l.copyWith(quantity: value)),
-                        ),
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-
-              const SizedBox(height: 20),
+              _buildWeightAndQtySection(isWide, draft),
+              const SizedBox(height: 24),
 
               if (isWide)
                 Row(
@@ -831,6 +674,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                   child: TextBox(
                     controller: _companyNotesController,
                     placeholder: 'Notes about the company/broker',
+                    style: GoogleFonts.outfit(),
                     maxLines: 3,
                     onChanged: (value) =>
                         _updateDraft((l) => l.copyWith(companyNotes: value)),
@@ -865,6 +709,107 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
     );
   }
 
+  Widget _buildRateAndCommoditySection(Load draft) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: InfoLabel(
+            label: 'Rate',
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: NumberBox<double>(
+                    value: draft.rate,
+                    onChanged: (value) => _updateDraft(
+                      (l) => l.copyWith(rate: value ?? 0.0),
+                    ),
+                    mode: SpinButtonPlacementMode.none,
+                    placeholder: 'Amount',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  flex: 1,
+                  child: ComboBox<String>(
+                    value: draft.currency,
+                    items: const [
+                      ComboBoxItem(value: 'CAD', child: Text('CAD')),
+                      ComboBoxItem(value: 'USD', child: Text('USD')),
+                    ],
+                    onChanged: (value) {
+                      if (value != null) {
+                        _updateDraft(
+                          (l) => l.copyWith(currency: value),
+                        );
+                      }
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InfoLabel(
+            label: 'Goods / Commodity',
+            child: TextBox(
+              controller: _goodsController,
+              placeholder: 'Description of cargo',
+              style: GoogleFonts.outfit(),
+              onChanged: (value) =>
+                  _updateDraft((l) => l.copyWith(goods: value)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InfoLabel(
+            label: 'PO Number',
+            child: TextBox(
+              controller: _poController,
+              placeholder: 'Customer PO#',
+              style: GoogleFonts.outfit(),
+              onChanged: (value) =>
+                  _updateDraft((l) => l.copyWith(poNumber: value)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWeightAndQtySection(bool isWide, Load draft) {
+    return Row(
+      children: [
+        Expanded(
+          child: InfoLabel(
+            label: 'Total Weight',
+            child: NumberBox<double>(
+              value: draft.weight,
+              onChanged: (v) => _updateDraft((l) => l.copyWith(weight: v ?? 0)),
+              placeholder: '0.0',
+              mode: SpinButtonPlacementMode.none,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: InfoLabel(
+            label: 'Total Qty',
+            child: TextBox(
+              controller: _quantityController,
+              placeholder: 'e.g. 24 Pallets',
+              onChanged: (v) => _updateDraft((l) => l.copyWith(quantity: v)),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildStopCard(
     int index,
     Stop stop,
@@ -873,9 +818,9 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
   }) {
     final isPickup = stop.type == StopType.pickup;
     final color = isPickup
-        ? Colors.green.withValues(alpha: 0.1)
-        : Colors.blue.withValues(alpha: 0.1);
-    final borderColor = isPickup ? Colors.green : Colors.blue;
+        ? AppColors.success.withValues(alpha: 0.1)
+        : AppColors.info.withValues(alpha: 0.1);
+    final borderColor = isPickup ? AppColors.success : AppColors.info;
     final title = '${index + 1}. ${isPickup ? "PICKUP" : "DELIVERY"}';
 
     return Container(
@@ -907,7 +852,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
                 const SizedBox(width: 8),
                 Text(
                   title,
-                  style: TextStyle(
+                  style: GoogleFonts.outfit(
                     fontWeight: FontWeight.bold,
                     color: borderColor,
                   ),
@@ -988,11 +933,33 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
       return;
     }
 
+    // Sequence Validation: Pickups before Deliveries
+    DateTime? lastPickup;
+    for (final stop in draft.stops) {
+      if (stop.type == StopType.pickup) {
+        lastPickup = stop.location.date;
+      } else if (stop.type == StopType.delivery) {
+        if (lastPickup != null && stop.location.date.isBefore(lastPickup)) {
+          displayInfoBar(
+            context,
+            builder: (context, close) => InfoBar(
+              title: const Text('Invalid Sequence'),
+              content: const Text('Delivery date cannot be before pickup date.'),
+              severity: InfoBarSeverity.error,
+              onClose: close,
+            ),
+          );
+          return;
+        }
+      }
+    }
+
     setState(() => _isSaving = true);
 
     try {
       await widget.onSave(draft);
     } catch (e) {
+      AppLogger.error('Error saving load: $e');
       if (mounted) {
         displayInfoBar(
           context,
@@ -1040,7 +1007,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
             Expanded(
               child: Text(
                 addLabel,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+                style: GoogleFonts.outfit(fontWeight: FontWeight.bold),
               ),
             ),
           ],
@@ -1231,7 +1198,7 @@ class _StopFreightDetailsState extends State<StopFreightDetails> {
             padding: const EdgeInsets.only(bottom: 12),
             child: FilledButton(
               onPressed: widget.onCopyFromPickup,
-              child: const Text('Copy from Pickup'),
+              child: Text('Copy from Pickup', style: GoogleFonts.outfit()),
             ),
           ),
 
@@ -1245,6 +1212,7 @@ class _StopFreightDetailsState extends State<StopFreightDetails> {
                 child: TextBox(
                   controller: _refController,
                   placeholder: 'PO# 12345',
+                  style: GoogleFonts.outfit(),
                   onChanged: (v) =>
                       widget.onChanged(widget.stop.copyWith(stopReference: v)),
                 ),
@@ -1258,6 +1226,7 @@ class _StopFreightDetailsState extends State<StopFreightDetails> {
                 child: TextBox(
                   controller: _commodityController,
                   placeholder: 'e.g. Frozen Meat',
+                  style: GoogleFonts.outfit(),
                   onChanged: (v) =>
                       widget.onChanged(widget.stop.copyWith(commodity: v)),
                 ),
@@ -1310,6 +1279,7 @@ class _StopFreightDetailsState extends State<StopFreightDetails> {
                 child: TextBox(
                   controller: _quantityController,
                   placeholder: '24 Pallets',
+                  style: GoogleFonts.outfit(),
                   onChanged: (v) =>
                       widget.onChanged(widget.stop.copyWith(quantity: v)),
                 ),
@@ -1324,6 +1294,7 @@ class _StopFreightDetailsState extends State<StopFreightDetails> {
           child: TextBox(
             controller: _instructionsController,
             placeholder: 'Driver instructions...',
+            style: GoogleFonts.outfit(),
             maxLines: 3,
             onChanged: (v) =>
                 widget.onChanged(widget.stop.copyWith(instructions: v)),

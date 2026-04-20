@@ -123,4 +123,20 @@ class UserRepository {
       return left(UnexpectedFailure('Failed to create user', originalError: e));
     }
   }
+  /// Fetch the active resource assignment for a specific user (e.g. driver).
+  Future<Result<Map<String, dynamic>?>> getActiveResourceAssignment(
+    String assigneeId,
+  ) async {
+    return _client.query<Map<String, dynamic>?>(() async {
+      final response = await _client.supabase
+          .from('fleet_assignments')
+          .select('resource_id, vehicles(vehicle_type)')
+          .eq('assignee_id', assigneeId)
+          .eq('type', 'driver_to_vehicle')
+          .isFilter('unassigned_at', null)
+          .maybeSingle();
+
+      return response;
+    }, operationName: 'getActiveResourceAssignment');
+  }
 }

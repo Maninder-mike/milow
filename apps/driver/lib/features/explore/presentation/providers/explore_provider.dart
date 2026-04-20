@@ -30,6 +30,10 @@ class ExploreProvider with ChangeNotifier {
   Map<String, double> _monthlyFuelData = {};
   Map<String, int> _tripTypeDistribution = {};
 
+  // New Dashboard Data
+  Map<String, double> _distanceByState = {};
+  Map<String, Map<String, double>> _efficiencyTrend = {}; // Month -> {Loaded, Empty}
+
   // Getters
   List<Trip> get allTrips => _allTrips;
   List<FuelEntry> get allFuelEntries => _allFuelEntries;
@@ -47,6 +51,8 @@ class ExploreProvider with ChangeNotifier {
   Map<String, double> get monthlyDistanceData => _monthlyDistanceData;
   Map<String, double> get monthlyFuelData => _monthlyFuelData;
   Map<String, int> get tripTypeDistribution => _tripTypeDistribution;
+  Map<String, double> get distanceByState => _distanceByState;
+  Map<String, Map<String, double>> get efficiencyTrend => _efficiencyTrend;
 
   static const Set<String> _usStateCodes = {
     'AL',
@@ -247,6 +253,8 @@ class ExploreProvider with ChangeNotifier {
     _monthlyDistanceData = {};
     _monthlyFuelData = {};
     _tripTypeDistribution = {'Long Haul': 0, 'Regional': 0, 'Local': 0};
+    _distanceByState = {};
+    _efficiencyTrend = {};
 
     final last6Months = DateTime(now.year, now.month - 5, 1);
     final monthFormatter = DateFormat('MMM');
@@ -257,6 +265,7 @@ class ExploreProvider with ChangeNotifier {
       final monthName = monthFormatter.format(date);
       _monthlyDistanceData[monthName] = 0.0;
       _monthlyFuelData[monthName] = 0.0;
+      _efficiencyTrend[monthName] = {'Loaded': 0.0, 'Empty': 0.0};
     }
 
     // Process all trips for distance chart and distribution
@@ -271,6 +280,19 @@ class ExploreProvider with ChangeNotifier {
         final m = monthFormatter.format(trip.tripDate);
         if (_monthlyDistanceData.containsKey(m)) {
           _monthlyDistanceData[m] = _monthlyDistanceData[m]! + displayDistance;
+          
+          final type = trip.isEmptyLeg ? 'Empty' : 'Loaded';
+          _efficiencyTrend[m]![type] = _efficiencyTrend[m]![type]! + displayDistance;
+        }
+      }
+
+      // Aggregate Distance by State
+      for (final loc in [...trip.pickupLocations, ...trip.deliveryLocations]) {
+        final state = ExploreUtils.extractStateCode(loc);
+        if (state != null && _usStateCodes.contains(state)) {
+          // Distance attribution is approximate (split per location)
+          final attribution = displayDistance / (trip.pickupLocations.length + trip.deliveryLocations.length);
+          _distanceByState[state] = (_distanceByState[state] ?? 0.0) + attribution;
         }
       }
 

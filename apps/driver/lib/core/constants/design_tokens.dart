@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:ui' show lerpDouble;
 
 /// DesignTokens encapsulates spacing, radii, elevations and shared colors.
 /// Added as a ThemeExtension so we can access via `Theme.of(context).extension<DesignTokens>()`
@@ -129,6 +130,23 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
   /// Disabled element color
   final Color disabled;
 
+  // ============= GLASSMORPHISM =============
+  /// Blur sigma for glass effects
+  final double glassBlur;
+
+  /// Opacity for glass background
+  final double glassOpacity;
+
+  /// Opacity for glass border
+  final double glassBorderOpacity;
+
+  // ============= ANIMATIONS =============
+  /// Standard transition duration
+  final Duration transitionDuration;
+
+  /// Standard transition curve
+  final Curve transitionCurve;
+
   const DesignTokens({
     required this.spacingXS,
     required this.spacingS,
@@ -170,6 +188,11 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     required this.inputBorder,
     required this.inputFocusedBorder,
     required this.disabled,
+    required this.glassBlur,
+    required this.glassOpacity,
+    required this.glassBorderOpacity,
+    required this.transitionDuration,
+    required this.transitionCurve,
   });
 
   static const light = DesignTokens(
@@ -218,6 +241,11 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     inputBorder: Color(0xFFE5E7EB),
     inputFocusedBorder: Color(0xFF1976D2),
     disabled: Color(0xFFE5E5E5),
+    glassBlur: 10.0,
+    glassOpacity: 0.1,
+    glassBorderOpacity: 0.2,
+    transitionDuration: Duration(milliseconds: 300),
+    transitionCurve: Curves.easeInOut,
   );
 
   static const dark = DesignTokens(
@@ -266,6 +294,11 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     inputBorder: Color(0xFF374151),
     inputFocusedBorder: Color(0xFF60A5FA), // Blue 400
     disabled: Color(0xFF374151),
+    glassBlur: 20.0,
+    glassOpacity: 0.15,
+    glassBorderOpacity: 0.1,
+    transitionDuration: Duration(milliseconds: 300),
+    transitionCurve: Curves.easeInOut,
   );
 
   @override
@@ -308,6 +341,11 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
     Color? inputBorder,
     Color? inputFocusedBorder,
     Color? disabled,
+    double? glassBlur,
+    double? glassOpacity,
+    double? glassBorderOpacity,
+    Duration? transitionDuration,
+    Curve? transitionCurve,
   }) {
     return DesignTokens(
       spacingXS: spacingXS ?? this.spacingXS,
@@ -349,6 +387,11 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
       inputBorder: inputBorder ?? this.inputBorder,
       inputFocusedBorder: inputFocusedBorder ?? this.inputFocusedBorder,
       disabled: disabled ?? this.disabled,
+      glassBlur: glassBlur ?? this.glassBlur,
+      glassOpacity: glassOpacity ?? this.glassOpacity,
+      glassBorderOpacity: glassBorderOpacity ?? this.glassBorderOpacity,
+      transitionDuration: transitionDuration ?? this.transitionDuration,
+      transitionCurve: transitionCurve ?? this.transitionCurve,
     );
   }
 
@@ -377,6 +420,11 @@ class DesignTokens extends ThemeExtension<DesignTokens> {
       elevationLevel3: elevationLevel3,
       elevationLevel4: elevationLevel4,
       elevationLevel5: elevationLevel5,
+      glassBlur: lerpDouble(glassBlur, other.glassBlur, t) ?? glassBlur,
+      glassOpacity: lerpDouble(glassOpacity, other.glassOpacity, t) ?? glassOpacity,
+      glassBorderOpacity: lerpDouble(glassBorderOpacity, other.glassBorderOpacity, t) ?? glassBorderOpacity,
+      transitionDuration: t < 0.5 ? transitionDuration : other.transitionDuration,
+      transitionCurve: t < 0.5 ? transitionCurve : other.transitionCurve,
       textPrimary: Color.lerp(textPrimary, other.textPrimary, t) ?? textPrimary,
       textSecondary:
           Color.lerp(textSecondary, other.textSecondary, t) ?? textSecondary,

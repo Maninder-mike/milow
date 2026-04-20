@@ -269,6 +269,9 @@ void main() {
         () => mockFilterBuilder.eq(any(), any()),
       ).thenAnswer((_) => mockFilterBuilderEq);
       when(
+        () => mockFilterBuilderEq.isFilter(any(), any()),
+      ).thenAnswer((_) => mockFilterBuilderEq);
+      when(
         () => mockFilterBuilderEq.order(
           any(),
           ascending: any(named: 'ascending'),
