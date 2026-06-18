@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:collection';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
@@ -17,9 +18,14 @@ class LoggingService {
 
   File? _logFile;
   bool _isInitialized = false;
-  final List<String> _memoryLogs = [];
+  final Queue<String> _memoryLogs = ListQueue<String>();
   static const int _maxMemoryLogs = 500;
   static const int _maxLogFileSizeBytes = 5 * 1024 * 1024; // 5MB
+
+  final List<String> _writeBuffer = [];
+  Timer? _flushTimer;
+  static const int _maxBufferSize = 50;
+  static const Duration _flushInterval = Duration(seconds: 2);
 
   /// Initialize the logging service
   Future<void> init() async {
@@ -130,7 +136,7 @@ class LoggingService {
     // Add to memory logs
     _memoryLogs.add(logEntry);
     if (_memoryLogs.length > _maxMemoryLogs) {
-      _memoryLogs.removeAt(0);
+      _memoryLogs.removeFirst();
     }
 
     // Print to debug console
@@ -167,11 +173,28 @@ class LoggingService {
   }
 
   Future<void> _writeToFile(String content) async {
+    _writeBuffer.add(content);
+    
+    if (_writeBuffer.length >= _maxBufferSize) {
+      await _flushBuffer();
+    } else {
+      _flushTimer?.cancel();
+      _flushTimer = Timer(_flushInterval, _flushBuffer);
+    }
+  }
+
+  Future<void> _flushBuffer() async {
+    _flushTimer?.cancel();
+    if (_writeBuffer.isEmpty) return;
+
     final logFile = _logFile;
     if (logFile == null) return;
 
+    final contentToFlush = '${_writeBuffer.join('\n')}\n';
+    _writeBuffer.clear();
+
     try {
-      await logFile.writeAsString('$content\n', mode: FileMode.append);
+      await logFile.writeAsString(contentToFlush, mode: FileMode.append);
     } catch (e) {
       debugPrint('Failed to write to log file: $e');
     }
@@ -321,11 +344,12 @@ class LoggingService {
   /// Get recent logs from memory
   List<String> getRecentLogs({int count = 50}) {
     final start = _memoryLogs.length > count ? _memoryLogs.length - count : 0;
-    return _memoryLogs.sublist(start);
+    return _memoryLogs.toList().sublist(start);
   }
 
   /// Get all logs from current log file
   Future<String> getLogFileContents() async {
+    await _flushBuffer();
     final logFile = _logFile;
     if (logFile == null || !await logFile.exists()) {
       return 'No log file available';
@@ -364,6 +388,7 @@ class LoggingService {
 
   /// Export logs for sharing/debugging
   Future<String> exportLogs() async {
+    await _flushBuffer();
     final buffer = StringBuffer();
     buffer.writeln('=== Milow App Logs Export ===');
     buffer.writeln('Exported at: ${DateTime.now().toIso8601String()}');
@@ -385,6 +410,8 @@ class LoggingService {
 
   /// Clear all logs
   Future<void> clearLogs() async {
+    _flushTimer?.cancel();
+    _writeBuffer.clear();
     _memoryLogs.clear();
 
     try {

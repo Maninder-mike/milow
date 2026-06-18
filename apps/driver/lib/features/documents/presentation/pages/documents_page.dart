@@ -27,6 +27,12 @@ import 'package:provider/provider.dart';
 import 'package:milow/core/services/profile_provider.dart';
 import 'package:go_router/go_router.dart';
 
+import '../widgets/document_summary_header.dart';
+import '../widgets/document_filter_bar.dart';
+import '../widgets/document_card.dart';
+import '../widgets/scan_preview_card.dart';
+import '../widgets/documents_empty_state.dart';
+
 class DocumentsPage extends StatefulWidget {
   final Map<String, dynamic> extra;
   final SupabaseClient? supabaseClient;
@@ -52,7 +58,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
   DocumentScanner? _documentScanner;
   File? _scannedPdf;
   List<String> _scannedImages = [];
-  int _scannedPageCount = 0;
   final TextEditingController _notesController = TextEditingController();
   final TextEditingController _tripNumberController = TextEditingController();
 
@@ -60,6 +65,9 @@ class _DocumentsPageState extends State<DocumentsPage> {
   String? _searchQuery;
   bool _isSearching = false;
   final TextEditingController _searchController = TextEditingController();
+
+  TripDocumentType? _filterType;
+  DocumentStatus? _filterStatus;
 
   List<TripDocument> _existingDocuments = [];
   bool _isLoadingDocuments = true;
@@ -226,9 +234,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
         setState(() {
           _scannedPdf = result.pdf != null ? File(result.pdf!.uri) : null;
           _scannedImages = result.images ?? [];
-          _scannedPageCount = (result.images?.isNotEmpty ?? false)
-              ? result.images!.length
-              : 1;
         });
       }
     } catch (e) {
@@ -401,7 +406,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
     setState(() {
       _scannedPdf = null;
       _scannedImages = [];
-      _scannedPageCount = 0;
       _selectedDocumentType = null;
       _notesController.clear();
       _changesMade = true;
@@ -914,8 +918,11 @@ class _DocumentsPageState extends State<DocumentsPage> {
         }
       },
       child: Scaffold(
-        body: CustomScrollView(
-          slivers: [
+        body: RefreshIndicator(
+          onRefresh: _loadDocuments,
+          child: CustomScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            slivers: [
             SliverAppBar(
               pinned: true,
               floating: true,
@@ -1013,10 +1020,34 @@ class _DocumentsPageState extends State<DocumentsPage> {
                 ],
               ],
             ),
+            if (_scannedPdf == null && _scannedImages.isEmpty && !_isSelectionMode && !_isSearching) ...[
+              SliverToBoxAdapter(
+                child: DocumentSummaryHeader(
+                  documents: _existingDocuments,
+                  selectedStatus: _filterStatus,
+                  onStatusSelected: (status) {
+                    setState(() {
+                      _filterStatus = status;
+                    });
+                  },
+                ),
+              ),
+              SliverToBoxAdapter(
+                child: DocumentFilterBar(
+                  selectedType: _filterType,
+                  onTypeSelected: (type) {
+                    setState(() {
+                      _filterType = type;
+                    });
+                  },
+                ),
+              ),
+            ],
             _scannedPdf == null && _scannedImages.isEmpty
                 ? _buildDocumentListSlivers(tokens)
                 : SliverToBoxAdapter(child: _buildReviewState(tokens)),
           ],
+        ),
         ),
         floatingActionButton:
             !_isSelectionMode &&
@@ -1043,13 +1074,19 @@ class _DocumentsPageState extends State<DocumentsPage> {
     }
 
     final displayedDocs = _existingDocuments.where((doc) {
+      // Status filter
+      if (_filterStatus != null && doc.status != _filterStatus) return false;
+      
+      // Type filter
+      if (_filterType != null && doc.documentType != _filterType) return false;
+
+      // Search filter
       if (_searchQuery == null || _searchQuery!.isEmpty) return true;
       final query = _searchQuery!.toLowerCase();
       final type = doc.documentType.label.toLowerCase();
       final notes = (doc.notes ?? '').toLowerCase();
       final desc = (doc.description ?? '').toLowerCase();
-      final tripNum = (doc.tripId)
-          .toLowerCase(); // Using ID as fallback since trip number join is complex with model
+      final tripNum = (doc.tripId).toLowerCase();
 
       return type.contains(query) ||
           notes.contains(query) ||
@@ -1061,51 +1098,16 @@ class _DocumentsPageState extends State<DocumentsPage> {
       return SliverFillRemaining(
         hasScrollBody: false,
         child: M3ExpressiveEntrance(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest
-                        .withValues(alpha: 0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Icon(
-                    _isSearching
-                        ? Icons.search_off
-                        : Icons.folder_open_outlined,
-                    size: 48,
-                    color: tokens.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  _isSearching ? 'No matches found' : 'No documents yet',
-                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    color: tokens.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                if (!_isSearching) ...[
-                  const SizedBox(height: 8),
-                  Text(
-                    'Tap the camera button to scan',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: tokens.textTertiary,
-                    ),
-                  ),
-                ],
-              ],
-            ),
+          child: DocumentsEmptyState(
+            onScanPressed: _startScan,
+            isFiltered: _isSearching || _filterStatus != null || _filterType != null,
           ),
         ),
       );
     }
 
     return SliverPadding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 80),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 80),
       sliver: SliverList(
         delegate: SliverChildBuilderDelegate((context, index) {
           if (index == 0) {
@@ -1116,10 +1118,11 @@ class _DocumentsPageState extends State<DocumentsPage> {
 
           return M3ExpressiveEntrance(
             delay: Duration(milliseconds: (index - 1) * 50),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 5),
-              child: GestureDetector(
-                onTap: () {
+            child: DocumentCard(
+              document: doc,
+              isSelected: isSelected,
+              isSelectionMode: _isSelectionMode,
+              onTap: () {
                   if (doc.id == null) return;
                   if (_isSelectionMode) {
                     _toggleSelection(doc.id!);
@@ -1136,8 +1139,8 @@ class _DocumentsPageState extends State<DocumentsPage> {
                   } else {
                     _previewDocument(doc);
                   }
-                },
-                onLongPress: () {
+              },
+              onLongPress: () {
                   if (doc.id == null) return;
                   if (doc.status != DocumentStatus.pendingUpload &&
                       doc.status != DocumentStatus.uploadFailed) {
@@ -1150,191 +1153,9 @@ class _DocumentsPageState extends State<DocumentsPage> {
                       _toggleSelection(doc.id!);
                     }
                   }
-                },
-                child: Card(
-                  elevation: 0,
-                  color: isSelected
-                      ? Theme.of(
-                          context,
-                        ).colorScheme.primary.withValues(alpha: 0.1)
-                      : tokens.surfaceContainer,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(tokens.shapeM),
-                    side: BorderSide(
-                      color: isSelected
-                          ? Theme.of(context).colorScheme.primary
-                          : Colors.transparent,
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: IgnorePointer(
-                    ignoring:
-                        _isSelectionMode ||
-                        doc.status == DocumentStatus.pendingUpload ||
-                        doc.status == DocumentStatus.uploadFailed,
-                    child: ListTile(
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      leading: Container(
-                        width: 48,
-                        height: 48,
-                        decoration: BoxDecoration(
-                          color: tokens.surfaceContainerHigh,
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Icon(
-                          Icons.description_outlined,
-                          color: Theme.of(context).colorScheme.primary,
-                          size: 24,
-                        ),
-                      ),
-                      title: Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              doc.fileName ??
-                                  _getShortDocType(doc.documentType),
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w600),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                          _buildStatusBadge(doc.status, tokens),
-                        ],
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const SizedBox(height: 4),
-                          Text(
-                            doc.description?.isNotEmpty == true
-                                ? doc.description!
-                                : (doc.notes?.isNotEmpty == true
-                                      ? doc.notes!
-                                      : 'No notes'),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodyMedium
-                                ?.copyWith(color: tokens.textSecondary),
-                          ),
-                          if (doc.status == DocumentStatus.rejected &&
-                              doc.reviewNotes != null) ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: tokens.error.withValues(alpha: 0.05),
-                                borderRadius: BorderRadius.circular(
-                                  tokens.shapeS,
-                                ),
-                                border: Border.all(
-                                  color: tokens.error.withValues(alpha: 0.1),
-                                ),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    children: [
-                                      Icon(
-                                        Icons.report_problem_outlined,
-                                        size: 14,
-                                        color: tokens.error,
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        'Reason for Rejection:',
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          fontWeight: FontWeight.bold,
-                                          color: tokens.error,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
-                                  Text(
-                                    doc.reviewNotes!,
-                                    style: Theme.of(context).textTheme.bodySmall
-                                        ?.copyWith(
-                                          color: tokens.textPrimary,
-                                          fontStyle: FontStyle.italic,
-                                        ),
-                                  ),
-                                  const SizedBox(height: 8),
-                                  TextButton.icon(
-                                    onPressed: () {
-                                      context.push(
-                                        '/chat',
-                                        extra: {
-                                          'loadId': doc.tripId,
-                                          'partnerName':
-                                              'Load #${doc.tripNumber ?? 'Unknown'}',
-                                        },
-                                      );
-                                    },
-                                    icon: const Icon(
-                                      Icons.chat_bubble_outline,
-                                      size: 14,
-                                    ),
-                                    label: const Text('Message Dispatcher'),
-                                    style: TextButton.styleFrom(
-                                      visualDensity: VisualDensity.compact,
-                                      padding: EdgeInsets.zero,
-                                      textStyle: const TextStyle(fontSize: 12),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const SizedBox(height: 4),
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.calendar_today,
-                                size: 14,
-                                color: tokens.textTertiary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatDate(doc.createdAt),
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(color: tokens.textTertiary),
-                              ),
-                              const SizedBox(width: 12),
-                              Icon(
-                                Icons.sd_storage_outlined,
-                                size: 14,
-                                color: tokens.textTertiary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                _formatFileSize(doc.fileSize),
-                                style: Theme.of(context).textTheme.labelSmall
-                                    ?.copyWith(color: tokens.textTertiary),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      trailing: _isSelectionMode
-                          ? Checkbox(
-                              value: isSelected,
-                              onChanged: (v) => _toggleSelection(doc.id!),
-                              shape: const CircleBorder(),
-                            )
-                          : IconButton(
-                              icon: const Icon(Icons.more_vert),
-                              onPressed: () => _showDocumentDetails(doc),
-                            ),
-                    ),
-                  ),
-                ),
-              ),
+              },
+              onDetailsTap: () => _showDocumentDetails(doc),
+              onSelectionChanged: (v) => _toggleSelection(doc.id!),
             ),
           );
         }, childCount: displayedDocs.length + 1),
@@ -1401,12 +1222,6 @@ class _DocumentsPageState extends State<DocumentsPage> {
       ),
     );
   }
-
-  String _formatDate(DateTime? date) {
-    if (date == null) return '';
-    return DateFormat('MMM d, y').format(date);
-  }
-
   Widget _buildStatusBadge(DocumentStatus status, DesignTokens tokens) {
     Color color;
     IconData icon;
@@ -1472,60 +1287,27 @@ class _DocumentsPageState extends State<DocumentsPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Card(
-              elevation: 0,
-              color: tokens.surfaceContainer,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(tokens.shapeM),
-                side: BorderSide(color: tokens.inputBorder),
+            ScanPreviewCard(
+              document: TripDocument(
+                id: 'preview',
+                tripId: _tripId ?? 'preview',
+                userId: 'preview',
+                documentType: _selectedDocumentType ?? TripDocumentType.other,
+                status: DocumentStatus.pendingUpload,
+                createdAt: DateTime.now(),
+                filePath: _scannedPdf != null ? _scannedPdf!.path : (_scannedImages.isNotEmpty ? _scannedImages.first : ''),
               ),
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Column(
-                  children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: BoxDecoration(
-                        color: tokens.surfaceContainerHigh,
-                        borderRadius: BorderRadius.circular(tokens.shapeM),
-                      ),
-                      child: Icon(
-                        Icons.check_circle,
-                        size: 32,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _scannedPdf != null
-                          ? 'Scan Successful'
-                          : 'Image Captured',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      _scannedPdf != null
-                          ? '$_scannedPageCount pages ready to upload'
-                          : 'Review details below',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: tokens.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    OutlinedButton.icon(
-                      onPressed: _startScan,
-                      icon: const Icon(Icons.refresh),
-                      label: const Text('Retake / Add Pages'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: tokens.textSecondary,
-                        side: BorderSide(color: tokens.inputBorder),
-                      ),
-                    ),
-                  ],
-                ),
+              onTap: () {},
+              onCancel: _resetUploadState,
+            ),
+            const SizedBox(height: 16),
+            OutlinedButton.icon(
+              onPressed: _startScan,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retake / Add Pages'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: tokens.textSecondary,
+                side: BorderSide(color: tokens.inputBorder),
               ),
             ),
             const SizedBox(height: 24),

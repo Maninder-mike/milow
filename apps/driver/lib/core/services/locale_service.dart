@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 class LocaleService extends ChangeNotifier {
   static const String _localeKey = 'app_language';
@@ -27,6 +28,7 @@ class LocaleService extends ChangeNotifier {
     final languageCode = prefs.getString(_localeKey) ?? 'en';
     _locale = Locale(languageCode);
     Intl.defaultLocale = languageCode;
+    await initializeDateFormatting(languageCode, null);
     notifyListeners();
   }
 
@@ -35,6 +37,7 @@ class LocaleService extends ChangeNotifier {
 
     _locale = locale;
     Intl.defaultLocale = locale.languageCode;
+    await initializeDateFormatting(locale.languageCode, null);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_localeKey, locale.languageCode);
     notifyListeners();

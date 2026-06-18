@@ -29,8 +29,7 @@ class SectionHeader extends StatelessWidget {
             TextButton(
               onPressed: onAction,
               style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: EdgeInsets.zero,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               child: Text(
                 actionLabel,

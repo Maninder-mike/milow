@@ -28,6 +28,8 @@ export 'src/models/quote.dart';
 export 'src/models/stop.dart';
 export 'src/models/trip.dart';
 export 'src/models/trip_document.dart';
+export 'src/models/quick_note.dart';
+export 'src/models/incident.dart';
 export 'src/models/trip_template.dart';
 export 'src/models/user_profile.dart';
 export 'src/models/vehicle.dart';

@@ -1,6 +1,6 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { JWT } from 'https://esm.sh/google-auth-library@8.7.0'
+import { serve } from 'std/http/server'
+import { createClient } from 'supabase'
+import { JWT } from 'google-auth-library'
 
 interface PushNotificationPayload {
   user_id: string

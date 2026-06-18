@@ -425,11 +425,8 @@ class _RecordsExportSheetState extends State<RecordsExportSheet> {
                 child: child,
               );
             },
-            onReorder: (oldIndex, newIndex) {
+            onReorderItem: (oldIndex, newIndex) {
               setState(() {
-                if (oldIndex < newIndex) {
-                  newIndex -= 1;
-                }
                 final item = selected.removeAt(oldIndex);
                 selected.insert(newIndex, item);
                 onChanged(selected);
@@ -489,11 +486,6 @@ class _RecordsExportSheetState extends State<RecordsExportSheet> {
                                   onChanged(newList);
                                 }
                               },
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              style: IconButton.styleFrom(
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
                             ),
                           ],
                         ),

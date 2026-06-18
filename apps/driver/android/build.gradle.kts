@@ -1,4 +1,4 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension
 import org.gradle.api.tasks.compile.JavaCompile
 
 allprojects {
@@ -9,9 +9,9 @@ allprojects {
     
     // Force Kotlin 17 target for all projects
     afterEvaluate {
-        tasks.withType<KotlinCompile> {
-            kotlinOptions {
-                jvmTarget = "17"
+        extensions.findByType<KotlinAndroidProjectExtension>()?.apply {
+            compilerOptions {
+                jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
             }
         }
     }

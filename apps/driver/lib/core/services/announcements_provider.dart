@@ -78,7 +78,7 @@ class AnnouncementsProvider extends ChangeNotifier {
         .customSelect(
           'SELECT * FROM announcements WHERE company_id = ? ORDER BY created_at DESC',
           variables: [Variable(companyId)],
-          readsFrom: {_db.messages}, // Hack: Messages exists, so it triggers watch
+          readsFrom: {_db.announcements},
         )
         .watch()
         .map((rows) => rows.map((r) => Announcement.fromData(r)).toList());

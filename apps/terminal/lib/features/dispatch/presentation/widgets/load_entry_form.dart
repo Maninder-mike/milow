@@ -193,8 +193,6 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
   // --- Multi-Stop Logic ---
 
   void _onReorderSubset(StopType type, int oldIndex, int newIndex) {
-    if (oldIndex < newIndex) newIndex -= 1;
-
     final draft = ref.read(loadDraftProvider);
 
     // Split into groups
@@ -393,7 +391,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
           physics: const NeverScrollableScrollPhysics(),
           buildDefaultDragHandles: false,
           itemCount: draft.stops.where((s) => s.type == StopType.pickup).length,
-          onReorder: (oldIndex, newIndex) =>
+          onReorderItem: (oldIndex, newIndex) =>
               _onReorderSubset(StopType.pickup, oldIndex, newIndex),
           itemBuilder: (context, index) {
             final pickups = draft.stops
@@ -440,7 +438,7 @@ class _LoadEntryFormState extends ConsumerState<LoadEntryForm> {
           itemCount: draft.stops
               .where((s) => s.type == StopType.delivery)
               .length,
-          onReorder: (oldIndex, newIndex) =>
+          onReorderItem: (oldIndex, newIndex) =>
               _onReorderSubset(StopType.delivery, oldIndex, newIndex),
           itemBuilder: (context, index) {
             final deliveries = draft.stops

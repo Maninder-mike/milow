@@ -1,3 +1,4 @@
+// ignore_for_file: non_const_argument_for_const_parameter
 import 'dart:convert';
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

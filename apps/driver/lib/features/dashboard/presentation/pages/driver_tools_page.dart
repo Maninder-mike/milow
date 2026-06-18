@@ -4,6 +4,7 @@ import 'package:milow/core/services/geofence_service.dart';
 import 'package:milow/core/services/preferences_service.dart';
 import 'package:provider/provider.dart';
 import 'package:milow/features/settings/presentation/pages/border_crossing_selector.dart';
+import 'package:go_router/go_router.dart';
 
 class DriverToolsPage extends StatefulWidget {
   const DriverToolsPage({super.key});
@@ -167,6 +168,41 @@ class _DriverToolsPageState extends State<DriverToolsPage> {
                 },
               ),
               onTap: null,
+            ),
+            _buildToolItem(
+              icon: Icons.cloud_outlined,
+              title: 'Weather Card',
+              subtitle: 'Show local weather and alerts on home screen',
+              iconColor: Colors.lightBlue,
+              trailing: Switch.adaptive(
+                value: prefService.getShowWeatherCard(),
+                activeTrackColor: Theme.of(context).colorScheme.primary,
+                onChanged: (value) async {
+                  await prefService.setShowWeatherCard(value);
+                },
+              ),
+              onTap: null,
+            ),
+            _buildToolItem(
+              icon: Icons.note_alt_outlined,
+              title: 'Quick Notes',
+              subtitle: 'Jot down quick thoughts and gate codes',
+              iconColor: Colors.teal,
+              onTap: () => context.push('/quick-notes'),
+            ),
+            _buildToolItem(
+              icon: Icons.build_outlined,
+              title: 'Maintenance Reminders',
+              subtitle: 'Track upcoming service and schedules',
+              iconColor: Colors.blue,
+              onTap: () => context.push('/maintenance-reminders'),
+            ),
+            _buildToolItem(
+              icon: Icons.report_problem_outlined,
+              title: 'Incident Report',
+              subtitle: 'File accident or damage reports step-by-step',
+              iconColor: Colors.red,
+              onTap: () => context.push('/incident-report'),
             ),
             _buildDivider(),
             Padding(

@@ -203,10 +203,6 @@ class _UnitSuggestionOverlayState extends State<UnitSuggestionOverlay> with Sing
             selected: {current},
             onSelectionChanged: (set) => onTarget(set.first),
             showSelectedIcon: false,
-            style: const ButtonStyle(
-              visualDensity: VisualDensity.compact,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
           ),
         ],
       ),

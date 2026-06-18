@@ -28,8 +28,6 @@ import 'package:milow/core/services/announcements_provider.dart';
 import 'package:milow/core/utils/responsive_layout.dart';
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:milow/core/services/location/location_preferences_helper.dart';
-import 'package:milow/features/dashboard/presentation/widgets/active_trip_card.dart';
-import 'package:milow/features/dashboard/presentation/widgets/load_progress_card.dart';
 import 'package:milow/core/services/location/location_controller.dart';
 import 'package:milow/core/widgets/sync_status_indicator.dart';
 import 'package:milow/core/services/trip_repository.dart';
@@ -37,6 +35,11 @@ import 'package:milow/core/services/fuel_repository.dart';
 import 'package:milow/core/services/load_repository.dart';
 import 'package:milow/core/services/profile_repository.dart';
 import 'package:intl/intl.dart';
+import 'package:milow/features/dashboard/presentation/widgets/dashboard_hero.dart';
+import 'package:milow/features/dashboard/presentation/widgets/record_entry_item.dart';
+import 'package:milow/features/dashboard/presentation/widgets/weather_section.dart';
+import 'package:milow/core/services/weather_service.dart';
+import 'package:geolocator/geolocator.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -53,6 +56,7 @@ class _DashboardPageState extends State<DashboardPage>
       false; // Default to false so we don't show shimmer if disabled
   String? _borderError;
   Timer? _borderRefreshTimer;
+  PreferencesService? _preferencesService;
 
   // Recent entries (trips and fuel) - typed for safety
   List<RecentEntry> _recentEntries = [];
@@ -60,6 +64,10 @@ class _DashboardPageState extends State<DashboardPage>
 
   // Active trip (trip without end odometer)
   Trip? _activeTrip;
+
+  // Weather state
+  WeatherInfo? _weatherInfo;
+  bool _isLoadingWeather = false;
 
   // Loads state
   List<Load> _assignedLoads = [];
@@ -113,6 +121,7 @@ class _DashboardPageState extends State<DashboardPage>
       forceRefresh: false,
     ); // Use prefetched data if available
     _loadRecentEntries();
+    _loadWeather();
     _loadLoads();
     _loadNotificationCount();
     _loadProfile();
@@ -131,7 +140,8 @@ class _DashboardPageState extends State<DashboardPage>
     BorderWaitTimeService.savedCrossingsNotifier.addListener(_onBordersChanged);
     
     // Listen for preference changes (real-time toggle)
-    context.read<PreferencesService>().addListener(_startBorderRefreshTimer);
+    _preferencesService = context.read<PreferencesService>();
+    _preferencesService?.addListener(_onPreferencesChanged);
   }
 
   void _onBordersChanged() {
@@ -140,11 +150,21 @@ class _DashboardPageState extends State<DashboardPage>
     }
   }
 
+  void _onPreferencesChanged() {
+    if (!mounted) return;
+    _startBorderRefreshTimer();
+    
+    final prefService = _preferencesService ?? context.read<PreferencesService>();
+    if (prefService.getShowWeatherCard() && _weatherInfo == null && !_isLoadingWeather) {
+      _loadWeather();
+    }
+  }
+
   void _startBorderRefreshTimer() {
     _borderRefreshTimer?.cancel();
 
     // Determine interval based on user preference
-    final prefService = context.read<PreferencesService>();
+    final prefService = _preferencesService ?? context.read<PreferencesService>();
     final isRealTime = prefService.getRealTimeBorders();
     final interval = isRealTime ? 2 : 5;
 
@@ -160,7 +180,7 @@ class _DashboardPageState extends State<DashboardPage>
   void dispose() {
     BorderWaitTimeService.savedCrossingsNotifier
         .removeListener(_onBordersChanged);
-    context.read<PreferencesService>().removeListener(_startBorderRefreshTimer);
+    _preferencesService?.removeListener(_onPreferencesChanged);
     _borderRefreshTimer?.cancel();
     _notificationSubscription?.cancel();
     _incomingSubscription?.cancel();
@@ -180,7 +200,76 @@ class _DashboardPageState extends State<DashboardPage>
       _loadRecentEntries(),
       _loadLoads(),
       _loadProfile(),
+      _loadWeather(),
     ]);
+  }
+
+  Future<void> _loadWeather() async {
+    if (!mounted) return;
+    final prefService = Provider.of<PreferencesService>(context, listen: false);
+    if (!prefService.getShowWeatherCard()) {
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+        });
+      }
+      return;
+    }
+    final isImperial = prefService.getDistanceUnit() == 'mi';
+    setState(() {
+      _isLoadingWeather = true;
+    });
+    try {
+      final LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          setState(() {
+            _isLoadingWeather = false;
+          });
+        }
+        return;
+      }
+      
+      final position = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.low,
+          timeLimit: Duration(seconds: 5),
+        ),
+      ).catchError((_) async {
+        return await Geolocator.getLastKnownPosition() ?? Position(
+          latitude: 37.7749,
+          longitude: -122.4194,
+          timestamp: DateTime.now(),
+          accuracy: 0.0,
+          altitude: 0.0,
+          altitudeAccuracy: 0.0,
+          heading: 0.0,
+          headingAccuracy: 0.0,
+          speed: 0.0,
+          speedAccuracy: 0.0,
+        );
+      });
+      
+      final weather = await WeatherService.instance.fetchWeather(
+        position.latitude,
+        position.longitude,
+        isImperial,
+      );
+      
+      if (mounted) {
+        setState(() {
+          _weatherInfo = weather;
+          _isLoadingWeather = false;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading weather: $e');
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+        });
+      }
+    }
   }
 
   Future<void> _loadProfile() async {
@@ -377,23 +466,24 @@ class _DashboardPageState extends State<DashboardPage>
       final prefetch = DataPrefetchService.instance;
       List<Trip> trips;
       List<FuelEntry> fuelEntries;
+      List<Trip> fullTrips = [];
 
       // Use prefetched data if available, otherwise fetch
       if (prefetch.isPrefetchComplete &&
           prefetch.cachedTrips != null &&
           prefetch.cachedFuelEntries != null) {
-        // Take first 5 from cached data
-        trips = prefetch.cachedTrips!.take(10).toList();
+        fullTrips = prefetch.cachedTrips!;
+        trips = fullTrips.take(10).toList();
         fuelEntries = prefetch.cachedFuelEntries!.take(5).toList();
       } else {
         // Fetch from repositories (offline-first)
         // Note: Repositories return all items sorted by date
         final allTripsResult = await TripRepository.getTrips(refresh: true);
-        final allTrips = allTripsResult.fold((l) => <Trip>[], (r) => r);
+        fullTrips = allTripsResult.fold((l) => <Trip>[], (r) => r);
         final allFuelResult = await FuelRepository.getFuelEntries(refresh: true);
         final allFuel = allFuelResult.fold((l) => <FuelEntry>[], (r) => r);
 
-        trips = allTrips.take(10).toList();
+        trips = fullTrips.take(10).toList();
         fuelEntries = allFuel.take(5).toList();
       }
 
@@ -584,239 +674,7 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  Widget _buildHeroContent(BuildContext context, double margin) {
-    // ENTERPRISE PATTERN: Capture nullable state in local final variable
-    final activeTrip = _activeTrip;
-    final bool showStartTrip =
-        activeTrip == null || activeTrip.allDeliveriesCompleted;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Hero Content
-        Padding(
-          padding: EdgeInsets.fromLTRB(margin, 4, margin, 4),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              // Show Announcement Banner if available
-              _buildAnnouncementBanner(context),
-
-              if (context.watch<AnnouncementsProvider>().latestAnnouncement !=
-                  null)
-                SizedBox(height: context.tokens.spacingM),
-
-              // Show 'Available Load' if there are assigned loads
-              if (_assignedLoads.any(
-                (l) => l.status == LoadStatus.assigned,
-              )) ...[
-                _buildAvailableLoadBanner(
-                  context,
-                  _assignedLoads.firstWhere(
-                    (l) => l.status == LoadStatus.assigned,
-                  ),
-                ),
-                SizedBox(height: context.tokens.spacingM),
-              ],
-
-              // Show 'Start Trip' if no active trip OR active trip is completed
-              if (showStartTrip) ...[
-                Text(
-                  'Track Your Journey',
-                  style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                SizedBox(height: context.tokens.spacingM),
-                // Hero Search Pill -> Replaced with "Start Trip" Button
-                SizedBox(
-                  width: double.infinity,
-                  height: 56, // Tall button for easy tapping
-                  child: FilledButton.icon(
-                    onPressed: () async {
-                      final result = await context.push('/add-entry');
-                      if (result == true) {
-                        unawaited(_onRefresh());
-                      }
-                    },
-                    icon: Icon(
-                      Icons.add,
-                      color: Theme.of(context).colorScheme.primary,
-                      // Using primary color for icon on white/surface button
-                    ),
-                    label: Text(
-                      'Start Trip',
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: Colors.white, // White against gradient
-                      foregroundColor: Theme.of(context).colorScheme.primary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(
-                          context.tokens.shapeFull,
-                        ),
-                      ),
-                      elevation: 0,
-                    ),
-                  ),
-                ),
-                SizedBox(height: context.tokens.spacingL),
-              ],
-
-              // Phase 3: Load Progress Tracking
-              if (_assignedLoads.any(
-                (l) =>
-                    l.status == LoadStatus.enRoute ||
-                    l.status == LoadStatus.atStop,
-              ))
-                LoadProgressCard(
-                  load: _assignedLoads.firstWhere(
-                    (l) =>
-                        l.status == LoadStatus.enRoute ||
-                        l.status == LoadStatus.atStop,
-                  ),
-                  onRefresh: _onRefresh,
-                ),
-
-              // Only show active trip card if trip exists AND deliveries are pending
-              if (activeTrip != null && !activeTrip.allDeliveriesCompleted)
-                Padding(
-                  padding: EdgeInsets.only(
-                    top:
-                        _assignedLoads.any(
-                          (l) =>
-                              l.status == LoadStatus.enRoute ||
-                              l.status == LoadStatus.atStop,
-                        )
-                        ? context.tokens.spacingM
-                        : 0,
-                  ),
-                  child: GestureDetector(
-                    onLongPressStart: (details) {
-                      _showActivityMenu(
-                        context,
-                        activeTrip,
-                        details.globalPosition,
-                      );
-                    },
-                    child: ActiveTripCard(
-                      trip: activeTrip,
-                      onComplete: () async {
-                        final result = await context.push(
-                          '/add-entry',
-                          extra: {'editingTrip': activeTrip},
-                        );
-                        if (result == true) {
-                          unawaited(_onRefresh());
-                        }
-                      },
-                    ),
-                  ),
-                )
-              else
-                // No active trip or trip is complete - show "Track Your Journey" + Pill
-                const SizedBox.shrink(),
-              SizedBox(height: context.tokens.spacingL),
-            ],
-          ),
-        ),
-
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: margin),
-          child: ResponsiveRow(
-            // Use gutter for horizontal spacing (default),
-            // and regular spacing for vertical run spacing matching prior design
-            runSpacing: context.tokens.spacingM,
-            children: [
-              ResponsiveColumn(
-                xs: 2, // 2 items per row on phone (4 cols total / 2)
-                sm: 2, // 4 items per row on tablet (8 cols total / 2) -> Wait, 8/2 = 4 items? Yes.
-                md: 3, // 4 items per row on desktop (12 cols total / 3) -> Yes.
-                child: _DashboardCard(
-                  title: 'Inspections',
-                  subtitle: 'Pre/Post Trip',
-                  icon: Icons.checklist,
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  onTap: () => context.push('/inspections'),
-                ),
-              ),
-              ResponsiveColumn(
-                xs: 2,
-                sm: 2,
-                md: 3,
-                child: _DashboardCard(
-                  title: 'Documents',
-                  subtitle: 'Permits & Regs',
-                  icon: Icons.folder_open,
-                  color: Theme.of(context).colorScheme.secondaryContainer,
-                  onTap: () => context.push(
-                    '/scan-document',
-                    extra: <String, dynamic>{},
-                  ),
-                ),
-              ),
-              ResponsiveColumn(
-                xs: 2,
-                sm: 2,
-                md: 3,
-                child: _DashboardCard(
-                  title: 'Expenses',
-                  subtitle: 'Receipts & Logs',
-                  icon: Icons.receipt_long_outlined,
-                  color: Theme.of(context).colorScheme.tertiaryContainer,
-                  onTap: () => context.push('/expenses'),
-                ),
-              ),
-              ResponsiveColumn(
-                xs: 2,
-                sm: 2,
-                md: 3,
-                child: _DashboardCard(
-                  title: 'Explore',
-                  subtitle: 'Analytics & Map',
-                  icon: Icons.explore_outlined,
-                  color: Theme.of(context).colorScheme.tertiaryContainer,
-                  onTap: () => context.go('/explore'),
-                ),
-              ),
-              ResponsiveColumn(
-                xs: 2,
-                sm: 2,
-                md: 3,
-                child: _DashboardCard(
-                  title: 'Inbox',
-                  subtitle: 'Messages',
-                  icon: Icons.chat_bubble_outline,
-                  color: Theme.of(context).colorScheme.surfaceContainerHigh,
-                  onTap: () => ResponsiveLayout.isMobile(context)
-                      ? context.push('/inbox')
-                      : context.go('/inbox'),
-                ),
-              ),
-              ResponsiveColumn(
-                xs: 2,
-                sm: 2,
-                md: 3,
-                child: _DashboardCard(
-                  title: 'Settings',
-                  subtitle: 'App Prefs',
-                  icon: Icons.settings_outlined,
-                  color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                  onTap: () => context.go('/settings'),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
+  
   Widget _buildAnnouncementBanner(BuildContext context) {
     final announcement = context
         .watch<AnnouncementsProvider>()
@@ -1014,7 +872,6 @@ class _DashboardPageState extends State<DashboardPage>
     final prefService = context.watch<PreferencesService>();
     final distanceUnit = prefService.getDistanceUnit();
     final fuelUnit = prefService.getVolumeUnit();
-
     final margin = ResponsiveLayout.getMargin(context);
     final baseColor = Theme.of(context).scaffoldBackgroundColor;
 
@@ -1105,7 +962,29 @@ class _DashboardPageState extends State<DashboardPage>
                                 ),
                               ),
                             ),
-                            _buildHeroContent(context, margin),
+                            DashboardHero(
+                              activeTrip: _activeTrip,
+                              assignedLoads: _assignedLoads,
+                              onRefresh: _onRefresh,
+                              onShowActivityMenu: _showActivityMenu,
+                              announcementBanner: _buildAnnouncementBanner(context),
+                              availableLoadBanner: _assignedLoads.any((l) => l.status == LoadStatus.assigned)
+                                  ? _buildAvailableLoadBanner(
+                                      context,
+                                      _assignedLoads.firstWhere((l) => l.status == LoadStatus.assigned),
+                                    )
+                                  : null,
+                              margin: margin,
+                            ),
+                            if (prefService.getShowWeatherCard()) ...[
+                              SizedBox(height: context.tokens.spacingM),
+                              WeatherSection(
+                                weatherInfo: _weatherInfo,
+                                isLoadingWeather: _isLoadingWeather,
+                                distanceUnit: distanceUnit,
+                                onWeatherTap: _loadWeather,
+                              ),
+                            ],
 
                             // Border Wait Times Section
                             Container(
@@ -1452,14 +1331,14 @@ class _DashboardPageState extends State<DashboardPage>
                                               }
 
                                               return (
-                                                _buildRecordEntry(
-                                                  'trip',
-                                                  'Trip #${trip.tripNumber}',
-                                                  route,
-                                                  DateFormat(
+                                                RecordEntryItem(
+                                                  type: 'trip',
+                                                  entryId: 'Trip #${trip.tripNumber}',
+                                                  description: route,
+                                                  date: DateFormat(
                                                     'MMM d, yyyy',
                                                   ).format(trip.tripDate),
-                                                  distanceStr,
+                                                  value: distanceStr,
                                                 ),
                                                 () async {
                                                   final result = await context
@@ -1511,14 +1390,14 @@ class _DashboardPageState extends State<DashboardPage>
                                                   '${displayQuantity.toStringAsFixed(1)} $fuelUnit';
 
                                               return (
-                                                _buildRecordEntry(
-                                                  'fuel',
-                                                  '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
-                                                  location,
-                                                  DateFormat(
+                                                RecordEntryItem(
+                                                  type: 'fuel',
+                                                  entryId: '${fuel.isTruckFuel ? "Truck" : "Reefer"} - $identifier',
+                                                  description: location,
+                                                  date: DateFormat(
                                                     'MMM d, yyyy',
                                                   ).format(fuel.fuelDate),
-                                                  quantityStr,
+                                                  value: quantityStr,
                                                 ),
                                                 () async {
                                                   final result = await context
@@ -1617,89 +1496,7 @@ class _DashboardPageState extends State<DashboardPage>
     );
   }
 
-  Widget _buildRecordEntry(
-    String type,
-    String entryId,
-    String description,
-    String date,
-    String value,
-  ) {
-    final isTrip = type == 'trip';
-    final iconColor = isTrip
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.tertiary;
-    final icon = isTrip ? Icons.local_shipping : Icons.local_gas_station;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: context.tokens.spacingM,
-        vertical: context.tokens.spacingM,
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(context.tokens.shapeM),
-            ),
-            child: Icon(icon, color: iconColor, size: 24),
-          ),
-          SizedBox(width: context.tokens.spacingS),
-          Expanded(
-            child: Column(
-              children: [
-                // Top row: Entry ID left, Value right
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      entryId,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: context.tokens.spacingXS),
-                // Bottom row: Description left, Date right
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        description,
-                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    SizedBox(width: context.tokens.spacingS),
-                    Text(
-                      date,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
+  
   void _showActivityMenu(BuildContext context, Trip trip, Offset position) {
     final tokens = Theme.of(context).extension<DesignTokens>()!;
     // Show pickup menu if there are incomplete pickups, otherwise show delivery menu
@@ -2247,66 +2044,6 @@ class _DashboardPageState extends State<DashboardPage>
               },
             ),
             SizedBox(height: context.tokens.spacingM),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _DashboardCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final VoidCallback onTap;
-
-  const _DashboardCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return M3SpringButton(
-      onTap: onTap,
-      child: Container(
-        padding: EdgeInsets.all(context.tokens.spacingS),
-        decoration: BoxDecoration(
-          color: color,
-          borderRadius: BorderRadius.circular(context.tokens.shapeM),
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              icon,
-              size: 32,
-              color: Theme.of(context).colorScheme.onPrimaryContainer,
-            ),
-            SizedBox(height: context.tokens.spacingXS),
-            Text(
-              title,
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: Theme.of(context).colorScheme.onPrimaryContainer,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            Text(
-              subtitle,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: Theme.of(
-                  context,
-                ).colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
-              ),
-              textAlign: TextAlign.center,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
           ],
         ),
       ),

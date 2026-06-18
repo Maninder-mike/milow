@@ -51,6 +51,8 @@ class TripStepper extends StatefulWidget {
   final TextEditingController endOdometerController;
   final TextEditingController borderCrossingController;
   final TextEditingController notesController;
+  final TextEditingController revenueController;
+  final TextEditingController ratePerMileController;
   final String distanceUnit;
   final bool isEmptyLeg;
   final Function(bool) onEmptyLegChanged;
@@ -95,6 +97,8 @@ class TripStepper extends StatefulWidget {
     required this.endOdometerController,
     required this.borderCrossingController,
     required this.notesController,
+    required this.revenueController,
+    required this.ratePerMileController,
     required this.distanceUnit,
     required this.isEmptyLeg,
     required this.onEmptyLegChanged,
@@ -108,6 +112,38 @@ class TripStepper extends StatefulWidget {
 
 class _TripStepperState extends State<TripStepper> {
   int _currentStep = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.revenueController.addListener(_calculateRate);
+    widget.startOdometerController.addListener(_calculateRate);
+    widget.endOdometerController.addListener(_calculateRate);
+    // Initial calculation if editing
+    WidgetsBinding.instance.addPostFrameCallback((_) => _calculateRate());
+  }
+
+  @override
+  void dispose() {
+    widget.revenueController.removeListener(_calculateRate);
+    widget.startOdometerController.removeListener(_calculateRate);
+    widget.endOdometerController.removeListener(_calculateRate);
+    super.dispose();
+  }
+
+  void _calculateRate() {
+    if (!mounted) return;
+    final revenue = double.tryParse(widget.revenueController.text.replaceAll(',', '')) ?? 0.0;
+    final startOdo = double.tryParse(widget.startOdometerController.text.replaceAll(',', '')) ?? 0.0;
+    final endOdo = double.tryParse(widget.endOdometerController.text.replaceAll(',', '')) ?? 0.0;
+
+    if (revenue > 0 && endOdo > startOdo) {
+      final rate = revenue / (endOdo - startOdo);
+      widget.ratePerMileController.text = rate.toStringAsFixed(2);
+    } else {
+      widget.ratePerMileController.text = '';
+    }
+  }
 
   bool _validateStep(int step) {
     if (step == 0) {
@@ -323,6 +359,33 @@ class _TripStepperState extends State<TripStepper> {
                           prefixIcon: const Icon(Icons.flag_outlined),
                         ),
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                _buildSectionHeader('Financials'),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: widget.revenueController,
+                        decoration: const InputDecoration(
+                          labelText: 'Revenue / Pay',
+                          prefixIcon: Icon(Icons.attach_money_rounded),
+                        ),
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: widget.ratePerMileController,
+                        decoration: InputDecoration(
+                          labelText: 'Rate per ${widget.distanceUnit}',
+                          prefixIcon: const Icon(Icons.calculate_outlined),
+                        ),
+                        readOnly: true,
                       ),
                     ),
                   ],

@@ -901,13 +901,24 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
           as _i4.Future<_i2.UserResponse>);
 
   @override
-  _i4.Future<_i2.AuthResponse> setSession(String? refreshToken) =>
+  _i4.Future<_i2.AuthResponse> setSession(
+    String? refreshToken, {
+    String? accessToken,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#setSession, [refreshToken]),
+            Invocation.method(
+              #setSession,
+              [refreshToken],
+              {#accessToken: accessToken},
+            ),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
               _FakeAuthResponse_13(
                 this,
-                Invocation.method(#setSession, [refreshToken]),
+                Invocation.method(
+                  #setSession,
+                  [refreshToken],
+                  {#accessToken: accessToken},
+                ),
               ),
             ),
           )
@@ -1403,6 +1414,17 @@ class MockSupabaseQueryBuilder extends _i1.Mock
             ),
           )
           as _i2.PostgrestFilterBuilder<int>);
+
+  @override
+  _i2.PostgrestQueryBuilder<dynamic> retry({required bool? enabled}) =>
+      (super.noSuchMethod(
+            Invocation.method(#retry, [], {#enabled: enabled}),
+            returnValue: _FakePostgrestQueryBuilder_23<dynamic>(
+              this,
+              Invocation.method(#retry, [], {#enabled: enabled}),
+            ),
+          )
+          as _i2.PostgrestQueryBuilder<dynamic>);
 
   @override
   _i2.PostgrestQueryBuilder<dynamic> setHeader(String? key, String? value) =>
@@ -1909,6 +1931,17 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
           as _i2.PostgrestFilterBuilder<T>);
 
   @override
+  _i2.PostgrestFilterBuilder<T> retry({required bool? enabled}) =>
+      (super.noSuchMethod(
+            Invocation.method(#retry, [], {#enabled: enabled}),
+            returnValue: _FakePostgrestFilterBuilder_7<T>(
+              this,
+              Invocation.method(#retry, [], {#enabled: enabled}),
+            ),
+          )
+          as _i2.PostgrestFilterBuilder<T>);
+
+  @override
   _i2.PostgrestFilterBuilder<T> setHeader(String? key, String? value) =>
       (super.noSuchMethod(
             Invocation.method(#setHeader, [key, value]),
@@ -2283,6 +2316,17 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
             returnValue: _FakePostgrestTransformBuilder_27<T>(
               this,
               Invocation.method(#copyWithUrl, [url]),
+            ),
+          )
+          as _i2.PostgrestTransformBuilder<T>);
+
+  @override
+  _i2.PostgrestTransformBuilder<T> retry({required bool? enabled}) =>
+      (super.noSuchMethod(
+            Invocation.method(#retry, [], {#enabled: enabled}),
+            returnValue: _FakePostgrestTransformBuilder_27<T>(
+              this,
+              Invocation.method(#retry, [], {#enabled: enabled}),
             ),
           )
           as _i2.PostgrestTransformBuilder<T>);

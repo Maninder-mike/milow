@@ -30,6 +30,8 @@ class Trip {
   final DateTime? updatedAt;
   final bool isEmptyLeg;
   final String? companyId;
+  final double? revenue;
+  final double? ratePerMile;
 
   // Load details (owner-operator features)
   final String? commodity;
@@ -69,6 +71,8 @@ class Trip {
     this.pieces,
     this.referenceNumbers = const [],
     this.companyId,
+    this.revenue,
+    this.ratePerMile,
   })  : assert(tripNumber.isNotEmpty, 'Trip number cannot be empty'),
         assert(truckNumber.isNotEmpty, 'Truck number cannot be empty'),
         assert(
@@ -213,6 +217,12 @@ class Trip {
               .toList() ??
           [],
       companyId: json['company_id'] as String?,
+      revenue: json['revenue'] != null
+          ? (json['revenue'] as num).toDouble()
+          : null,
+      ratePerMile: json['rate_per_mile'] != null
+          ? (json['rate_per_mile'] as num).toDouble()
+          : null,
     );
   }
 
@@ -249,6 +259,8 @@ class Trip {
       if (pieces != null) 'pieces': pieces,
       if (referenceNumbers.isNotEmpty) 'reference_numbers': referenceNumbers,
       if (companyId != null) 'company_id': companyId,
+      if (revenue != null) 'revenue': revenue,
+      if (ratePerMile != null) 'rate_per_mile': ratePerMile,
     };
   }
 
@@ -284,6 +296,8 @@ class Trip {
     int? pieces,
     List<String>? referenceNumbers,
     String? companyId,
+    double? revenue,
+    double? ratePerMile,
   }) {
     return Trip(
       id: id ?? this.id,
@@ -316,6 +330,8 @@ class Trip {
       pieces: pieces ?? this.pieces,
       referenceNumbers: referenceNumbers ?? this.referenceNumbers,
       companyId: companyId ?? this.companyId,
+      revenue: revenue ?? this.revenue,
+      ratePerMile: ratePerMile ?? this.ratePerMile,
     );
   }
 

@@ -1,10 +1,14 @@
 {
-    "compilerOptions": {
-        "strict": true,
-        "allowJs": true,
-        "lib": [
-            "deno.window",
-            "deno.ns"
-        ]
-    }
+  "imports": {
+    "std/http/server": "https://deno.land/std@0.168.0/http/server.ts",
+    "supabase": "https://esm.sh/@supabase/supabase-js@2",
+    "google-auth-library": "https://esm.sh/google-auth-library@8.7.0"
+  },
+  "compilerOptions": {
+    "strict": true,
+    "lib": [
+      "deno.window",
+      "deno.ns"
+    ]
+  }
 }

@@ -224,7 +224,7 @@ class _DetentionDialogState extends State<DetentionDialog> {
         IconButton.filledTonal(
           onPressed: onInc,
           icon: const Icon(Icons.add),
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         ),
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -239,7 +239,7 @@ class _DetentionDialogState extends State<DetentionDialog> {
         IconButton.filledTonal(
           onPressed: onDec,
           icon: const Icon(Icons.remove),
-          constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+          constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
         ),
         Text(label, style: Theme.of(context).textTheme.bodySmall),
       ],

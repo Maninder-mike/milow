@@ -13,8 +13,11 @@ import 'package:uuid/uuid.dart';
 ///
 /// **Important**: Verification happens server-side for security.
 class IntegrityService {
-  // Google Cloud Project Number for Milow
-  static const int _cloudProjectNumber = 799615226888;
+  // Google Cloud Project Number for Milow, overridden by dart-define in CI
+  static const int _cloudProjectNumber = int.fromEnvironment(
+    'GCP_PROJECT_NUMBER',
+    defaultValue: 799615226888,
+  );
 
   /// Plugin instance
   static final AppDeviceIntegrity _plugin = AppDeviceIntegrity();

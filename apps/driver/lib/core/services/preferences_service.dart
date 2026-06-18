@@ -16,6 +16,7 @@ class PreferencesService extends ChangeNotifier {
   static const String _lastDetectedCountryKey = 'last_detected_country';
   static const String _countryDetectedAtKey = 'country_detected_at';
   static const String _realTimeBordersKey = 'real_time_borders';
+  static const String _showWeatherCardKey = 'show_weather_card';
 
   final SharedPreferences _prefs;
 
@@ -87,6 +88,16 @@ class PreferencesService extends ChangeNotifier {
 
   Future<void> setRealTimeBorders(bool value) async {
     await _prefs.setBool(_realTimeBordersKey, value);
+    notifyListeners();
+  }
+
+  // Show Weather Card preference
+  bool getShowWeatherCard() {
+    return _prefs.getBool(_showWeatherCardKey) ?? true;
+  }
+
+  Future<void> setShowWeatherCard(bool value) async {
+    await _prefs.setBool(_showWeatherCardKey, value);
     notifyListeners();
   }
 

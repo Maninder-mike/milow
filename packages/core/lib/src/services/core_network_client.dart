@@ -264,6 +264,18 @@ class CoreNetworkClient {
 
   /// Map exceptions to typed Failure objects.
   Failure _mapException(Object e, StackTrace stackTrace) {
+    // Check for network/socket/client connectivity errors first, as they can be wrapped
+    // in other exceptions (e.g. AuthException or PostgrestException)
+    final errorString = e.toString().toLowerCase();
+    if (errorString.contains('socketexception') ||
+        errorString.contains('connection refused') ||
+        errorString.contains('no internet') ||
+        errorString.contains('network is unreachable') ||
+        errorString.contains('clientexception') ||
+        errorString.contains('failed host lookup')) {
+      return NetworkFailure('Network connectivity issue: $e', stackTrace);
+    }
+
     if (e is PostgrestException) {
       final code = e.code;
       final message = e.message;
@@ -294,15 +306,6 @@ class CoreNetworkClient {
 
     if (e is TimeoutException) {
       return TimeoutFailure('Request timed out.', stackTrace);
-    }
-
-    // Generic network/socket errors often manifest as Exception or Error
-    final errorString = e.toString().toLowerCase();
-    if (errorString.contains('socketexception') ||
-        errorString.contains('connection refused') ||
-        errorString.contains('no internet') ||
-        errorString.contains('network is unreachable')) {
-      return NetworkFailure('Network connectivity issue.', stackTrace);
     }
 
     return UnexpectedFailure(

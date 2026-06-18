@@ -97,6 +97,8 @@ class _AddEntryPageState extends State<AddEntryPage>
   late final RestorableTextEditingController _commodityController;
   late final RestorableTextEditingController _weightController;
   late final RestorableTextEditingController _piecesController;
+  late final RestorableTextEditingController _revenueController;
+  late final RestorableTextEditingController _ratePerMileController;
   final List<RestorableTextEditingController> _referenceNumberControllers = [];
   final RestorableString _weightUnit = RestorableString('lbs');
 
@@ -235,6 +237,16 @@ class _AddEntryPageState extends State<AddEntryPage>
     );
     _piecesController = RestorableTextEditingController(
       text: widget.editingTrip?.pieces?.toString() ?? '',
+    );
+    _revenueController = RestorableTextEditingController(
+      text: widget.editingTrip?.revenue != null
+          ? widget.editingTrip!.revenue!.toStringAsFixed(2).replaceAll('.00', '')
+          : '',
+    );
+    _ratePerMileController = RestorableTextEditingController(
+      text: widget.editingTrip?.ratePerMile != null
+          ? widget.editingTrip!.ratePerMile!.toStringAsFixed(2).replaceAll('.00', '')
+          : '',
     );
 
     _loadVehicles();
@@ -559,6 +571,8 @@ class _AddEntryPageState extends State<AddEntryPage>
       // Set weight unit (from preferences)
       _weightUnit.value = prefService.getWeightUnit();
       _piecesController.value.text = trip.pieces?.toString() ?? '';
+      _revenueController.value.text = trip.revenue != null ? trip.revenue!.toStringAsFixed(2).replaceAll('.00', '') : '';
+      _ratePerMileController.value.text = trip.ratePerMile != null ? trip.ratePerMile!.toStringAsFixed(2).replaceAll('.00', '') : '';
 
       // Clear and populate reference numbers
       if (trip.referenceNumbers.isNotEmpty) {
@@ -994,6 +1008,8 @@ class _AddEntryPageState extends State<AddEntryPage>
     registerForRestoration(_commodityController, 'commodity');
     registerForRestoration(_weightController, 'weight');
     registerForRestoration(_piecesController, 'pieces');
+    registerForRestoration(_revenueController, 'revenue');
+    registerForRestoration(_ratePerMileController, 'rate_per_mile');
 
     // Restore lists
     registerForRestoration(_trailerCount, 'trailer_count');
@@ -1123,6 +1139,8 @@ class _AddEntryPageState extends State<AddEntryPage>
     _commodityController.dispose();
     _weightController.dispose();
     _piecesController.dispose();
+    _revenueController.dispose();
+    _ratePerMileController.dispose();
     _weightUnit.dispose();
 
     // Dispose FocusNodes
@@ -1689,7 +1707,7 @@ class _AddEntryPageState extends State<AddEntryPage>
             // Animated Header and Tabs with smooth slide + fade
             SizeTransition(
               sizeFactor: _headerAnimation,
-              axisAlignment: -1.0,
+              alignment: Alignment.topCenter,
               child: FadeTransition(
                 opacity: _headerAnimation,
                 child: Column(
@@ -1719,8 +1737,6 @@ class _AddEntryPageState extends State<AddEntryPage>
                                       context.go('/dashboard');
                                     }
                                   },
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
                                 ),
                                 const SizedBox(width: 12),
                                 Flexible(
@@ -1826,7 +1842,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                     padding: EdgeInsets.symmetric(
                                       horizontal: context.tokens.spacingM,
                                     ),
-                                    minimumSize: const Size(0, 40),
+                                    minimumSize: const Size(0, 48),
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(
                                         context.tokens.shapeL,
@@ -1872,7 +1888,7 @@ class _AddEntryPageState extends State<AddEntryPage>
                                       padding: EdgeInsets.symmetric(
                                         horizontal: context.tokens.spacingM,
                                       ),
-                                      minimumSize: const Size(0, 36),
+                                      minimumSize: const Size(0, 48),
                                       shape: RoundedRectangleBorder(
                                         borderRadius: BorderRadius.circular(
                                           context.tokens.shapeFull,
@@ -2033,6 +2049,8 @@ class _AddEntryPageState extends State<AddEntryPage>
             borderCrossingController: _borderCrossingController.value,
             onShowAddBorderCrossing: _showAddBorderCrossingDialog,
             notesController: _tripNotesController.value,
+            revenueController: _revenueController.value,
+            ratePerMileController: _ratePerMileController.value,
             distanceUnit: _distanceUnit.value,
             isEmptyLeg: _isEmptyLeg.value,
             onEmptyLegChanged: (v) {
@@ -2481,6 +2499,8 @@ class _AddEntryPageState extends State<AddEntryPage>
             _borderCrossingController.value.text.trim(),
         notes: _tripNotesController.value.text.trim(),
         isEmptyLeg: _isEmptyLeg.value,
+        revenue: double.tryParse(_revenueController.value.text.trim().replaceAll(',', '')),
+        ratePerMile: double.tryParse(_ratePerMileController.value.text.trim().replaceAll(',', '')),
         commodity: _commodityController.value.text.trim(),
         weight: _weightController.value.text.trim().isEmpty ? null : prefService.standardizeWeight(
           double.tryParse(_weightController.value.text.replaceAll(',', '')) ?? 0,

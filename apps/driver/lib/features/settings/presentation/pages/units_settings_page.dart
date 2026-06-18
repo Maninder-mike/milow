@@ -203,9 +203,6 @@ class _UnitsSettingsPageState extends State<UnitsSettingsPage> {
             selected: {currentValue},
             onSelectionChanged: (set) => onChanged(set.first),
             showSelectedIcon: false,
-            style: const ButtonStyle(
-              visualDensity: VisualDensity.compact,
-            ),
           ),
         ],
       ),

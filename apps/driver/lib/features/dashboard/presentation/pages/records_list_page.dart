@@ -1,11 +1,10 @@
+// ignore_for_file: unused_element
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:milow/core/utils/address_utils.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
-import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
-import 'dart:io';
 import 'package:open_file/open_file.dart';
 import 'package:milow_core/milow_core.dart';
 
@@ -19,8 +18,10 @@ import 'package:milow/core/constants/design_tokens.dart';
 import 'package:milow/features/trips/presentation/pages/add_entry_page.dart';
 import 'package:milow/core/theme/m3_expressive_motion.dart';
 import 'package:milow/features/dashboard/presentation/widgets/records_export_sheet.dart';
+import 'package:milow/features/dashboard/presentation/widgets/records_filter_bar.dart';
 import 'package:milow/core/utils/unit_utils.dart';
 import 'package:provider/provider.dart';
+import 'package:milow/core/services/export_service.dart';
 
 class RecordsListPage extends StatefulWidget {
   const RecordsListPage({super.key});
@@ -510,34 +511,13 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
             // Filter Bar (Now separate SliverToBoxAdapter)
             SliverToBoxAdapter(
-              child: SizedBox(
-                height: 48, // Comfort height for touch targets
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 8,
-                  ),
-                  children: [
-                    _buildFilterChip('All'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Trips Only'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Fuel Only'),
-                    const SizedBox(width: 8),
-                    Container(
-                      height: 20,
-                      width: 1,
-                      color: tokens.subtleBorderColor,
-                      margin: const EdgeInsets.only(right: 8),
-                    ),
-                    _buildFilterChip('Short (<100 mi)'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Medium (100-200 mi)'),
-                    const SizedBox(width: 8),
-                    _buildFilterChip('Long (>200 mi)'),
-                  ],
-                ),
+              child: RecordsFilterBar(
+                selectedFilter: _selectedFilter,
+                onFilterChanged: (filter) {
+                  setState(() {
+                    _selectedFilter = filter;
+                  });
+                },
               ),
             ),
             // Removed extra SizedBox here for tighter layout
@@ -990,44 +970,6 @@ class _RecordsListPageState extends State<RecordsListPage> {
     );
   }
 
-  Widget _buildFilterChip(String label) {
-    final isSelected = _selectedFilter == label;
-    final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (bool selected) {
-        if (selected) {
-          setState(() {
-            _selectedFilter = label;
-          });
-        }
-      },
-      // Styling to match M3 aesthetics
-      labelStyle: TextStyle(
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-        color: isSelected
-            ? colorScheme.onPrimaryContainer
-            : colorScheme.onSurfaceVariant,
-        fontSize: 13, // Slightly smaller
-      ),
-      selectedColor: colorScheme.primaryContainer,
-      backgroundColor: colorScheme.surfaceContainerLow,
-      side: BorderSide(
-        color: isSelected
-            ? Colors.transparent
-            : context.tokens.subtleBorderColor,
-      ),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(context.tokens.shapeFull),
-      ),
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 0),
-      visualDensity: VisualDensity.compact,
-      showCheckmark: false, // Cleaner look without checkmark
-    );
-  }
 
   Widget _buildExpandableCard(
     Map<String, dynamic> record,
@@ -1384,6 +1326,42 @@ class _RecordsListPageState extends State<RecordsListPage> {
             secondaryTextColor,
           ),
         ],
+        // Revenue & Earnings
+        if (trip.revenue != null) ...[
+          const SizedBox(height: 12),
+          _buildDetailRow(
+            Icons.attach_money_rounded,
+            'Revenue',
+            '\$${trip.revenue!.toStringAsFixed(2)}',
+            textColor,
+            secondaryTextColor,
+          ),
+          () {
+            final distance = trip.totalDistance;
+            if (distance != null && distance > 0) {
+              double displayDistance = distance;
+              if (trip.distanceUnit != distanceUnit) {
+                displayDistance = distanceUnit == 'km'
+                    ? UnitUtils.milesToKm(distance)
+                    : UnitUtils.kmToMiles(distance);
+              }
+              final rate = trip.revenue! / displayDistance;
+              return Column(
+                children: [
+                  const SizedBox(height: 12),
+                  _buildDetailRow(
+                    Icons.calculate_outlined,
+                    'Rate',
+                    '\$${rate.toStringAsFixed(2)} / $distanceUnit',
+                    textColor,
+                    secondaryTextColor,
+                  ),
+                ],
+              );
+            }
+            return const SizedBox.shrink();
+          }(),
+        ],
         // Notes
         if (trip.notes != null && trip.notes!.isNotEmpty) ...[
           const SizedBox(height: 12),
@@ -1661,137 +1639,16 @@ class _RecordsListPageState extends State<RecordsListPage> {
         fuelUnit,
       );
 
-      // Prepare CSV data
-      final List<List<dynamic>> rows = [];
-
-      // Add Header
-      rows.add([
-        'Date',
-        'Type',
-        'ID/Truck',
-        'Description/Location',
-        'Distance/Quantity',
-        'Unit',
-        'Cost',
-        'Notes',
-        'From',
-        'To',
-        'Odometer',
-      ]);
-
-      // Add Rows
-      for (var record in recordsToExport) {
-        final date = DateFormat('yyyy-MM-dd').format(record['rawDate']);
-        final type = record['type'] == 'trip' ? 'Trip' : 'Fuel';
-        final data = record['data'];
-
-        if (record['type'] == 'trip') {
-          final trip = data as Trip;
-          double distanceVal = trip.totalDistance ?? 0;
-          if (trip.distanceUnit != distanceUnit) {
-            distanceVal = distanceUnit == 'km'
-                ? UnitUtils.milesToKm(distanceVal)
-                : UnitUtils.kmToMiles(distanceVal);
-          }
-          final distance = trip.totalDistance != null
-              ? distanceVal.toStringAsFixed(1)
-              : '';
-          final unit = distanceUnit;
-          final from = trip.pickupLocations.isNotEmpty
-              ? AddressUtils.formatForPdf(trip.pickupLocations.first)
-              : '';
-          final to = trip.deliveryLocations.isNotEmpty
-              ? AddressUtils.formatForPdf(trip.deliveryLocations.last)
-              : '';
-
-          rows.add([
-            date,
-            type,
-            'Trip #${trip.tripNumber}',
-            trip.notes ?? '', // Description used for notes here or route?
-            // Actually `record['description']` has route.
-            // But let's use specific fields.
-            distance,
-            unit,
-            '', // Cost
-            trip.notes ?? '',
-            from,
-            to,
-            '', // Odometer
-          ]);
-        } else {
-          final fuel = data as FuelEntry;
-          double qty = fuel.fuelQuantity;
-          if (fuel.fuelUnit != fuelUnit) {
-            qty = fuelUnit == 'L'
-                ? UnitUtils.gallonsToLiters(qty)
-                : UnitUtils.litersToGallons(qty);
-          }
-          final quantity = qty.toStringAsFixed(1);
-          final unit = fuelUnit;
-          final cost = fuel.totalCost.toStringAsFixed(2);
-          final truck = fuel.isTruckFuel
-              ? (fuel.truckNumber ?? 'Truck')
-              : (fuel.reeferNumber ?? 'Reefer');
-          final location = AddressUtils.formatForPdf(fuel.location ?? '');
-          final odometer =
-              fuel.odometerReading?.toStringAsFixed(0) ??
-              (fuel.reeferHours?.toStringAsFixed(1) ?? '');
-
-          rows.add([
-            date,
-            type,
-            truck,
-            location,
-            quantity,
-            unit,
-            cost,
-            '', // Notes
-            '', // From
-            '', // To
-            odometer,
-          ]);
-        }
-      }
-
-      // Convert rows to CSV string natively
-      final csvData = rows
-          .map((row) {
-            return row
-                .map((cell) {
-                  final cellStr = cell.toString();
-                  if (cellStr.contains(',') ||
-                      cellStr.contains('"') ||
-                      cellStr.contains('\n')) {
-                    return '"${cellStr.replaceAll('"', '""')}"';
-                  }
-                  return cellStr;
-                })
-                .join(',');
-          })
-          .join('\r\n');
-
-      // Save file
-      final fileName =
-          'Milow_Records_${DateFormat('yyyyMMdd_HHmm').format(DateTime.now())}.csv';
-
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = Directory('/storage/emulated/0/Download');
-        if (!await directory.exists()) {
-          directory = await getExternalStorageDirectory();
-        }
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      final path = '${directory!.path}/$fileName';
-      final file = File(path);
-      await file.writeAsString(csvData);
+      final filePath = await ExportService.generateCSV(
+        records: recordsToExport,
+        distanceUnit: distanceUnit,
+        fuelUnit: fuelUnit,
+      );
 
       if (mounted) {
         Navigator.pop(context); // Close loading
-        _showExportSuccessDialog(path, fileName);
+        final fileName = filePath.split('/').last;
+        _showExportSuccessDialog(filePath, fileName);
       }
     } catch (e) {
       if (mounted) {
@@ -1839,8 +1696,10 @@ class _RecordsListPageState extends State<RecordsListPage> {
 
     try {
       final prefService = context.read<PreferencesService>();
-      // Create PDF document
-      final pdf = pw.Document();
+      
+      final profile = await ProfileRepository.getCachedFirst(refresh: false);
+      final userName = profile?['full_name'] as String? ?? 'User';
+      final userPhone = profile?['phone'] as String? ?? '';
 
       // Get records to export using the proper filter method
       final recordsToExport = _getExportRecords(
@@ -1850,6 +1709,23 @@ class _RecordsListPageState extends State<RecordsListPage> {
         fuelUnit,
       );
 
+      final filePath = await ExportService.generatePDF(
+        records: recordsToExport,
+        filter: filter,
+        dateRange: dateRange,
+        distanceUnit: distanceUnit,
+        fuelUnit: fuelUnit,
+        unitSystem: prefService.getUnitSystem(),
+        userName: userName,
+        userPhone: userPhone,
+        selectedTripColumns: _selectedTripColumns,
+        selectedFuelColumns: _selectedFuelColumns,
+        tripColumnLabels: tripColumnLabels,
+        fuelColumnLabels: fuelColumnLabels,
+        includeSummaryBanner: includeSummaryBanner,
+      );
+
+      /*
       // Separate trips and fuel entries, then sort in ascending order by date
       final tripRecords =
           recordsToExport.where((r) => r['type'] == 'trip').toList()
@@ -2314,12 +2190,14 @@ class _RecordsListPageState extends State<RecordsListPage> {
       // Save the PDF
       final file = File(filePath);
       await file.writeAsBytes(await pdf.save());
+      */
 
       // Close loading dialog
       if (mounted) Navigator.pop(context);
 
       // Show success dialog with options
       if (mounted) {
+        final fileName = filePath.split('/').last;
         _showExportSuccessDialog(filePath, fileName);
       }
     } catch (e) {

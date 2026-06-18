@@ -53,6 +53,8 @@ class Trips extends Table {
   IntColumn get pieces => integer().nullable()();
   TextColumn get referenceNumbers =>
       text().named('reference_numbers').withDefault(const Constant('[]'))();
+  RealColumn get revenue => real().nullable()();
+  RealColumn get ratePerMile => real().nullable().named('rate_per_mile')();
   BoolColumn get isSynced =>
       boolean().named('is_synced').withDefault(const Constant(false))();
   BoolColumn get isDeleted =>
@@ -305,6 +307,102 @@ class Announcements extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+@DataClassName('VehicleData')
+class Vehicles extends Table {
+  TextColumn get id => text()();
+  TextColumn get companyId => text().named('company_id')();
+  TextColumn get truckNumber => text().named('truck_number')();
+  TextColumn get vehicleType => text().named('vehicle_type')();
+  TextColumn get licensePlate => text().nullable().named('license_plate')();
+  TextColumn get licenseProvince => text().nullable().named('license_province')();
+  TextColumn get vinNumber => text().named('vin_number')();
+  TextColumn get dotNumber => text().nullable().named('dot_number')();
+  TextColumn get insurancePolicy => text().nullable().named('insurance_policy')();
+  TextColumn get terminalAddress => text().nullable().named('terminal_address')();
+  TextColumn get createdBy => text().nullable().named('created_by')();
+  DateTimeColumn get createdAt => dateTime().nullable().named('created_at')();
+  DateTimeColumn get updatedAt => dateTime().nullable().named('updated_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('MaintenanceScheduleData')
+class MaintenanceSchedules extends Table {
+  TextColumn get id => text()();
+  TextColumn get vehicleId => text().named('vehicle_id')();
+  TextColumn get serviceType => text().named('service_type')();
+  IntColumn get intervalMiles => integer().nullable().named('interval_miles')();
+  IntColumn get intervalDays => integer().nullable().named('interval_days')();
+  DateTimeColumn get lastPerformedAt => dateTime().nullable().named('last_performed_at')();
+  IntColumn get lastOdometer => integer().nullable().named('last_odometer')();
+  BoolColumn get isActive => boolean().named('is_active').withDefault(const Constant(true))();
+  DateTimeColumn get createdAt => dateTime().nullable().named('created_at')();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('MaintenanceRecordData')
+class MaintenanceRecords extends Table {
+  TextColumn get id => text()();
+  TextColumn get vehicleId => text().named('vehicle_id')();
+  TextColumn get serviceType => text().named('service_type')();
+  TextColumn get description => text().nullable()();
+  IntColumn get odometerAtService => integer().nullable().named('odometer_at_service')();
+  RealColumn get cost => real().nullable()();
+  TextColumn get performedBy => text().nullable().named('performed_by')();
+  DateTimeColumn get performedAt => dateTime().named('performed_at')();
+  IntColumn get nextDueOdometer => integer().nullable().named('next_due_odometer')();
+  DateTimeColumn get nextDueDate => dateTime().nullable().named('next_due_date')();
+  TextColumn get notes => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable().named('created_at')();
+  TextColumn get createdBy => text().nullable().named('created_by')();
+  BoolColumn get isSynced => boolean().named('is_synced').withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().named('is_deleted').withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('QuickNoteData')
+class QuickNotes extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().named('user_id')();
+  TextColumn get tripId => text().nullable().named('trip_id')();
+  TextColumn get title => text().nullable()();
+  TextColumn get content => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().nullable().named('created_at')();
+  DateTimeColumn get updatedAt => dateTime().nullable().named('updated_at')();
+  BoolColumn get isSynced => boolean().named('is_synced').withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().named('is_deleted').withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+@DataClassName('IncidentData')
+class Incidents extends Table {
+  TextColumn get id => text()();
+  TextColumn get userId => text().named('user_id')();
+  TextColumn get companyId => text().nullable().named('company_id')();
+  TextColumn get tripId => text().nullable().named('trip_id')();
+  DateTimeColumn get incidentDate => dateTime().named('incident_date')();
+  TextColumn get location => text().nullable()();
+  TextColumn get description => text()();
+  TextColumn get policeReportNumber => text().nullable().named('police_report_number')();
+  TextColumn get policeDepartment => text().nullable().named('police_department')();
+  TextColumn get thirdPartyInfo => text().named('third_party_info').withDefault(const Constant('{}'))();
+  TextColumn get photos => text().withDefault(const Constant('[]'))();
+  DateTimeColumn get createdAt => dateTime().nullable().named('created_at')();
+  DateTimeColumn get updatedAt => dateTime().nullable().named('updated_at')();
+  BoolColumn get isSynced => boolean().named('is_synced').withDefault(const Constant(false))();
+  BoolColumn get isDeleted => boolean().named('is_deleted').withDefault(const Constant(false))();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 @DriftDatabase(
   tables: [
     Trips,
@@ -317,13 +415,18 @@ class Announcements extends Table {
     DriverLocations,
     Messages,
     Announcements,
+    Vehicles,
+    MaintenanceSchedules,
+    MaintenanceRecords,
+    QuickNotes,
+    Incidents,
   ],
 )
 class DriverDatabase extends _$DriverDatabase {
   DriverDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   @override
   MigrationStrategy get migration {
@@ -422,6 +525,16 @@ class DriverDatabase extends _$DriverDatabase {
             'is_synced INTEGER NOT NULL DEFAULT 0'
             ')',
           );
+        }
+        if (from < 14) {
+          // Schema v14: Add selected driver features (QuickNotes, Incidents, Vehicles, MaintenanceSchedules, MaintenanceRecords, and Trips columns)
+          await m.createTable(vehicles);
+          await m.createTable(maintenanceSchedules);
+          await m.createTable(maintenanceRecords);
+          await m.createTable(quickNotes);
+          await m.createTable(incidents);
+          await m.addColumn(trips, trips.revenue as GeneratedColumn<Object>);
+          await m.addColumn(trips, trips.ratePerMile as GeneratedColumn<Object>);
         }
       },
     );

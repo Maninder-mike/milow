@@ -746,6 +746,8 @@ class TripRepository {
       referenceNumbers: (jsonDecode(data.referenceNumbers) as List)
           .cast<String>(),
       companyId: data.companyId,
+      revenue: data.revenue,
+      ratePerMile: data.ratePerMile,
       // lastUpdated is used for sync internal logic, but we map it if needed
     );
   }
@@ -789,6 +791,8 @@ class TripRepository {
       weightUnit: Value(trip.weightUnit),
       pieces: Value(trip.pieces),
       referenceNumbers: Value(jsonEncode(trip.referenceNumbers)),
+      revenue: Value(trip.revenue),
+      ratePerMile: Value(trip.ratePerMile),
       createdAt: Value(trip.createdAt),
       updatedAt: Value(trip.updatedAt ?? DateTime.now()),
       lastUpdated: Value(DateTime.now()),

@@ -5,11 +5,13 @@ import 'package:milow/core/services/local_document_store.dart';
 import 'package:milow/core/services/logging_service.dart';
 import 'package:milow/core/services/connectivity_service.dart';
 import 'package:milow_core/milow_core.dart';
-import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:open_file/open_file.dart';
 
 import 'dart:async';
+
+import 'package:milow/features/documents/presentation/widgets/document_card.dart';
+import 'package:milow/features/documents/presentation/widgets/documents_empty_state.dart';
 
 class SharedDocumentsPage extends StatefulWidget {
   final String companyId;
@@ -126,15 +128,16 @@ class _SharedDocumentsPageState extends State<SharedDocumentsPage> {
   }
 
   Widget _buildEmptyState(DesignTokens tokens) {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
+    return RefreshIndicator(
+      onRefresh: _loadDocuments,
+      child: ListView(
         children: [
-          Icon(Icons.folder_open, size: 64, color: tokens.textTertiary),
-          const SizedBox(height: 16),
-          Text(
-            'No shared documents yet',
-            style: TextStyle(color: tokens.textSecondary, fontSize: 16),
+          SizedBox(height: MediaQuery.of(context).size.height * 0.2),
+          const DocumentsEmptyState(
+            icon: Icons.folder_open,
+            title: 'No shared documents yet',
+            subtitle: 'Documents shared with you will appear here.',
+            isFiltered: false,
           ),
         ],
       ),
@@ -142,30 +145,23 @@ class _SharedDocumentsPageState extends State<SharedDocumentsPage> {
   }
 
   Widget _buildDocumentList(DesignTokens tokens) {
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _documents.length,
-      itemBuilder: (context, index) {
-        final doc = _documents[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 12),
-          child: ListTile(
-            leading: Icon(
-              Icons.picture_as_pdf,
-              color: Theme.of(context).colorScheme.primary,
-            ),
-            title: Text(
-              '${doc.documentType.label} - ${doc.tripNumber ?? "No Trip"}',
-            ),
-            subtitle: Text(
-              'Shared on ${DateFormat.yMMMd().format(doc.createdAt ?? DateTime.now())}',
-              style: TextStyle(color: tokens.textSecondary, fontSize: 12),
-            ),
-            trailing: const Icon(Icons.chevron_right),
+    return RefreshIndicator(
+      onRefresh: _loadDocuments,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: _documents.length,
+        itemBuilder: (context, index) {
+          final doc = _documents[index];
+          return DocumentCard(
+            document: doc,
             onTap: () => _previewDocument(doc),
-          ),
-        );
-      },
+            isSelected: false,
+            isSelectionMode: false,
+            onLongPress: () {},
+            onDetailsTap: () => _previewDocument(doc),
+          );
+        },
+      ),
     );
   }
 }

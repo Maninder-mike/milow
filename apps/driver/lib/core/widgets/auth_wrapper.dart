@@ -28,6 +28,8 @@ class _AuthWrapperState extends State<AuthWrapper> {
 
   bool _isLoading = true;
 
+  bool _authFailed = false;
+
   @override
   void initState() {
     super.initState();
@@ -89,22 +91,49 @@ class _AuthWrapperState extends State<AuthWrapper> {
   }
 
   Future<void> _authenticateWithBiometricOnly(
-    Future<void> prefetchFuture,
-  ) async {
+    Future<void> prefetchFuture, [
+    int retryCount = 0,
+  ]) async {
+    if (retryCount >= 3) {
+      if (mounted) {
+        setState(() {
+          _authFailed = true;
+        });
+      }
+      return;
+    }
+
     final authenticated = await _authService.authenticateWithBiometrics();
 
     if (authenticated && mounted) {
       // Wait for data prefetch to complete before showing content
       await prefetchFuture;
       _hasAuthenticatedThisSession = true;
+      if (mounted) {
+        setState(() {
+          _authFailed = false;
+        });
+      }
       _maybeShowEmailVerifiedSnackbar();
     } else if (mounted) {
       // Biometric failed - try again
-      await _authenticateWithBiometricOnly(prefetchFuture);
+      await _authenticateWithBiometricOnly(prefetchFuture, retryCount + 1);
     }
   }
 
-  Future<void> _showPinEntry(Future<void> prefetchFuture) async {
+  Future<void> _showPinEntry(
+    Future<void> prefetchFuture, [
+    int retryCount = 0,
+  ]) async {
+    if (retryCount >= 3) {
+      if (mounted) {
+        setState(() {
+          _authFailed = true;
+        });
+      }
+      return;
+    }
+
     final authenticated = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
@@ -117,10 +146,15 @@ class _AuthWrapperState extends State<AuthWrapper> {
       // Wait for data prefetch to complete before showing content
       await prefetchFuture;
       _hasAuthenticatedThisSession = true;
+      if (mounted) {
+        setState(() {
+          _authFailed = false;
+        });
+      }
       _maybeShowEmailVerifiedSnackbar();
     } else if (mounted) {
       // If not authenticated, try again
-      await _showPinEntry(prefetchFuture);
+      await _showPinEntry(prefetchFuture, retryCount + 1);
     }
   }
 
@@ -159,6 +193,48 @@ class _AuthWrapperState extends State<AuthWrapper> {
         body: Center(child: CircularProgressIndicator(strokeWidth: 3.0)),
       );
     }
+
+    if (_authFailed) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.lock_outline, size: 64, color: Theme.of(context).colorScheme.error),
+              const SizedBox(height: 24),
+              const Text(
+                'Authentication Required',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Too many failed attempts.',
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () {
+                  setState(() {
+                    _authFailed = false;
+                    _isLoading = true;
+                  });
+                  _checkAuthentication();
+                },
+                child: const Text('Try Again'),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Do not show protected content until authenticated if it's required
+    if (!_hasAuthenticatedThisSession && Supabase.instance.client.auth.currentSession != null) {
+      return const Scaffold(
+        body: SizedBox.shrink(),
+      );
+    }
+
     return widget.child;
   }
 }

@@ -543,8 +543,6 @@ class _ActiveTripCardState extends State<ActiveTripCard> {
                             },
                           );
                         },
-                        constraints: const BoxConstraints(),
-                        padding: EdgeInsets.only(left: tokens.spacingS),
                       ),
                     ],
                   ),

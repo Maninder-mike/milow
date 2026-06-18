@@ -346,8 +346,7 @@ class _SectionHeaderRow extends StatelessWidget {
             TextButton(
               onPressed: onAction,
               style: TextButton.styleFrom(
-                visualDensity: VisualDensity.compact,
-                padding: const EdgeInsets.symmetric(horizontal: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
