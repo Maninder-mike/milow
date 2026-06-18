@@ -6,6 +6,7 @@ import 'package:milow_core/milow_core.dart';
 import 'package:terminal/features/dispatch/presentation/providers/load_providers.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/load_entry_form.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/broker_entry_dialog.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 class DispatchPage extends ConsumerStatefulWidget {
   const DispatchPage({super.key});
@@ -199,31 +200,23 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
           ),
         );
       },
-      loading: () => const Center(child: ProgressRing()),
-      error: (err, stack) => Center(child: Text('Error loading loads: $err')),
+      loading: () => const LoadsListSkeleton(),
+      error: (err, stack) => StandardErrorState(
+        title: 'Failed to load loads',
+        message: err.toString(),
+        onRetry: () => ref.invalidate(paginatedLoadsProvider),
+      ),
     );
   }
 
   Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(FluentIcons.vehicle_truck_profile_24_regular, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            'No active loads',
-            style: GoogleFonts.outfit(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text('Click "New Load" to add a shipment from the board.'),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () =>
-                ref.read(isCreatingLoadProvider.notifier).toggle(true),
-            child: const Text('Add First Load'),
-          ),
-        ],
+    return StandardEmptyState(
+      icon: FluentIcons.vehicle_truck_profile_24_regular,
+      title: 'No active loads',
+      message: 'Click "New Load" to add a shipment from the board.',
+      action: FilledButton(
+        onPressed: () => ref.read(isCreatingLoadProvider.notifier).toggle(true),
+        child: const Text('Add First Load'),
       ),
     );
   }
@@ -257,3 +250,39 @@ class _DispatchPageState extends ConsumerState<DispatchPage> {
     return createdBroker;
   }
 }
+
+
+class LoadsListSkeleton extends StatelessWidget {
+  const LoadsListSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(8),
+      itemCount: 8,
+      itemBuilder: (context, index) {
+        return const Padding(
+          padding: EdgeInsets.only(bottom: 8.0),
+          child: Card(
+            child: ListTile(
+              leading: SkeletonBox(width: 24, height: 24),
+              title: Row(
+                children: [
+                  SkeletonBox(width: 120, height: 16),
+                  SizedBox(width: 8),
+                  SkeletonBox(width: 80, height: 12),
+                ],
+              ),
+              subtitle: Padding(
+                padding: EdgeInsets.only(top: 8.0),
+                child: SkeletonBox(width: 200, height: 10),
+              ),
+              trailing: SkeletonBox(width: 80, height: 24, borderRadius: 12),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+

@@ -1,7 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/company_provider.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
+import 'package:terminal/features/settings/providers/company_provider.dart';
 
 class SecurityPanel extends ConsumerStatefulWidget {
   const SecurityPanel({super.key});
@@ -111,8 +112,11 @@ class _SecurityPanelState extends ConsumerState<SecurityPanel> {
               ],
             );
           },
-          loading: () => const Center(child: ProgressBar()),
-          error: (err, stack) => Center(child: Text('Error: $err')),
+          loading: () => const SettingsSkeleton(),
+          error: (err, stack) => StandardErrorState(
+            message: 'Failed to load security settings: $err',
+            onRetry: () => ref.invalidate(companyProvider),
+          ),
         ),
       ],
     );
@@ -167,6 +171,58 @@ class _SecurityPanelState extends ConsumerState<SecurityPanel> {
         ),
         control,
       ],
+    );
+  }
+}
+
+class SettingsSkeleton extends StatelessWidget {
+  const SettingsSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _buildSkeletonCard(
+      context,
+      children: List.generate(
+        2,
+        (index) => Padding(
+          padding: EdgeInsets.only(bottom: index == 0 ? 16 : 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBox(width: 120, height: 14),
+                  SizedBox(height: 8),
+                  SkeletonBox(width: 200, height: 10),
+                ],
+              ),
+              SkeletonBox(
+                width: 44,
+                height: 20,
+                borderRadius: 10,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonCard(
+    BuildContext context, {
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FluentTheme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+        ),
+      ),
+      child: Column(children: children),
     );
   }
 }

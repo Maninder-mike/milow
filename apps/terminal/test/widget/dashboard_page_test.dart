@@ -1,25 +1,25 @@
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/features/dashboard/screens/overview_page.dart';
 import 'package:terminal/core/providers/shared_preferences_provider.dart';
 import 'package:terminal/features/dashboard/presentation/providers/dashboard_metrics_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:terminal/core/providers/supabase_provider.dart';
+import 'package:terminal/core/providers/network_provider.dart';
+import '../helpers/mocks.mocks.dart';
 
 void main() {
   late SharedPreferences prefs;
 
+  late MockSupabaseClient mockSupabaseClient;
+  late MockCoreNetworkClient mockCoreNetworkClient;
+
   setUpAll(() async {
     SharedPreferences.setMockInitialValues({});
     prefs = await SharedPreferences.getInstance();
-
-    try {
-      await Supabase.initialize(
-        url: 'https://example.supabase.co',
-        anonKey: 'fake-anon-key',
-      );
-    } catch (_) {}
+    mockSupabaseClient = MockSupabaseClient();
+    mockCoreNetworkClient = MockCoreNetworkClient();
   });
 
   testWidgets('OverviewPage loads and shows enterprise dashboard', (
@@ -42,6 +42,8 @@ void main() {
       ProviderScope(
         overrides: [
           sharedPreferencesProvider.overrideWithValue(prefs),
+          supabaseClientProvider.overrideWithValue(mockSupabaseClient),
+          coreNetworkClientProvider.overrideWithValue(mockCoreNetworkClient),
           dashboardMetricsProvider.overrideWith(
             (ref) => Future.value(mockMetricsData),
           ),

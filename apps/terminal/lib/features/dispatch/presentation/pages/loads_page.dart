@@ -12,6 +12,7 @@ import 'package:terminal/features/dispatch/presentation/providers/quote_provider
 import 'package:terminal/features/dispatch/presentation/providers/load_stats_provider.dart';
 import 'package:terminal/features/users/data/user_repository_provider.dart';
 import 'package:terminal/features/dashboard/services/vehicle_service.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 import 'package:terminal/features/dispatch/presentation/widgets/load_entry_form.dart';
 import 'package:terminal/features/dispatch/presentation/widgets/broker_entry_dialog.dart';
@@ -387,8 +388,63 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
                       ],
                     );
                   },
-                  loading: () => const Center(child: ProgressRing()),
-                  error: (err, stack) => Center(child: Text('Error: $err')),
+                  loading: () => Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24.0,
+                          vertical: 16.0,
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: DispatchStatCard(
+                                title: 'Loads',
+                                value: '...',
+                                icon: FluentIcons.box_24_regular,
+                                iconColor: AppColors.info,
+                                iconBackgroundColor:
+                                    AppColors.info.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: DispatchStatCard(
+                                title: 'Today',
+                                value: '...',
+                                icon: FluentIcons.calendar_ltr_24_regular,
+                                iconColor: AppColors.warning,
+                                iconBackgroundColor:
+                                    AppColors.warning.withValues(alpha: 0.1),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            Expanded(
+                              child: DispatchStatCard(
+                                title: 'Completed',
+                                value: '...',
+                                icon: FluentIcons.checkmark_circle_24_regular,
+                                iconColor: AppColors.success,
+                                iconBackgroundColor:
+                                    AppColors.success.withValues(alpha: 0.1),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Expanded(
+                        child: TableSkeleton(
+                          columnFlex: [2, 2, 4, 3, 2, 4, 2, 3],
+                          rowCount: 10,
+                          showCheckbox: true,
+                        ),
+                      ),
+                    ],
+                  ),
+                  error: (err, stack) => StandardErrorState(
+                    message: 'Failed to load dispatch board: $err',
+                    onRetry: () => ref.invalidate(paginatedLoadsProvider),
+                  ),
                 );
               },
             ),
@@ -634,7 +690,13 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     bool isLoadingMore = false,
     String? selectedLoadId,
   }) {
-    if (loads.isEmpty && !isLoadingMore) return _buildEmptyState();
+    if (loads.isEmpty && !isLoadingMore) {
+      return const StandardEmptyState(
+        title: 'No loads found',
+        message: 'Try adjusting your search query or add a new load.',
+        icon: FluentIcons.box_24_regular,
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(
@@ -778,29 +840,6 @@ class _LoadsPageState extends ConsumerState<LoadsPage> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(FluentIcons.vehicle_truck_profile_24_regular, size: 48),
-          const SizedBox(height: 16),
-          const Text(
-            'No active loads',
-            style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          const Text('Click "Add Load" to add a shipment from the board.'),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () =>
-                ref.read(isCreatingLoadProvider.notifier).toggle(true),
-            child: const Text('Add First Load'),
-          ),
-        ],
-      ),
-    );
-  }
 
   Future<Broker?> _openNewBrokerDialog() async {
     Broker? createdBroker;

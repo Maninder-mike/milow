@@ -3,7 +3,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../../../core/widgets/toast_notification.dart';
+import 'package:terminal/core/widgets/toast_notification.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 class OrganizationPanel extends StatefulWidget {
   const OrganizationPanel({super.key});
@@ -170,30 +171,12 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
+
 
     if (!_isAdmin && !_isLoading) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              FluentIcons.lock_closed_24_regular,
-              size: 48,
-              color: theme.resources.textFillColorSecondary,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Restricted Access',
-              style: GoogleFonts.outfit(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text('Only administrators can manage organization settings.'),
-          ],
-        ),
+      return const StandardErrorState(
+        title: 'Restricted Access',
+        message: 'Only administrators can manage organization settings.',
       );
     }
 
@@ -228,11 +211,7 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
             : null,
       ),
       children: [
-        if (_isLoading)
-          const Padding(
-            padding: EdgeInsets.only(bottom: 24),
-            child: ProgressBar(),
-          ),
+        if (_isLoading) const OrganizationSkeleton(),
         LayoutBuilder(
           builder: (context, constraints) {
             final isWide = constraints.maxWidth > 800;
@@ -490,5 +469,66 @@ class _OrganizationPanelState extends State<OrganizationPanel> {
     _compPhoneController.dispose();
     _compEmailController.dispose();
     super.dispose();
+  }
+}
+
+class OrganizationSkeleton extends StatelessWidget {
+  const OrganizationSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+      child: Card(
+        padding: EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                SkeletonBox(width: 36, height: 36),
+                SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SkeletonBox(width: 150, height: 18),
+                    SizedBox(height: 8),
+                    SkeletonBox(width: 250, height: 12),
+                  ],
+                ),
+              ],
+            ),
+            SizedBox(height: 32),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    children: [
+                      SkeletonBox(width: double.infinity, height: 60),
+                      SizedBox(height: 20),
+                      SkeletonBox(width: double.infinity, height: 60),
+                      SizedBox(height: 20),
+                      SkeletonBox(width: double.infinity, height: 60),
+                    ],
+                  ),
+                ),
+                SizedBox(width: 48),
+                Expanded(
+                  child: Column(
+                    children: [
+                      SkeletonBox(width: double.infinity, height: 60),
+                      SizedBox(height: 20),
+                      SkeletonBox(width: double.infinity, height: 60),
+                      SizedBox(height: 20),
+                      SkeletonBox(width: double.infinity, height: 60),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

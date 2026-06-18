@@ -8,6 +8,7 @@ import 'package:intl/intl.dart';
 import 'package:terminal/features/dashboard/presentation/widgets/dashboard_widgets.dart';
 import 'package:terminal/features/dashboard/presentation/widgets/fleet_map_view.dart';
 import 'package:terminal/core/widgets/entrance_fader.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 import 'package:terminal/features/dashboard/presentation/providers/dashboard_config_provider.dart';
 import 'package:terminal/features/dashboard/presentation/providers/dashboard_metrics_provider.dart';
 
@@ -77,13 +78,15 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
               ),
             ],
           ),
-          loading: () => const Center(
-            child: Padding(
-              padding: EdgeInsets.all(64.0),
-              child: ProgressRing(),
-            ),
+          loading: () => const OverviewSkeleton(),
+          error: (e, s) => StandardErrorState(
+            title: 'Dashboard Sync Failed',
+            message: 'Unable to synchronize dashboard metrics: $e',
+            onRetry: () {
+              ref.invalidate(dashboardMetricsProvider);
+              ref.invalidate(dashboardConfigProvider);
+            },
           ),
-          error: (e, s) => Center(child: Text('Error loading metrics: $e')),
         ),
       ],
     );
@@ -408,6 +411,7 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
     );
   }
 
+
   Widget _buildAlertList(DashboardMetrics metrics) {
     final theme = FluentTheme.of(context);
     if (metrics.criticalAlertsCount == 0) {
@@ -415,36 +419,38 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
         width: double.infinity,
         padding: const EdgeInsets.symmetric(vertical: 48),
         decoration: BoxDecoration(
-          color: theme.resources.subtleFillColorSecondary.withValues(
-            alpha: 0.5,
-          ),
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
-            color: theme.resources.dividerStrokeColorDefault,
-            style: BorderStyle.none,
+            color: theme.resources.surfaceStrokeColorDefault.withValues(alpha: 0.05),
           ),
         ),
         child: Column(
           children: [
-            Icon(
-              FluentIcons.checkmark_circle_24_regular,
-              size: 32,
-              color: Colors.green,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'No critical exceptions detected.',
-              style: GoogleFonts.outfit(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-                color: theme.resources.textFillColorPrimary,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                FluentIcons.checkmark_circle_24_regular,
+                size: 32,
+                color: Colors.green,
               ),
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 16),
+            Text(
+              'No critical exceptions detected',
+              style: GoogleFonts.outfit(
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
             Text(
               'Your operation is running smoothly as planned.',
               style: GoogleFonts.outfit(
-                fontSize: 12,
                 color: theme.resources.textFillColorSecondary,
               ),
             ),
@@ -501,6 +507,72 @@ class _OverviewPageState extends ConsumerState<OverviewPage> {
           ),
         );
       }),
+    );
+  }
+}
+
+
+class OverviewSkeleton extends StatelessWidget {
+  const OverviewSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Quick Actions Skeleton
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(
+              6,
+              (index) => const Padding(
+                padding: EdgeInsets.only(right: 12),
+                child: SkeletonBox(width: 140, height: 70),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        // Metrics Grid Skeleton
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final crossAxisCount = constraints.maxWidth > 1600
+                ? 5
+                : (constraints.maxWidth > 1200
+                    ? 4
+                    : (constraints.maxWidth > 800 ? 3 : 2));
+
+            return GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.8,
+              ),
+              itemCount: 8,
+              itemBuilder: (context, index) => const SkeletonBox(
+                width: double.infinity,
+                height: double.infinity,
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 32),
+        const SkeletonBox(width: 200, height: 24),
+        const SizedBox(height: 16),
+        Column(
+          children: List.generate(
+            3,
+            (index) => const Padding(
+              padding: EdgeInsets.only(bottom: 12),
+              child: SkeletonBox(width: double.infinity, height: 60),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

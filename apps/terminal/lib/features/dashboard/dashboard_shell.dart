@@ -117,6 +117,9 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
     } else if (location.startsWith('/crm')) {
       title = 'CRM / Directory';
       icon = FluentIcons.person_note_24_regular;
+    } else if (location.startsWith('/brokerage')) {
+      title = 'Brokerage';
+      icon = FluentIcons.document_text_24_regular;
     }
 
     final tab = TabInfo(
@@ -250,6 +253,7 @@ class _DashboardShellState extends ConsumerState<DashboardShell> {
                           onLoadsTap: () => _navigateTo('/highway-dispatch'),
                           onInvoicesTap: () => _navigateTo('/invoices'),
                           onCrmTap: () => _navigateTo('/crm'),
+                          onBrokerageTap: () => _navigateTo('/brokerage'),
                           onSettlementsTap: () => _navigateTo('/settlements'),
                           onInboxTap: () => _navigateTo('/inbox'),
 

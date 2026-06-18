@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -191,7 +192,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                 Row(
                   children: [
                     IconButton(
-                      icon: Icon(FluentIcons.more, size: 14, color: titleColor),
+                      icon: Icon(FluentIcons.more_horizontal_24_regular, size: 14, color: titleColor),
                       onPressed: () {},
                     ),
                   ],
@@ -242,6 +243,9 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
             child: usersAsync.when(
               data: (users) {
                 final activeDrivers = _filterDrivers(users);
+                if (activeDrivers.isEmpty) {
+                  return _buildEmptyDriversState(isLight);
+                }
                 final items = _buildFlatList(activeDrivers);
 
                 return Focus(
@@ -280,8 +284,8 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                   ),
                 );
               },
-              loading: () => const Center(child: ProgressRing()),
-              error: (e, s) => Center(child: Text('Error: $e')),
+              loading: () => _buildSidebarSkeleton(isLight),
+              error: (e, s) => _buildErrorState(e),
             ),
           ),
         ],
@@ -337,8 +341,8 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
             children: [
               Icon(
                 isExpanded
-                    ? FluentIcons.chevron_down
-                    : FluentIcons.chevron_right,
+                    ? FluentIcons.chevron_down_24_regular
+                    : FluentIcons.chevron_right_24_regular,
                 size: 8,
                 color: textColor,
               ),
@@ -575,7 +579,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                             message: 'Assign Trip/Truck',
                             child: IconButton(
                               icon: Icon(
-                                FluentIcons.add,
+                                FluentIcons.add_24_regular,
                                 size: 18,
                                 color: FluentTheme.of(context).accentColor,
                               ),
@@ -607,7 +611,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
           items: [
             MenuFlyoutItem(
               text: const Text('View Details'),
-              leading: const Icon(FluentIcons.contact),
+              leading: const Icon(FluentIcons.person_24_regular),
               onPressed: () {
                 _flyoutController.close();
                 ref.read(selectedDriverProvider.notifier).select(driver);
@@ -617,7 +621,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
             const MenuFlyoutSeparator(),
             MenuFlyoutItem(
               text: const Text('Assign Trip'),
-              leading: const Icon(FluentIcons.open_folder_horizontal),
+              leading: const Icon(FluentIcons.folder_open_24_regular),
               onPressed: () {
                 _flyoutController.close();
                 _showTripSelectionDialog(context, driver);
@@ -625,7 +629,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
             ),
             MenuFlyoutItem(
               text: const Text('Assign Truck'),
-              leading: const Icon(FluentIcons.car),
+              leading: Icon(FluentIcons.vehicle_car_24_regular),
               onPressed: () {
                 _flyoutController.close();
                 _showTruckSelectionDialog(context, driver);
@@ -660,7 +664,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
             const Text('Select what to assign:'),
             const SizedBox(height: 16),
             ListTile(
-              leading: Icon(FluentIcons.open_folder_horizontal),
+              leading: Icon(FluentIcons.folder_open_24_regular),
               title: const Text('Assign Trip'),
               subtitle: const Text('Select an available trip'),
               onPressed: () {
@@ -669,7 +673,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
               },
             ),
             ListTile(
-              leading: Icon(FluentIcons.car),
+              leading: Icon(FluentIcons.vehicle_car_24_regular),
               title: const Text('Assign Truck'),
               subtitle: const Text('Select an available truck'),
               onPressed: () {
@@ -810,7 +814,7 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
                       vehicle['vehicle_type'] as String? ?? 'Unknown';
                   return ListTile(
                     leading: Icon(
-                      FluentIcons.car,
+                      FluentIcons.vehicle_car_24_regular,
                       color: FluentTheme.of(context).accentColor,
                     ),
                     title: Text('$truckNumber - $vehicleType'),
@@ -1002,6 +1006,144 @@ class _DriversSidebarState extends ConsumerState<DriversSidebar> {
       }
     }
     return 'Unknown';
+  }
+
+  Widget _buildSidebarSkeleton(bool isLight) {
+    final theme = FluentTheme.of(context);
+    final skeletonColor = theme.resources.controlFillColorSecondary;
+
+    Widget buildBox(double width, double height) {
+      return Container(
+        width: width,
+        height: height,
+        decoration: BoxDecoration(
+          color: skeletonColor,
+          borderRadius: BorderRadius.circular(4),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: 10,
+      itemBuilder: (context, index) {
+        if (index % 5 == 0) {
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: buildBox(100, 12),
+          );
+        }
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: skeletonColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    buildBox(120, 14),
+                    const SizedBox(height: 6),
+                    buildBox(180, 10),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyDriversState(bool isLight) {
+    final theme = FluentTheme.of(context);
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FluentIcons.person_search_24_regular,
+              size: 48,
+              color: theme.resources.textFillColorTertiary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No drivers found',
+              style: GoogleFonts.outfit(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: theme.resources.textFillColorSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _searchQuery.isEmpty
+                  ? 'There are no drivers registered in the fleet yet.'
+                  : 'No drivers match your search query.',
+              style: GoogleFonts.outfit(
+                fontSize: 13,
+                color: theme.resources.textFillColorTertiary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            if (_searchQuery.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Button(
+                child: const Text('Clear Search'),
+                onPressed: () {
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildErrorState(Object error) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              FluentIcons.error_circle_24_regular,
+              size: 32,
+              color: Colors.red,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load drivers',
+              style: GoogleFonts.outfit(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Button(
+              child: const Text('Retry'),
+              onPressed: () => ref.invalidate(usersProvider),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildAvatar(UserProfile driver) {

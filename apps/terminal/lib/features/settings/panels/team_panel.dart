@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/widgets/toast_notification.dart';
+import '../../../core/widgets/ui_hardening.dart';
 
 class TeamPanel extends StatefulWidget {
   const TeamPanel({super.key});
@@ -197,7 +198,10 @@ class _TeamPanelState extends State<TeamPanel> {
   @override
   Widget build(BuildContext context) {
     if (!_isAdmin && !_isLoading) {
-      return const Center(child: Text('Access Denied'));
+      return const StandardErrorState(
+        title: 'Access Denied',
+        message: 'You do not have administrative permissions to view this panel.',
+      );
     }
 
     return ScaffoldPage(
@@ -254,8 +258,52 @@ class _TeamPanelState extends State<TeamPanel> {
     ).then((_) => _loadTeamMembers());
   }
 
+  Widget _buildListSkeleton(BuildContext context) {
+    return ListView.separated(
+      padding: const EdgeInsets.all(16),
+      itemCount: 6,
+      separatorBuilder: (c, i) => const SizedBox(height: 8),
+      itemBuilder: (context, index) {
+        return const Card(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              SkeletonBox(width: 40, height: 40, borderRadius: 20),
+              SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SkeletonBox(width: 120, height: 16),
+                    SizedBox(height: 6),
+                    SkeletonBox(width: 80, height: 12),
+                  ],
+                ),
+              ),
+              SkeletonBox(width: 60, height: 24),
+              SizedBox(width: 12),
+              SkeletonBox(width: 24, height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildEmptyState(BuildContext context, String message) {
+    return StandardEmptyState(
+      icon: FluentIcons.people_search_24_regular,
+      title: 'No Members Found',
+      message: message,
+      action: FilledButton(
+        onPressed: _showInviteUserDialog,
+        child: const Text('Invite Member'),
+      ),
+    );
+  }
+
   Widget _buildList(List<Map<String, dynamic>> items, String emptyMessage) {
-    if (_isLoading) return const Center(child: ProgressBar());
+    if (_isLoading) return _buildListSkeleton(context);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -287,7 +335,7 @@ class _TeamPanelState extends State<TeamPanel> {
 
         Expanded(
           child: items.isEmpty
-              ? Center(child: Text(emptyMessage))
+              ? _buildEmptyState(context, emptyMessage)
               : ListView.separated(
                   padding: const EdgeInsets.all(16),
                   itemCount: items.length,

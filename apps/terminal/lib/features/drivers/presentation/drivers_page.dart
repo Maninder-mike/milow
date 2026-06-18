@@ -1,4 +1,5 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -9,6 +10,7 @@ import 'providers/driver_selection_provider.dart';
 import 'providers/driver_detail_provider.dart';
 import 'package:terminal/core/constants/app_elevation.dart';
 import 'package:terminal/core/widgets/choreographed_entrance.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 class DriversPage extends ConsumerStatefulWidget {
   const DriversPage({super.key});
@@ -24,30 +26,11 @@ class _DriversPageState extends ConsumerState<DriversPage> {
 
     return ScaffoldPage(
       content: selectedDriver == null
-          ? ChoreographedEntrance(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      FluentIcons.contact,
-                      size: 64,
-                      color: FluentTheme.of(
-                        context,
-                      ).resources.controlStrokeColorDefault,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Select a driver to view details',
-                      style: GoogleFonts.outfit(
-                        fontSize: 18,
-                        color: FluentTheme.of(
-                          context,
-                        ).resources.textFillColorSecondary,
-                      ),
-                    ),
-                  ],
-                ),
+          ? const ChoreographedEntrance(
+              child: StandardEmptyState(
+                title: 'No driver selected',
+                message: 'Select a driver from the sidebar to view their profile, trips, and activity.',
+                icon: FluentIcons.person_board_24_regular,
               ),
             )
           : Padding(
@@ -84,11 +67,11 @@ class _DriverDetailPanelState extends State<_DriverDetailPanel> {
             padding: const EdgeInsets.symmetric(horizontal: 0, vertical: 8),
             child: Row(
               children: [
-                _buildNavButton(0, 'Overview', FluentIcons.contact),
+                _buildNavButton(0, 'Overview', FluentIcons.person_24_regular),
                 const SizedBox(width: 24),
-                _buildNavButton(1, 'Trips', FluentIcons.delivery_truck),
+                _buildNavButton(1, 'Trips', FluentIcons.vehicle_truck_24_regular),
                 const SizedBox(width: 24),
-                _buildNavButton(2, 'Fuel', FluentIcons.drop),
+                _buildNavButton(2, 'Fuel', FluentIcons.drop_24_regular),
               ],
             ),
           ),
@@ -178,13 +161,17 @@ class _OverviewTab extends ConsumerWidget {
   final UserProfile driver;
   const _OverviewTab({super.key, required this.driver});
 
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final driverDetailAsync = ref.watch(driverDetailProvider(driver.id));
 
     return driverDetailAsync.when(
-      loading: () => const Center(child: ProgressRing()),
-      error: (err, stack) => Center(child: Text('Error: $err')),
+      loading: () => const DriverOverviewSkeleton(),
+      error: (err, stack) => StandardErrorState(
+        message: 'Could not load driver details: $err',
+        onRetry: () => ref.invalidate(driverDetailProvider(driver.id)),
+      ),
       data: (driverDetail) => SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -206,7 +193,7 @@ class _OverviewTab extends ConsumerWidget {
                 ),
                 child: Row(
                   children: [
-                    Icon(FluentIcons.warning, color: Colors.red),
+                    Icon(FluentIcons.warning_24_regular, color: Colors.red),
                     const SizedBox(width: 16),
                     Expanded(
                       child: Column(
@@ -411,7 +398,7 @@ class _OverviewTab extends ConsumerWidget {
                 Row(
                   children: [
                     Icon(
-                      FluentIcons.mail,
+                      FluentIcons.mail_24_regular,
                       size: 14,
                       color: theme.resources.textFillColorSecondary,
                     ),
@@ -424,7 +411,7 @@ class _OverviewTab extends ConsumerWidget {
                     ),
                     const SizedBox(width: 16),
                     Icon(
-                      FluentIcons.phone,
+                      FluentIcons.phone_24_regular,
                       size: 14,
                       color: theme.resources.textFillColorSecondary,
                     ),
@@ -450,7 +437,7 @@ class _OverviewTab extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(FluentIcons.add, size: 16),
+                    Icon(FluentIcons.add_24_regular, size: 16),
                     SizedBox(width: 8),
                     Text('Assign Work'),
                   ],
@@ -462,7 +449,7 @@ class _OverviewTab extends ConsumerWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: const [
-                    Icon(FluentIcons.chat, size: 16),
+                    Icon(FluentIcons.chat_24_regular, size: 16),
                     SizedBox(width: 8),
                     Text('Message'),
                   ],
@@ -512,7 +499,7 @@ class _OverviewTab extends ConsumerWidget {
                 context,
                 'Availability',
                 status.label,
-                FluentIcons.check_mark,
+                FluentIcons.checkmark_24_regular,
                 status.color,
               ),
             ),
@@ -522,7 +509,7 @@ class _OverviewTab extends ConsumerWidget {
                 context,
                 'Vehicle',
                 vehicleText,
-                FluentIcons.delivery_truck,
+                FluentIcons.vehicle_truck_24_regular,
                 Colors.blue,
                 caption: vehicleType,
               ),
@@ -533,7 +520,7 @@ class _OverviewTab extends ConsumerWidget {
                 context,
                 'Safety Score',
                 '98/100',
-                FluentIcons.shield,
+                FluentIcons.shield_24_regular,
                 Colors.orange,
               ),
             ),
@@ -543,7 +530,7 @@ class _OverviewTab extends ConsumerWidget {
                 context,
                 'Total Miles',
                 '12,450',
-                FluentIcons.map_directions,
+                FluentIcons.directions_24_regular,
                 Colors.purple,
                 caption: 'This Month',
               ),
@@ -806,7 +793,7 @@ class _OverviewTab extends ConsumerWidget {
             const Text('Select what to assign:'),
             const SizedBox(height: 16),
             ListTile(
-              leading: Icon(FluentIcons.open_folder_horizontal),
+              leading: Icon(FluentIcons.folder_open_24_regular),
               title: const Text('Assign Trip'),
               subtitle: const Text('Select an available trip'),
               onPressed: () {
@@ -815,7 +802,7 @@ class _OverviewTab extends ConsumerWidget {
               },
             ),
             ListTile(
-              leading: Icon(FluentIcons.car),
+              leading: Icon(FluentIcons.vehicle_car_24_regular),
               title: const Text('Assign Truck'),
               subtitle: const Text('Select an available truck'),
               onPressed: () {
@@ -852,14 +839,24 @@ class _OverviewTab extends ConsumerWidget {
                 .limit(20),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: ProgressRing());
+                return ListView.builder(
+                  itemCount: 5,
+                  itemBuilder: (context, index) => const SkeletonListTile(),
+                );
               }
               if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                return StandardErrorState(
+                  message: 'Error: ${snapshot.error}',
+                  onRetry: () => (context as Element).markNeedsBuild(),
+                );
               }
               final trips = snapshot.data as List<dynamic>? ?? [];
               if (trips.isEmpty) {
-                return const Center(child: Text('No unassigned trips found.'));
+                return StandardEmptyState(
+                  title: 'No unassigned trips',
+                  message: 'All trips are currently assigned to drivers.',
+                  icon: FluentIcons.vehicle_truck_24_regular,
+                );
               }
               return ListView.builder(
                 itemCount: trips.length,
@@ -936,14 +933,24 @@ class _OverviewTab extends ConsumerWidget {
                 .order('truck_number'),
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: ProgressRing());
+                return ListView.builder(
+                  itemCount: 5,
+                  itemBuilder: (context, index) => const SkeletonListTile(),
+                );
               }
               if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                return StandardErrorState(
+                  message: 'Error: ${snapshot.error}',
+                  onRetry: () => (context as Element).markNeedsBuild(),
+                );
               }
               final vehicles = snapshot.data as List<dynamic>? ?? [];
               if (vehicles.isEmpty) {
-                return const Center(child: Text('No vehicles found.'));
+                return const StandardEmptyState(
+                  title: 'No vehicles found',
+                  message: 'There are no vehicles in the system.',
+                  icon: FluentIcons.vehicle_truck_profile_24_regular,
+                );
               }
               return ListView.builder(
                 itemCount: vehicles.length,
@@ -956,7 +963,7 @@ class _OverviewTab extends ConsumerWidget {
                       vehicle['vehicle_type'] as String? ?? 'Unknown';
                   return ListTile(
                     leading: Icon(
-                      FluentIcons.car,
+                      FluentIcons.vehicle_car_24_regular,
                       color: FluentTheme.of(context).accentColor,
                     ),
                     title: Text('$truckNumber - $vehicleType'),
@@ -1159,12 +1166,11 @@ class _OverviewTab extends ConsumerWidget {
                   'Recent Activity',
                   style: GoogleFonts.outfit(
                     fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: theme.resources.textFillColorPrimary,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(FluentIcons.more, size: 16),
+                  icon: const Icon(FluentIcons.more_horizontal_24_regular, size: 16),
                   onPressed: () {},
                 ),
               ],
@@ -1179,7 +1185,7 @@ class _OverviewTab extends ConsumerWidget {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(
-                            FluentIcons.timeline,
+                            FluentIcons.timeline_24_regular,
                             size: 32,
                             color: theme.resources.textFillColorSecondary,
                           ),
@@ -1212,7 +1218,7 @@ class _OverviewTab extends ConsumerWidget {
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: Icon(
-                                FluentIcons.delivery_truck,
+                                FluentIcons.vehicle_truck_24_regular,
                                 size: 16,
                                 color: theme.accentColor,
                               ),
@@ -1288,7 +1294,7 @@ class _OverviewTab extends ConsumerWidget {
         children: [
           Row(
             children: [
-              Icon(FluentIcons.chart, color: theme.accentColor, size: 20),
+              Icon(FluentIcons.data_trending_24_regular, color: theme.accentColor, size: 20),
               const SizedBox(width: 8),
               Text(
                 'Performance & Earnings',
@@ -1306,7 +1312,7 @@ class _OverviewTab extends ConsumerWidget {
               _buildStatItem(
                 'Trips Completed',
                 tripsCompleted.toString(),
-                FluentIcons.delivery_truck,
+                FluentIcons.vehicle_truck_24_regular,
                 textColor,
                 Colors.blue,
               ),
@@ -1314,7 +1320,7 @@ class _OverviewTab extends ConsumerWidget {
               _buildStatItem(
                 'Total Miles',
                 '${totalMiles.toStringAsFixed(0)} mi',
-                FluentIcons.map_layers,
+                FluentIcons.map_24_regular,
                 textColor,
                 Colors.orange,
               ),
@@ -1387,6 +1393,8 @@ class _TripsTab extends StatelessWidget {
   final UserProfile driver;
   const _TripsTab({super.key, required this.driver});
 
+
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder(
@@ -1397,15 +1405,26 @@ class _TripsTab extends StatelessWidget {
           .order('trip_date', ascending: false),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: ProgressRing());
+          return const TableSkeleton(
+            rowCount: 6,
+            columnFlex: [2, 3, 2, 1],
+            showCheckbox: false,
+          );
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error or No Access: ${snapshot.error}'));
+          return StandardErrorState(
+            message: 'Could not load data: ${snapshot.error}',
+            onRetry: () => (context as Element).markNeedsBuild(),
+          );
         }
 
         final data = snapshot.data as List<dynamic>? ?? [];
         if (data.isEmpty) {
-          return const Center(child: Text('No trips found.'));
+          return const StandardEmptyState(
+            title: 'No trips recorded yet',
+            message: 'This driver hasn\'t submitted any trips in the Milow app.',
+            icon: FluentIcons.vehicle_truck_24_regular,
+          );
         }
 
         final trips = data.map((e) => Trip.fromJson(e)).toList();
@@ -1440,15 +1459,26 @@ class _FuelTab extends StatelessWidget {
           .order('fuel_date', ascending: false),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: ProgressRing());
+          return const TableSkeleton(
+            rowCount: 6,
+            columnFlex: [2, 3, 1, 2],
+            showCheckbox: false,
+          );
         }
         if (snapshot.hasError) {
-          return Center(child: Text('Error or No Access: ${snapshot.error}'));
+          return StandardErrorState(
+            message: 'Could not load data: ${snapshot.error}',
+            onRetry: () => (context as Element).markNeedsBuild(),
+          );
         }
 
         final data = snapshot.data as List<dynamic>? ?? [];
         if (data.isEmpty) {
-          return const Center(child: Text('No fuel entries found.'));
+          return const StandardEmptyState(
+            title: 'No fuel records found',
+            message: 'This driver hasn\'t submitted any fuel entries.',
+            icon: FluentIcons.gas_pump_24_regular,
+          );
         }
 
         final entries = data.map((e) => FuelEntry.fromJson(e)).toList();
@@ -1540,7 +1570,7 @@ class _TripCardState extends State<_TripCard> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Icon(
-                      FluentIcons.delivery_truck,
+                      FluentIcons.vehicle_truck_24_regular,
                       color: accentColor,
                       size: 24,
                     ),
@@ -1615,7 +1645,7 @@ class _TripCardState extends State<_TripCard> {
                     turns: _isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
-                      FluentIcons.chevron_down,
+                      FluentIcons.chevron_down_24_regular,
                       size: 16,
                       color: secondaryTextColor,
                     ),
@@ -1651,7 +1681,7 @@ class _TripCardState extends State<_TripCard> {
                             _buildStatItem(
                               'Truck',
                               trip.truckNumber,
-                              FluentIcons.delivery_truck,
+                              FluentIcons.vehicle_truck_24_regular,
                               textColor,
                               secondaryTextColor,
                             ),
@@ -1659,7 +1689,7 @@ class _TripCardState extends State<_TripCard> {
                               _buildStatItem(
                                 'Trailer(s)',
                                 trip.trailers.join(', '),
-                                FluentIcons.link,
+                                FluentIcons.link_24_regular,
                                 textColor,
                                 secondaryTextColor,
                               ),
@@ -1667,7 +1697,7 @@ class _TripCardState extends State<_TripCard> {
                               _buildStatItem(
                                 'Odometer Start',
                                 '${trip.startOdometer!.toStringAsFixed(0)} ${trip.distanceUnitLabel}',
-                                FluentIcons.speed_high,
+                                FluentIcons.vehicle_truck_profile_24_regular,
                                 textColor,
                                 secondaryTextColor,
                               ),
@@ -1675,7 +1705,7 @@ class _TripCardState extends State<_TripCard> {
                               _buildStatItem(
                                 'Odometer End',
                                 '${trip.endOdometer!.toStringAsFixed(0)} ${trip.distanceUnitLabel}',
-                                FluentIcons.flag,
+                                FluentIcons.flag_24_regular,
                                 textColor,
                                 secondaryTextColor,
                               ),
@@ -1978,7 +2008,7 @@ class _SendMessageCardState extends State<_SendMessageCard> {
                   : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: const [
-                        Icon(FluentIcons.send, size: 16),
+                        Icon(FluentIcons.send_24_regular, size: 16),
                         SizedBox(width: 8),
                         Text('Send Message'),
                       ],
@@ -2007,8 +2037,8 @@ class _FuelCardState extends State<_FuelCard> {
     // Determine colors based on fuel type
     final typeColor = entry.isTruckFuel ? Colors.blue : Colors.orange;
     final typeIcon = entry.isTruckFuel
-        ? FluentIcons.delivery_truck
-        : FluentIcons.snow;
+        ? FluentIcons.vehicle_truck_24_regular
+        : FluentIcons.weather_snowflake_24_regular;
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -2116,7 +2146,7 @@ class _FuelCardState extends State<_FuelCard> {
                                   horizontal: 6,
                                 ),
                                 child: Icon(
-                                  FluentIcons.circle_fill,
+                                  FluentIcons.circle_24_filled,
                                   size: 4,
                                   color: secondaryTextColor,
                                 ),
@@ -2139,7 +2169,7 @@ class _FuelCardState extends State<_FuelCard> {
                     turns: _isExpanded ? 0.5 : 0,
                     duration: const Duration(milliseconds: 200),
                     child: Icon(
-                      FluentIcons.chevron_down,
+                      FluentIcons.chevron_down_24_regular,
                       size: 16,
                       color: secondaryTextColor,
                     ),
@@ -2164,7 +2194,7 @@ class _FuelCardState extends State<_FuelCard> {
                           child: _buildBigStat(
                             'Quantity',
                             '${entry.fuelQuantity.toStringAsFixed(1)} ${entry.fuelUnitLabel}',
-                            FluentIcons.drop,
+                            FluentIcons.drop_24_regular,
                             Colors.blue,
                             theme,
                           ),
@@ -2174,7 +2204,7 @@ class _FuelCardState extends State<_FuelCard> {
                           child: _buildBigStat(
                             'Total Cost',
                             entry.formattedTotalCost,
-                            FluentIcons.money,
+                            FluentIcons.money_24_regular,
                             Colors.green,
                             theme,
                           ),
@@ -2191,7 +2221,7 @@ class _FuelCardState extends State<_FuelCard> {
                       Row(
                         children: [
                           Icon(
-                            FluentIcons.location,
+                            FluentIcons.location_24_regular,
                             color: Colors.red,
                             size: 16,
                           ),
@@ -2220,21 +2250,21 @@ class _FuelCardState extends State<_FuelCard> {
                           context,
                           'Price per Unit',
                           entry.formattedPricePerUnit,
-                          FluentIcons.calculator_addition,
+                          FluentIcons.calculator_24_regular,
                         ),
                         if (entry.isTruckFuel && entry.odometerReading != null)
                           _buildDetailItem(
                             context,
                             'Odometer',
                             '${entry.odometerReading!.toStringAsFixed(0)} ${entry.distanceUnitLabel}',
-                            FluentIcons.speed_high,
+                            FluentIcons.vehicle_truck_profile_24_regular,
                           ),
                         if (!entry.isTruckFuel && entry.reeferHours != null)
                           _buildDetailItem(
                             context,
                             'Reefer Hours',
                             entry.reeferHours!.toStringAsFixed(1),
-                            FluentIcons.clock,
+                            FluentIcons.clock_24_regular,
                           ),
                       ],
                     ),
@@ -2348,6 +2378,7 @@ class _FuelCardState extends State<_FuelCard> {
       ],
     );
   }
+
 }
 
 String _extractCityState(String address) {
@@ -2359,3 +2390,132 @@ String _extractCityState(String address) {
   }
   return address;
 }
+
+class DriverOverviewSkeleton extends StatelessWidget {
+  const DriverOverviewSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = FluentTheme.of(context);
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header Skeleton
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: AppElevation.shadow2(context),
+            ),
+            child: Row(
+              children: [
+                const SkeletonBox(width: 80, height: 80, borderRadius: 40),
+                const SizedBox(width: 24),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SkeletonBox(width: 200, height: 24),
+                      const SizedBox(height: 12),
+                      const SkeletonBox(width: 300, height: 16),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          // KPI Row Skeleton
+          Row(
+            children: List.generate(3, (index) => Expanded(
+              child: Container(
+                margin: EdgeInsets.only(right: index == 2 ? 0 : 24),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: theme.cardColor,
+                  borderRadius: BorderRadius.circular(12),
+                  boxShadow: AppElevation.shadow2(context),
+                ),
+                child: Row(
+                  children: [
+                    const SkeletonBox(width: 40, height: 40, borderRadius: 8),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SkeletonBox(width: double.infinity, height: 12),
+                          const SizedBox(height: 8),
+                          const SkeletonBox(width: 60, height: 20),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )),
+          ),
+          const SizedBox(height: 24),
+          // Content Skeleton
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 2,
+                child: Container(
+                  height: 400,
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: AppElevation.shadow2(context),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      children: List.generate(5, (index) => Padding(
+                        padding: const EdgeInsets.only(bottom: 24),
+                        child: Row(
+                          children: [
+                            const SkeletonBox(width: 48, height: 48, borderRadius: 8),
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const SkeletonBox(width: 150, height: 16),
+                                  const SizedBox(height: 8),
+                                  const SkeletonBox(width: double.infinity, height: 12),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      )),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 24),
+              Expanded(
+                flex: 1,
+                child: Container(
+                  height: 400,
+                  decoration: BoxDecoration(
+                    color: theme.cardColor,
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: AppElevation.shadow2(context),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+

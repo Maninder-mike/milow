@@ -18,6 +18,106 @@ import '../widgets/export_button.dart';
 class AnalyticsPage extends ConsumerWidget {
   const AnalyticsPage({super.key});
 
+  Widget _buildChartSkeleton(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final skeletonColor = theme.resources.controlFillColorSecondary;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: List.generate(12, (index) {
+              // Generate pseudo-random heights for the skeleton bars
+              final heightPercent = 0.3 + ((index * 17) % 70) / 100.0;
+              return Expanded(
+                child: FractionallySizedBox(
+                  heightFactor: heightPercent,
+                  alignment: Alignment.bottomCenter,
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4),
+                    decoration: BoxDecoration(
+                      color: skeletonColor,
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(4),
+                      ),
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Container(
+          height: 16,
+          decoration: BoxDecoration(
+            color: skeletonColor,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListSkeleton(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final skeletonColor = theme.resources.controlFillColorSecondary;
+    return ListView.builder(
+      itemCount: 5,
+      itemBuilder: (context, index) {
+        return Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: skeletonColor,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 120,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: skeletonColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      width: 80,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: skeletonColor,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 60,
+                height: 16,
+                decoration: BoxDecoration(
+                  color: skeletonColor,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return ScaffoldPage.scrollable(
@@ -58,7 +158,7 @@ class AnalyticsPage extends ConsumerWidget {
               final asyncValue = ref.watch(revenueAnalyticsProvider);
               return asyncValue.when(
                 data: (data) => RevenueTrendChart(data: data),
-                loading: () => const Center(child: ProgressRing()),
+                loading: () => _buildChartSkeleton(context),
                 error: (err, stack) => Center(child: Text('Error: $err')),
               );
             },
@@ -81,7 +181,7 @@ class AnalyticsPage extends ConsumerWidget {
                     final asyncValue = ref.watch(loadAnalyticsProvider);
                     return asyncValue.when(
                       data: (data) => LoadVolumeChart(data: data),
-                      loading: () => const Center(child: ProgressRing()),
+                      loading: () => _buildChartSkeleton(context),
                       error: (err, stack) => Center(child: Text('Error: $err')),
                     );
                   },
@@ -100,7 +200,7 @@ class AnalyticsPage extends ConsumerWidget {
                     final asyncValue = ref.watch(laneAnalyticsProvider);
                     return asyncValue.when(
                       data: (data) => TopLanesList(data: data),
-                      loading: () => const Center(child: ProgressRing()),
+                      loading: () => _buildListSkeleton(context),
                       error: (err, stack) => Center(child: Text('Error: $err')),
                     );
                   },
@@ -121,7 +221,7 @@ class AnalyticsPage extends ConsumerWidget {
               final asyncValue = ref.watch(driverAnalyticsProvider);
               return asyncValue.when(
                 data: (data) => DriverPerformanceTable(data: data),
-                loading: () => const Center(child: ProgressRing()),
+                loading: () => _buildListSkeleton(context),
                 error: (err, stack) => Center(child: Text('Error: $err')),
               );
             },

@@ -4,6 +4,8 @@ import 'package:milow_core/milow_core.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../features/users/data/user_repository_provider.dart';
 import '../../../../features/dashboard/services/vehicle_service.dart';
+import '../../../../core/widgets/ui_hardening.dart';
+
 
 class LoadAssignmentDialog extends ConsumerStatefulWidget {
   final Load load;
@@ -214,7 +216,8 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                   ],
                 );
               },
-              loading: () => const ProgressBar(),
+              loading: () => const SkeletonBox(height: 32, width: double.infinity),
+
               error: (err, _) => Text('Error loading drivers: $err'),
             ),
           ),
@@ -252,7 +255,8 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                           setState(() => _selectedTruckId = value),
                     );
                   },
-                  loading: () => const ProgressBar(),
+                  loading: () => const SkeletonBox(height: 32, width: double.infinity),
+
                   error: (err, _) => Text('Error loading trucks: $err'),
                 ),
                 if (_isLoadingAssignment)
@@ -307,7 +311,8 @@ class _LoadAssignmentDialogState extends ConsumerState<LoadAssignmentDialog> {
                       setState(() => _selectedTrailerId = value),
                 );
               },
-              loading: () => const ProgressBar(),
+              loading: () => const SkeletonBox(height: 32, width: double.infinity),
+
               error: (err, _) => Text('Error loading trailers: $err'),
             ),
           ),

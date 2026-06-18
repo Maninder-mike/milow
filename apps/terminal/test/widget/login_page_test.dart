@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:mockito/mockito.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/core/providers/supabase_provider.dart';
+import 'package:terminal/core/providers/network_provider.dart';
 import 'package:terminal/features/auth/presentation/pages/login_page.dart';
 import 'package:fluent_ui/fluent_ui.dart' as fluent;
 import 'package:terminal/core/providers/biometric_provider.dart';
@@ -14,6 +15,7 @@ void main() {
   late MockSupabaseClient mockSupabaseClient;
   late MockGoTrueClient mockGoTrueClient;
   late MockBiometricService mockBiometricService;
+  late MockCoreNetworkClient mockCoreNetworkClient;
   late MockUser mockUser;
   late MockSession mockSession;
 
@@ -21,9 +23,11 @@ void main() {
     mockSupabaseClient = MockSupabaseClient();
     mockGoTrueClient = MockGoTrueClient();
     mockBiometricService = MockBiometricService();
+    mockCoreNetworkClient = MockCoreNetworkClient();
     mockUser = MockUser();
     mockSession = MockSession();
 
+    when(mockCoreNetworkClient.supabase).thenReturn(mockSupabaseClient);
     when(mockSupabaseClient.auth).thenReturn(mockGoTrueClient);
 
     // Stub BiometricService methods to return safe defaults
@@ -64,6 +68,7 @@ void main() {
       ProviderScope(
         overrides: [
           supabaseClientProvider.overrideWithValue(mockSupabaseClient),
+          coreNetworkClientProvider.overrideWithValue(mockCoreNetworkClient),
           biometricServiceProvider.overrideWithValue(mockBiometricService),
         ],
         child: fluent.FluentApp.router(routerConfig: createTestRouter()),
@@ -98,6 +103,7 @@ void main() {
       ProviderScope(
         overrides: [
           supabaseClientProvider.overrideWithValue(mockSupabaseClient),
+          coreNetworkClientProvider.overrideWithValue(mockCoreNetworkClient),
           biometricServiceProvider.overrideWithValue(mockBiometricService),
         ],
         child: fluent.FluentApp.router(routerConfig: createTestRouter()),

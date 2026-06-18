@@ -385,8 +385,13 @@ class _SignUpPageState extends State<SignUpPage> {
                               ),
                             ),
                             child: _isLoading
-                                ? const ProgressRing(
-                                    activeColor: Color(0xFF6C5CE7),
+                                ? SizedBox(
+                                    height: 20,
+                                    width: 20,
+                                    child: ProgressRing(
+                                      activeColor: buttonTextCol(_theme.primaryContentColor),
+                                      strokeWidth: 2.5,
+                                    ),
                                   )
                                 : Text(
                                     'Create Account',

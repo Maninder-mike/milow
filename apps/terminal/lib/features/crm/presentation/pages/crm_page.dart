@@ -4,6 +4,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:terminal/features/crm/domain/models/crm_entity.dart';
 import 'package:terminal/features/crm/presentation/providers/crm_providers.dart';
+import '../../../../core/widgets/ui_hardening.dart';
+
 
 class CRMPage extends ConsumerStatefulWidget {
   const CRMPage({super.key});
@@ -372,26 +374,14 @@ class _CRMPageState extends ConsumerState<CRMPage> {
           ],
         );
       },
-      loading: () => const Center(child: ProgressRing()),
-      error: (err, stack) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              FluentIcons.error_circle_24_regular,
-              size: 48,
-              color: Colors.red,
-            ),
-            const SizedBox(height: 16),
-            Text('Error loading data: $err'),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: () => ref.invalidate(
-                crmEntitiesProvider(_segments[_selectedSegment]),
-              ),
-              child: const Text('Retry'),
-            ),
-          ],
+      loading: () => const TableSkeleton(
+        columnFlex: [3, 2, 1, 2, 2],
+        showCheckbox: true,
+      ),
+      error: (err, stack) => StandardErrorState(
+        message: 'Could not load CRM data: $err',
+        onRetry: () => ref.invalidate(
+          crmEntitiesProvider(_segments[_selectedSegment]),
         ),
       ),
     );
@@ -598,47 +588,28 @@ class _CRMPageState extends ConsumerState<CRMPage> {
 
   Widget _buildEmptyState(BuildContext context, FluentThemeData theme) {
     final labels = ['brokers', 'shippers', 'receivers'];
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            FluentIcons.folder_open_24_regular,
-            size: 64,
-            color: theme.resources.textFillColorSecondary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No ${labels[_selectedSegment]} found',
-            style: theme.typography.subtitle,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            _searchQuery.isNotEmpty
-                ? 'Try adjusting your search or filters'
-                : 'Get started by adding your first ${labels[_selectedSegment].substring(0, labels[_selectedSegment].length - 1)}',
-            style: theme.typography.body?.copyWith(
-              color: theme.resources.textFillColorSecondary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => _showAddEntityDialog(context),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(FluentIcons.add_24_regular, size: 16),
-                const SizedBox(width: 8),
-                Text(
-                  'Add ${labels[_selectedSegment].substring(0, labels[_selectedSegment].length - 1).toUpperCase()}',
-                ),
-              ],
-            ),
-          ),
-        ],
+    final label = labels[_selectedSegment];
+    
+    return StandardEmptyState(
+      title: 'No $label found',
+      message: _searchQuery.isNotEmpty
+          ? 'Try adjusting your search or filters'
+          : 'Get started by adding your first ${label.substring(0, label.length - 1)}',
+      icon: FluentIcons.folder_open_24_regular,
+      action: FilledButton(
+        onPressed: () => _showAddEntityDialog(context),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(FluentIcons.add_24_regular, size: 16),
+            const SizedBox(width: 8),
+            Text('Add ${label.substring(0, label.length - 1).toUpperCase()}'),
+          ],
+        ),
       ),
     );
   }
+
 
   void _showAddEntityDialog(BuildContext context) {
     // Navigate to new entity form based on selected segment

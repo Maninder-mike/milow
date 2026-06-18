@@ -246,6 +246,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       ),
       content: LayoutBuilder(
         builder: (context, constraints) {
+          if (_isLoading && _nameController.text.isEmpty) {
+            return _buildProfileSkeleton(context);
+          }
           final isWide = constraints.maxWidth > 800;
           return ChoreographedEntrance(
             child: Padding(
@@ -644,6 +647,112 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
             ),
           ),
         ),
+      ),
+    );
+  }
+  Widget _buildProfileSkeleton(BuildContext context) {
+    final theme = FluentTheme.of(context);
+    final resources = theme.resources;
+
+    return Padding(
+      padding: const EdgeInsets.all(24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Sidebar Skeleton
+          Container(
+            width: 320,
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: theme.cardColor,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: resources.dividerStrokeColorDefault),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 120,
+                  height: 120,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: resources.controlFillColorSecondary,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Container(
+                  width: 180,
+                  height: 20,
+                  decoration: BoxDecoration(
+                    color: resources.controlFillColorSecondary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  width: 80,
+                  height: 12,
+                  decoration: BoxDecoration(
+                    color: resources.controlFillColorSecondary,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 32),
+          // Main Content Skeleton
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: List.generate(
+                3,
+                (index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 32),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        width: 150,
+                        height: 18,
+                        decoration: BoxDecoration(
+                          color: resources.controlFillColorSecondary,
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: resources.controlFillColorSecondary
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Container(
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: resources.controlFillColorSecondary
+                                    .withValues(alpha: 0.5),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

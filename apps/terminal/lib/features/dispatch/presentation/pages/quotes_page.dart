@@ -8,7 +8,9 @@ import '../providers/quote_providers.dart';
 import '../providers/load_providers.dart';
 import '../widgets/load_quote_dialog.dart';
 import 'package:milow_core/milow_core.dart';
-import '../../../../core/constants/app_colors.dart';
+import 'package:terminal/core/constants/app_colors.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
+
 
 class QuotesPage extends ConsumerStatefulWidget {
   const QuotesPage({super.key});
@@ -176,15 +178,33 @@ class _QuotesPageState extends ConsumerState<QuotesPage> {
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                   child: quotes.isEmpty
-                      ? _buildEmptyState()
+                      ? const StandardEmptyState(
+                          title: 'No quotes found',
+                          message: 'Try adjusting your filters or search query',
+                          icon: FluentIcons.document_copy_24_regular,
+                        )
                       : _buildQuotesTable(quotes, theme, isLight),
                 ),
               ),
             ],
           );
         },
-        loading: () => _buildLoadingState(theme),
-        error: (err, stack) => Center(child: Text('Error: $err')),
+        loading: () => Column(
+          children: [
+            _buildStatsRow([], theme, isLight),
+            const Expanded(
+              child: TableSkeleton(
+                columnFlex: [1, 2, 3, 1, 2, 2, 2],
+                rowCount: 10,
+                showCheckbox: true,
+              ),
+            ),
+          ],
+        ),
+        error: (err, stack) => StandardErrorState(
+          message: 'Could not load quotes: $err',
+          onRetry: () => ref.invalidate(quotesListProvider),
+        ),
       ),
     );
   }
@@ -192,210 +212,7 @@ class _QuotesPageState extends ConsumerState<QuotesPage> {
   // ─────────────────────────────────────────────────────────────────────────
   // LOADING SKELETON
   // ─────────────────────────────────────────────────────────────────────────
-  Widget _buildLoadingState(FluentThemeData theme) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        // Stats Row Skeleton
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-          child: Row(
-            children: List.generate(3, (index) {
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.only(left: index == 0 ? 0 : 16),
-                  child: Container(
-                    height: 80,
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: theme.cardColor,
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color: theme.resources.surfaceStrokeColorDefault
-                            .withValues(alpha: 0.1),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: theme.resources.controlFillColorSecondary,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Container(
-                              width: 80,
-                              height: 12,
-                              decoration: BoxDecoration(
-                                color:
-                                    theme.resources.controlFillColorSecondary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Container(
-                              width: 120,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                color:
-                                    theme.resources.controlFillColorSecondary,
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            }),
-          ),
-        ),
-        const SizedBox(height: 16),
-        // Header Skeleton
-        _buildHeader(theme),
-        const SizedBox(height: 8),
-        // Table Skeleton
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-            child: Container(
-              decoration: BoxDecoration(
-                color: theme.cardColor,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: theme.resources.surfaceStrokeColorDefault.withValues(
-                    alpha: 0.05,
-                  ),
-                ),
-              ),
-              child: Column(
-                children: [
-                  // Table Header
-                  Container(
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: theme.resources.surfaceStrokeColorDefault
-                          .withValues(alpha: 0.03),
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(8),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        SizedBox(
-                          width: 40,
-                          child: Center(
-                            child: Container(
-                              width: 20,
-                              height: 20,
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(
-                                  color:
-                                      theme.resources.controlFillColorSecondary,
-                                  width: 1.5,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        for (var flex in [1, 2, 3, 1, 2, 2, 2])
-                          Expanded(
-                            flex: flex,
-                            child: Padding(
-                              padding: const EdgeInsetsDirectional.only(
-                                end: 16,
-                              ),
-                              child: Container(
-                                height: 14,
-                                decoration: BoxDecoration(
-                                  color:
-                                      theme.resources.controlFillColorSecondary,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  // Rows
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: 10,
-                      separatorBuilder: (context, index) => const Divider(),
-                      itemBuilder: (context, index) {
-                        return Container(
-                          height: 56,
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 40,
-                                child: Center(
-                                  child: Container(
-                                    width: 20,
-                                    height: 20,
-                                    decoration: BoxDecoration(
-                                      borderRadius: BorderRadius.circular(4),
-                                      border: Border.all(
-                                        color: theme
-                                            .resources
-                                            .controlFillColorSecondary
-                                            .withValues(alpha: 0.5),
-                                        width: 1.5,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 12),
-                              for (var flex in [1, 2, 3, 1, 2, 2, 2])
-                                Expanded(
-                                  flex: flex,
-                                  child: Padding(
-                                    padding: const EdgeInsetsDirectional.only(
-                                      end: 16,
-                                    ),
-                                    child: Container(
-                                      height: 16,
-                                      width: double.infinity,
-                                      decoration: BoxDecoration(
-                                        color: theme
-                                            .resources
-                                            .controlFillColorSecondary
-                                            .withValues(alpha: 0.3),
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // STATS ROW
@@ -793,26 +610,7 @@ class _QuotesPageState extends ConsumerState<QuotesPage> {
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(FluentIcons.document_24_regular, size: 48),
-          const SizedBox(height: 16),
-          Text(
-            'No quotes found',
-            style: GoogleFonts.outfit(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text('Quotes created from loads will appear here.'),
-        ],
-      ),
-    );
-  }
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // FILTERING & SORTING

@@ -11,14 +11,16 @@ void main() {
   late MockLoadRepository mockRepository;
   late ProviderContainer container;
 
+  setUpAll(() {
+    // Provide dummy value for Result types (Either<Failure, void>)
+    provideDummy<Either<Failure, void>>(right(null));
+  });
+
   setUp(() {
     mockRepository = MockLoadRepository();
     container = ProviderContainer(
       overrides: [loadRepositoryProvider.overrideWithValue(mockRepository)],
     );
-
-    // Provide dummy value for Result types (Either<Failure, void>)
-    provideDummy<Either<Failure, void>>(right(null));
 
     // Mock repository methods to return successful Result types
     when(mockRepository.createLoad(any)).thenAnswer((_) async => right(null));

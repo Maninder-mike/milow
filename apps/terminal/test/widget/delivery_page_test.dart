@@ -1,19 +1,21 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fluent_ui/fluent_ui.dart';
-import 'package:mockito/mockito.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/core/providers/supabase_provider.dart';
+import 'package:terminal/core/providers/network_provider.dart';
+import '../helpers/mocks.mocks.dart';
 import 'package:terminal/features/dashboard/screens/deliver/delivery_page.dart';
 import 'package:terminal/core/widgets/form_widgets.dart';
 
-class MockSupabaseClient extends Mock implements SupabaseClient {}
+// Shared mocks used from mocks.mocks.dart
 
 void main() {
   late MockSupabaseClient mockSupabaseClient;
+  late MockCoreNetworkClient mockCoreNetworkClient;
 
   setUp(() {
     mockSupabaseClient = MockSupabaseClient();
+    mockCoreNetworkClient = MockCoreNetworkClient();
   });
 
   Future<void> setSurfaceSize(WidgetTester tester) async {
@@ -23,7 +25,10 @@ void main() {
 
   Widget createTestWidget(Widget child) {
     return ProviderScope(
-      overrides: [supabaseClientProvider.overrideWithValue(mockSupabaseClient)],
+      overrides: [
+        supabaseClientProvider.overrideWithValue(mockSupabaseClient),
+        coreNetworkClientProvider.overrideWithValue(mockCoreNetworkClient),
+      ],
       child: FluentApp(home: child),
     );
   }

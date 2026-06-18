@@ -1,8 +1,10 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:milow_core/milow_core.dart';
 import 'package:terminal/features/dashboard/presentation/providers/driver_locations_provider.dart';
+import '../../../core/widgets/ui_hardening.dart';
 
 class FleetMapPage extends ConsumerStatefulWidget {
   const FleetMapPage({super.key});
@@ -29,7 +31,7 @@ class _FleetMapPageState extends ConsumerState<FleetMapPage> {
           mainAxisAlignment: MainAxisAlignment.end,
           primaryItems: [
             CommandBarButton(
-              icon: const Icon(FluentIcons.refresh),
+              icon: const Icon(FluentIcons.arrow_clockwise_24_regular),
               label: const Text('Refresh'),
               onPressed: () => ref.invalidate(driverLocationsProvider),
             ),
@@ -60,8 +62,14 @@ class _FleetMapPageState extends ConsumerState<FleetMapPage> {
                   );
                 },
               ),
-              loading: () => const Center(child: ProgressRing()),
-              error: (e, _) => Center(child: Text('Error: $e')),
+              loading: () => _buildSidebarSkeleton(theme),
+              error: (e, _) => Center(
+                child: StandardErrorState(
+                  title: 'Failed to load drivers',
+                  message: e.toString(),
+                  onRetry: () => ref.refresh(driverLocationsProvider),
+                ),
+              ),
             ),
           ),
           
@@ -102,8 +110,8 @@ class _FleetMapPageState extends ConsumerState<FleetMapPage> {
                                 ),
                               ],
                             ),
-                            child: const Icon(
-                              FluentIcons.delivery_truck,
+                            child: Icon(
+                              FluentIcons.vehicle_truck_24_regular,
                               size: 20,
                               color: Colors.white,
                             ),
@@ -119,6 +127,55 @@ class _FleetMapPageState extends ConsumerState<FleetMapPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSidebarSkeleton(FluentThemeData theme) {
+    return ListView.builder(
+      itemCount: 10,
+      padding: EdgeInsets.zero,
+      itemBuilder: (context, index) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 12,
+                height: 12,
+                decoration: BoxDecoration(
+                  color: theme.resources.controlFillColorSecondary,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 140,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: theme.resources.controlFillColorSecondary,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 100,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: theme.resources.controlFillColorSecondary.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

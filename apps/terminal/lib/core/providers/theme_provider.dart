@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'shared_preferences_provider.dart';
+import 'package:terminal/core/providers/shared_preferences_provider.dart';
 
 part 'theme_provider.g.dart';
 

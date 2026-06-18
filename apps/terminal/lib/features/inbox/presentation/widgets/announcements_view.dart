@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
 import '../../data/announcement_repository.dart';
 import 'create_announcement_dialog.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 class AnnouncementsView extends ConsumerWidget {
   const AnnouncementsView({super.key});
@@ -34,22 +35,10 @@ class AnnouncementsView extends ConsumerWidget {
       content: announcementsAsync.when(
         data: (announcements) {
           if (announcements.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    FluentIcons.megaphone_24_regular,
-                    size: 48,
-                    color: theme.resources.textFillColorSecondary,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No announcements yet',
-                    style: theme.typography.subtitle,
-                  ),
-                ],
-              ),
+            return const StandardEmptyState(
+              title: 'No announcements yet',
+              message: 'Stay tuned for updates from your company.',
+              icon: FluentIcons.megaphone_24_regular,
             );
           }
 
@@ -110,9 +99,11 @@ class AnnouncementsView extends ConsumerWidget {
             },
           );
         },
-        loading: () => const Center(child: ProgressRing()),
-        error: (err, stack) =>
-            Center(child: Text('Error loading announcements: $err')),
+        loading: () => const Center(child: ProgressBar()),
+        error: (err, stack) => StandardErrorState(
+          message: 'Could not load announcements: $err',
+          onRetry: () => ref.invalidate(announcementsProvider),
+        ),
       ),
     );
   }

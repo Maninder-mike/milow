@@ -40,6 +40,7 @@ import 'package:terminal/features/settlements/presentation/pages/settlement_deta
 import 'package:terminal/features/fleet/presentation/pages/maintenance_page.dart';
 import 'package:terminal/features/analytics/presentation/screens/analytics_page.dart';
 import 'package:terminal/features/dashboard/screens/fleet_map_page.dart';
+import 'package:terminal/features/brokerage/presentation/pages/brokerage_page.dart';
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
 final _shellNavigatorKey = GlobalKey<NavigatorState>();
@@ -186,6 +187,14 @@ final routerProvider = Provider<GoRouter>((ref) {
           GoRoute(
             path: '/quotes',
             builder: (context, state) => const QuotesPage(),
+          ),
+          GoRoute(
+            path: '/brokerage',
+            pageBuilder: (context, state) => buildFluentPage(
+              context: context,
+              state: state,
+              child: const BrokeragePage(),
+            ),
           ),
           GoRoute(
             path: '/driver-hos',

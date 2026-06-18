@@ -1,9 +1,12 @@
-import 'package:fluent_ui/fluent_ui.dart';
+import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import '../../../../core/widgets/ui_hardening.dart';
 import '../../services/vehicle_service.dart';
+
 import 'add_vehicle_dialog.dart';
 
 class VehiclesPage extends ConsumerStatefulWidget {
@@ -60,21 +63,7 @@ class _VehiclesPageState extends ConsumerState<VehiclesPage> {
       ),
       content: vehiclesAsync.when(
         data: (vehicles) {
-          if (vehicles.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Text('No vehicles found'),
-                  const SizedBox(height: 16),
-                  Button(
-                    onPressed: () => _showAddEditDialog(),
-                    child: const Text('Add your first vehicle'),
-                  ),
-                ],
-              ),
-            );
-          }
+          if (vehicles.isEmpty) return _buildEmptyState();
           return LayoutBuilder(
             builder: (context, constraints) {
               return SingleChildScrollView(
@@ -230,8 +219,28 @@ class _VehiclesPageState extends ConsumerState<VehiclesPage> {
             },
           );
         },
-        loading: () => const Center(child: ProgressRing()),
-        error: (e, st) => Center(child: Text('Error: $e')),
+        loading: () => const TableSkeleton(
+          columnFlex: [1, 1, 1, 1, 1],
+        ),
+        error: (e, st) => StandardErrorState(
+          message: 'Failed to load vehicles: $e',
+          onRetry: () => ref.invalidate(vehiclesListProvider),
+        ),
+
+      ),
+    );
+  }
+
+
+
+  Widget _buildEmptyState() {
+    return StandardEmptyState(
+      title: 'No Vehicles Registered',
+      message: 'Your fleet is currently empty. Add your first truck or trailer to start managing your operations.',
+      icon: FluentIcons.vehicle_truck_24_regular,
+      action: FilledButton(
+        onPressed: () => _showAddEditDialog(),
+        child: const Text('Add First Vehicle'),
       ),
     );
   }

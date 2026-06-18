@@ -9,6 +9,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../data/user_repository_provider.dart';
 import '../../inbox/data/message_repository.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/widgets/ui_hardening.dart';
+
 
 class UsersPage extends ConsumerStatefulWidget {
   const UsersPage({super.key});
@@ -29,6 +31,16 @@ class _UsersPageState extends ConsumerState<UsersPage> {
     _debounce?.cancel();
     super.dispose();
   }
+
+
+  Widget _buildEmptyState(BuildContext context) {
+    return const StandardEmptyState(
+      title: 'No users found',
+      message: 'Try adjusting your search filters or add a new user.',
+      icon: FluentIcons.people_search_24_regular,
+    );
+  }
+
 
   void _onSearchChanged(String query) {
     if (_debounce?.isActive ?? false) _debounce!.cancel();
@@ -265,7 +277,7 @@ class _UsersPageState extends ConsumerState<UsersPage> {
             child: usersAsync.when(
               data: (users) {
                 if (users.isEmpty) {
-                  return const Center(child: Text('No users found.'));
+                  return _buildEmptyState(context);
                 }
 
                 final currentUserId =
@@ -409,21 +421,14 @@ class _UsersPageState extends ConsumerState<UsersPage> {
                   },
                 );
               },
-              loading: () => const Center(child: ProgressRing()),
-              error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('Error loading users: $error'),
-                    const SizedBox(height: 16),
-                    FilledButton(
-                      onPressed: () =>
-                          ref.read(usersProvider.notifier).refresh(),
-                      child: const Text('Retry'),
-                    ),
-                  ],
-                ),
+              loading: () => const TableSkeleton(
+                columnFlex: [3, 4, 2, 2],
               ),
+              error: (error, stack) => StandardErrorState(
+                message: 'Failed to load users: $error',
+                onRetry: () => ref.read(usersProvider.notifier).refresh(),
+              ),
+
             ),
           ),
 

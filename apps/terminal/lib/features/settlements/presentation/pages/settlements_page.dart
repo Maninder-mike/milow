@@ -14,6 +14,7 @@ import '../widgets/settlement_data_table.dart';
 import '../../domain/models/driver_settlement.dart';
 import '../../utils/settlement_pdf_generator.dart';
 import 'package:printing/printing.dart';
+import '../../../../core/widgets/ui_hardening.dart';
 
 class SettlementsPage extends ConsumerStatefulWidget {
   const SettlementsPage({super.key});
@@ -258,14 +259,15 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
           padding: const EdgeInsets.symmetric(horizontal: 24.0),
           child: summaryAsync.when(
             data: (summary) => SettlementKPICards(summary: summary),
-            loading: () => const SizedBox(
-              height: 120,
-              child: Center(child: ProgressRing()),
+            loading: () => Row(
+              children: List.generate(4, (index) => Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(left: index == 0 ? 0 : 16),
+                  child: const SkeletonBox(height: 120, borderRadius: 8),
+                ),
+              )),
             ),
-            error: (e, s) => SizedBox(
-              height: 120,
-              child: Center(child: Text('Error loading summary: $e')),
-            ),
+            error: (e, s) => const SizedBox.shrink(), // Summary errors handled silently or via main table
           ),
         ),
         const SizedBox(height: 24),
@@ -314,9 +316,14 @@ class _SettlementsPageState extends ConsumerState<SettlementsPage> {
                   ],
                 );
               },
-              loading: () => const Center(child: ProgressRing()),
-              error: (e, s) =>
-                  Center(child: Text('Error loading settlements: $e')),
+              loading: () => const TableSkeleton(
+                columnFlex: [2, 2, 2, 2, 2],
+                showCheckbox: true,
+              ),
+              error: (e, s) => StandardErrorState(
+                message: 'Failed to load settlements: $e',
+                onRetry: () => ref.invalidate(driverSettlementsProvider(driverId)),
+              ),
             ),
           ),
         ),

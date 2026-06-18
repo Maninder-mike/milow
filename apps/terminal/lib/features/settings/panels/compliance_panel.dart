@@ -1,7 +1,8 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import '../providers/company_provider.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
+import 'package:terminal/features/settings/providers/company_provider.dart';
 
 class CompliancePanel extends ConsumerStatefulWidget {
   const CompliancePanel({super.key});
@@ -129,9 +130,11 @@ class _CompliancePanelState extends ConsumerState<CompliancePanel> {
               ],
             );
           },
-          loading: () => const Center(child: ProgressBar()),
-          error: (error, stack) =>
-              Center(child: Text('Error loading settings: $error')),
+          loading: () => const ComplianceSkeleton(),
+          error: (error, stack) => StandardErrorState(
+            message: 'Failed to load settings: $error',
+            onRetry: () => ref.invalidate(companyProvider),
+          ),
         ),
       ],
     );
@@ -186,6 +189,54 @@ class _CompliancePanelState extends ConsumerState<CompliancePanel> {
         ),
         control,
       ],
+    );
+  }
+}
+
+class ComplianceSkeleton extends StatelessWidget {
+  const ComplianceSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return _buildSkeletonCard(
+      context,
+      children: List.generate(
+        2,
+        (index) => Padding(
+          padding: EdgeInsets.only(bottom: index == 0 ? 16 : 0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SkeletonBox(width: 120, height: 14),
+                  SizedBox(height: 8),
+                  SkeletonBox(width: 200, height: 10),
+                ],
+              ),
+              const SkeletonBox(width: 150, height: 32),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSkeletonCard(
+    BuildContext context, {
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FluentTheme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+        ),
+      ),
+      child: Column(children: children),
     );
   }
 }

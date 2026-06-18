@@ -16,6 +16,7 @@ class PrimarySidebar extends ConsumerWidget {
   final VoidCallback onProfileTap;
   final VoidCallback onDashboardTap;
   final VoidCallback onAnalyticsTap;
+  final VoidCallback onBrokerageTap;
   final String? activePane; // 'add_record', 'drivers', etc
   final String currentLocation;
 
@@ -32,6 +33,7 @@ class PrimarySidebar extends ConsumerWidget {
     required this.onProfileTap,
     required this.onDashboardTap,
     required this.onAnalyticsTap,
+    required this.onBrokerageTap,
     required this.currentLocation,
     this.activePane,
   });
@@ -110,6 +112,16 @@ class PrimarySidebar extends ConsumerWidget {
                       label: 'CRM',
                       onTap: onCrmTap,
                       isActive: currentLocation.startsWith('/crm'),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Brokerage
+                    _buildNavItem(
+                      context,
+                      FluentIcons.document_text_24_regular,
+                      label: 'Brokerage',
+                      onTap: onBrokerageTap,
+                      isActive: currentLocation.startsWith('/brokerage'),
                     ),
                     const SizedBox(height: 8),
 

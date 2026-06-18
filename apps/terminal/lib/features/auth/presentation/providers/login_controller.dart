@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:terminal/core/providers/biometric_provider.dart';
-import 'package:terminal/core/providers/supabase_provider.dart';
 import 'package:terminal/features/auth/data/auth_repository.dart';
 
 part 'login_controller.g.dart';
@@ -47,7 +46,7 @@ class LoginController extends _$LoginController {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final biometricService = ref.read(biometricServiceProvider);
-      final supabase = ref.read(supabaseClientProvider);
+      final authRepo = ref.read(authRepositoryProvider);
 
       final authenticated = await biometricService.authenticate();
       if (!authenticated) {
@@ -61,10 +60,12 @@ class LoginController extends _$LoginController {
         );
       }
 
-      await supabase.auth.signInWithPassword(
-        email: credentials['email']!,
-        password: credentials['password']!,
+      final result = await authRepo.signInWithPassword(
+        credentials['email']!,
+        credentials['password']!,
       );
+      
+      result.fold((f) => throw f, (_) {});
     });
   }
 
@@ -72,7 +73,7 @@ class LoginController extends _$LoginController {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       final biometricService = ref.read(biometricServiceProvider);
-      final supabase = ref.read(supabaseClientProvider);
+      final authRepo = ref.read(authRepositoryProvider);
 
       final isValid = await biometricService.verifyPin(pin);
       if (!isValid) {
@@ -84,10 +85,12 @@ class LoginController extends _$LoginController {
         throw const AuthException('No saved credentials found.');
       }
 
-      await supabase.auth.signInWithPassword(
-        email: credentials['email']!,
-        password: credentials['password']!,
+      final result = await authRepo.signInWithPassword(
+        credentials['email']!,
+        credentials['password']!,
       );
+      
+      result.fold((f) => throw f, (_) {});
     });
   }
 
@@ -98,13 +101,10 @@ class LoginController extends _$LoginController {
         throw const AuthException('Please enter your email address');
       }
 
-      await ref
-          .read(supabaseClientProvider)
-          .auth
-          .resetPasswordForEmail(
-            email,
-            redirectTo: 'milow-terminal://reset-password',
-          );
+      final authRepo = ref.read(authRepositoryProvider);
+      final result = await authRepo.sendPasswordReset(email);
+      
+      result.fold((f) => throw f, (_) {});
     });
   }
 }

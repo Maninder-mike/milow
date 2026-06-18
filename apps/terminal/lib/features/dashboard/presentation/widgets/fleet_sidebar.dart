@@ -179,6 +179,32 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
           Expanded(
             child: vehiclesAsync.when(
               data: (vehicles) {
+                if (vehicles.isEmpty) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            FluentIcons.vehicle_car_24_regular,
+                            size: 32,
+                            color: theme.resources.textFillColorDisabled,
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'No Vehicles',
+                            style: GoogleFonts.outfit(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
                 return ListView(
                   padding: EdgeInsets.zero,
                   children: [
@@ -253,12 +279,81 @@ class _FleetSidebarState extends ConsumerState<FleetSidebar> {
                   ],
                 );
               },
-              loading: () => const Center(child: ProgressRing()),
-              error: (e, s) => Center(child: Text('Error: $e')),
+              loading: () => _buildSidebarSkeleton(theme),
+              error: (e, s) => Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(FluentIcons.error_circle_24_regular, color: Colors.red),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Sync Error',
+                        style: GoogleFonts.outfit(fontSize: 12, fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 12),
+                      Button(
+                        child: const Text('Retry'),
+                        onPressed: () => ref.invalidate(vehiclesListProvider),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSidebarSkeleton(FluentThemeData theme) {
+    return ListView.builder(
+      padding: EdgeInsets.zero,
+      itemCount: 8,
+      itemBuilder: (context, index) {
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: theme.resources.controlFillColorSecondary,
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      width: 80,
+                      height: 12,
+                      decoration: BoxDecoration(
+                        color: theme.resources.controlFillColorSecondary,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Container(
+                      width: 50,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: theme.resources.controlFillColorSecondary.withValues(alpha: 0.5),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 

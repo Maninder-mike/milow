@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:terminal/core/widgets/entrance_fader.dart';
 import 'package:terminal/features/fleet/data/repositories/maintenance_repository.dart';
 import 'package:terminal/features/fleet/presentation/widgets/add_maintenance_dialog.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 import 'package:milow_core/milow_core.dart';
 
 class MaintenancePage extends ConsumerStatefulWidget {
@@ -85,8 +86,11 @@ class _MaintenancePageState extends ConsumerState<MaintenancePage> {
                 ],
               );
             },
-            loading: () => const Center(child: ProgressRing()),
-            error: (e, s) => Center(child: Text('Error loading alerts: $e')),
+            loading: () => const MaintenanceAlertsSkeleton(),
+            error: (e, s) => StandardErrorState(
+              message: 'Failed to load maintenance alerts: $e',
+              onRetry: () => ref.invalidate(fleetMaintenanceAlertsProvider),
+            ),
           ),
         ),
         const SizedBox(height: 32),
@@ -118,80 +122,21 @@ class _MaintenancePageState extends ConsumerState<MaintenancePage> {
           ],
         ),
         const SizedBox(height: 16),
-        Container(
-          width: double.infinity,
-          padding: const EdgeInsets.symmetric(vertical: 48),
-          decoration: BoxDecoration(
-            color: theme.resources.subtleFillColorSecondary.withValues(
-              alpha: 0.5,
-            ),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: theme.resources.dividerStrokeColorDefault,
-              style: BorderStyle.none,
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                FluentIcons.vehicle_truck_profile_24_regular,
-                size: 32,
-                color: theme.resources.textFillColorSecondary,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Select a vehicle from the Fleet sidebar to manage specific maintenance schedules.',
-                style: GoogleFonts.outfit(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w600,
-                  color: theme.resources.textFillColorPrimary,
-                ),
-              ),
-            ],
-          ),
+        const StandardEmptyState(
+          icon: FluentIcons.vehicle_truck_profile_24_regular,
+          title: 'Vehicle Specific Schedules',
+          message:
+              'Select a vehicle from the Fleet sidebar to manage specific maintenance schedules and history.',
         ),
       ],
     );
   }
 
   Widget _buildEmptyAlertsState(FluentThemeData theme) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(vertical: 32),
-      decoration: BoxDecoration(
-        color: theme.resources.subtleFillColorSecondary.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: theme.resources.dividerStrokeColorDefault,
-          style: BorderStyle.none,
-        ),
-      ),
-      child: Column(
-        children: [
-          Icon(
-            FluentIcons.checkmark_circle_24_regular,
-            size: 32,
-            color: Colors.green,
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'All Fleet Vehicles Up To Date',
-            style: GoogleFonts.outfit(
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-              color: theme.resources.textFillColorPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'No maintenance alerts triggered.',
-            style: GoogleFonts.outfit(
-              fontSize: 12,
-              color: theme.resources.textFillColorSecondary,
-            ),
-          ),
-        ],
-      ),
+    return const StandardEmptyState(
+      icon: FluentIcons.checkmark_circle_24_regular,
+      title: 'All Fleet Vehicles Up To Date',
+      message: 'No critical maintenance alerts at this time.',
     );
   }
 
@@ -306,6 +251,30 @@ class _MaintenancePageState extends ConsumerState<MaintenancePage> {
           );
         },
       ),
+    );
+  }
+}
+
+class MaintenanceAlertsSkeleton extends StatelessWidget {
+  const MaintenanceAlertsSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SkeletonBox(width: 180, height: 24),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: 3,
+            separatorBuilder: (context, index) => const SizedBox(width: 16),
+            itemBuilder: (context, index) => const SkeletonBox(width: 280, height: 160),
+          ),
+        ),
+      ],
     );
   }
 }

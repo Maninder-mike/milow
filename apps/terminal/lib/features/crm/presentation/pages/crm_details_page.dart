@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:terminal/features/crm/domain/models/crm_entity.dart';
 import 'package:terminal/features/crm/presentation/providers/crm_providers.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 class CRMDetailsPage extends ConsumerStatefulWidget {
   final String entityId;
@@ -62,7 +63,12 @@ class _CRMDetailsPageState extends ConsumerState<CRMDetailsPage> {
         ),
       ),
       loading: () => const Center(child: ProgressBar()),
-      error: (err, stack) => Center(child: Text('Error: $err')),
+      error: (err, stack) => StandardErrorState(
+        message: 'Could not load entity details: $err',
+        onRetry: () => ref.invalidate(
+          crmEntityDetailsProvider(id: widget.entityId, type: type),
+        ),
+      ),
     );
   }
 
@@ -95,7 +101,11 @@ class _CRMDetailsPageState extends ConsumerState<CRMDetailsPage> {
     return contactsAsync.when(
       data: (contacts) {
         if (contacts.isEmpty) {
-          return const Center(child: Text('No contacts found.'));
+          return const StandardEmptyState(
+            title: 'No contacts found',
+            message: 'There are no contacts associated with this entity.',
+            icon: FluentIcons.person_board_24_regular,
+          );
         }
         return ListView.builder(
           itemCount: contacts.length,
@@ -110,7 +120,10 @@ class _CRMDetailsPageState extends ConsumerState<CRMDetailsPage> {
         );
       },
       loading: () => const Center(child: ProgressBar()),
-      error: (err, stack) => Center(child: Text('Error: $err')),
+      error: (err, stack) => StandardErrorState(
+        message: 'Could not load contacts: $err',
+        onRetry: () => ref.invalidate(crmEntityContactsProvider(entityId)),
+      ),
     );
   }
 

@@ -576,7 +576,7 @@ class _WindowsMenuBar extends StatelessWidget {
                 size: 16,
               ),
               text: const Text('Master Entry'),
-              onPressed: () {},
+              onPressed: () => context.go('/crm'),
             ),
             MenuFlyoutItem(
               leading: const Icon(
@@ -584,28 +584,28 @@ class _WindowsMenuBar extends StatelessWidget {
                 size: 16,
               ),
               text: const Text('Day to Day Entry'),
-              onPressed: () {},
+              onPressed: () => context.go('/highway-dispatch'),
             ),
             MenuFlyoutItem(
               leading: const Icon(FluentIcons.edit_24_regular, size: 16),
               text: const Text('Modify Entries'),
-              onPressed: () {},
+              onPressed: () => context.go('/highway-dispatch'),
             ),
             MenuFlyoutItem(
               leading: const Icon(FluentIcons.delete_24_regular, size: 16),
               text: const Text('Delete Entries'),
-              onPressed: () {},
+              onPressed: () => context.go('/highway-dispatch'),
             ),
             const MenuFlyoutSeparator(),
             MenuFlyoutItem(
               leading: const Icon(FluentIcons.gas_pump_24_regular, size: 16),
               text: const Text('Fuel-Tax (IFTA)'),
-              onPressed: () {},
+              onPressed: () => context.go('/analytics'),
             ),
             MenuFlyoutItem(
               leading: const Icon(FluentIcons.book_24_regular, size: 16),
               text: const Text('GL Module'),
-              onPressed: () {},
+              onPressed: () => context.go('/invoices'),
             ),
             MenuFlyoutItem(
               leading: const Icon(
@@ -613,12 +613,18 @@ class _WindowsMenuBar extends StatelessWidget {
                 size: 16,
               ),
               text: const Text('CSA/FAST Module'),
-              onPressed: () {},
+              onPressed: () => context.go('/drivers'),
             ),
             MenuFlyoutItem(
               leading: const Icon(FluentIcons.receipt_24_regular, size: 16),
               text: const Text('Master Invoice'),
-              onPressed: () {},
+              onPressed: () => context.go('/invoices'),
+            ),
+            const MenuFlyoutSeparator(),
+            MenuFlyoutItem(
+              leading: const Icon(FluentIcons.bug_24_regular, size: 16),
+              text: const Text('Test Crash'),
+              onPressed: () => throw Exception('Test Crash triggered from Tools menu'),
             ),
           ],
         ),

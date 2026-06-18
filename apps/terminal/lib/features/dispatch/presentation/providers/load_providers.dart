@@ -258,7 +258,7 @@ class IsCreatingLoad extends _$IsCreatingLoad {
 
 /// Provider to track the currently selected load for details/chat sidebar
 @riverpod
-class SelectedLoadIdNotifier extends _$SelectedLoadIdNotifier {
+class SelectedLoadId extends _$SelectedLoadId {
   @override
   String? build() => null;
 

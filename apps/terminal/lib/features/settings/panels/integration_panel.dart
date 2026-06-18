@@ -5,7 +5,8 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
-import '../providers/company_provider.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
+import 'package:terminal/features/settings/providers/company_provider.dart';
 
 class IntegrationPanel extends ConsumerStatefulWidget {
   const IntegrationPanel({super.key});
@@ -168,8 +169,11 @@ class _IntegrationPanelState extends ConsumerState<IntegrationPanel> {
               ],
             );
           },
-          loading: () => const Center(child: ProgressBar()),
-          error: (err, stack) => Center(child: Text('Error: $err')),
+          loading: () => const IntegrationSkeleton(),
+          error: (err, stack) => StandardErrorState(
+            message: 'Failed to load integration settings: $err',
+            onRetry: () => ref.invalidate(companyProvider),
+          ),
         ),
       ],
     );
@@ -199,14 +203,13 @@ class _IntegrationPanelState extends ConsumerState<IntegrationPanel> {
         children: [
           Row(
             children: [
-              Icon(
+              const Icon(
                 FluentIcons.key_24_regular,
                 size: 16,
-                color: FluentTheme.of(context).resources.textFillColorPrimary,
               ),
               const SizedBox(width: 8),
               SelectableText(
-                key, // Allow selection
+                key,
                 style: GoogleFonts.sourceCodePro(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -247,6 +250,65 @@ class _IntegrationPanelState extends ConsumerState<IntegrationPanel> {
   }
 
   Widget _buildSettingsCard(
+    BuildContext context, {
+    required List<Widget> children,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: FluentTheme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(4),
+        border: Border.all(
+          color: FluentTheme.of(context).resources.dividerStrokeColorDefault,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+}
+
+class IntegrationSkeleton extends StatelessWidget {
+  const IntegrationSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SkeletonBox(width: 100, height: 16),
+        const SizedBox(height: 12),
+        _buildSkeletonCard(
+          context,
+          children: [
+            const SkeletonBox(width: double.infinity, height: 40),
+            const SizedBox(height: 12),
+            const SkeletonBox(width: 150, height: 32),
+          ],
+        ),
+        const SizedBox(height: 32),
+        const SkeletonBox(width: 100, height: 16),
+        const SizedBox(height: 12),
+        _buildSkeletonCard(
+          context,
+          children: [
+            const SkeletonBox(width: 120, height: 14),
+            const SizedBox(height: 8),
+            const SkeletonBox(width: double.infinity, height: 36),
+            const SizedBox(height: 12),
+            const Align(
+              alignment: Alignment.centerRight,
+              child: SkeletonBox(width: 120, height: 32),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSkeletonCard(
     BuildContext context, {
     required List<Widget> children,
   }) {

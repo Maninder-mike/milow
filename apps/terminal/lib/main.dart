@@ -1,4 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
@@ -351,14 +352,14 @@ class _AdminAppState extends ConsumerState<AdminApp> {
         PlatformMenu(
           label: 'Tools',
           menus: [
-            PlatformMenuItem(label: 'Master Entry', onSelected: () {}),
-            PlatformMenuItem(label: 'Day to Day Entry', onSelected: () {}),
-            PlatformMenuItem(label: 'Modify Entries', onSelected: () {}),
-            PlatformMenuItem(label: 'Delete Entries', onSelected: () {}),
-            PlatformMenuItem(label: 'Fuel-Tax (IFTA)', onSelected: () {}),
-            PlatformMenuItem(label: 'GL Module', onSelected: () {}),
-            PlatformMenuItem(label: 'CSA/FAST Module', onSelected: () {}),
-            PlatformMenuItem(label: 'Master Invoice', onSelected: () {}),
+            PlatformMenuItem(label: 'Master Entry', onSelected: () => router.go('/crm')),
+            PlatformMenuItem(label: 'Day to Day Entry', onSelected: () => router.go('/highway-dispatch')),
+            PlatformMenuItem(label: 'Modify Entries', onSelected: () => router.go('/highway-dispatch')),
+            PlatformMenuItem(label: 'Delete Entries', onSelected: () => router.go('/highway-dispatch')),
+            PlatformMenuItem(label: 'Fuel-Tax (IFTA)', onSelected: () => router.go('/analytics')),
+            PlatformMenuItem(label: 'GL Module', onSelected: () => router.go('/invoices')),
+            PlatformMenuItem(label: 'CSA/FAST Module', onSelected: () => router.go('/drivers')),
+            PlatformMenuItem(label: 'Master Invoice', onSelected: () => router.go('/invoices')),
           ],
         ),
         PlatformMenu(
@@ -418,10 +419,11 @@ class _AdminAppState extends ConsumerState<AdminApp> {
                 );
               },
             ),
-            PlatformMenuItem(
-              label: 'Test Crash',
-              onSelected: () => FirebaseCrashlytics.instance.crash(),
-            ),
+            if (kDebugMode)
+              PlatformMenuItem(
+                label: 'Test Crash',
+                onSelected: () => FirebaseCrashlytics.instance.crash(),
+              ),
           ],
         ),
       ],

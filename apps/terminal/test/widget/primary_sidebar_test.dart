@@ -20,6 +20,7 @@ void main() {
           onSettlementsTap: () {},
           onInboxTap: () {},
           onAnalyticsTap: () {},
+          onBrokerageTap: () {},
 
           onProfileTap: () {},
           onDashboardTap: () {},

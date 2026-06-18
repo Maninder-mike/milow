@@ -3,6 +3,7 @@ import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -264,7 +265,7 @@ class _GeneralPanelState extends ConsumerState<GeneralPanel> {
                         ).resources.textFillColorSecondary,
                       ),
                     ),
-                    loading: () => const Text('Loading...'),
+                    loading: () => const SkeletonBox(width: 80, height: 14),
                     error: (_, _) => const Text('Unknown'),
                   ),
             ),

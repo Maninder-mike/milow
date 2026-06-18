@@ -3360,6 +3360,19 @@ class MockAuthRepository extends _i1.Mock implements _i12.AuthRepository {
             ),
           )
           as _i4.Future<_i7.Either<_i8.Failure, void>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, void>> sendPasswordReset(String? email) =>
+      (super.noSuchMethod(
+            Invocation.method(#sendPasswordReset, [email]),
+            returnValue: _i4.Future<_i7.Either<_i8.Failure, void>>.value(
+              _i6.dummyValue<_i7.Either<_i8.Failure, void>>(
+                this,
+                Invocation.method(#sendPasswordReset, [email]),
+              ),
+            ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, void>>);
 }
 
 /// A class which mocks [LoadRepository].
@@ -3369,6 +3382,22 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
   MockLoadRepository() {
     _i1.throwOnMissingStub(this);
   }
+
+  @override
+  _i4.Stream<int> get loadsChangeSignal =>
+      (super.noSuchMethod(
+            Invocation.getter(#loadsChangeSignal),
+            returnValue: _i4.Stream<int>.empty(),
+          )
+          as _i4.Stream<int>);
+
+  @override
+  _i4.Stream<int> get stopsChangeSignal =>
+      (super.noSuchMethod(
+            Invocation.getter(#stopsChangeSignal),
+            returnValue: _i4.Stream<int>.empty(),
+          )
+          as _i4.Stream<int>);
 
   @override
   _i4.Future<_i7.Either<_i8.Failure, List<_i3.Load>>> fetchLoads({
@@ -3541,4 +3570,81 @@ class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
             ),
           )
           as _i4.Future<_i7.Either<_i8.Failure, void>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, List<Map<String, dynamic>>>>
+  fetchPickupSuggestions() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchPickupSuggestions, []),
+            returnValue:
+                _i4.Future<
+                  _i7.Either<_i8.Failure, List<Map<String, dynamic>>>
+                >.value(
+                  _i6.dummyValue<
+                    _i7.Either<_i8.Failure, List<Map<String, dynamic>>>
+                  >(this, Invocation.method(#fetchPickupSuggestions, [])),
+                ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, List<Map<String, dynamic>>>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, List<Map<String, dynamic>>>>
+  fetchReceiverSuggestions() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchReceiverSuggestions, []),
+            returnValue:
+                _i4.Future<
+                  _i7.Either<_i8.Failure, List<Map<String, dynamic>>>
+                >.value(
+                  _i6.dummyValue<
+                    _i7.Either<_i8.Failure, List<Map<String, dynamic>>>
+                  >(this, Invocation.method(#fetchReceiverSuggestions, [])),
+                ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, List<Map<String, dynamic>>>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, List<Map<String, dynamic>>>>
+  fetchBrokerSuggestions() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchBrokerSuggestions, []),
+            returnValue:
+                _i4.Future<
+                  _i7.Either<_i8.Failure, List<Map<String, dynamic>>>
+                >.value(
+                  _i6.dummyValue<
+                    _i7.Either<_i8.Failure, List<Map<String, dynamic>>>
+                  >(this, Invocation.method(#fetchBrokerSuggestions, [])),
+                ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, List<Map<String, dynamic>>>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, void>> upsertFleetAssignments(
+    List<Map<String, dynamic>>? assignments,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#upsertFleetAssignments, [assignments]),
+            returnValue: _i4.Future<_i7.Either<_i8.Failure, void>>.value(
+              _i6.dummyValue<_i7.Either<_i8.Failure, void>>(
+                this,
+                Invocation.method(#upsertFleetAssignments, [assignments]),
+              ),
+            ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, void>>);
+
+  @override
+  _i4.Future<_i7.Either<_i8.Failure, Map<String, int>>> fetchLoadStats() =>
+      (super.noSuchMethod(
+            Invocation.method(#fetchLoadStats, []),
+            returnValue:
+                _i4.Future<_i7.Either<_i8.Failure, Map<String, int>>>.value(
+                  _i6.dummyValue<_i7.Either<_i8.Failure, Map<String, int>>>(
+                    this,
+                    Invocation.method(#fetchLoadStats, []),
+                  ),
+                ),
+          )
+          as _i4.Future<_i7.Either<_i8.Failure, Map<String, int>>>);
 }

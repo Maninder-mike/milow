@@ -75,4 +75,18 @@ class AuthRepository {
       return left(UnexpectedFailure('SignOut failed', originalError: e));
     }
   }
+
+  Future<Result<void>> sendPasswordReset(String email) async {
+    try {
+      await _client.supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'milow-terminal://reset-password',
+      );
+      return right(null);
+    } on AuthException catch (e) {
+      return left(ServerFailure(e.message));
+    } catch (e) {
+      return left(UnexpectedFailure('Password reset failed', originalError: e));
+    }
+  }
 }

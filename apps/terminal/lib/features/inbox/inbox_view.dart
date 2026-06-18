@@ -9,6 +9,7 @@ import 'package:terminal/features/inbox/data/messaging_providers.dart';
 import 'package:terminal/features/inbox/data/message_repository.dart';
 import 'package:terminal/features/inbox/presentation/widgets/announcements_view.dart';
 import 'package:terminal/features/settings/providers/company_provider.dart';
+import 'package:terminal/core/widgets/ui_hardening.dart';
 
 class InboxView extends ConsumerStatefulWidget {
   const InboxView({super.key});
@@ -27,6 +28,15 @@ class _InboxViewState extends ConsumerState<InboxView> {
     _messageController.dispose();
     _scrollController.dispose();
     super.dispose();
+  }
+
+  Widget _buildContactListSkeleton(BuildContext context) {
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, index) => const SkeletonListTile(),
+        childCount: 8,
+      ),
+    );
   }
 
   @override
@@ -258,12 +268,7 @@ class _InboxViewState extends ConsumerState<InboxView> {
                                 );
                               }, childCount: users.length),
                             ),
-                            loading: () => const SliverToBoxAdapter(
-                              child: Padding(
-                                padding: EdgeInsets.all(16.0),
-                                child: ProgressBar(),
-                              ),
-                            ),
+                            loading: () => _buildContactListSkeleton(context),
                             error: (e, _) => SliverToBoxAdapter(
                               child: Padding(
                                 padding: const EdgeInsets.all(16.0),
@@ -278,9 +283,29 @@ class _InboxViewState extends ConsumerState<InboxView> {
                 // Main Chat Area
                 Expanded(
                   child: selected.$1 == null && selected.$2 == null
-                      ? const Center(
-                          child: Text(
-                            'Select a conversation to start chatting',
+                      ? Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                FluentIcons.chat_multiple_24_regular,
+                                size: 64,
+                                color: FluentTheme.of(context)
+                                    .resources
+                                    .textFillColorSecondary
+                                    .withValues(alpha: 0.3),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Select a conversation to start chatting',
+                                style: GoogleFonts.outfit(
+                                  fontSize: 18,
+                                  color: FluentTheme.of(context)
+                                      .resources
+                                      .textFillColorSecondary,
+                                ),
+                              ),
+                            ],
                           ),
                         )
                       : Column(

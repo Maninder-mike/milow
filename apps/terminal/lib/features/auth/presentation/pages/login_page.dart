@@ -21,6 +21,7 @@ class LoginPage extends ConsumerStatefulWidget {
 class _LoginPageState extends ConsumerState<LoginPage> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _emailFocusNode = FocusNode();
 
   late AuthTheme _theme;
 
@@ -40,6 +41,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkBiometricAvailability();
       _checkPinAvailability();
+      _emailFocusNode.requestFocus();
     });
   }
 
@@ -47,6 +49,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _emailFocusNode.dispose();
     super.dispose();
   }
 
@@ -303,8 +306,13 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
             child: isLoading
-                ? ProgressRing(
-                    activeColor: buttonTextCol(_theme.primaryContentColor),
+                ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: ProgressRing(
+                      activeColor: buttonTextCol(_theme.primaryContentColor),
+                      strokeWidth: 2.5,
+                    ),
                   )
                 : Text(
                     'Send Reset Link',
@@ -466,6 +474,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         ],
         TextBox(
           controller: _emailController,
+          focusNode: _emailFocusNode,
           placeholder: 'Email',
           prefix: Padding(
             padding: const EdgeInsets.only(left: 8.0),
@@ -560,7 +569,14 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               ),
             ),
             child: isLoading
-                ? ProgressRing(activeColor: _theme.primaryContentColor)
+                ? SizedBox(
+                    height: 20,
+                    width: 20,
+                    child: ProgressRing(
+                      activeColor: _theme.primaryContentColor,
+                      strokeWidth: 2.5,
+                    ),
+                  )
                 : Text(
                     'Login with Password',
                     style: GoogleFonts.outfit(

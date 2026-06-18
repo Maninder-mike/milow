@@ -7,6 +7,7 @@ import '../providers/invoice_providers.dart';
 import '../../domain/models/invoice.dart';
 import '../utils/invoice_pdf_generator.dart';
 import '../../../settings/providers/company_provider.dart';
+import '../../../../core/widgets/ui_hardening.dart';
 
 class InvoicesPage extends ConsumerStatefulWidget {
   const InvoicesPage({super.key});
@@ -102,8 +103,14 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
                 child: invoicesAsync.when(
                   data: (invoices) =>
                       _buildInvoiceTable(invoices, theme, resources),
-                  loading: () => const Center(child: ProgressRing()),
-                  error: (err, _) => _buildErrorState(theme, err.toString()),
+                  loading: () => const TableSkeleton(
+                    columnFlex: [2, 2, 2, 3, 2, 2],
+                    showCheckbox: true,
+                  ),
+                  error: (err, _) => StandardErrorState(
+                    message: 'Error loading invoices: $err',
+                    onRetry: () => ref.invalidate(invoicesListProvider),
+                  ),
                 ),
               ),
             ),
@@ -274,7 +281,14 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
       loading: () => Container(
         height: 100,
         margin: const EdgeInsets.symmetric(horizontal: 24),
-        child: const Center(child: ProgressRing()),
+        child: Row(
+          children: List.generate(4, (index) => Expanded(
+            child: Padding(
+              padding: EdgeInsets.only(left: index == 0 ? 0 : 16),
+              child: const SkeletonBox(height: 100, borderRadius: 8),
+            ),
+          )),
+        ),
       ),
       error: (_, _) => const SizedBox.shrink(),
     );
@@ -789,66 +803,37 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
   }
 
   Widget _buildEmptyState(FluentThemeData theme) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            FluentIcons.document_24_regular,
-            size: 64,
-            color: theme.resources.textFillColorSecondary,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            _statusFilter == 'All'
-                ? 'No invoices yet'
-                : 'No $_statusFilter invoices',
-            style: theme.typography.subtitle,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create your first invoice to start billing customers.',
-            style: theme.typography.body?.copyWith(
-              color: theme.resources.textFillColorSecondary,
-            ),
-          ),
-          const SizedBox(height: 24),
-          FilledButton(
-            onPressed: () => _showInvoiceBuilder(context),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(FluentIcons.add_24_regular, size: 16),
-                SizedBox(width: 8),
-                Text('Create Invoice'),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+    if (_searchQuery.isNotEmpty) {
+      return StandardEmptyState(
+        title: 'No invoices found',
+        message: 'No results match "$_searchQuery"',
+        icon: FluentIcons.search_24_regular,
+        action: Button(
+          onPressed: () {
+            _searchController.clear();
+            setState(() => _searchQuery = '');
+          },
+          child: const Text('Clear Search'),
+        ),
+      );
+    }
 
-  Widget _buildErrorState(FluentThemeData theme, String error) {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            FluentIcons.error_circle_24_regular,
-            size: 48,
-            color: Colors.red,
-          ),
-          const SizedBox(height: 16),
-          Text('Error loading invoices', style: theme.typography.subtitle),
-          const SizedBox(height: 8),
-          Text(error, style: theme.typography.caption),
-          const SizedBox(height: 16),
-          FilledButton(
-            onPressed: () => ref.invalidate(invoicesListProvider),
-            child: const Text('Retry'),
-          ),
-        ],
+    return StandardEmptyState(
+      title: _statusFilter == 'All'
+          ? 'No invoices yet'
+          : 'No $_statusFilter invoices',
+      message: 'Create your first invoice to start billing customers.',
+      icon: FluentIcons.document_24_regular,
+      action: FilledButton(
+        onPressed: () => _showInvoiceBuilder(context),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(FluentIcons.add_24_regular, size: 16),
+            SizedBox(width: 8),
+            Text('Create Invoice'),
+          ],
+        ),
       ),
     );
   }
