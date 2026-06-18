@@ -287,12 +287,16 @@ class WeatherSection extends StatelessWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    'LOCAL WEATHER',
+                    info.cityName != null && info.cityName!.isNotEmpty
+                        ? 'WEATHER • ${info.cityName!.toUpperCase()}${info.stateName != null && info.stateName!.isNotEmpty ? ", ${info.stateName!.toUpperCase()}" : ""}'
+                        : 'LOCAL WEATHER',
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
                           color: colorScheme.primary,
                           fontWeight: FontWeight.bold,
                           letterSpacing: 1.1,
                         ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(

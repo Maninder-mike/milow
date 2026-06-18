@@ -159,6 +159,7 @@ jobs:
              git config user.email "actions@github.com"
              git add apps/driver/pubspec.yaml
              git commit -m "chore: bump version to $CURRENT_VERSION [skip ci]"
+             git pull --rebase origin beta
              git push
           fi
           

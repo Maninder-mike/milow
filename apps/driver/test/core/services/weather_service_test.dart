@@ -119,5 +119,47 @@ void main() {
 
       expect(result, isNull);
     });
+
+    group('WeatherInfo model tests', () {
+      test('WeatherInfo constructor defaults cityName and stateName to null', () {
+        final info = WeatherInfo(
+          temperature: 72.5,
+          windSpeed: 15.0,
+          weatherCode: 1,
+          description: 'Partly Cloudy',
+          isHighWindWarning: false,
+        );
+
+        expect(info.cityName, isNull);
+        expect(info.stateName, isNull);
+      });
+
+      test('WeatherInfo copyWith copies all fields including cityName and stateName', () {
+        final info = WeatherInfo(
+          temperature: 72.5,
+          windSpeed: 15.0,
+          weatherCode: 1,
+          description: 'Partly Cloudy',
+          isHighWindWarning: false,
+          cityName: 'Seattle',
+          stateName: 'WA',
+        );
+
+        final copied = info.copyWith(
+          temperature: 65.0,
+          cityName: 'Portland',
+          stateName: 'OR',
+        );
+
+        expect(copied.temperature, 65.0);
+        expect(copied.windSpeed, 15.0);
+        expect(copied.weatherCode, 1);
+        expect(copied.description, 'Partly Cloudy');
+        expect(copied.isHighWindWarning, false);
+        expect(copied.cityName, 'Portland');
+        expect(copied.stateName, 'OR');
+      });
+    });
   });
 }
+

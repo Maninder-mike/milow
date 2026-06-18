@@ -40,6 +40,7 @@ import 'package:milow/features/dashboard/presentation/widgets/record_entry_item.
 import 'package:milow/features/dashboard/presentation/widgets/weather_section.dart';
 import 'package:milow/core/services/weather_service.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:geocoding/geocoding.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -73,7 +74,7 @@ class _DashboardPageState extends State<DashboardPage>
   List<Load> _assignedLoads = [];
 
   // Profile state
-  UserProfile? _userProfile;
+  // UserProfile? _userProfile;
 
   // Notification state
   int _unreadNotificationCount = 0;
@@ -250,11 +251,29 @@ class _DashboardPageState extends State<DashboardPage>
         );
       });
       
-      final weather = await WeatherService.instance.fetchWeather(
+      var weather = await WeatherService.instance.fetchWeather(
         position.latitude,
         position.longitude,
         isImperial,
       );
+      
+      if (weather != null) {
+        try {
+          final placemarks = await placemarkFromCoordinates(
+            position.latitude,
+            position.longitude,
+          ).timeout(const Duration(seconds: 3));
+          if (placemarks.isNotEmpty) {
+            final place = placemarks.first;
+            weather = weather.copyWith(
+              cityName: place.locality,
+              stateName: place.administrativeArea,
+            );
+          }
+        } catch (e) {
+          debugPrint('Geocoding failed inside _loadWeather: $e');
+        }
+      }
       
       if (mounted) {
         setState(() {
@@ -276,9 +295,9 @@ class _DashboardPageState extends State<DashboardPage>
     final profileData = await ProfileRepository.getCachedFirst();
     if (profileData != null && mounted) {
       final profile = UserProfile.fromJson(profileData);
-      setState(() {
-        _userProfile = profile;
-      });
+      // setState(() {
+      //   _userProfile = profile;
+      // });
 
       // Initialize announcements for this company
       if (mounted) {
@@ -287,22 +306,22 @@ class _DashboardPageState extends State<DashboardPage>
     }
   }
 
-  Future<void> _updateDriverStatus(DriverStatus status) async {
-    if (_userProfile == null) return;
+  // Future<void> _updateDriverStatus(DriverStatus status) async {
+  //   if (_userProfile == null) return;
 
-    // Optimistic update
-    setState(() {
-      _userProfile = _userProfile!.copyWith(driverStatus: status);
-    });
+  //   // Optimistic update
+  //   setState(() {
+  //     _userProfile = _userProfile!.copyWith(driverStatus: status);
+  //   });
 
-    try {
-      await ProfileRepository.updateOptimistic({'driver_status': status.name});
-    } catch (e) {
-      debugPrint('Failed to update driver status: $e');
-      // Revert on error
-      await _loadProfile();
-    }
-  }
+  //   try {
+  //     await ProfileRepository.updateOptimistic({'driver_status': status.name});
+  //   } catch (e) {
+  //     debugPrint('Failed to update driver status: $e');
+  //     // Revert on error
+  //     await _loadProfile();
+  //   }
+  // }
 
   Future<void> _loadNotificationCount() async {
     await NotificationService.instance.init();
@@ -594,85 +613,85 @@ class _DashboardPageState extends State<DashboardPage>
     return 'Something went wrong. Please try again.';
   }
 
-  Widget _buildStatusToggle() {
-    final status = _userProfile?.driverStatus ?? DriverStatus.offDuty;
-    final tokens = context.tokens;
+  // Widget _buildStatusToggle() {
+  //   final status = _userProfile?.driverStatus ?? DriverStatus.offDuty;
+  //   final tokens = context.tokens;
 
-    return MenuAnchor(
-      builder: (context, controller, child) {
-        return M3SpringButton(
-          onTap: () {
-            if (controller.isOpen) {
-              controller.close();
-            } else {
-              controller.open();
-            }
-          },
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(tokens.shapeFull),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 8,
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: status.color,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: status.color.withValues(alpha: 0.5),
-                        blurRadius: 4,
-                        spreadRadius: 1,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  status.label,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.bold,
-                    fontSize: 13,
-                  ),
-                ),
-                const SizedBox(width: 4),
-                const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Colors.white,
-                  size: 16,
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-      menuChildren: DriverStatus.values.map((DriverStatus s) {
-        final isSelected = s == status;
-        return MenuItemButton(
-          onPressed: () => _updateDriverStatus(s),
-          leadingIcon: Container(
-            width: 10,
-            height: 10,
-            decoration: BoxDecoration(color: s.color, shape: BoxShape.circle),
-          ),
-          child: Text(
-            s.label,
-            style: TextStyle(
-              fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              color: isSelected ? Theme.of(context).colorScheme.primary : null,
-            ),
-          ),
-        );
-      }).toList(),
-    );
-  }
+  //   return MenuAnchor(
+  //     builder: (context, controller, child) {
+  //       return M3SpringButton(
+  //         onTap: () {
+  //           if (controller.isOpen) {
+  //             controller.close();
+  //           } else {
+  //             controller.open();
+  //           }
+  //         },
+  //         child: Container(
+  //           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+  //           decoration: BoxDecoration(
+  //             color: Colors.white.withValues(alpha: 0.15),
+  //             borderRadius: BorderRadius.circular(tokens.shapeFull),
+  //             border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+  //           ),
+  //           child: Row(
+  //             mainAxisSize: MainAxisSize.min,
+  //             children: [
+  //               Container(
+  //                 width: 8,
+  //                 height: 8,
+  //                 decoration: BoxDecoration(
+  //                   color: status.color,
+  //                   shape: BoxShape.circle,
+  //                   boxShadow: [
+  //                     BoxShadow(
+  //                       color: status.color.withValues(alpha: 0.5),
+  //                       blurRadius: 4,
+  //                       spreadRadius: 1,
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //               const SizedBox(width: 8),
+  //               Text(
+  //                 status.label,
+  //                 style: const TextStyle(
+  //                   color: Colors.white,
+  //                   fontWeight: FontWeight.bold,
+  //                   fontSize: 13,
+  //                 ),
+  //               ),
+  //               const SizedBox(width: 4),
+  //               const Icon(
+  //                 Icons.keyboard_arrow_down_rounded,
+  //                 color: Colors.white,
+  //                 size: 16,
+  //               ),
+  //             ],
+  //           ),
+  //         ),
+  //       );
+  //     },
+  //     menuChildren: DriverStatus.values.map((DriverStatus s) {
+  //       final isSelected = s == status;
+  //       return MenuItemButton(
+  //         onPressed: () => _updateDriverStatus(s),
+  //         leadingIcon: Container(
+  //           width: 10,
+  //           height: 10,
+  //           decoration: BoxDecoration(color: s.color, shape: BoxShape.circle),
+  //         ),
+  //         child: Text(
+  //           s.label,
+  //           style: TextStyle(
+  //             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+  //             color: isSelected ? Theme.of(context).colorScheme.primary : null,
+  //           ),
+  //         ),
+  //       );
+  //     }).toList(),
+  //   );
+  // }
 
   
   Widget _buildAnnouncementBanner(BuildContext context) {
@@ -937,7 +956,6 @@ class _DashboardPageState extends State<DashboardPage>
                                       ),
                                       tooltip: 'Search',
                                     ),
-                                    _buildStatusToggle(),
                                     const Spacer(),
                                     const SyncStatusIndicator(),
                                     SizedBox(width: context.tokens.spacingS),

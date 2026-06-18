@@ -7,6 +7,8 @@ class WeatherInfo {
   final int weatherCode;
   final String description;
   final bool isHighWindWarning;
+  final String? cityName;
+  final String? stateName;
 
   WeatherInfo({
     required this.temperature,
@@ -14,7 +16,29 @@ class WeatherInfo {
     required this.weatherCode,
     required this.description,
     required this.isHighWindWarning,
+    this.cityName,
+    this.stateName,
   });
+
+  WeatherInfo copyWith({
+    double? temperature,
+    double? windSpeed,
+    int? weatherCode,
+    String? description,
+    bool? isHighWindWarning,
+    String? cityName,
+    String? stateName,
+  }) {
+    return WeatherInfo(
+      temperature: temperature ?? this.temperature,
+      windSpeed: windSpeed ?? this.windSpeed,
+      weatherCode: weatherCode ?? this.weatherCode,
+      description: description ?? this.description,
+      isHighWindWarning: isHighWindWarning ?? this.isHighWindWarning,
+      cityName: cityName ?? this.cityName,
+      stateName: stateName ?? this.stateName,
+    );
+  }
 }
 
 class WeatherService {
