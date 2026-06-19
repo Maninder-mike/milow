@@ -267,7 +267,18 @@ jobs:
           msstore apps list
 
           Write-Host "Publishing to Store..."
-          msstore publish --inputDirectory artifacts --appId $env:WINDOWS_STORE_APP_ID --verbose
+          $output = msstore publish --inputDirectory artifacts --appId $env:WINDOWS_STORE_APP_ID --verbose 2>&1
+          $output | Out-String -Stream | Write-Host
+
+          if ($LASTEXITCODE -ne 0) {
+              $outputStr = $output | Out-String
+              if ($outputStr -like "*Submission Committed - Status=CommitStarted*" -or $outputStr -like "*Successfully uploaded the application package*") {
+                  Write-Host "WARNING: msstore publish exited with an error during status polling, but the package was successfully uploaded and committed. Treating this as a success."
+              } else {
+                  Write-Error "msstore publish failed"
+                  exit 1
+              }
+          }
         env:
           WINDOWS_STORE_TENANT_ID: ${{ secrets.WINDOWS_STORE_TENANT_ID }}
           WINDOWS_STORE_CLIENT_ID: ${{ secrets.WINDOWS_STORE_CLIENT_ID }}
