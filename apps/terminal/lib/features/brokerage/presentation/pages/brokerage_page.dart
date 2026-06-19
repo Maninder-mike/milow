@@ -2,9 +2,12 @@ import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:terminal/core/providers/profile_provider.dart';
 import 'package:terminal/features/brokerage/presentation/providers/brokerage_providers.dart';
 import 'package:terminal/features/brokerage/domain/models/manifest.dart';
 import 'package:terminal/features/brokerage/domain/models/partner.dart';
+import 'package:terminal/features/brokerage/presentation/widgets/partner_entry_dialog.dart';
+import 'package:terminal/features/brokerage/presentation/widgets/manifest_entry_dialog.dart';
 import '../../../../core/widgets/ui_hardening.dart';
 
 class BrokeragePage extends ConsumerStatefulWidget {
@@ -89,6 +92,113 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
     );
   }
 
+  void _openPartnerDialog({Partner? initialPartner}) {
+    final profile = ref.read(profileProvider).value;
+    final companyId = profile?['company_id'] as String?;
+
+    if (companyId == null) {
+      displayInfoBar(
+        context,
+        builder: (context, close) => const InfoBar(
+          title: Text('Error'),
+          content: Text('Company profile not loaded.'),
+          severity: InfoBarSeverity.error,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => PartnerEntryDialog(
+        companyId: companyId,
+        initialPartner: initialPartner,
+        onSave: (partner) async {
+          final notifier = ref.read(brokeragePartnersProvider.notifier);
+          if (initialPartner == null) {
+            await notifier.createPartner(partner);
+          } else {
+            await notifier.updatePartner(partner);
+          }
+        },
+      ),
+    );
+  }
+
+  void _openManifestDialog({Manifest? initialManifest}) {
+    final profile = ref.read(profileProvider).value;
+    final companyId = profile?['company_id'] as String?;
+
+    if (companyId == null) {
+      displayInfoBar(
+        context,
+        builder: (context, close) => const InfoBar(
+          title: Text('Error'),
+          content: Text('Company profile not loaded.'),
+          severity: InfoBarSeverity.error,
+        ),
+      );
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => ManifestEntryDialog(
+        companyId: companyId,
+        initialManifest: initialManifest,
+        onSave: (manifest) async {
+          final notifier = ref.read(brokerageManifestsProvider.notifier);
+          if (initialManifest == null) {
+            await notifier.createManifest(manifest);
+          } else {
+            await notifier.updateManifest(manifest);
+          }
+        },
+      ),
+    );
+  }
+
+  Future<void> _deleteSelected() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => ContentDialog(
+        title: const Text('Delete Selected Items'),
+        content: Text('Are you sure you want to delete ${_selectedIds.length} item(s)? This action cannot be undone.'),
+        actions: [
+          Button(
+            child: const Text('Cancel'),
+            onPressed: () => Navigator.pop(context, false),
+          ),
+          FilledButton(
+            style: ButtonStyle(
+              backgroundColor: WidgetStateProperty.all(Colors.red),
+            ),
+            child: const Text('Delete'),
+            onPressed: () => Navigator.pop(context, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    if (_selectedSegment == 0) {
+      final notifier = ref.read(brokerageManifestsProvider.notifier);
+      for (final id in _selectedIds.toList()) {
+        await notifier.deleteManifest(id);
+      }
+    } else {
+      final notifier = ref.read(brokeragePartnersProvider.notifier);
+      for (final id in _selectedIds.toList()) {
+        await notifier.deletePartner(id);
+      }
+    }
+
+    setState(() {
+      _selectedIds.clear();
+    });
+  }
+
   Widget _buildCommandBar(BuildContext context) {
     return CommandBar(
       primaryItems: [
@@ -96,7 +206,11 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
           icon: const Icon(FluentIcons.add_24_regular),
           label: Text(_selectedSegment == 0 ? 'New Manifest' : 'New Partner'),
           onPressed: () {
-            // Placeholder: Open dialog or navigate to form
+            if (_selectedSegment == 0) {
+              _openManifestDialog();
+            } else {
+              _openPartnerDialog();
+            }
           },
         ),
         const CommandBarSeparator(),
@@ -116,7 +230,7 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
         CommandBarButton(
           icon: const Icon(FluentIcons.delete_24_regular),
           label: const Text('Delete Selected'),
-          onPressed: _selectedIds.isEmpty ? null : () {},
+          onPressed: _selectedIds.isEmpty ? null : () => _deleteSelected(),
         ),
       ],
     );
@@ -257,7 +371,7 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
         if (filtered.isEmpty) return _buildEmptyState(theme, 'manifests');
         return Column(
           children: [
-            _buildManifestHeaderRow(theme, resources),
+            _buildManifestHeaderRow(theme, resources, filtered),
             const Divider(),
             Expanded(
               child: ListView.builder(
@@ -274,7 +388,7 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
       },
       loading: () => const TableSkeleton(
         columnFlex: [2, 3, 2, 2],
-        showCheckbox: false,
+        showCheckbox: true,
       ),
       error: (e, st) => StandardErrorState(
         message: 'Could not load manifests: $e',
@@ -283,12 +397,26 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
     );
   }
 
-  Widget _buildManifestHeaderRow(FluentThemeData theme, ResourceDictionary resources) {
+  Widget _buildManifestHeaderRow(FluentThemeData theme, ResourceDictionary resources, List<Manifest> filtered) {
+    final allSelected = filtered.isNotEmpty && filtered.every((m) => _selectedIds.contains(m.id));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: resources.subtleFillColorSecondary,
       child: Row(
         children: [
+          Checkbox(
+            checked: allSelected,
+            onChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  _selectedIds.addAll(filtered.map((m) => m.id));
+                } else {
+                  _selectedIds.removeAll(filtered.map((m) => m.id));
+                }
+              });
+            },
+          ),
+          const SizedBox(width: 16),
           Expanded(flex: 2, child: Text('Manifest #', style: theme.typography.bodyStrong)),
           Expanded(flex: 3, child: Text('Partner ID', style: theme.typography.bodyStrong)),
           Expanded(flex: 2, child: Text('Status', style: theme.typography.bodyStrong)),
@@ -308,6 +436,19 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
       ),
       child: Row(
         children: [
+          Checkbox(
+            checked: _selectedIds.contains(manifest.id),
+            onChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  _selectedIds.add(manifest.id);
+                } else {
+                  _selectedIds.remove(manifest.id);
+                }
+              });
+            },
+          ),
+          const SizedBox(width: 16),
           Expanded(flex: 2, child: Text(manifest.manifestNumber.toString())),
           Expanded(flex: 3, child: Text(manifest.partnerId)),
           Expanded(flex: 2, child: Text(manifest.status.label)),
@@ -317,7 +458,10 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(icon: const Icon(FluentIcons.edit_16_regular), onPressed: () {}),
+                IconButton(
+                  icon: const Icon(FluentIcons.edit_16_regular),
+                  onPressed: () => _openManifestDialog(initialManifest: manifest),
+                ),
               ],
             ),
           ),
@@ -334,7 +478,7 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
         if (filtered.isEmpty) return _buildEmptyState(theme, 'partners');
         return Column(
           children: [
-            _buildPartnerHeaderRow(theme, resources),
+            _buildPartnerHeaderRow(theme, resources, filtered),
             const Divider(),
             Expanded(
               child: ListView.builder(
@@ -351,7 +495,7 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
       },
       loading: () => const TableSkeleton(
         columnFlex: [3, 2, 2, 2],
-        showCheckbox: false,
+        showCheckbox: true,
       ),
       error: (e, st) => StandardErrorState(
         message: 'Could not load partners: $e',
@@ -360,12 +504,26 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
     );
   }
 
-  Widget _buildPartnerHeaderRow(FluentThemeData theme, ResourceDictionary resources) {
+  Widget _buildPartnerHeaderRow(FluentThemeData theme, ResourceDictionary resources, List<Partner> filtered) {
+    final allSelected = filtered.isNotEmpty && filtered.every((p) => _selectedIds.contains(p.id));
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       color: resources.subtleFillColorSecondary,
       child: Row(
         children: [
+          Checkbox(
+            checked: allSelected,
+            onChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  _selectedIds.addAll(filtered.map((p) => p.id));
+                } else {
+                  _selectedIds.removeAll(filtered.map((p) => p.id));
+                }
+              });
+            },
+          ),
+          const SizedBox(width: 16),
           Expanded(flex: 3, child: Text('Partner Name', style: theme.typography.bodyStrong)),
           Expanded(flex: 2, child: Text('MC/DOT', style: theme.typography.bodyStrong)),
           Expanded(flex: 2, child: Text('Status', style: theme.typography.bodyStrong)),
@@ -385,6 +543,19 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
       ),
       child: Row(
         children: [
+          Checkbox(
+            checked: _selectedIds.contains(partner.id),
+            onChanged: (val) {
+              setState(() {
+                if (val == true) {
+                  _selectedIds.add(partner.id);
+                } else {
+                  _selectedIds.remove(partner.id);
+                }
+              });
+            },
+          ),
+          const SizedBox(width: 16),
           Expanded(flex: 3, child: Text(partner.name)),
           Expanded(flex: 2, child: Text('${partner.mcNumber ?? '-'} / ${partner.dotNumber ?? '-'}')),
           Expanded(flex: 2, child: Text(partner.status.label)),
@@ -394,7 +565,10 @@ class _BrokeragePageState extends ConsumerState<BrokeragePage> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(icon: const Icon(FluentIcons.edit_16_regular), onPressed: () {}),
+                IconButton(
+                  icon: const Icon(FluentIcons.edit_16_regular),
+                  onPressed: () => _openPartnerDialog(initialPartner: partner),
+                ),
               ],
             ),
           ),

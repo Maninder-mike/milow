@@ -869,6 +869,8 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
   Future<void> _bulkSend() async {
     if (_selectedIds.isEmpty) return;
 
+    final count = _selectedIds.length;
+
     for (final id in _selectedIds) {
       await ref
           .read(invoiceControllerProvider.notifier)
@@ -881,7 +883,7 @@ class _InvoicesPageState extends ConsumerState<InvoicesPage> {
       displayInfoBar(
         context,
         builder: (context, close) => InfoBar(
-          title: Text('${_selectedIds.length} invoice(s) sent'),
+          title: Text('$count invoice(s) sent'),
           severity: InfoBarSeverity.success,
         ),
       );
