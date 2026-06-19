@@ -11,3 +11,6 @@ workspace:
   - packages/core
 dev_dependencies:
   very_good_analysis: ^10.0.0
+
+dependency_overrides:
+  connectivity_plus: 7.0.0

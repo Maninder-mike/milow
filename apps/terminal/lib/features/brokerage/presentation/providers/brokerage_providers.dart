@@ -15,30 +15,15 @@ BrokerageRepository brokerageRepository(Ref ref) {
 }
 
 @riverpod
-Future<List<Partner>> brokeragePartners(Ref ref) async {
-  final repo = ref.watch(brokerageRepositoryProvider);
-  final result = await repo.fetchPartners();
-  return result.fold(
-    (failure) => throw failure,
-    (partners) => partners,
-  );
-}
-
-@riverpod
-Future<List<Manifest>> brokerageManifests(Ref ref) async {
-  final repo = ref.watch(brokerageRepositoryProvider);
-  final result = await repo.fetchManifests();
-  return result.fold(
-    (failure) => throw failure,
-    (manifests) => manifests,
-  );
-}
-
-@riverpod
-class BrokerageManifestsNotifier extends _$BrokerageManifestsNotifier {
+class BrokerageManifests extends _$BrokerageManifests {
   @override
   FutureOr<List<Manifest>> build() async {
-    return ref.watch(brokerageManifestsProvider.future);
+    final repo = ref.watch(brokerageRepositoryProvider);
+    final result = await repo.fetchManifests();
+    return result.fold(
+      (failure) => throw failure,
+      (manifests) => manifests,
+    );
   }
 
   Future<void> createManifest(Manifest manifest) async {
@@ -47,7 +32,7 @@ class BrokerageManifestsNotifier extends _$BrokerageManifestsNotifier {
     final result = await repo.createManifest(manifest);
     result.fold(
       (failure) => state = AsyncError(failure, StackTrace.current),
-      (_) => ref.invalidate(brokerageManifestsProvider),
+      (_) => ref.invalidateSelf(),
     );
   }
 
@@ -57,7 +42,7 @@ class BrokerageManifestsNotifier extends _$BrokerageManifestsNotifier {
     final result = await repo.updateManifest(manifest);
     result.fold(
       (failure) => state = AsyncError(failure, StackTrace.current),
-      (_) => ref.invalidate(brokerageManifestsProvider),
+      (_) => ref.invalidateSelf(),
     );
   }
 
@@ -67,16 +52,21 @@ class BrokerageManifestsNotifier extends _$BrokerageManifestsNotifier {
     final result = await repo.deleteManifest(id);
     result.fold(
       (failure) => state = AsyncError(failure, StackTrace.current),
-      (_) => ref.invalidate(brokerageManifestsProvider),
+      (_) => ref.invalidateSelf(),
     );
   }
 }
 
 @riverpod
-class BrokeragePartnersNotifier extends _$BrokeragePartnersNotifier {
+class BrokeragePartners extends _$BrokeragePartners {
   @override
   FutureOr<List<Partner>> build() async {
-    return ref.watch(brokeragePartnersProvider.future);
+    final repo = ref.watch(brokerageRepositoryProvider);
+    final result = await repo.fetchPartners();
+    return result.fold(
+      (failure) => throw failure,
+      (partners) => partners,
+    );
   }
 
   Future<void> createPartner(Partner partner) async {
@@ -85,7 +75,7 @@ class BrokeragePartnersNotifier extends _$BrokeragePartnersNotifier {
     final result = await repo.createPartner(partner);
     result.fold(
       (failure) => state = AsyncError(failure, StackTrace.current),
-      (_) => ref.invalidate(brokeragePartnersProvider),
+      (_) => ref.invalidateSelf(),
     );
   }
 
@@ -95,7 +85,7 @@ class BrokeragePartnersNotifier extends _$BrokeragePartnersNotifier {
     final result = await repo.updatePartner(partner);
     result.fold(
       (failure) => state = AsyncError(failure, StackTrace.current),
-      (_) => ref.invalidate(brokeragePartnersProvider),
+      (_) => ref.invalidateSelf(),
     );
   }
 
@@ -105,7 +95,7 @@ class BrokeragePartnersNotifier extends _$BrokeragePartnersNotifier {
     final result = await repo.deletePartner(id);
     result.fold(
       (failure) => state = AsyncError(failure, StackTrace.current),
-      (_) => ref.invalidate(brokeragePartnersProvider),
+      (_) => ref.invalidateSelf(),
     );
   }
 }
