@@ -28,7 +28,7 @@ jobs:
         working-directory: apps/terminal
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -92,7 +92,7 @@ jobs:
       version_number: ${{ steps.version.outputs.version_number }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -184,7 +184,7 @@ jobs:
           cp build/windows/x64/runner/Release/*.msix staging/
 
       - name: Upload MSIX Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: milow-terminal-msix
           path: apps/terminal/staging/*
@@ -202,12 +202,12 @@ jobs:
         working-directory: apps/terminal
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: milow-terminal-msix
           path: apps/terminal/artifacts
@@ -273,7 +273,7 @@ jobs:
 
       # 🚀 GitHub Release
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:

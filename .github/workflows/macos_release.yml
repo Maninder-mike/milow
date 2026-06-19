@@ -19,7 +19,7 @@ jobs:
       run:
         working-directory: ./apps/terminal
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
 
@@ -72,7 +72,7 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       version_number: ${{ steps.version.outputs.version_number }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
@@ -155,7 +155,7 @@ jobs:
           zip -r "MilowTerminal-${{ steps.version.outputs.version }}-macos.zip" "Milow Terminal.app"
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: macos-release-build
           path: apps/terminal/build/macos/Build/Products/Release/MilowTerminal-${{ steps.version.outputs.version }}-macos.zip
@@ -170,16 +170,16 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       
       - name: Download Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: macos-release-build
           path: artifacts
 
       - name: Create Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v3
         with:
           name: Milow Terminal ${{ needs.build_macos.outputs.version }}
           tag_name: ${{ needs.build_macos.outputs.version }}
