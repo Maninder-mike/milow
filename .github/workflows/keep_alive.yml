@@ -1,0 +1,33 @@
+name: Supabase Keep Alive
+
+on:
+  schedule:
+    # Run every 3 days at 06:00 UTC to prevent project pausing
+    - cron: '0 6 */3 * *'
+  workflow_dispatch: # Allow manual trigger from the Actions tab
+
+jobs:
+  ping:
+    name: ⚡ Ping Supabase
+    runs-on: ubuntu-latest
+    steps:
+      - name: Make API Request
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          # Use secret URL if available, otherwise fallback to the default project URL
+          URL="${SUPABASE_URL:-https://vpvthgagvmjegdjcvlzp.supabase.co}"
+          
+          if [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "Warning: SUPABASE_ANON_KEY secret is not set. Making public health check request."
+            # Call the public auth health check endpoint (does not require auth key)
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" "$URL/auth/v1/health")
+            echo "Response code: $RESPONSE"
+          else
+            echo "Making authenticated query to Supabase REST API..."
+            RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$URL/rest/v1/" \
+              -H "apikey: $SUPABASE_ANON_KEY" \
+              -H "Authorization: Bearer $SUPABASE_ANON_KEY")
+            echo "Response code: $RESPONSE"
+          fi
