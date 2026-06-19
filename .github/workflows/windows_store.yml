@@ -127,10 +127,14 @@ jobs:
           git pull --rebase origin beta
           git push
           
+          # Extract major and minor from BASE_VERSION, format as major.minor.build.0
+          MAJOR_MINOR=$(echo $BASE_VERSION | cut -d. -f1,2)
+          MSIX_VERSION="${MAJOR_MINOR}.${NEW_BUILD_NUMBER}.0"
+          
           # Output for subsequent steps
-          # msix uses x.y.z.w format usually, but updating pubspec handles it
           echo "version=v$NEW_FULL_VERSION" >> $GITHUB_OUTPUT
           echo "version_number=$NEW_FULL_VERSION" >> $GITHUB_OUTPUT
+          echo "msix_version=$MSIX_VERSION" >> $GITHUB_OUTPUT
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
@@ -173,7 +177,7 @@ jobs:
         run: flutter build windows --release
 
       - name: Create MSIX
-        run: dart run msix:create
+        run: dart run msix:create --version=${{ steps.version.outputs.msix_version }}
         env:
           temp: true
 
