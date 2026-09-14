@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import '../../domain/models/driver_performance.dart';
+import 'package:terminal/features/analytics/domain/models/driver_performance.dart';
 
 class DriverPerformanceTable extends StatelessWidget {
   final List<DriverPerformance> data;

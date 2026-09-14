@@ -435,6 +435,7 @@ class _IncidentReportPageState extends State<IncidentReportPage> {
                       child: Image.file(
                         File(path),
                         fit: BoxFit.cover,
+                        cacheWidth: 400,
                       ),
                     ),
                   ),

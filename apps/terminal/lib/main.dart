@@ -69,8 +69,10 @@ Future<void> main() async {
           // Fetch and activate (fire and forget to not block startup too long)
           unawaited(remoteConfig.fetchAndActivate());
 
-          // Performance Monitoring
-          FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+          // Performance Monitoring (Mobile platforms only)
+          if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+            FirebasePerformance.instance.setPerformanceCollectionEnabled(true);
+          }
         } catch (e) {
           AppLogger.warning(
             'Firebase Remote Config/Performance init failed',
@@ -102,7 +104,10 @@ Future<void> main() async {
           return;
         }
 
-        await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+        await Supabase.initialize(
+          url: supabaseUrl,
+          publishableKey: supabaseAnonKey,
+        );
 
         // Initialize AppLogger with context
         AppLogger.initialize(appVersion: '0.0.3+27');

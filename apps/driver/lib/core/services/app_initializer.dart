@@ -118,7 +118,7 @@ class AppInitializer {
       await Future.wait([
         Supabase.initialize(
           url: SupabaseConstants.supabaseUrl,
-          anonKey: SupabaseConstants.supabaseAnonKey,
+          publishableKey: SupabaseConstants.supabaseAnonKey,
           authOptions: FlutterAuthClientOptions(
             authFlowType: AuthFlowType.pkce,
             localStorage: SecureLocalStorage(),

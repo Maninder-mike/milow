@@ -1,5 +1,5 @@
 import 'package:milow_core/milow_core.dart';
-import '../../domain/models/invoice.dart';
+import 'package:terminal/features/billing/domain/models/invoice.dart';
 
 class InvoiceRepository {
   final CoreNetworkClient _client;

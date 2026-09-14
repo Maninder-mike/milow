@@ -3,9 +3,9 @@
 // Do not manually edit this file.
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
+
 import 'dart:async' as _i4;
-import 'dart:io' as _i10;
-import 'dart:typed_data' as _i11;
+import 'dart:typed_data' as _i10;
 
 import 'package:fpdart/fpdart.dart' as _i7;
 import 'package:milow_core/milow_core.dart' as _i3;
@@ -14,10 +14,10 @@ import 'package:mockito/mockito.dart' as _i1;
 import 'package:mockito/src/dummies.dart' as _i6;
 import 'package:storage_client/src/fetch.dart' as _i5;
 import 'package:supabase/supabase.dart' as _i2;
-import 'package:terminal/features/auth/data/auth_repository.dart' as _i12;
+import 'package:terminal/features/auth/data/auth_repository.dart' as _i11;
 import 'package:terminal/features/auth/services/biometric_service.dart' as _i9;
 import 'package:terminal/features/dispatch/data/repositories/load_repository.dart'
-    as _i13;
+    as _i12;
 
 // ignore_for_file: type=lint
 // ignore_for_file: avoid_redundant_argument_values
@@ -110,120 +110,156 @@ class _FakeGoTrueMFAApi_12 extends _i1.SmartFake implements _i2.GoTrueMFAApi {
     : super(parent, parentInvocation);
 }
 
-class _FakeAuthResponse_13 extends _i1.SmartFake implements _i2.AuthResponse {
-  _FakeAuthResponse_13(Object parent, Invocation parentInvocation)
+class _FakeGoTrueOAuthApi_13 extends _i1.SmartFake
+    implements _i2.GoTrueOAuthApi {
+  _FakeGoTrueOAuthApi_13(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeOAuthResponse_14 extends _i1.SmartFake implements _i2.OAuthResponse {
-  _FakeOAuthResponse_14(Object parent, Invocation parentInvocation)
+class _FakeGoTruePasskeyApi_14 extends _i1.SmartFake
+    implements _i2.GoTruePasskeyApi {
+  _FakeGoTruePasskeyApi_14(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeAuthSessionUrlResponse_15 extends _i1.SmartFake
+class _FakeAuthResponse_15 extends _i1.SmartFake implements _i2.AuthResponse {
+  _FakeAuthResponse_15(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeOAuthResponse_16 extends _i1.SmartFake implements _i2.OAuthResponse {
+  _FakeOAuthResponse_16(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeAuthSessionUrlResponse_17 extends _i1.SmartFake
     implements _i2.AuthSessionUrlResponse {
-  _FakeAuthSessionUrlResponse_15(Object parent, Invocation parentInvocation)
+  _FakeAuthSessionUrlResponse_17(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeResendResponse_16 extends _i1.SmartFake
+class _FakeResendResponse_18 extends _i1.SmartFake
     implements _i2.ResendResponse {
-  _FakeResendResponse_16(Object parent, Invocation parentInvocation)
+  _FakeResendResponse_18(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeUserResponse_17 extends _i1.SmartFake implements _i2.UserResponse {
-  _FakeUserResponse_17(Object parent, Invocation parentInvocation)
+class _FakeUserResponse_19 extends _i1.SmartFake implements _i2.UserResponse {
+  _FakeUserResponse_19(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeObject_18 extends _i1.SmartFake implements Object {
-  _FakeObject_18(Object parent, Invocation parentInvocation)
+class _FakeObject_20 extends _i1.SmartFake implements Object {
+  _FakeObject_20(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeGetClaimsResponse_19 extends _i1.SmartFake
+class _FakeGetClaimsResponse_21 extends _i1.SmartFake
     implements _i2.GetClaimsResponse {
-  _FakeGetClaimsResponse_19(Object parent, Invocation parentInvocation)
+  _FakeGetClaimsResponse_21(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeUser_20 extends _i1.SmartFake implements _i2.User {
-  _FakeUser_20(Object parent, Invocation parentInvocation)
+class _FakeUser_22 extends _i1.SmartFake implements _i2.User {
+  _FakeUser_22(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeSession_21 extends _i1.SmartFake implements _i2.Session {
-  _FakeSession_21(Object parent, Invocation parentInvocation)
+class _FakeSession_23 extends _i1.SmartFake implements _i2.Session {
+  _FakeSession_23(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeSupabaseStreamFilterBuilder_22 extends _i1.SmartFake
+class _FakeSupabaseStreamFilterBuilder_24 extends _i1.SmartFake
     implements _i2.SupabaseStreamFilterBuilder {
-  _FakeSupabaseStreamFilterBuilder_22(
+  _FakeSupabaseStreamFilterBuilder_24(
     Object parent,
     Invocation parentInvocation,
   ) : super(parent, parentInvocation);
 }
 
-class _FakePostgrestQueryBuilder_23<T> extends _i1.SmartFake
+class _FakePostgrestQueryBuilder_25<T> extends _i1.SmartFake
     implements _i2.PostgrestQueryBuilder<T> {
-  _FakePostgrestQueryBuilder_23(Object parent, Invocation parentInvocation)
+  _FakePostgrestQueryBuilder_25(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakePostgrestBuilder_24<T, S, R> extends _i1.SmartFake
+class _FakePostgrestBuilder_26<T, S, R> extends _i1.SmartFake
     implements _i2.PostgrestBuilder<T, S, R> {
-  _FakePostgrestBuilder_24(Object parent, Invocation parentInvocation)
+  _FakePostgrestBuilder_26(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeUri_25 extends _i1.SmartFake implements Uri {
-  _FakeUri_25(Object parent, Invocation parentInvocation)
+class _FakeUri_27 extends _i1.SmartFake implements Uri {
+  _FakeUri_27(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeFuture_26<T> extends _i1.SmartFake implements _i4.Future<T> {
-  _FakeFuture_26(Object parent, Invocation parentInvocation)
+class _FakeFuture_28<T> extends _i1.SmartFake implements _i4.Future<T> {
+  _FakeFuture_28(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakePostgrestTransformBuilder_27<T1> extends _i1.SmartFake
+class _FakePostgrestTransformBuilder_29<T1> extends _i1.SmartFake
     implements _i2.PostgrestTransformBuilder<T1> {
-  _FakePostgrestTransformBuilder_27(Object parent, Invocation parentInvocation)
+  _FakePostgrestTransformBuilder_29(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeResponsePostgrestBuilder_28<T1, S, R> extends _i1.SmartFake
+class _FakeResponsePostgrestBuilder_30<T1, S, R> extends _i1.SmartFake
     implements _i2.ResponsePostgrestBuilder<T1, S, R> {
-  _FakeResponsePostgrestBuilder_28(Object parent, Invocation parentInvocation)
+  _FakeResponsePostgrestBuilder_30(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeFetch_29 extends _i1.SmartFake implements _i5.Fetch {
-  _FakeFetch_29(Object parent, Invocation parentInvocation)
+class _FakeSupabaseVectorsClient_31 extends _i1.SmartFake
+    implements _i2.SupabaseVectorsClient {
+  _FakeSupabaseVectorsClient_31(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeStorageFileApi_30 extends _i1.SmartFake
+class _FakeFetch_32 extends _i1.SmartFake implements _i5.Fetch {
+  _FakeFetch_32(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeStorageFileApi_33 extends _i1.SmartFake
     implements _i2.StorageFileApi {
-  _FakeStorageFileApi_30(Object parent, Invocation parentInvocation)
+  _FakeStorageFileApi_33(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeBucket_31 extends _i1.SmartFake implements _i2.Bucket {
-  _FakeBucket_31(Object parent, Invocation parentInvocation)
+class _FakeIcebergRestCatalog_34 extends _i1.SmartFake
+    implements _i2.IcebergRestCatalog {
+  _FakeIcebergRestCatalog_34(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeSignedUploadURLResponse_32 extends _i1.SmartFake
+class _FakeBucket_35 extends _i1.SmartFake implements _i2.Bucket {
+  _FakeBucket_35(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeAnalyticsBucket_36 extends _i1.SmartFake
+    implements _i2.AnalyticsBucket {
+  _FakeAnalyticsBucket_36(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakeSignedUploadURLResponse_37 extends _i1.SmartFake
     implements _i2.SignedUploadURLResponse {
-  _FakeSignedUploadURLResponse_32(Object parent, Invocation parentInvocation)
+  _FakeSignedUploadURLResponse_37(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
-class _FakeFileObjectV2_33 extends _i1.SmartFake implements _i2.FileObjectV2 {
-  _FakeFileObjectV2_33(Object parent, Invocation parentInvocation)
+class _FakeFileObjectV2_38 extends _i1.SmartFake implements _i2.FileObjectV2 {
+  _FakeFileObjectV2_38(Object parent, Invocation parentInvocation)
+    : super(parent, parentInvocation);
+}
+
+class _FakePaginatedListResult_39 extends _i1.SmartFake
+    implements _i2.PaginatedListResult {
+  _FakePaginatedListResult_39(Object parent, Invocation parentInvocation)
     : super(parent, parentInvocation);
 }
 
@@ -317,8 +353,8 @@ class MockSupabaseClient extends _i1.Mock implements _i2.SupabaseClient {
   );
 
   @override
-  set headers(Map<String, String>? headers) => super.noSuchMethod(
-    Invocation.setter(#headers, headers),
+  set headers(Map<String, String>? newHeaders) => super.noSuchMethod(
+    Invocation.setter(#headers, newHeaders),
     returnValueForMissingStub: null,
   );
 
@@ -527,6 +563,28 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
           as _i2.GoTrueMFAApi);
 
   @override
+  _i2.GoTrueOAuthApi get oauth =>
+      (super.noSuchMethod(
+            Invocation.getter(#oauth),
+            returnValue: _FakeGoTrueOAuthApi_13(
+              this,
+              Invocation.getter(#oauth),
+            ),
+          )
+          as _i2.GoTrueOAuthApi);
+
+  @override
+  _i2.GoTruePasskeyApi get passkey =>
+      (super.noSuchMethod(
+            Invocation.getter(#passkey),
+            returnValue: _FakeGoTruePasskeyApi_14(
+              this,
+              Invocation.getter(#passkey),
+            ),
+          )
+          as _i2.GoTruePasskeyApi);
+
+  @override
   _i4.Stream<_i2.AuthState> get onAuthStateChange =>
       (super.noSuchMethod(
             Invocation.getter(#onAuthStateChange),
@@ -563,6 +621,26 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
   );
 
   @override
+  set oauth(_i2.GoTrueOAuthApi? value) => super.noSuchMethod(
+    Invocation.setter(#oauth, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  set passkey(_i2.GoTruePasskeyApi? value) => super.noSuchMethod(
+    Invocation.setter(#passkey, value),
+    returnValueForMissingStub: null,
+  );
+
+  @override
+  _i4.Future<_i2.Session?> getSession() =>
+      (super.noSuchMethod(
+            Invocation.method(#getSession, []),
+            returnValue: _i4.Future<_i2.Session?>.value(),
+          )
+          as _i4.Future<_i2.Session?>);
+
+  @override
   _i4.Future<_i2.AuthResponse> signInAnonymously({
     Map<String, dynamic>? data,
     String? captchaToken,
@@ -573,7 +651,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #captchaToken: captchaToken,
             }),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#signInAnonymously, [], {
                   #data: data,
@@ -605,7 +683,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #channel: channel,
             }),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#signUp, [], {
                   #email: email,
@@ -636,7 +714,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #captchaToken: captchaToken,
             }),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#signInWithPassword, [], {
                   #email: email,
@@ -664,7 +742,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #queryParams: queryParams,
             }),
             returnValue: _i4.Future<_i2.OAuthResponse>.value(
-              _FakeOAuthResponse_14(
+              _FakeOAuthResponse_16(
                 this,
                 Invocation.method(#getOAuthSignInUrl, [], {
                   #provider: provider,
@@ -684,7 +762,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
       (super.noSuchMethod(
             Invocation.method(#exchangeCodeForSession, [authCode]),
             returnValue: _i4.Future<_i2.AuthSessionUrlResponse>.value(
-              _FakeAuthSessionUrlResponse_15(
+              _FakeAuthSessionUrlResponse_17(
                 this,
                 Invocation.method(#exchangeCodeForSession, [authCode]),
               ),
@@ -709,13 +787,41 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #captchaToken: captchaToken,
             }),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#signInWithIdToken, [], {
                   #provider: provider,
                   #idToken: idToken,
                   #accessToken: accessToken,
                   #nonce: nonce,
+                  #captchaToken: captchaToken,
+                }),
+              ),
+            ),
+          )
+          as _i4.Future<_i2.AuthResponse>);
+
+  @override
+  _i4.Future<_i2.AuthResponse> signInWithWeb3({
+    required _i2.Web3Chain? chain,
+    required String? message,
+    required String? signature,
+    String? captchaToken,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#signInWithWeb3, [], {
+              #chain: chain,
+              #message: message,
+              #signature: signature,
+              #captchaToken: captchaToken,
+            }),
+            returnValue: _i4.Future<_i2.AuthResponse>.value(
+              _FakeAuthResponse_15(
+                this,
+                Invocation.method(#signInWithWeb3, [], {
+                  #chain: chain,
+                  #message: message,
+                  #signature: signature,
                   #captchaToken: captchaToken,
                 }),
               ),
@@ -769,7 +875,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #tokenHash: tokenHash,
             }),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#verifyOTP, [], {
                   #email: email,
@@ -818,7 +924,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
       (super.noSuchMethod(
             Invocation.method(#refreshSession, [refreshToken]),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#refreshSession, [refreshToken]),
               ),
@@ -852,7 +958,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #captchaToken: captchaToken,
             }),
             returnValue: _i4.Future<_i2.ResendResponse>.value(
-              _FakeResendResponse_16(
+              _FakeResendResponse_18(
                 this,
                 Invocation.method(#resend, [], {
                   #email: email,
@@ -871,7 +977,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
       (super.noSuchMethod(
             Invocation.method(#getUser, [jwt]),
             returnValue: _i4.Future<_i2.UserResponse>.value(
-              _FakeUserResponse_17(this, Invocation.method(#getUser, [jwt])),
+              _FakeUserResponse_19(this, Invocation.method(#getUser, [jwt])),
             ),
           )
           as _i4.Future<_i2.UserResponse>);
@@ -888,7 +994,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               {#emailRedirectTo: emailRedirectTo},
             ),
             returnValue: _i4.Future<_i2.UserResponse>.value(
-              _FakeUserResponse_17(
+              _FakeUserResponse_19(
                 this,
                 Invocation.method(
                   #updateUser,
@@ -912,7 +1018,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               {#accessToken: accessToken},
             ),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(
                   #setSession,
@@ -936,7 +1042,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               {#storeSession: storeSession},
             ),
             returnValue: _i4.Future<_i2.AuthSessionUrlResponse>.value(
-              _FakeAuthSessionUrlResponse_15(
+              _FakeAuthSessionUrlResponse_17(
                 this,
                 Invocation.method(
                   #getSessionFromUrl,
@@ -1003,7 +1109,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               #captchaToken: captchaToken,
             }),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#linkIdentityWithIdToken, [], {
                   #provider: provider,
@@ -1035,7 +1141,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
               },
             ),
             returnValue: _i4.Future<_i2.OAuthResponse>.value(
-              _FakeOAuthResponse_14(
+              _FakeOAuthResponse_16(
                 this,
                 Invocation.method(
                   #getLinkIdentityUrl,
@@ -1074,7 +1180,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
       (super.noSuchMethod(
             Invocation.method(#recoverSession, [jsonStr]),
             returnValue: _i4.Future<_i2.AuthResponse>.value(
-              _FakeAuthResponse_13(
+              _FakeAuthResponse_15(
                 this,
                 Invocation.method(#recoverSession, [jsonStr]),
               ),
@@ -1105,11 +1211,12 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
     _i2.AuthChangeEvent? event, {
     _i2.Session? session,
     bool? broadcast = true,
+    _i2.SignOutReason? signOutReason,
   }) => super.noSuchMethod(
     Invocation.method(
       #notifyAllSubscribers,
       [event],
-      {#session: session, #broadcast: broadcast},
+      {#session: session, #broadcast: broadcast, #signOutReason: signOutReason},
     ),
     returnValueForMissingStub: null,
   );
@@ -1118,7 +1225,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
   Object notifyException(Object? exception, [StackTrace? stackTrace]) =>
       (super.noSuchMethod(
             Invocation.method(#notifyException, [exception, stackTrace]),
-            returnValue: _FakeObject_18(
+            returnValue: _FakeObject_20(
               this,
               Invocation.method(#notifyException, [exception, stackTrace]),
             ),
@@ -1133,7 +1240,7 @@ class MockGoTrueClient extends _i1.Mock implements _i2.GoTrueClient {
       (super.noSuchMethod(
             Invocation.method(#getClaims, [jwt, options]),
             returnValue: _i4.Future<_i2.GetClaimsResponse>.value(
-              _FakeGetClaimsResponse_19(
+              _FakeGetClaimsResponse_21(
                 this,
                 Invocation.method(#getClaims, [jwt, options]),
               ),
@@ -1176,13 +1283,21 @@ class MockSession extends _i1.Mock implements _i2.Session {
   _i2.User get user =>
       (super.noSuchMethod(
             Invocation.getter(#user),
-            returnValue: _FakeUser_20(this, Invocation.getter(#user)),
+            returnValue: _FakeUser_22(this, Invocation.getter(#user)),
           )
           as _i2.User);
 
   @override
   bool get isExpired =>
       (super.noSuchMethod(Invocation.getter(#isExpired), returnValue: false)
+          as bool);
+
+  @override
+  bool get isExpiredWithoutMargin =>
+      (super.noSuchMethod(
+            Invocation.getter(#isExpiredWithoutMargin),
+            returnValue: false,
+          )
           as bool);
 
   @override
@@ -1219,7 +1334,7 @@ class MockSession extends _i1.Mock implements _i2.Session {
               #providerRefreshToken: providerRefreshToken,
               #user: user,
             }),
-            returnValue: _FakeSession_21(
+            returnValue: _FakeSession_23(
               this,
               Invocation.method(#copyWith, [], {
                 #accessToken: accessToken,
@@ -1302,12 +1417,21 @@ class MockSupabaseQueryBuilder extends _i1.Mock
   }
 
   @override
-  _i2.SupabaseStreamFilterBuilder stream({required List<String>? primaryKey}) =>
+  _i2.SupabaseStreamFilterBuilder stream({
+    required List<String>? primaryKey,
+    bool? private = false,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#stream, [], {#primaryKey: primaryKey}),
-            returnValue: _FakeSupabaseStreamFilterBuilder_22(
+            Invocation.method(#stream, [], {
+              #primaryKey: primaryKey,
+              #private: private,
+            }),
+            returnValue: _FakeSupabaseStreamFilterBuilder_24(
               this,
-              Invocation.method(#stream, [], {#primaryKey: primaryKey}),
+              Invocation.method(#stream, [], {
+                #primaryKey: primaryKey,
+                #private: private,
+              }),
             ),
           )
           as _i2.SupabaseStreamFilterBuilder);
@@ -1416,12 +1540,24 @@ class MockSupabaseQueryBuilder extends _i1.Mock
           as _i2.PostgrestFilterBuilder<int>);
 
   @override
-  _i2.PostgrestQueryBuilder<dynamic> retry({required bool? enabled}) =>
+  _i2.PostgrestQueryBuilder<dynamic> retry({
+    bool? enabled = true,
+    int? count,
+    Duration? requestTimeout,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#retry, [], {#enabled: enabled}),
-            returnValue: _FakePostgrestQueryBuilder_23<dynamic>(
+            Invocation.method(#retry, [], {
+              #enabled: enabled,
+              #count: count,
+              #requestTimeout: requestTimeout,
+            }),
+            returnValue: _FakePostgrestQueryBuilder_25<dynamic>(
               this,
-              Invocation.method(#retry, [], {#enabled: enabled}),
+              Invocation.method(#retry, [], {
+                #enabled: enabled,
+                #count: count,
+                #requestTimeout: requestTimeout,
+              }),
             ),
           )
           as _i2.PostgrestQueryBuilder<dynamic>);
@@ -1430,7 +1566,7 @@ class MockSupabaseQueryBuilder extends _i1.Mock
   _i2.PostgrestQueryBuilder<dynamic> setHeader(String? key, String? value) =>
       (super.noSuchMethod(
             Invocation.method(#setHeader, [key, value]),
-            returnValue: _FakePostgrestQueryBuilder_23<dynamic>(
+            returnValue: _FakePostgrestQueryBuilder_25<dynamic>(
               this,
               Invocation.method(#setHeader, [key, value]),
             ),
@@ -1443,7 +1579,7 @@ class MockSupabaseQueryBuilder extends _i1.Mock
   ) =>
       (super.noSuchMethod(
             Invocation.method(#withConverter, [converter]),
-            returnValue: _FakePostgrestBuilder_24<U, U, dynamic>(
+            returnValue: _FakePostgrestBuilder_26<U, U, dynamic>(
               this,
               Invocation.method(#withConverter, [converter]),
             ),
@@ -1451,10 +1587,23 @@ class MockSupabaseQueryBuilder extends _i1.Mock
           as _i2.PostgrestBuilder<U, U, dynamic>);
 
   @override
+  _i2.PostgrestBuilder<dynamic, dynamic, dynamic> abortSignal(
+    _i4.Future<void>? abortSignal,
+  ) =>
+      (super.noSuchMethod(
+            Invocation.method(#abortSignal, [abortSignal]),
+            returnValue: _FakePostgrestBuilder_26<dynamic, dynamic, dynamic>(
+              this,
+              Invocation.method(#abortSignal, [abortSignal]),
+            ),
+          )
+          as _i2.PostgrestBuilder<dynamic, dynamic, dynamic>);
+
+  @override
   Uri appendSearchParams(String? key, String? value, [Uri? url]) =>
       (super.noSuchMethod(
             Invocation.method(#appendSearchParams, [key, value, url]),
-            returnValue: _FakeUri_25(
+            returnValue: _FakeUri_27(
               this,
               Invocation.method(#appendSearchParams, [key, value, url]),
             ),
@@ -1462,12 +1611,12 @@ class MockSupabaseQueryBuilder extends _i1.Mock
           as Uri);
 
   @override
-  Uri overrideSearchParams(String? key, String? value) =>
+  Uri overrideSearchParams(String? key, String? value, [Uri? url]) =>
       (super.noSuchMethod(
-            Invocation.method(#overrideSearchParams, [key, value]),
-            returnValue: _FakeUri_25(
+            Invocation.method(#overrideSearchParams, [key, value, url]),
+            returnValue: _FakeUri_27(
               this,
-              Invocation.method(#overrideSearchParams, [key, value]),
+              Invocation.method(#overrideSearchParams, [key, value, url]),
             ),
           )
           as Uri);
@@ -1506,7 +1655,7 @@ class MockSupabaseQueryBuilder extends _i1.Mock
                   ),
                   (U v) => _i4.Future<U>.value(v),
                 ) ??
-                _FakeFuture_26<U>(
+                _FakeFuture_28<U>(
                   this,
                   Invocation.method(#then, [onValue], {#onError: onError}),
                 ),
@@ -1668,32 +1817,32 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
           as _i2.PostgrestFilterBuilder<T>);
 
   @override
-  _i2.PostgrestFilterBuilder<dynamic> likeAllOf(
+  _i2.PostgrestFilterBuilder<T> likeAllOf(
     String? column,
     List<String>? patterns,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#likeAllOf, [column, patterns]),
-            returnValue: _FakePostgrestFilterBuilder_7<dynamic>(
+            returnValue: _FakePostgrestFilterBuilder_7<T>(
               this,
               Invocation.method(#likeAllOf, [column, patterns]),
             ),
           )
-          as _i2.PostgrestFilterBuilder<dynamic>);
+          as _i2.PostgrestFilterBuilder<T>);
 
   @override
-  _i2.PostgrestFilterBuilder<dynamic> likeAnyOf(
+  _i2.PostgrestFilterBuilder<T> likeAnyOf(
     String? column,
     List<String>? patterns,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#likeAnyOf, [column, patterns]),
-            returnValue: _FakePostgrestFilterBuilder_7<dynamic>(
+            returnValue: _FakePostgrestFilterBuilder_7<T>(
               this,
               Invocation.method(#likeAnyOf, [column, patterns]),
             ),
           )
-          as _i2.PostgrestFilterBuilder<dynamic>);
+          as _i2.PostgrestFilterBuilder<T>);
 
   @override
   _i2.PostgrestFilterBuilder<T> ilike(String? column, String? pattern) =>
@@ -1707,32 +1856,32 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
           as _i2.PostgrestFilterBuilder<T>);
 
   @override
-  _i2.PostgrestFilterBuilder<dynamic> ilikeAllOf(
+  _i2.PostgrestFilterBuilder<T> ilikeAllOf(
     String? column,
     List<String>? patterns,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#ilikeAllOf, [column, patterns]),
-            returnValue: _FakePostgrestFilterBuilder_7<dynamic>(
+            returnValue: _FakePostgrestFilterBuilder_7<T>(
               this,
               Invocation.method(#ilikeAllOf, [column, patterns]),
             ),
           )
-          as _i2.PostgrestFilterBuilder<dynamic>);
+          as _i2.PostgrestFilterBuilder<T>);
 
   @override
-  _i2.PostgrestFilterBuilder<dynamic> ilikeAnyOf(
+  _i2.PostgrestFilterBuilder<T> ilikeAnyOf(
     String? column,
     List<String>? patterns,
   ) =>
       (super.noSuchMethod(
             Invocation.method(#ilikeAnyOf, [column, patterns]),
-            returnValue: _FakePostgrestFilterBuilder_7<dynamic>(
+            returnValue: _FakePostgrestFilterBuilder_7<T>(
               this,
               Invocation.method(#ilikeAnyOf, [column, patterns]),
             ),
           )
-          as _i2.PostgrestFilterBuilder<dynamic>);
+          as _i2.PostgrestFilterBuilder<T>);
 
   @override
   _i2.PostgrestFilterBuilder<T> isFilter(String? column, bool? value) =>
@@ -1931,12 +2080,24 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
           as _i2.PostgrestFilterBuilder<T>);
 
   @override
-  _i2.PostgrestFilterBuilder<T> retry({required bool? enabled}) =>
+  _i2.PostgrestFilterBuilder<T> retry({
+    bool? enabled = true,
+    int? count,
+    Duration? requestTimeout,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#retry, [], {#enabled: enabled}),
+            Invocation.method(#retry, [], {
+              #enabled: enabled,
+              #count: count,
+              #requestTimeout: requestTimeout,
+            }),
             returnValue: _FakePostgrestFilterBuilder_7<T>(
               this,
-              Invocation.method(#retry, [], {#enabled: enabled}),
+              Invocation.method(#retry, [], {
+                #enabled: enabled,
+                #count: count,
+                #requestTimeout: requestTimeout,
+              }),
             ),
           )
           as _i2.PostgrestFilterBuilder<T>);
@@ -1959,7 +2120,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#select, [columns]),
             returnValue:
-                _FakePostgrestTransformBuilder_27<List<Map<String, dynamic>>>(
+                _FakePostgrestTransformBuilder_29<List<Map<String, dynamic>>>(
                   this,
                   Invocation.method(#select, [columns]),
                 ),
@@ -1983,7 +2144,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
                 #referencedTable: referencedTable,
               },
             ),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(
                 #order,
@@ -2009,7 +2170,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
               [count],
               {#referencedTable: referencedTable},
             ),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(
                 #limit,
@@ -2032,7 +2193,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
               [from, to],
               {#referencedTable: referencedTable},
             ),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(
                 #range,
@@ -2048,7 +2209,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#single, []),
             returnValue:
-                _FakePostgrestTransformBuilder_27<Map<String, dynamic>>(
+                _FakePostgrestTransformBuilder_29<Map<String, dynamic>>(
                   this,
                   Invocation.method(#single, []),
                 ),
@@ -2060,7 +2221,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#maybeSingle, []),
             returnValue:
-                _FakePostgrestTransformBuilder_27<Map<String, dynamic>?>(
+                _FakePostgrestTransformBuilder_29<Map<String, dynamic>?>(
                   this,
                   Invocation.method(#maybeSingle, []),
                 ),
@@ -2068,10 +2229,32 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
           as _i2.PostgrestTransformBuilder<Map<String, dynamic>?>);
 
   @override
+  _i2.PostgrestTransformBuilder<T> stripNulls() =>
+      (super.noSuchMethod(
+            Invocation.method(#stripNulls, []),
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
+              this,
+              Invocation.method(#stripNulls, []),
+            ),
+          )
+          as _i2.PostgrestTransformBuilder<T>);
+
+  @override
+  _i2.PostgrestTransformBuilder<T> dryRun() =>
+      (super.noSuchMethod(
+            Invocation.method(#dryRun, []),
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
+              this,
+              Invocation.method(#dryRun, []),
+            ),
+          )
+          as _i2.PostgrestTransformBuilder<T>);
+
+  @override
   _i2.PostgrestTransformBuilder<String> csv() =>
       (super.noSuchMethod(
             Invocation.method(#csv, []),
-            returnValue: _FakePostgrestTransformBuilder_27<String>(
+            returnValue: _FakePostgrestTransformBuilder_29<String>(
               this,
               Invocation.method(#csv, []),
             ),
@@ -2085,7 +2268,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#count, [count]),
             returnValue:
-                _FakeResponsePostgrestBuilder_28<
+                _FakeResponsePostgrestBuilder_30<
                   _i2.PostgrestResponse<T>,
                   T,
                   T
@@ -2097,7 +2280,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
   _i2.PostgrestBuilder<void, void, void> head() =>
       (super.noSuchMethod(
             Invocation.method(#head, []),
-            returnValue: _FakePostgrestBuilder_24<void, void, void>(
+            returnValue: _FakePostgrestBuilder_26<void, void, void>(
               this,
               Invocation.method(#head, []),
             ),
@@ -2114,7 +2297,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#geojson, []),
             returnValue:
-                _FakeResponsePostgrestBuilder_28<
+                _FakeResponsePostgrestBuilder_30<
                   Map<String, dynamic>,
                   Map<String, dynamic>,
                   Map<String, dynamic>
@@ -2130,7 +2313,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
   _i2.PostgrestTransformBuilder<T> maxAffected(int? value) =>
       (super.noSuchMethod(
             Invocation.method(#maxAffected, [value]),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(#maxAffected, [value]),
             ),
@@ -2144,6 +2327,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
     bool? settings = false,
     bool? buffers = false,
     bool? wal = false,
+    _i2.ExplainFormat? format = _i2.ExplainFormat.text,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#explain, [], {
@@ -2152,8 +2336,9 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
               #settings: settings,
               #buffers: buffers,
               #wal: wal,
+              #format: format,
             }),
-            returnValue: _FakePostgrestBuilder_24<String, String, String>(
+            returnValue: _FakePostgrestBuilder_26<String, String, String>(
               this,
               Invocation.method(#explain, [], {
                 #analyze: analyze,
@@ -2161,6 +2346,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
                 #settings: settings,
                 #buffers: buffers,
                 #wal: wal,
+                #format: format,
               }),
             ),
           )
@@ -2172,7 +2358,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
   ) =>
       (super.noSuchMethod(
             Invocation.method(#withConverter, [converter]),
-            returnValue: _FakePostgrestBuilder_24<U, U, T>(
+            returnValue: _FakePostgrestBuilder_26<U, U, T>(
               this,
               Invocation.method(#withConverter, [converter]),
             ),
@@ -2180,10 +2366,21 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
           as _i2.PostgrestBuilder<U, U, T>);
 
   @override
+  _i2.PostgrestBuilder<T, T, T> abortSignal(_i4.Future<void>? abortSignal) =>
+      (super.noSuchMethod(
+            Invocation.method(#abortSignal, [abortSignal]),
+            returnValue: _FakePostgrestBuilder_26<T, T, T>(
+              this,
+              Invocation.method(#abortSignal, [abortSignal]),
+            ),
+          )
+          as _i2.PostgrestBuilder<T, T, T>);
+
+  @override
   Uri appendSearchParams(String? key, String? value, [Uri? url]) =>
       (super.noSuchMethod(
             Invocation.method(#appendSearchParams, [key, value, url]),
-            returnValue: _FakeUri_25(
+            returnValue: _FakeUri_27(
               this,
               Invocation.method(#appendSearchParams, [key, value, url]),
             ),
@@ -2191,12 +2388,12 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
           as Uri);
 
   @override
-  Uri overrideSearchParams(String? key, String? value) =>
+  Uri overrideSearchParams(String? key, String? value, [Uri? url]) =>
       (super.noSuchMethod(
-            Invocation.method(#overrideSearchParams, [key, value]),
-            returnValue: _FakeUri_25(
+            Invocation.method(#overrideSearchParams, [key, value, url]),
+            returnValue: _FakeUri_27(
               this,
-              Invocation.method(#overrideSearchParams, [key, value]),
+              Invocation.method(#overrideSearchParams, [key, value, url]),
             ),
           )
           as Uri);
@@ -2221,7 +2418,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
                   ),
                   (T v) => _i4.Future<T>.value(v),
                 ) ??
-                _FakeFuture_26<T>(
+                _FakeFuture_28<T>(
                   this,
                   Invocation.method(#catchError, [onError], {#test: test}),
                 ),
@@ -2243,7 +2440,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
                   ),
                   (U v) => _i4.Future<U>.value(v),
                 ) ??
-                _FakeFuture_26<U>(
+                _FakeFuture_28<U>(
                   this,
                   Invocation.method(#then, [onValue], {#onError: onError}),
                 ),
@@ -2269,7 +2466,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
                   ),
                   (T v) => _i4.Future<T>.value(v),
                 ) ??
-                _FakeFuture_26<T>(
+                _FakeFuture_28<T>(
                   this,
                   Invocation.method(
                     #timeout,
@@ -2292,7 +2489,7 @@ class MockPostgrestFilterBuilder<T> extends _i1.Mock
                   ),
                   (T v) => _i4.Future<T>.value(v),
                 ) ??
-                _FakeFuture_26<T>(
+                _FakeFuture_28<T>(
                   this,
                   Invocation.method(#whenComplete, [action]),
                 ),
@@ -2313,7 +2510,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
   _i2.PostgrestTransformBuilder<T> copyWithUrl(Uri? url) =>
       (super.noSuchMethod(
             Invocation.method(#copyWithUrl, [url]),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(#copyWithUrl, [url]),
             ),
@@ -2321,12 +2518,24 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
           as _i2.PostgrestTransformBuilder<T>);
 
   @override
-  _i2.PostgrestTransformBuilder<T> retry({required bool? enabled}) =>
+  _i2.PostgrestTransformBuilder<T> retry({
+    bool? enabled = true,
+    int? count,
+    Duration? requestTimeout,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#retry, [], {#enabled: enabled}),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            Invocation.method(#retry, [], {
+              #enabled: enabled,
+              #count: count,
+              #requestTimeout: requestTimeout,
+            }),
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
-              Invocation.method(#retry, [], {#enabled: enabled}),
+              Invocation.method(#retry, [], {
+                #enabled: enabled,
+                #count: count,
+                #requestTimeout: requestTimeout,
+              }),
             ),
           )
           as _i2.PostgrestTransformBuilder<T>);
@@ -2335,7 +2544,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
   _i2.PostgrestTransformBuilder<T> setHeader(String? key, String? value) =>
       (super.noSuchMethod(
             Invocation.method(#setHeader, [key, value]),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(#setHeader, [key, value]),
             ),
@@ -2349,7 +2558,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#select, [columns]),
             returnValue:
-                _FakePostgrestTransformBuilder_27<List<Map<String, dynamic>>>(
+                _FakePostgrestTransformBuilder_29<List<Map<String, dynamic>>>(
                   this,
                   Invocation.method(#select, [columns]),
                 ),
@@ -2373,7 +2582,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
                 #referencedTable: referencedTable,
               },
             ),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(
                 #order,
@@ -2399,7 +2608,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
               [count],
               {#referencedTable: referencedTable},
             ),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(
                 #limit,
@@ -2422,7 +2631,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
               [from, to],
               {#referencedTable: referencedTable},
             ),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(
                 #range,
@@ -2438,7 +2647,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#single, []),
             returnValue:
-                _FakePostgrestTransformBuilder_27<Map<String, dynamic>>(
+                _FakePostgrestTransformBuilder_29<Map<String, dynamic>>(
                   this,
                   Invocation.method(#single, []),
                 ),
@@ -2450,7 +2659,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#maybeSingle, []),
             returnValue:
-                _FakePostgrestTransformBuilder_27<Map<String, dynamic>?>(
+                _FakePostgrestTransformBuilder_29<Map<String, dynamic>?>(
                   this,
                   Invocation.method(#maybeSingle, []),
                 ),
@@ -2458,10 +2667,32 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
           as _i2.PostgrestTransformBuilder<Map<String, dynamic>?>);
 
   @override
+  _i2.PostgrestTransformBuilder<T> stripNulls() =>
+      (super.noSuchMethod(
+            Invocation.method(#stripNulls, []),
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
+              this,
+              Invocation.method(#stripNulls, []),
+            ),
+          )
+          as _i2.PostgrestTransformBuilder<T>);
+
+  @override
+  _i2.PostgrestTransformBuilder<T> dryRun() =>
+      (super.noSuchMethod(
+            Invocation.method(#dryRun, []),
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
+              this,
+              Invocation.method(#dryRun, []),
+            ),
+          )
+          as _i2.PostgrestTransformBuilder<T>);
+
+  @override
   _i2.PostgrestTransformBuilder<String> csv() =>
       (super.noSuchMethod(
             Invocation.method(#csv, []),
-            returnValue: _FakePostgrestTransformBuilder_27<String>(
+            returnValue: _FakePostgrestTransformBuilder_29<String>(
               this,
               Invocation.method(#csv, []),
             ),
@@ -2475,7 +2706,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#count, [count]),
             returnValue:
-                _FakeResponsePostgrestBuilder_28<
+                _FakeResponsePostgrestBuilder_30<
                   _i2.PostgrestResponse<T>,
                   T,
                   T
@@ -2487,7 +2718,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
   _i2.PostgrestBuilder<void, void, void> head() =>
       (super.noSuchMethod(
             Invocation.method(#head, []),
-            returnValue: _FakePostgrestBuilder_24<void, void, void>(
+            returnValue: _FakePostgrestBuilder_26<void, void, void>(
               this,
               Invocation.method(#head, []),
             ),
@@ -2504,7 +2735,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#geojson, []),
             returnValue:
-                _FakeResponsePostgrestBuilder_28<
+                _FakeResponsePostgrestBuilder_30<
                   Map<String, dynamic>,
                   Map<String, dynamic>,
                   Map<String, dynamic>
@@ -2520,7 +2751,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
   _i2.PostgrestTransformBuilder<T> maxAffected(int? value) =>
       (super.noSuchMethod(
             Invocation.method(#maxAffected, [value]),
-            returnValue: _FakePostgrestTransformBuilder_27<T>(
+            returnValue: _FakePostgrestTransformBuilder_29<T>(
               this,
               Invocation.method(#maxAffected, [value]),
             ),
@@ -2534,6 +2765,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
     bool? settings = false,
     bool? buffers = false,
     bool? wal = false,
+    _i2.ExplainFormat? format = _i2.ExplainFormat.text,
   }) =>
       (super.noSuchMethod(
             Invocation.method(#explain, [], {
@@ -2542,8 +2774,9 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
               #settings: settings,
               #buffers: buffers,
               #wal: wal,
+              #format: format,
             }),
-            returnValue: _FakePostgrestBuilder_24<String, String, String>(
+            returnValue: _FakePostgrestBuilder_26<String, String, String>(
               this,
               Invocation.method(#explain, [], {
                 #analyze: analyze,
@@ -2551,6 +2784,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
                 #settings: settings,
                 #buffers: buffers,
                 #wal: wal,
+                #format: format,
               }),
             ),
           )
@@ -2562,7 +2796,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
   ) =>
       (super.noSuchMethod(
             Invocation.method(#withConverter, [converter]),
-            returnValue: _FakePostgrestBuilder_24<U, U, T>(
+            returnValue: _FakePostgrestBuilder_26<U, U, T>(
               this,
               Invocation.method(#withConverter, [converter]),
             ),
@@ -2570,10 +2804,21 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
           as _i2.PostgrestBuilder<U, U, T>);
 
   @override
+  _i2.PostgrestBuilder<T, T, T> abortSignal(_i4.Future<void>? abortSignal) =>
+      (super.noSuchMethod(
+            Invocation.method(#abortSignal, [abortSignal]),
+            returnValue: _FakePostgrestBuilder_26<T, T, T>(
+              this,
+              Invocation.method(#abortSignal, [abortSignal]),
+            ),
+          )
+          as _i2.PostgrestBuilder<T, T, T>);
+
+  @override
   Uri appendSearchParams(String? key, String? value, [Uri? url]) =>
       (super.noSuchMethod(
             Invocation.method(#appendSearchParams, [key, value, url]),
-            returnValue: _FakeUri_25(
+            returnValue: _FakeUri_27(
               this,
               Invocation.method(#appendSearchParams, [key, value, url]),
             ),
@@ -2581,12 +2826,12 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
           as Uri);
 
   @override
-  Uri overrideSearchParams(String? key, String? value) =>
+  Uri overrideSearchParams(String? key, String? value, [Uri? url]) =>
       (super.noSuchMethod(
-            Invocation.method(#overrideSearchParams, [key, value]),
-            returnValue: _FakeUri_25(
+            Invocation.method(#overrideSearchParams, [key, value, url]),
+            returnValue: _FakeUri_27(
               this,
-              Invocation.method(#overrideSearchParams, [key, value]),
+              Invocation.method(#overrideSearchParams, [key, value, url]),
             ),
           )
           as Uri);
@@ -2611,7 +2856,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
                   ),
                   (T v) => _i4.Future<T>.value(v),
                 ) ??
-                _FakeFuture_26<T>(
+                _FakeFuture_28<T>(
                   this,
                   Invocation.method(#catchError, [onError], {#test: test}),
                 ),
@@ -2633,7 +2878,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
                   ),
                   (U v) => _i4.Future<U>.value(v),
                 ) ??
-                _FakeFuture_26<U>(
+                _FakeFuture_28<U>(
                   this,
                   Invocation.method(#then, [onValue], {#onError: onError}),
                 ),
@@ -2659,7 +2904,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
                   ),
                   (T v) => _i4.Future<T>.value(v),
                 ) ??
-                _FakeFuture_26<T>(
+                _FakeFuture_28<T>(
                   this,
                   Invocation.method(
                     #timeout,
@@ -2682,7 +2927,7 @@ class MockPostgrestTransformBuilder<T> extends _i1.Mock
                   ),
                   (T v) => _i4.Future<T>.value(v),
                 ) ??
-                _FakeFuture_26<T>(
+                _FakeFuture_28<T>(
                   this,
                   Invocation.method(#whenComplete, [action]),
                 ),
@@ -2793,6 +3038,17 @@ class MockSupabaseStorageClient extends _i1.Mock
   }
 
   @override
+  _i2.SupabaseVectorsClient get vectors =>
+      (super.noSuchMethod(
+            Invocation.getter(#vectors),
+            returnValue: _FakeSupabaseVectorsClient_31(
+              this,
+              Invocation.getter(#vectors),
+            ),
+          )
+          as _i2.SupabaseVectorsClient);
+
+  @override
   String get url =>
       (super.noSuchMethod(
             Invocation.getter(#url),
@@ -2812,7 +3068,7 @@ class MockSupabaseStorageClient extends _i1.Mock
   _i5.Fetch get storageFetch =>
       (super.noSuchMethod(
             Invocation.getter(#storageFetch),
-            returnValue: _FakeFetch_29(this, Invocation.getter(#storageFetch)),
+            returnValue: _FakeFetch_32(this, Invocation.getter(#storageFetch)),
           )
           as _i5.Fetch);
 
@@ -2826,12 +3082,34 @@ class MockSupabaseStorageClient extends _i1.Mock
   _i2.StorageFileApi from(String? id) =>
       (super.noSuchMethod(
             Invocation.method(#from, [id]),
-            returnValue: _FakeStorageFileApi_30(
+            returnValue: _FakeStorageFileApi_33(
               this,
               Invocation.method(#from, [id]),
             ),
           )
           as _i2.StorageFileApi);
+
+  @override
+  _i2.IcebergRestCatalog analyticsCatalog(
+    String? bucketId, {
+    List<_i2.AccessDelegation>? accessDelegation,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #analyticsCatalog,
+              [bucketId],
+              {#accessDelegation: accessDelegation},
+            ),
+            returnValue: _FakeIcebergRestCatalog_34(
+              this,
+              Invocation.method(
+                #analyticsCatalog,
+                [bucketId],
+                {#accessDelegation: accessDelegation},
+              ),
+            ),
+          )
+          as _i2.IcebergRestCatalog);
 
   @override
   void setAuth(String? jwt) => super.noSuchMethod(
@@ -2851,9 +3129,9 @@ class MockSupabaseStorageClient extends _i1.Mock
           as _i2.SupabaseStorageClient);
 
   @override
-  _i4.Future<List<_i2.Bucket>> listBuckets() =>
+  _i4.Future<List<_i2.Bucket>> listBuckets([_i2.ListBucketsOptions? options]) =>
       (super.noSuchMethod(
-            Invocation.method(#listBuckets, []),
+            Invocation.method(#listBuckets, [options]),
             returnValue: _i4.Future<List<_i2.Bucket>>.value(<_i2.Bucket>[]),
           )
           as _i4.Future<List<_i2.Bucket>>);
@@ -2863,7 +3141,7 @@ class MockSupabaseStorageClient extends _i1.Mock
       (super.noSuchMethod(
             Invocation.method(#getBucket, [id]),
             returnValue: _i4.Future<_i2.Bucket>.value(
-              _FakeBucket_31(this, Invocation.method(#getBucket, [id])),
+              _FakeBucket_35(this, Invocation.method(#getBucket, [id])),
             ),
           )
           as _i4.Future<_i2.Bucket>);
@@ -2925,6 +3203,68 @@ class MockSupabaseStorageClient extends _i1.Mock
             ),
           )
           as _i4.Future<String>);
+
+  @override
+  _i4.Future<String> purgeBucketCache(
+    String? id, {
+    bool? transformations = false,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #purgeBucketCache,
+              [id],
+              {#transformations: transformations},
+            ),
+            returnValue: _i4.Future<String>.value(
+              _i6.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #purgeBucketCache,
+                  [id],
+                  {#transformations: transformations},
+                ),
+              ),
+            ),
+          )
+          as _i4.Future<String>);
+
+  @override
+  _i4.Future<_i2.AnalyticsBucket> createAnalyticsBucket(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#createAnalyticsBucket, [id]),
+            returnValue: _i4.Future<_i2.AnalyticsBucket>.value(
+              _FakeAnalyticsBucket_36(
+                this,
+                Invocation.method(#createAnalyticsBucket, [id]),
+              ),
+            ),
+          )
+          as _i4.Future<_i2.AnalyticsBucket>);
+
+  @override
+  _i4.Future<List<_i2.AnalyticsBucket>> listAnalyticsBuckets([
+    _i2.ListBucketsOptions? options,
+  ]) =>
+      (super.noSuchMethod(
+            Invocation.method(#listAnalyticsBuckets, [options]),
+            returnValue: _i4.Future<List<_i2.AnalyticsBucket>>.value(
+              <_i2.AnalyticsBucket>[],
+            ),
+          )
+          as _i4.Future<List<_i2.AnalyticsBucket>>);
+
+  @override
+  _i4.Future<String> deleteAnalyticsBucket(String? id) =>
+      (super.noSuchMethod(
+            Invocation.method(#deleteAnalyticsBucket, [id]),
+            returnValue: _i4.Future<String>.value(
+              _i6.dummyValue<String>(
+                this,
+                Invocation.method(#deleteAnalyticsBucket, [id]),
+              ),
+            ),
+          )
+          as _i4.Future<String>);
 }
 
 /// A class which mocks [StorageFileApi].
@@ -2955,7 +3295,7 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   _i2.StorageFileApi setHeader(String? key, String? value) =>
       (super.noSuchMethod(
             Invocation.method(#setHeader, [key, value]),
-            returnValue: _FakeStorageFileApi_30(
+            returnValue: _FakeStorageFileApi_33(
               this,
               Invocation.method(#setHeader, [key, value]),
             ),
@@ -2965,7 +3305,7 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   @override
   _i4.Future<String> upload(
     String? path,
-    _i10.File? file, {
+    dynamic file, {
     _i2.FileOptions? fileOptions = const _i2.FileOptions(),
     int? retryAttempts,
     _i2.StorageRetryController? retryController,
@@ -3000,7 +3340,7 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   @override
   _i4.Future<String> uploadBinary(
     String? path,
-    _i11.Uint8List? data, {
+    _i10.Uint8List? data, {
     _i2.FileOptions? fileOptions = const _i2.FileOptions(),
     int? retryAttempts,
     _i2.StorageRetryController? retryController,
@@ -3036,7 +3376,7 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   _i4.Future<String> uploadToSignedUrl(
     String? path,
     String? token,
-    _i10.File? file, [
+    dynamic file, [
     _i2.FileOptions? fileOptions = const _i2.FileOptions(),
     int? retryAttempts,
     _i2.StorageRetryController? retryController,
@@ -3070,7 +3410,7 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   _i4.Future<String> uploadBinaryToSignedUrl(
     String? path,
     String? token,
-    _i11.Uint8List? data, [
+    _i10.Uint8List? data, [
     _i2.FileOptions? fileOptions = const _i2.FileOptions(),
     int? retryAttempts,
     _i2.StorageRetryController? retryController,
@@ -3101,13 +3441,24 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
           as _i4.Future<String>);
 
   @override
-  _i4.Future<_i2.SignedUploadURLResponse> createSignedUploadUrl(String? path) =>
+  _i4.Future<_i2.SignedUploadURLResponse> createSignedUploadUrl(
+    String? path, {
+    bool? upsert = false,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#createSignedUploadUrl, [path]),
+            Invocation.method(
+              #createSignedUploadUrl,
+              [path],
+              {#upsert: upsert},
+            ),
             returnValue: _i4.Future<_i2.SignedUploadURLResponse>.value(
-              _FakeSignedUploadURLResponse_32(
+              _FakeSignedUploadURLResponse_37(
                 this,
-                Invocation.method(#createSignedUploadUrl, [path]),
+                Invocation.method(
+                  #createSignedUploadUrl,
+                  [path],
+                  {#upsert: upsert},
+                ),
               ),
             ),
           )
@@ -3116,7 +3467,7 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   @override
   _i4.Future<String> update(
     String? path,
-    _i10.File? file, {
+    dynamic file, {
     _i2.FileOptions? fileOptions = const _i2.FileOptions(),
     int? retryAttempts,
     _i2.StorageRetryController? retryController,
@@ -3151,7 +3502,7 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   @override
   _i4.Future<String> updateBinary(
     String? path,
-    _i11.Uint8List? data, {
+    _i10.Uint8List? data, {
     _i2.FileOptions? fileOptions = const _i2.FileOptions(),
     int? retryAttempts,
     _i2.StorageRetryController? retryController,
@@ -3238,12 +3589,18 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
     String? path,
     int? expiresIn, {
     _i2.TransformOptions? transform,
+    _i2.DownloadBehavior? download,
+    String? cacheNonce,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
               #createSignedUrl,
               [path, expiresIn],
-              {#transform: transform},
+              {
+                #transform: transform,
+                #download: download,
+                #cacheNonce: cacheNonce,
+              },
             ),
             returnValue: _i4.Future<String>.value(
               _i6.dummyValue<String>(
@@ -3251,7 +3608,11 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
                 Invocation.method(
                   #createSignedUrl,
                   [path, expiresIn],
-                  {#transform: transform},
+                  {
+                    #transform: transform,
+                    #download: download,
+                    #cacheNonce: cacheNonce,
+                  },
                 ),
               ),
             ),
@@ -3261,10 +3622,16 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
   @override
   _i4.Future<List<_i2.SignedUrl>> createSignedUrls(
     List<String>? paths,
-    int? expiresIn,
-  ) =>
+    int? expiresIn, {
+    _i2.DownloadBehavior? download,
+    String? cacheNonce,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#createSignedUrls, [paths, expiresIn]),
+            Invocation.method(
+              #createSignedUrls,
+              [paths, expiresIn],
+              {#download: download, #cacheNonce: cacheNonce},
+            ),
             returnValue: _i4.Future<List<_i2.SignedUrl>>.value(
               <_i2.SignedUrl>[],
             ),
@@ -3272,27 +3639,72 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
           as _i4.Future<List<_i2.SignedUrl>>);
 
   @override
-  _i4.Future<_i11.Uint8List> download(
+  _i4.Future<List<_i2.SignedUrlResult>> createSignedUrlsResult(
+    List<String>? paths,
+    int? expiresIn, {
+    _i2.DownloadBehavior? download,
+    String? cacheNonce,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #createSignedUrlsResult,
+              [paths, expiresIn],
+              {#download: download, #cacheNonce: cacheNonce},
+            ),
+            returnValue: _i4.Future<List<_i2.SignedUrlResult>>.value(
+              <_i2.SignedUrlResult>[],
+            ),
+          )
+          as _i4.Future<List<_i2.SignedUrlResult>>);
+
+  @override
+  _i4.Future<_i10.Uint8List> download(
     String? path, {
     _i2.TransformOptions? transform,
     Map<String, String>? queryParams,
+    String? cacheNonce,
   }) =>
       (super.noSuchMethod(
             Invocation.method(
               #download,
               [path],
-              {#transform: transform, #queryParams: queryParams},
+              {
+                #transform: transform,
+                #queryParams: queryParams,
+                #cacheNonce: cacheNonce,
+              },
             ),
-            returnValue: _i4.Future<_i11.Uint8List>.value(_i11.Uint8List(0)),
+            returnValue: _i4.Future<_i10.Uint8List>.value(_i10.Uint8List(0)),
           )
-          as _i4.Future<_i11.Uint8List>);
+          as _i4.Future<_i10.Uint8List>);
+
+  @override
+  _i4.Stream<_i10.Uint8List> downloadStream(
+    String? path, {
+    _i2.TransformOptions? transform,
+    Map<String, String>? queryParams,
+    String? cacheNonce,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #downloadStream,
+              [path],
+              {
+                #transform: transform,
+                #queryParams: queryParams,
+                #cacheNonce: cacheNonce,
+              },
+            ),
+            returnValue: _i4.Stream<_i10.Uint8List>.empty(),
+          )
+          as _i4.Stream<_i10.Uint8List>);
 
   @override
   _i4.Future<_i2.FileObjectV2> info(String? path) =>
       (super.noSuchMethod(
             Invocation.method(#info, [path]),
             returnValue: _i4.Future<_i2.FileObjectV2>.value(
-              _FakeFileObjectV2_33(this, Invocation.method(#info, [path])),
+              _FakeFileObjectV2_38(this, Invocation.method(#info, [path])),
             ),
           )
           as _i4.Future<_i2.FileObjectV2>);
@@ -3306,12 +3718,33 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
           as _i4.Future<bool>);
 
   @override
-  String getPublicUrl(String? path, {_i2.TransformOptions? transform}) =>
+  String getPublicUrl(
+    String? path, {
+    _i2.TransformOptions? transform,
+    _i2.DownloadBehavior? download,
+    String? cacheNonce,
+  }) =>
       (super.noSuchMethod(
-            Invocation.method(#getPublicUrl, [path], {#transform: transform}),
+            Invocation.method(
+              #getPublicUrl,
+              [path],
+              {
+                #transform: transform,
+                #download: download,
+                #cacheNonce: cacheNonce,
+              },
+            ),
             returnValue: _i6.dummyValue<String>(
               this,
-              Invocation.method(#getPublicUrl, [path], {#transform: transform}),
+              Invocation.method(
+                #getPublicUrl,
+                [path],
+                {
+                  #transform: transform,
+                  #download: download,
+                  #cacheNonce: cacheNonce,
+                },
+              ),
             ),
           )
           as String);
@@ -3325,6 +3758,30 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
             ),
           )
           as _i4.Future<List<_i2.FileObject>>);
+
+  @override
+  _i4.Future<String> purgeCache(
+    String? path, {
+    bool? transformations = false,
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(
+              #purgeCache,
+              [path],
+              {#transformations: transformations},
+            ),
+            returnValue: _i4.Future<String>.value(
+              _i6.dummyValue<String>(
+                this,
+                Invocation.method(
+                  #purgeCache,
+                  [path],
+                  {#transformations: transformations},
+                ),
+              ),
+            ),
+          )
+          as _i4.Future<String>);
 
   @override
   _i4.Future<List<_i2.FileObject>> list({
@@ -3341,12 +3798,27 @@ class MockStorageFileApi extends _i1.Mock implements _i2.StorageFileApi {
             ),
           )
           as _i4.Future<List<_i2.FileObject>>);
+
+  @override
+  _i4.Future<_i2.PaginatedListResult> listPaginated({
+    _i2.PaginatedSearchOptions? options = const _i2.PaginatedSearchOptions(),
+  }) =>
+      (super.noSuchMethod(
+            Invocation.method(#listPaginated, [], {#options: options}),
+            returnValue: _i4.Future<_i2.PaginatedListResult>.value(
+              _FakePaginatedListResult_39(
+                this,
+                Invocation.method(#listPaginated, [], {#options: options}),
+              ),
+            ),
+          )
+          as _i4.Future<_i2.PaginatedListResult>);
 }
 
 /// A class which mocks [AuthRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockAuthRepository extends _i1.Mock implements _i12.AuthRepository {
+class MockAuthRepository extends _i1.Mock implements _i11.AuthRepository {
   MockAuthRepository() {
     _i1.throwOnMissingStub(this);
   }
@@ -3422,7 +3894,7 @@ class MockAuthRepository extends _i1.Mock implements _i12.AuthRepository {
 /// A class which mocks [LoadRepository].
 ///
 /// See the documentation for Mockito's code generation for more information.
-class MockLoadRepository extends _i1.Mock implements _i13.LoadRepository {
+class MockLoadRepository extends _i1.Mock implements _i12.LoadRepository {
   MockLoadRepository() {
     _i1.throwOnMissingStub(this);
   }

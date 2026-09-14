@@ -762,6 +762,8 @@ class _InspectionFormPageState extends State<InspectionFormPage> {
                                         photo,
                                         height: 80,
                                         width: 80,
+                                        cacheHeight: 160,
+                                        cacheWidth: 160,
                                         fit: BoxFit.cover,
                                       ),
                                     ),

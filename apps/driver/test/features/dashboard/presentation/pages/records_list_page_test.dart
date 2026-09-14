@@ -51,7 +51,7 @@ void main() {
     // Initialize Supabase for testing (to avoid Supabase.instance error)
     await Supabase.initialize(
       url: 'https://dummy.supabase.co',
-      anonKey: 'dummy-key',
+      publishableKey: 'dummy-key',
     );
 
     // Optimize NetworkClient for tests to fail fast and avoid hangs

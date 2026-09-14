@@ -58,6 +58,10 @@ dependencies:
   # Workspace Packages
   milow_core:
     path: ../../packages/core
+  milow_ui:
+    path: ../../packages/ui
+  milow_data:
+    path: ../../packages/data
   textfield_tags: ^3.0.1
 
   firebase_core: ^4.4.0

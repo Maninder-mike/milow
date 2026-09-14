@@ -88,12 +88,22 @@ class DatabaseHealthNotifier extends Notifier<DatabaseHealthState> {
     }
 
     try {
-      await Supabase.instance.client
-          .from('profiles')
-          .select('id')
-          .limit(1)
-          .maybeSingle()
-          .timeout(const Duration(seconds: 5));
+      final user = Supabase.instance.client.auth.currentUser;
+      if (user != null) {
+        await Supabase.instance.client
+            .from('profiles')
+            .select('id')
+            .eq('id', user.id)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 5));
+      } else {
+        await Supabase.instance.client
+            .from('profiles')
+            .select('id')
+            .limit(1)
+            .maybeSingle()
+            .timeout(const Duration(seconds: 5));
+      }
 
       state = state.copyWith(
         status: DatabaseStatus.connected,
@@ -101,6 +111,15 @@ class DatabaseHealthNotifier extends Notifier<DatabaseHealthState> {
         isSyncing: false,
       );
     } catch (e) {
+      // If Supabase returned a PostgrestException (e.g. RLS response), the DB server is online
+      if (e is PostgrestException) {
+        state = state.copyWith(
+          status: DatabaseStatus.connected,
+          lastSyncTime: DateTime.now(),
+          isSyncing: false,
+        );
+        return;
+      }
       // If we are offline, don't override the disconnected status with error
       if (state.status != DatabaseStatus.disconnected) {
         state = state.copyWith(status: DatabaseStatus.error, isSyncing: false);

@@ -571,7 +571,12 @@ class _EditProfilePageState extends State<EditProfilePage>
               child: Container(
                 color: tokens.surfaceContainerHigh,
                 child: _imageFile != null
-                    ? Image.file(_imageFile!, fit: BoxFit.cover)
+                    ? Image.file(
+                        _imageFile!,
+                        fit: BoxFit.cover,
+                        cacheWidth: 240,
+                        cacheHeight: 240,
+                      )
                     : (_avatarUrl != null
                           ? OptimizedImage(
                               imageUrl: _avatarUrl!,

@@ -45,6 +45,7 @@ export 'src/services/app_logger.dart';
 export 'src/services/core_network_client.dart';
 export 'src/services/network_coalescer.dart';
 export 'src/services/remote_config_service.dart';
+export 'src/services/geofence_service.dart';
 
 // Utils
 export 'src/utils/app_dialogs.dart';

@@ -161,7 +161,7 @@ class _LoadDocumentUploadPageState extends State<LoadDocumentUploadPage> {
           child: _selectedFile != null
               ? ClipRRect(
                   borderRadius: BorderRadius.circular(tokens.shapeM),
-                  child: Image.file(_selectedFile!, fit: BoxFit.cover),
+                  child: Image.file(_selectedFile!, fit: BoxFit.cover, cacheWidth: 800),
                 )
               : Column(
                   mainAxisAlignment: MainAxisAlignment.center,

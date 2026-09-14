@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../data/repositories/invoice_repository.dart';
-import '../../domain/models/invoice.dart';
-import '../../../../core/providers/network_provider.dart';
+import 'package:terminal/features/billing/data/repositories/invoice_repository.dart';
+import 'package:terminal/features/billing/domain/models/invoice.dart';
+import 'package:terminal/core/providers/network_provider.dart';
 
 part 'invoice_providers.g.dart';
 

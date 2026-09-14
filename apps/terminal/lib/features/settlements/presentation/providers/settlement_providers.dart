@@ -140,7 +140,7 @@ class SettlementController extends _$SettlementController {
 
       final result = await repository.createSettlement(settlement, items);
 
-      return result.fold(
+      final settlementId = result.fold(
         (failure) {
           state = AsyncValue.error(failure, StackTrace.current);
           throw failure;
@@ -151,6 +151,8 @@ class SettlementController extends _$SettlementController {
           return id;
         },
       );
+
+      return settlementId;
     } catch (e, st) {
       state = AsyncValue.error(e, st);
       rethrow;

@@ -1,0 +1,24 @@
+name: milow_ui
+description: "Design system, shared UI tokens, and widgets for the Milow monorepo."
+version: 0.0.1
+publish_to: "none"
+
+environment:
+  sdk: ^3.10.7
+  flutter: ">=3.38.7"
+
+resolution: workspace
+
+dependencies:
+  dynamic_color: ^1.7.0
+  flutter:
+    sdk: flutter
+  google_fonts: ^8.0.0
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  uses-material-design: true

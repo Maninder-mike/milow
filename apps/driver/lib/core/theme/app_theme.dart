@@ -84,6 +84,7 @@ class AppTheme {
       // M3 Expressive: Elevated buttons with rounded corners
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          minimumSize: const Size(64, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DesignTokens.light.shapeButton),
           ),
@@ -98,6 +99,7 @@ class AppTheme {
       // M3 Expressive: Outlined buttons
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          minimumSize: const Size(64, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(DesignTokens.light.shapeButton),
           ),
@@ -261,6 +263,7 @@ class AppTheme {
       // Buttons
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
+          minimumSize: const Size(64, 48),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(tokens.shapeButton),
           ),
@@ -274,6 +277,7 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
+          minimumSize: const Size(64, 48),
           foregroundColor: tokens.textPrimary,
           side: BorderSide(color: tokens.subtleBorderColor),
           shape: RoundedRectangleBorder(

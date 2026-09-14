@@ -88,6 +88,10 @@ dependencies:
   # Workspace Packages
   milow_core:
     path: ../../packages/core
+  milow_ui:
+    path: ../../packages/ui
+  milow_data:
+    path: ../../packages/data
   animations: ^2.1.1
   gap: ^3.0.0
   csv: ^7.1.0

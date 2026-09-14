@@ -1,5 +1,6 @@
 import 'package:fluent_ui/fluent_ui.dart' hide FluentIcons;
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:milow_ui/milow_ui.dart';
 
 /// A standardized error state widget following the "Icon-Title-Description-Action" pattern.
 class StandardErrorState extends StatelessWidget {
@@ -135,18 +136,12 @@ class SkeletonBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = FluentTheme.of(context);
-    
-    return Container(
-      width: width,
-      height: height,
-      margin: margin,
-      decoration: BoxDecoration(
-        color: theme.resources.controlFillColorSecondary,
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: theme.resources.surfaceStrokeColorDefault.withValues(alpha: 0.05),
-        ),
+    return Padding(
+      padding: margin ?? EdgeInsets.zero,
+      child: SkeletonShimmer(
+        width: width ?? double.infinity,
+        height: height ?? 16,
+        borderRadius: borderRadius,
       ),
     );
   }

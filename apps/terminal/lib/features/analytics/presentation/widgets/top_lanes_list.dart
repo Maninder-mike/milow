@@ -1,5 +1,5 @@
 import 'package:fluent_ui/fluent_ui.dart';
-import '../../domain/models/lane_analytics.dart';
+import 'package:terminal/features/analytics/domain/models/lane_analytics.dart';
 
 class TopLanesList extends StatelessWidget {
   final List<LaneAnalytics> data;

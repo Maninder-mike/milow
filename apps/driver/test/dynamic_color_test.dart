@@ -1,27 +1,47 @@
+import 'dart:typed_data';
+
 import 'package:dynamic_color/dynamic_color.dart';
-import 'package:dynamic_color/test_utils.dart';
-import 'package:dynamic_color/samples.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:milow/core/theme/app_theme.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  void setMockDynamicColors({List<int>? corePalette, Color? accentColor}) {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+      const MethodChannel('io.material.plugins/dynamic_color'),
+      (MethodCall call) async {
+        if (call.method == 'getCorePalette') {
+          return corePalette != null ? Int64List.fromList(corePalette) : null;
+        }
+        if (call.method == 'getAccentColor') {
+          return accentColor?.toARGB32();
+        }
+        return null;
+      },
+    );
+  }
+
   group('Dynamic Color Tests', () {
     setUp(() {
-      // Reset mock dynamic colors before each test
-      DynamicColorTestingUtils.setMockDynamicColors();
+      setMockDynamicColors();
+    });
+
+    tearDown(() {
+      setMockDynamicColors();
     });
 
     testWidgets('Uses fallback theme when no dynamic colors available', (
       WidgetTester tester,
     ) async {
-      // No dynamic colors set - should use AppTheme defaults
-      DynamicColorTestingUtils.setMockDynamicColors();
+      setMockDynamicColors();
 
       await tester.pumpWidget(
         DynamicColorBuilder(
           builder: (lightDynamic, darkDynamic) {
-            // Verify no dynamic colors are provided
             expect(lightDynamic, isNull);
             expect(darkDynamic, isNull);
 
@@ -38,12 +58,11 @@ void main() {
       await tester.pumpAndSettle();
     });
 
-    testWidgets('Uses dynamic colors when available from wallpaper', (
+    testWidgets('Uses dynamic colors when available from system accent', (
       WidgetTester tester,
     ) async {
-      // Simulate Android 12+ with green wallpaper
-      DynamicColorTestingUtils.setMockDynamicColors(
-        corePalette: SampleCorePalettes.green,
+      setMockDynamicColors(
+        accentColor: const Color(0xFF4CAF50),
       );
 
       ColorScheme? capturedLightScheme;
@@ -70,16 +89,16 @@ void main() {
 
       await tester.pumpAndSettle();
 
-      // Dynamic colors should be provided
       expect(capturedLightScheme, isNotNull);
       expect(capturedDarkScheme, isNotNull);
+      expect(capturedLightScheme!.primary, isNotNull);
     });
 
-    testWidgets('Theme adapts to different wallpaper palette', (
+    testWidgets('Theme adapts to different accent color palette', (
       WidgetTester tester,
     ) async {
-      DynamicColorTestingUtils.setMockDynamicColors(
-        corePalette: SampleCorePalettes.green,
+      setMockDynamicColors(
+        accentColor: const Color(0xFF2196F3),
       );
 
       ColorScheme? capturedScheme;
@@ -100,7 +119,6 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(capturedScheme, isNotNull);
-      // Verify the primary color was set from the palette
       expect(capturedScheme!.primary, isNotNull);
     });
   });

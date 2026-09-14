@@ -1,7 +1,7 @@
 import 'package:fluent_ui/fluent_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/models/analytics_timeframe.dart';
-import '../providers/analytics_timeframe_provider.dart';
+import 'package:terminal/features/analytics/domain/models/analytics_timeframe.dart';
+import 'package:terminal/features/analytics/presentation/providers/analytics_timeframe_provider.dart';
 
 class TimeframeSelector extends ConsumerWidget {
   const TimeframeSelector({super.key});
