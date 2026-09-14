@@ -174,7 +174,7 @@ jobs:
 
       # 🏗️ Build
       - name: Build Windows Release
-        run: flutter build windows --release
+        run: flutter build windows --release --no-tree-shake-icons
 
       - name: Create MSIX
         run: dart run msix:create --version=${{ steps.version.outputs.msix_version }}
