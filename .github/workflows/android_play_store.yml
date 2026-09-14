@@ -221,6 +221,14 @@ jobs:
           NEXT_PUBLIC_SUPABASE_ANON_KEY=${{ secrets.SUPABASE_ANON_KEY }}
           EOF
 
+      - name: Install dependencies
+        run: |
+          echo "📦 Installing Flutter dependencies..."
+          flutter pub get
+          cd apps/driver
+          flutter clean
+          flutter pub get
+
       - name: Generate Code
         run: |
           echo "🛠️ Generating Code..."
@@ -229,11 +237,7 @@ jobs:
 
       - name: Build Artifacts
         run: |
-          flutter pub get
           cd apps/driver
-          flutter clean
-          flutter pub get
-          
           echo "🏗️ Building release..."
           flutter build apk --release --build-number=${{ steps.version.outputs.version_code }} --no-tree-shake-icons
           flutter build appbundle --release --build-number=${{ steps.version.outputs.version_code }} --no-tree-shake-icons
